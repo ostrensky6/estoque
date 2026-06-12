@@ -10,12 +10,17 @@ export default function LoginPage() {
   });
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-zinc-50 px-6 font-sans dark:bg-zinc-950">
-      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-          Lab Custos &amp; Estoque
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500">Entre para continuar.</p>
+    <div className="app-canvas flex min-h-dvh items-center justify-center px-6 font-sans dark:bg-zinc-950">
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-lg ring-1 ring-slate-900/5 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-blue-600 text-base font-bold text-white shadow-sm">
+            L
+          </span>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            Lab Custos &amp; Estoque
+          </h1>
+        </div>
+        <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">Entre para continuar.</p>
 
         <form action={action} className="mt-6 space-y-4">
           <div>

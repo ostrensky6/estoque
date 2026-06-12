@@ -102,7 +102,7 @@ export default async function CadastroPage({
   }
 
   return (
-    <div className="min-h-dvh bg-zinc-50 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-6xl px-6 py-10">
         <nav className="flex flex-wrap gap-2 text-xs">
           {Object.values(CADASTROS).map((c) => (

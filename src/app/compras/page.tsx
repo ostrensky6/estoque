@@ -42,7 +42,7 @@ export default async function ComprasPage() {
   const inp = "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
 
   return (
-    <div className="min-h-dvh bg-zinc-50 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-5xl px-6 py-10">
         <h1 className="text-2xl font-semibold tracking-tight">Compras</h1>
         <p className="mt-1 text-sm text-zinc-500">
@@ -104,7 +104,7 @@ export default async function ComprasPage() {
         {/* lista */}
         <div className="mt-6 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
               <tr>
                 <th className="px-4 py-3 text-left">Pedido</th>
                 <th className="px-4 py-3 text-left">Fornecedor</th>
@@ -119,7 +119,7 @@ export default async function ComprasPage() {
                 const st = STATUS[p.status] ?? { label: p.status, cls: "bg-zinc-100" };
                 const forn = (p.fornecedores as { nome: string | null } | null)?.nome;
                 return (
-                  <tr key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+                  <tr key={p.id} className="hover:bg-transparent dark:hover:bg-zinc-800/40">
                     <td className="px-4 py-2.5">
                       <Link href={`/compras/${p.id}`} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
                         #{p.id} · {p.data_solicitacao}

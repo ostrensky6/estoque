@@ -3,7 +3,7 @@ import { CADASTROS } from "@/lib/cadastros/config";
 
 export default function CadastrosIndex() {
   return (
-    <div className="min-h-dvh bg-zinc-50 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-4xl px-6 py-12">
         <h1 className="text-2xl font-semibold tracking-tight">
           Cadastros — elementos de custo

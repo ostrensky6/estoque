@@ -28,7 +28,7 @@ export default async function PlanejamentoPage() {
   const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
 
   return (
-    <div className="min-h-dvh bg-zinc-50 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-5xl px-6 py-10">
         <h1 className="text-2xl font-semibold tracking-tight">Planejamento</h1>
         <p className="mt-1 text-sm text-zinc-500">
@@ -63,7 +63,7 @@ export default async function PlanejamentoPage() {
         {/* lista */}
         <div className="mt-6 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
               <tr>
                 <th className="px-4 py-3 text-left">Plano</th>
                 <th className="px-4 py-3 text-left">Projeto</th>
@@ -77,7 +77,7 @@ export default async function PlanejamentoPage() {
                 const itens = (p.planejamento_itens as { count: number }[])?.[0]?.count ?? 0;
                 const st = statusPlano((p.reservas_estoque as Reserva[]) ?? []);
                 return (
-                  <tr key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+                  <tr key={p.id} className="hover:bg-transparent dark:hover:bg-zinc-800/40">
                     <td className="px-4 py-2.5">
                       <Link href={`/planejamento/${p.id}`} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
                         {p.nome}

@@ -71,7 +71,7 @@ export default async function AnaliseDetalhe({
   const gargaloEtapa = (etapas ?? []).find((e) => e.tipo_limitacao);
 
   return (
-    <div className="min-h-dvh bg-zinc-50 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-5xl px-6 py-10">
         <Link href="/analises" className="text-xs text-zinc-500 hover:underline">
           ← Análises
@@ -125,7 +125,7 @@ export default async function AnaliseDetalhe({
         {/* Etapas */}
         <div className="mt-4 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <table className="w-full text-right text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
               <tr>
                 <th className="px-3 py-2.5 text-left">Etapa</th>
                 <th className="px-3 py-2.5 text-left">Atividade</th>
@@ -170,7 +170,7 @@ export default async function AnaliseDetalhe({
         </h2>
         <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <table className="w-full text-right text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
               <tr>
                 <th className="px-3 py-2.5 text-left">Equipamento</th>
                 <th className="px-3 py-2.5">Qtd.</th>
@@ -207,7 +207,7 @@ export default async function AnaliseDetalhe({
         </h2>
         <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <table className="w-full text-right text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
               <tr>
                 <th className="px-3 py-2.5 text-left">Etapa / atividade</th>
                 <th className="px-3 py-2.5 text-left">Material</th>

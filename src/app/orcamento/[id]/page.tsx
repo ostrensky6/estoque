@@ -89,7 +89,7 @@ export default async function OrcamentoDetalhe({
   const lbl = "block text-xs font-medium text-zinc-600 dark:text-zinc-300";
 
   return (
-    <div className="min-h-dvh bg-zinc-50 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="print-area mx-auto max-w-4xl px-6 py-10">
         <div className="no-print flex items-center justify-between">
           <Link href="/orcamento" className="text-xs text-zinc-500 hover:underline">
@@ -159,7 +159,7 @@ export default async function OrcamentoDetalhe({
           </h2>
           <div className="mt-2 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
             <table className="w-full text-right text-sm">
-              <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/60">
+              <thead className="bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/60">
                 <tr>
                   <th className="px-3 py-2 text-left">Análise</th>
                   <th className="px-3 py-2">Custo/amostra</th>
@@ -205,7 +205,7 @@ export default async function OrcamentoDetalhe({
                 )}
               </tbody>
               {itens.length > 0 && (
-                <tfoot className="border-t border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/60">
+                <tfoot className="border-t border-zinc-200 bg-transparent dark:border-zinc-800 dark:bg-zinc-900/60">
                   <tr>
                     <td className="px-3 py-2.5 text-left font-medium">Total</td>
                     <td className="px-3 py-2.5 tabular-nums text-zinc-500">

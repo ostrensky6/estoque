@@ -56,7 +56,7 @@ export default async function EstoquePage() {
   };
 
   return (
-    <div className="min-h-dvh bg-zinc-50 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-6xl px-6 py-10">
         <h1 className="text-2xl font-semibold tracking-tight">Estoque</h1>
         <p className="mt-1 text-sm text-zinc-500">
@@ -93,7 +93,7 @@ export default async function EstoquePage() {
         {/* Saldo */}
         <div className="mt-8 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
               <tr>
                 <th className="px-4 py-3 text-left">Reagente</th>
                 <th className="px-4 py-3 text-left">Un.</th>
@@ -111,7 +111,7 @@ export default async function EstoquePage() {
                 const repor = (s.ponto_reposicao ?? 0) > 0 && (s.disponivel ?? 0) <= (s.ponto_reposicao ?? 0);
                 const semEstoque = (s.em_maos ?? 0) <= 0;
                 return (
-                  <tr key={s.insumo_id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+                  <tr key={s.insumo_id} className="hover:bg-transparent dark:hover:bg-zinc-800/40">
                     <td className="px-4 py-2.5 max-w-xs truncate" title={s.especificacao ?? ""}>
                       {s.especificacao}
                     </td>
@@ -168,7 +168,7 @@ export default async function EstoquePage() {
         </p>
         <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
               <tr>
                 <th className="px-4 py-3 text-left">Reagente</th>
                 <th className="px-4 py-3 text-left">Lote</th>
@@ -184,7 +184,7 @@ export default async function EstoquePage() {
                 const st = LOTE_STATUS[l.status] ?? { label: l.status, cls: "bg-zinc-100" };
                 const vencido = l.validade != null && new Date(l.validade) < new Date();
                 return (
-                  <tr key={l.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+                  <tr key={l.id} className="hover:bg-transparent dark:hover:bg-zinc-800/40">
                     <td className="px-4 py-2.5 max-w-xs truncate" title={ins?.especificacao ?? ""}>{ins?.especificacao}</td>
                     <td className="px-4 py-2.5 text-zinc-500">{l.codigo_lote ?? "—"}</td>
                     <td className={`px-4 py-2.5 ${vencido ? "font-medium text-red-600" : "text-zinc-500"}`}>

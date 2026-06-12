@@ -55,7 +55,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
   const inp = "rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950";
 
   return (
-    <div className="min-h-dvh bg-zinc-50 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-4xl px-6 py-10">
         <Link href="/compras" className="text-xs text-zinc-500 hover:underline">← Compras</Link>
         <div className="mt-2 flex items-center justify-between">
@@ -77,7 +77,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
           <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Itens</h2>
           <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <table className="w-full text-sm">
-              <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
+              <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
                 <tr>
                   <th className="px-4 py-3 text-left">Insumo</th>
                   <th className="px-4 py-3 text-right">Qtd</th>
