@@ -45,3 +45,5 @@ seed/*.csv
 __pycache__/
 *.pyc
 .gitignore.bak
+
+.vercel
