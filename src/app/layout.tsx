@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import { sair } from "@/lib/actions/auth";
+import { SideNav, type NavGroup } from "@/components/layout/SideNav";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,9 +29,6 @@ const PAPEL_LABEL: Record<string, string> = {
 };
 const ORDEM = ["tecnico", "coordenador", "gestor", "admin"];
 
-const linkCls =
-  "rounded px-3 py-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800";
-
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -54,50 +52,73 @@ export default async function RootLayout({
   const ehGestor = nivel >= ORDEM.indexOf("gestor");
   const ehAdmin = perfil?.papel === "admin";
 
+  const grupos: NavGroup[] = [
+    {
+      title: "Orçamento",
+      links: [
+        { href: "/orcamento", label: "Orçamentos", desc: "cliente, análises e valor final" },
+        { href: "/custeio", label: "Custeio por análise", desc: "tabela de custos e preços" },
+        { href: "/analises", label: "Análises", desc: "painel técnico e materiais" },
+      ],
+    },
+    {
+      title: "Estoque",
+      links: [
+        { href: "/planejamento", label: "Planejamento", desc: "demanda e reserva de insumos" },
+        { href: "/estoque", label: "Estoque", desc: "saldo, lotes e alertas" },
+        { href: "/compras", label: "Compras", desc: "reposição e pedidos" },
+      ],
+    },
+    {
+      title: "Configuração",
+      links: [
+        { href: "/cadastros", label: "Cadastros", desc: "equipamentos, insumos, técnicos…" },
+        { href: "/insumos", label: "Consumo por análise", desc: "grupos e modo de cobrança" },
+        ...(ehGestor ? [{ href: "/auditoria", label: "Auditoria" }] : []),
+        ...(ehAdmin ? [{ href: "/usuarios", label: "Usuários" }] : []),
+      ],
+    },
+  ];
+
   return (
     <html
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        {user && (
-          <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-            <nav className="mx-auto flex max-w-6xl items-center gap-1 px-6 py-3 text-sm">
-              <Link href="/" className="mr-4 font-semibold">
+      <body className="min-h-dvh bg-zinc-50 dark:bg-zinc-950">
+        {user ? (
+          <div className="flex min-h-dvh flex-col md:flex-row">
+            <aside className="flex shrink-0 flex-col border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:sticky md:top-0 md:h-dvh md:w-60 md:border-b-0 md:border-r">
+              <Link
+                href="/"
+                className="block border-b border-zinc-100 px-5 py-4 font-semibold tracking-tight dark:border-zinc-900"
+              >
                 Lab Custos &amp; Estoque
               </Link>
-              <Link href="/custeio" className={linkCls}>Custeio</Link>
-              <Link href="/planejamento" className={linkCls}>Planejamento</Link>
-              <Link href="/estoque" className={linkCls}>Estoque</Link>
-              <Link href="/compras" className={linkCls}>Compras</Link>
-              <Link href="/insumos" className={linkCls}>Insumos</Link>
-              <Link href="/cadastros" className={linkCls}>Cadastros</Link>
-              {ehGestor && (
-                <Link href="/auditoria" className={linkCls}>Auditoria</Link>
-              )}
-              {ehAdmin && (
-                <Link href="/usuarios" className={linkCls}>Usuários</Link>
-              )}
-
-              <div className="ml-auto flex items-center gap-3">
-                <span className="text-xs text-zinc-500">
+              <SideNav groups={grupos} />
+              <div className="border-t border-zinc-100 px-5 py-3 dark:border-zinc-900">
+                <p className="truncate text-xs text-zinc-500">
                   {perfil?.nome || perfil?.email || user.email}
+                </p>
+                <div className="mt-1 flex items-center justify-between">
                   {perfil?.papel && (
-                    <span className="ml-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                       {PAPEL_LABEL[perfil.papel] ?? perfil.papel}
                     </span>
                   )}
-                </span>
-                <form action={sair}>
-                  <button className="rounded px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100 hover:text-red-600 dark:hover:bg-zinc-800">
-                    Sair
-                  </button>
-                </form>
+                  <form action={sair}>
+                    <button className="rounded px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100 hover:text-red-600 dark:hover:bg-zinc-800">
+                      Sair
+                    </button>
+                  </form>
+                </div>
               </div>
-            </nav>
-          </header>
+            </aside>
+            <div className="min-w-0 flex-1">{children}</div>
+          </div>
+        ) : (
+          children
         )}
-        {children}
       </body>
     </html>
   );

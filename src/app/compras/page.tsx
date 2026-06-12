@@ -16,14 +16,16 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 
 export default async function ComprasPage() {
   const supabase = await createClient();
-  const [{ data: pedidos }, { data: fornecedores }, { data: saldo }] = await Promise.all([
+  const [{ data: pedidos }, { data: fornecedores }, { data: saldo }, { data: projetos }] = await Promise.all([
     supabase
       .from("pedidos_compra")
-      .select("id, status, projeto, solicitante, data_solicitacao, fornecedores(nome)")
+      .select("id, status, projeto, projeto_id, solicitante, data_solicitacao, fornecedores(nome)")
       .order("criado_em", { ascending: false }),
     supabase.from("fornecedores").select("id, nome").eq("ativo", true).order("nome"),
     supabase.from("v_estoque_saldo").select("*"),
+    supabase.from("projetos").select("id, nome").order("nome"),
   ]);
+  const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
 
   // sugestões de compra: disponível abaixo do ponto de reposição
   const sugestoes = (saldo ?? [])
@@ -81,8 +83,17 @@ export default async function ComprasPage() {
               ))}
             </select>
           </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Projeto</label>
+            <select name="projeto_id" className={`${inp} mt-1`} defaultValue="">
+              <option value="">—</option>
+              {(projetos ?? []).map((p) => (
+                <option key={p.id} value={p.id}>{p.nome}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex-1 min-w-40">
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Projeto / campanha</label>
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Campanha (texto livre)</label>
             <input name="projeto" className={`${inp} mt-1 w-full`} />
           </div>
           <button className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
@@ -100,6 +111,7 @@ export default async function ComprasPage() {
                 <th className="px-4 py-3 text-left">Projeto</th>
                 <th className="px-4 py-3 text-left">Solicitante</th>
                 <th className="px-4 py-3 text-center">Status</th>
+                {/* colunas fixas; projeto agora prioriza o vínculo */}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -114,7 +126,9 @@ export default async function ComprasPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-2.5 text-zinc-500">{forn ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-zinc-500">{p.projeto ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-zinc-500">
+                      {p.projeto_id != null ? projetoNome.get(p.projeto_id) ?? "—" : p.projeto ?? "—"}
+                    </td>
                     <td className="px-4 py-2.5 text-zinc-500">{p.solicitante ?? "—"}</td>
                     <td className="px-4 py-2.5 text-center">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>

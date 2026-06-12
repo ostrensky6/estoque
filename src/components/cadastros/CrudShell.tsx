@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { Fragment, useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Campo, Coluna } from "@/lib/cadastros/config";
 import {
@@ -226,7 +226,7 @@ function Drawer({
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-xl dark:bg-zinc-900">
+      <div className="relative h-full w-full max-w-2xl overflow-y-auto bg-white p-6 shadow-xl dark:bg-zinc-900">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">
             {registro ? `Editar ${singular}` : `Novo ${singular}`}
@@ -243,12 +243,18 @@ function Drawer({
           )}
 
           {campos.map((c) => (
-            <CampoInput
-              key={c.name}
-              campo={c}
-              valor={registro?.[c.name]}
-              erro={state.errors?.[c.name]}
-            />
+            <Fragment key={c.name}>
+              {c.grupo && (
+                <h3 className="col-span-2 mt-2 border-b border-zinc-100 pb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
+                  {c.grupo}
+                </h3>
+              )}
+              <CampoInput
+                campo={c}
+                valor={registro?.[c.name]}
+                erro={state.errors?.[c.name]}
+              />
+            </Fragment>
           ))}
 
           {state.message && !state.ok && (
@@ -303,7 +309,9 @@ function CampoInput({
         {campo.obrigatorio && <span className="text-red-500"> *</span>}
       </label>
 
-      {campo.tipo === "select" ? (
+      {campo.tipo === "textarea" ? (
+        <textarea name={campo.name} defaultValue={v} rows={3} placeholder={campo.placeholder} className={base} />
+      ) : campo.tipo === "select" ? (
         <select name={campo.name} defaultValue={v} className={base}>
           <option value="">—</option>
           {campo.opcoes?.map((o) => (
@@ -317,7 +325,7 @@ function CampoInput({
           <input
             type="checkbox"
             name={campo.name}
-            defaultChecked={Boolean(valor)}
+            defaultChecked={valor === undefined ? Boolean(campo.padraoLigado) : Boolean(valor)}
             className="h-4 w-4 rounded border-zinc-300 text-emerald-600"
           />
         </div>

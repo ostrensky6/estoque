@@ -91,6 +91,45 @@ export type Database = {
         }
         Relationships: []
       }
+      clientes: {
+        Row: {
+          ativo: boolean
+          cnpj: string | null
+          contato: string | null
+          criado_em: string
+          email: string | null
+          endereco: string | null
+          id: number
+          nome: string
+          observacoes: string | null
+          telefone: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          cnpj?: string | null
+          contato?: string | null
+          criado_em?: string
+          email?: string | null
+          endereco?: string | null
+          id?: never
+          nome: string
+          observacoes?: string | null
+          telefone?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          cnpj?: string | null
+          contato?: string | null
+          criado_em?: string
+          email?: string | null
+          endereco?: string | null
+          id?: never
+          nome?: string
+          observacoes?: string | null
+          telefone?: string | null
+        }
+        Relationships: []
+      }
       equipamento_analise: {
         Row: {
           codigo_analise: string
@@ -284,29 +323,47 @@ export type Database = {
         Row: {
           ativo: boolean
           catalogo_padrao: string | null
+          cnpj: string | null
           contato: string | null
+          email: string | null
+          endereco: string | null
           id: number
           nome: string
+          observacoes: string | null
           prazo_max_dias: number | null
           prazo_medio_dias: number | null
+          site: string | null
+          telefone: string | null
         }
         Insert: {
           ativo?: boolean
           catalogo_padrao?: string | null
+          cnpj?: string | null
           contato?: string | null
+          email?: string | null
+          endereco?: string | null
           id?: never
           nome: string
+          observacoes?: string | null
           prazo_max_dias?: number | null
           prazo_medio_dias?: number | null
+          site?: string | null
+          telefone?: string | null
         }
         Update: {
           ativo?: boolean
           catalogo_padrao?: string | null
+          cnpj?: string | null
           contato?: string | null
+          email?: string | null
+          endereco?: string | null
           id?: never
           nome?: string
+          observacoes?: string | null
           prazo_max_dias?: number | null
           prazo_medio_dias?: number | null
+          site?: string | null
+          telefone?: string | null
         }
         Relationships: []
       }
@@ -593,6 +650,111 @@ export type Database = {
           },
         ]
       }
+      orcamento_itens: {
+        Row: {
+          codigo_analise: string
+          custo_unitario: number
+          id: number
+          n_amostras: number
+          orcamento_id: number
+          preco_unitario: number
+        }
+        Insert: {
+          codigo_analise: string
+          custo_unitario?: number
+          id?: never
+          n_amostras?: number
+          orcamento_id: number
+          preco_unitario?: number
+        }
+        Update: {
+          codigo_analise?: string
+          custo_unitario?: number
+          id?: never
+          n_amostras?: number
+          orcamento_id?: number
+          preco_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_itens_codigo_analise_fkey"
+            columns: ["codigo_analise"]
+            isOneToOne: false
+            referencedRelation: "analises"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "orcamento_itens_orcamento_id_fkey"
+            columns: ["orcamento_id"]
+            isOneToOne: false
+            referencedRelation: "orcamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orcamentos: {
+        Row: {
+          cliente_cnpj: string | null
+          cliente_contato: string | null
+          cliente_endereco: string | null
+          cliente_id: number | null
+          cliente_nome: string
+          criado_em: string
+          data_orcamento: string
+          id: number
+          observacoes: string | null
+          projeto_id: number | null
+          responsavel: string | null
+          status: string
+          validade_dias: number
+        }
+        Insert: {
+          cliente_cnpj?: string | null
+          cliente_contato?: string | null
+          cliente_endereco?: string | null
+          cliente_id?: number | null
+          cliente_nome: string
+          criado_em?: string
+          data_orcamento?: string
+          id?: never
+          observacoes?: string | null
+          projeto_id?: number | null
+          responsavel?: string | null
+          status?: string
+          validade_dias?: number
+        }
+        Update: {
+          cliente_cnpj?: string | null
+          cliente_contato?: string | null
+          cliente_endereco?: string | null
+          cliente_id?: number | null
+          cliente_nome?: string
+          criado_em?: string
+          data_orcamento?: string
+          id?: never
+          observacoes?: string | null
+          projeto_id?: number | null
+          responsavel?: string | null
+          status?: string
+          validade_dias?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       overhead: {
         Row: {
           custo_mensal: number
@@ -652,6 +814,7 @@ export type Database = {
           id: number
           observacao: string | null
           projeto: string | null
+          projeto_id: number | null
           solicitante: string | null
           status: string
         }
@@ -665,6 +828,7 @@ export type Database = {
           id?: never
           observacao?: string | null
           projeto?: string | null
+          projeto_id?: number | null
           solicitante?: string | null
           status?: string
         }
@@ -678,6 +842,7 @@ export type Database = {
           id?: never
           observacao?: string | null
           projeto?: string | null
+          projeto_id?: number | null
           solicitante?: string | null
           status?: string
         }
@@ -687,6 +852,13 @@ export type Database = {
             columns: ["fornecedor_id"]
             isOneToOne: false
             referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_compra_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
             referencedColumns: ["id"]
           },
         ]
@@ -779,6 +951,7 @@ export type Database = {
           nome: string | null
           observacao: string | null
           projeto: string | null
+          projeto_id: number | null
           responsavel: string | null
         }
         Insert: {
@@ -788,6 +961,7 @@ export type Database = {
           nome?: string | null
           observacao?: string | null
           projeto?: string | null
+          projeto_id?: number | null
           responsavel?: string | null
         }
         Update: {
@@ -797,9 +971,18 @@ export type Database = {
           nome?: string | null
           observacao?: string | null
           projeto?: string | null
+          projeto_id?: number | null
           responsavel?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "planejamento_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       planejamento_itens: {
         Row: {
@@ -842,6 +1025,50 @@ export type Database = {
             columns: ["planejamento_id"]
             isOneToOne: false
             referencedRelation: "planejamento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projetos: {
+        Row: {
+          cliente_id: number | null
+          criado_em: string
+          data_fim: string | null
+          data_inicio: string | null
+          descricao: string | null
+          id: number
+          nome: string
+          responsavel: string | null
+          status: string
+        }
+        Insert: {
+          cliente_id?: number | null
+          criado_em?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          id?: never
+          nome: string
+          responsavel?: string | null
+          status?: string
+        }
+        Update: {
+          cliente_id?: number | null
+          criado_em?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          id?: never
+          nome?: string
+          responsavel?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projetos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
             referencedColumns: ["id"]
           },
         ]
@@ -971,6 +1198,7 @@ export type Database = {
         Args: { p_justificativa: string; p_lote_id: number }
         Returns: undefined
       }
+      fn_exige_papel: { Args: { p_min: string }; Returns: undefined }
       liberar_plano: { Args: { p_planejamento_id: number }; Returns: undefined }
       receber_lote: {
         Args: {

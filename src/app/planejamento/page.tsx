@@ -18,10 +18,14 @@ function statusPlano(reservas: Reserva[]) {
 
 export default async function PlanejamentoPage() {
   const supabase = createAdminClientUntyped();
-  const { data: planos } = await supabase
-    .from("planejamento")
-    .select("id, nome, data_alvo, criado_em, planejamento_itens(count), reservas_estoque(status)")
-    .order("criado_em", { ascending: false });
+  const [{ data: planos }, { data: projetos }] = await Promise.all([
+    supabase
+      .from("planejamento")
+      .select("id, nome, data_alvo, criado_em, projeto_id, planejamento_itens(count), reservas_estoque(status)")
+      .order("criado_em", { ascending: false }),
+    supabase.from("projetos").select("id, nome").order("nome"),
+  ]);
+  const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
 
   return (
     <div className="min-h-dvh bg-zinc-50 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -42,6 +46,15 @@ export default async function PlanejamentoPage() {
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Data alvo</label>
             <input name="data_alvo" type="date" className="mt-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Projeto</label>
+            <select name="projeto_id" defaultValue="" className="mt-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
+              <option value="">—</option>
+              {(projetos ?? []).map((p) => (
+                <option key={p.id} value={p.id}>{p.nome}</option>
+              ))}
+            </select>
+          </div>
           <button className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
             + Novo plano
           </button>
@@ -53,6 +66,7 @@ export default async function PlanejamentoPage() {
             <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
               <tr>
                 <th className="px-4 py-3 text-left">Plano</th>
+                <th className="px-4 py-3 text-left">Projeto</th>
                 <th className="px-4 py-3 text-left">Data alvo</th>
                 <th className="px-4 py-3 text-right">Análises</th>
                 <th className="px-4 py-3 text-center">Status</th>
@@ -69,6 +83,7 @@ export default async function PlanejamentoPage() {
                         {p.nome}
                       </Link>
                     </td>
+                    <td className="px-4 py-2.5 text-zinc-500">{p.projeto_id != null ? projetoNome.get(p.projeto_id) ?? "—" : "—"}</td>
                     <td className="px-4 py-2.5 text-zinc-500">{p.data_alvo ?? "—"}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{itens}</td>
                     <td className="px-4 py-2.5 text-center">
@@ -79,7 +94,7 @@ export default async function PlanejamentoPage() {
               })}
               {(planos ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-zinc-400">
+                  <td colSpan={5} className="px-4 py-10 text-center text-zinc-400">
                     Nenhum plano ainda. Crie o primeiro acima.
                   </td>
                 </tr>

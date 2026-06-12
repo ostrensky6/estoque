@@ -17,10 +17,11 @@ export async function criarPedido(formData: FormData) {
     ? Number(formData.get("fornecedor_id"))
     : null;
   const projeto = (formData.get("projeto") as string)?.trim() || null;
+  const projeto_id = formData.get("projeto_id") ? Number(formData.get("projeto_id")) : null;
   const supabase = await createClientUntyped();
   const { data, error } = await supabase
     .from("pedidos_compra")
-    .insert({ fornecedor_id, projeto, solicitante: u?.email ?? null, status: "solicitado" })
+    .insert({ fornecedor_id, projeto, projeto_id, solicitante: u?.email ?? null, status: "solicitado" })
     .select("id")
     .single();
   if (error) throw new Error(error.message);

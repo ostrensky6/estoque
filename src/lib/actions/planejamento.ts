@@ -9,10 +9,11 @@ import type { FormState } from "./cadastros";
 export async function criarPlano(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim() || "Plano sem nome";
   const data_alvo = (formData.get("data_alvo") as string) || null;
+  const projeto_id = formData.get("projeto_id") ? Number(formData.get("projeto_id")) : null;
   const supabase = await createClientUntyped();
   const { data, error } = await supabase
     .from("planejamento")
-    .insert({ nome, data_alvo })
+    .insert({ nome, data_alvo, projeto_id })
     .select("id")
     .single();
   if (error) throw new Error(error.message);

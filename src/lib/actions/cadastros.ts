@@ -37,6 +37,28 @@ const optStr = z.preprocess(
 const optDate = optStr;
 
 const SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
+  clientes: z.object({
+    nome: reqStr,
+    cnpj: optStr,
+    endereco: optStr,
+    contato: optStr,
+    email: optStr,
+    telefone: optStr,
+    observacoes: optStr,
+    ativo: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
+  }),
+  projetos: z.object({
+    nome: reqStr,
+    cliente_id: optNum({ min: 0 }),
+    responsavel: optStr,
+    status: z.preprocess(
+      (v) => (v === "" || v == null ? "proposto" : v),
+      z.enum(["proposto", "ativo", "concluido", "cancelado"]),
+    ),
+    data_inicio: optDate,
+    data_fim: optDate,
+    descricao: optStr,
+  }),
   equipamentos: z.object({
     nome: reqStr,
     quantidade: reqNum({ min: 0 }),
@@ -51,13 +73,24 @@ const SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
     .object({
       nome_item: optStr,
       especificacao: reqStr,
+      fabricante: optStr,
+      codigo_fabricante: optStr,
+      codigo_interno: optStr,
       custo_total_embalagem: reqNum({ min: 0 }),
       quantidade_embalagem: reqNum({ min: 0 }),
       unidade: optStr,
       data_aquisicao: optDate,
+      fornecedor_id: optNum({ min: 0 }),
+      fornecedor_alt_id: optNum({ min: 0 }),
+      categoria_compra: optStr,
+      quantidade_minima_compra: optNum({ min: 0 }),
+      prazo_entrega_max_dias: optNum({ min: 0 }),
       ponto_reposicao: optNum({ min: 0 }),
       estoque_seguranca: optNum({ min: 0 }),
       lead_time_dias: optNum({ min: 0 }),
+      condicao_armazenamento: optStr,
+      validade_apos_abertura_dias: optNum({ min: 0 }),
+      sds_url: optStr,
     })
     .transform((d) => ({
       ...d,
@@ -84,21 +117,45 @@ const SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
   }),
   fornecedores: z.object({
     nome: reqStr,
+    cnpj: optStr,
     contato: optStr,
+    email: optStr,
+    telefone: optStr,
+    site: optStr,
+    endereco: optStr,
     catalogo_padrao: optStr,
     prazo_medio_dias: optNum({ min: 0 }),
     prazo_max_dias: optNum({ min: 0 }),
+    observacoes: optStr,
     ativo: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
   }),
 };
 
 const TABELAS: Record<string, string> = {
+  clientes: "clientes",
+  projetos: "projetos",
   equipamentos: "equipamentos",
   insumos: "insumos",
   tecnicos: "tecnicos",
   overhead: "overhead",
   fornecedores: "fornecedores",
 };
+
+/** Páginas que derivam dados dos cadastros — revalidadas a cada alteração. */
+const DEPENDENTES = [
+  "/custeio",
+  "/analises",
+  "/orcamento",
+  "/estoque",
+  "/compras",
+  "/planejamento",
+  "/insumos",
+  "/",
+];
+function revalidarDependentes(slug: string) {
+  revalidatePath(`/cadastros/${slug}`);
+  for (const p of DEPENDENTES) revalidatePath(p);
+}
 
 function formToObject(formData: FormData): Record<string, unknown> {
   const o: Record<string, unknown> = {};
@@ -144,8 +201,7 @@ export async function salvarRegistro(
 
   if (res.error) return { ok: false, message: res.error.message };
 
-  revalidatePath(`/cadastros/${slug}`);
-  revalidatePath("/custeio");
+  revalidarDependentes(slug);
   return { ok: true, message: id ? "Atualizado." : "Criado." };
 }
 
@@ -169,7 +225,6 @@ export async function excluirRegistro(
     return { ok: false, message: msg };
   }
 
-  revalidatePath(`/cadastros/${slug}`);
-  revalidatePath("/custeio");
+  revalidarDependentes(slug);
   return { ok: true, message: "Excluído." };
 }

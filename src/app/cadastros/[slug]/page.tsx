@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { CADASTROS } from "@/lib/cadastros/config";
+import { CADASTROS, type Campo } from "@/lib/cadastros/config";
 import { CrudShell } from "@/components/cadastros/CrudShell";
 import { equipCustoDia } from "@/lib/costing/engine";
 
@@ -72,7 +72,34 @@ export default async function CadastroPage({
   ]);
   const diasUteisAno = Number(parametros?.[0]?.valor ?? 222);
 
-  const linhas = await comColunasCalculadas(slug, rows ?? [], diasUteisAno);
+  let linhas = await comColunasCalculadas(slug, rows ?? [], diasUteisAno);
+
+  // injeta opções dinâmicas nos selects que referenciam outra tabela
+  const fontes = [...new Set(cfg.campos.map((c) => c.opcoesDe).filter(Boolean))] as string[];
+  const opcoesPorFonte: Record<string, { value: string; label: string }[]> = {};
+  for (const fonte of fontes) {
+    const { data } = await supabase
+      .from(fonte as "fornecedores")
+      .select("id, nome")
+      .order("nome");
+    opcoesPorFonte[fonte] = (data ?? []).map((r) => ({
+      value: String((r as { id: number }).id),
+      label: (r as { nome: string }).nome,
+    }));
+  }
+  const campos: Campo[] = cfg.campos.map((c) =>
+    c.opcoesDe ? { ...c, opcoes: opcoesPorFonte[c.opcoesDe] ?? [] } : c,
+  );
+
+  // projetos: resolve o nome do cliente para a coluna da tabela
+  if (slug === "projetos") {
+    const clientes = opcoesPorFonte["clientes"] ?? [];
+    const nomePorId = new Map(clientes.map((o) => [o.value, o.label]));
+    linhas = linhas.map((r) => ({
+      ...r,
+      cliente_nome: r.cliente_id != null ? nomePorId.get(String(r.cliente_id)) ?? "—" : "—",
+    }));
+  }
 
   return (
     <div className="min-h-dvh bg-zinc-50 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -102,7 +129,7 @@ export default async function CadastroPage({
             singular={cfg.singular}
             rotulo={cfg.rotulo}
             colunas={cfg.colunas}
-            campos={cfg.campos}
+            campos={campos}
             rows={linhas}
           />
         </div>
