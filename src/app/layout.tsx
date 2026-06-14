@@ -74,7 +74,6 @@ export default async function RootLayout({
         { href: "/cadastros", label: "Cadastros", desc: "equipamentos, insumos, técnicos…" },
         { href: "/parametros", label: "Parâmetros", desc: "fatores de preço, dias úteis…" },
         { href: "/insumos", label: "Consumo por análise", desc: "grupos e modo de cobrança" },
-        { href: "/parametros", label: "Parâmetros", desc: "fatores de preço e constantes" },
         ...(ehGestor ? [{ href: "/auditoria", label: "Auditoria" }] : []),
         ...(ehAdmin ? [{ href: "/usuarios", label: "Usuários" }] : []),
       ],
