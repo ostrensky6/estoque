@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   reservarPlano,
@@ -25,6 +25,7 @@ function Botao({
   confirmar?: string;
 }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, {
     ok: false,
   });
@@ -34,16 +35,50 @@ function Botao({
 
   return (
     <div className="flex flex-col gap-1">
-      <form
-        action={formAction}
-        onSubmit={(e) => {
-          if (confirmar && !confirm(confirmar)) e.preventDefault();
-        }}
-      >
+      <form action={formAction}>
         <input type="hidden" name="planejamento_id" value={planId} />
-        <button disabled={pending} className={cls}>
-          {pending ? "…" : label}
-        </button>
+        {confirmar ? (
+          <button
+            type="button"
+            disabled={pending}
+            className={cls}
+            onClick={() => setOpen(true)}
+          >
+            {pending ? "…" : label}
+          </button>
+        ) : (
+          <button disabled={pending} className={cls}>
+            {pending ? "…" : label}
+          </button>
+        )}
+
+        {open && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 text-left">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+            <div className="relative w-full max-w-sm rounded-xl bg-white p-6 shadow-xl dark:bg-zinc-900">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                Confirmar ação
+              </h3>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{confirmar}</p>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded-md px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-zinc-800"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  onClick={() => setOpen(false)}
+                  className="rounded-md bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-500"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </form>
       {state.message && (
         <p

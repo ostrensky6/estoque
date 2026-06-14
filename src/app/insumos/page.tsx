@@ -30,6 +30,15 @@ export default async function InsumosPage({
     .eq("codigo_analise", atual)
     .order("id");
 
+  // grupos de escolha já usados nesta análise — sugeridos no combobox p/ evitar typos
+  const grupos = [
+    ...new Set(
+      (linhas ?? [])
+        .map((l) => l.grupo_escolha)
+        .filter((g): g is string => !!g),
+    ),
+  ].sort();
+
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-6xl px-6 py-12">
@@ -57,6 +66,12 @@ export default async function InsumosPage({
             </Link>
           ))}
         </nav>
+
+        <datalist id="grupos-escolha">
+          {grupos.map((g) => (
+            <option key={g} value={g} />
+          ))}
+        </datalist>
 
         <div className="mt-6 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-sm">
@@ -101,6 +116,7 @@ export default async function InsumosPage({
                         <input type="hidden" name="id" value={l.id} />
                         <input
                           name="grupo_escolha"
+                          list="grupos-escolha"
                           defaultValue={l.grupo_escolha ?? ""}
                           placeholder="(nenhum)"
                           className="w-44 rounded border border-zinc-300 bg-white px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900"
