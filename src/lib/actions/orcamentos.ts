@@ -2,17 +2,93 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { createClientUntyped } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
 
+export type ParametrosEconomicosState = {
+  ok: boolean;
+  message?: string;
+  errors?: Record<string, string>;
+};
+
+const parametroNumero = (opts: { min?: number; max?: number } = {}) =>
+  z.preprocess(
+    (v) => (v === "" || v == null ? undefined : Number(v)),
+    z
+      .number({ error: "Obrigatório" })
+      .refine((n) => !Number.isNaN(n), "Número inválido")
+      .refine((n) => opts.min == null || n >= opts.min, `Mínimo ${opts.min}`)
+      .refine((n) => opts.max == null || n <= opts.max, `Máximo ${opts.max}`),
+  );
+
+const parametrosEconomicosSchema = z.object({
+  dias_uteis_ano: parametroNumero({ min: 1 }),
+  margem_lucro: parametroNumero({ min: 0, max: 100 }),
+  impostos: parametroNumero({ min: 0, max: 100 }),
+  taxas: parametroNumero({ min: 0, max: 100 }),
+  fundo_reserva: parametroNumero({ min: 0, max: 100 }),
+  fundo_investimento: parametroNumero({ min: 0, max: 100 }),
+});
+
+const PARAMETROS_META: Record<
+  keyof z.infer<typeof parametrosEconomicosSchema>,
+  { unidade: string; descricao: string }
+> = {
+  dias_uteis_ano: {
+    unidade: "dias",
+    descricao: "Dias úteis/ano para rateio de equipamentos",
+  },
+  margem_lucro: {
+    unidade: "%",
+    descricao: "Margem de lucro sobre o custo total",
+  },
+  impostos: {
+    unidade: "%",
+    descricao: "Impostos sobre a venda",
+  },
+  taxas: {
+    unidade: "%",
+    descricao: "Taxas administrativas",
+  },
+  fundo_reserva: {
+    unidade: "%",
+    descricao: "Fundo de reserva",
+  },
+  fundo_investimento: {
+    unidade: "%",
+    descricao: "Fundo de investimento",
+  },
+};
+
 /** Cria um orçamento em rascunho e abre a tela de edição. */
 export async function criarOrcamento(formData: FormData) {
+  const tipo = String(formData.get("tipo") ?? "analises");
   const cliente_nome =
     String(formData.get("cliente_nome") ?? "").trim() || "Cliente sem nome";
+  const projeto_id = formData.get("projeto_id") ? Number(formData.get("projeto_id")) : null;
   const supabase = await createClientUntyped();
+
+  if (tipo === "projeto" || tipo === "analises_projeto") {
+    const titulo =
+      String(formData.get("titulo") ?? "").trim() ||
+      (tipo === "analises_projeto" ? `Projeto com análises - ${cliente_nome}` : `Projeto - ${cliente_nome}`);
+    const { data, error } = await supabase
+      .from("orcamento_projetos")
+      .insert({
+        projeto_id,
+        titulo,
+        cliente_nome,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    redirect(`/orcamento/projetos/${data.id}`);
+  }
+
   const { data, error } = await supabase
     .from("orcamentos")
-    .insert({ cliente_nome })
+    .insert({ cliente_nome, projeto_id, tipo: "analises" })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
@@ -126,4 +202,48 @@ export async function excluirOrcamento(formData: FormData) {
   await supabase.from("orcamentos").delete().eq("id", id);
   revalidatePath("/orcamento");
   redirect("/orcamento");
+}
+
+export async function salvarParametrosEconomicos(
+  _prev: ParametrosEconomicosState,
+  formData: FormData,
+): Promise<ParametrosEconomicosState> {
+  const parsed = parametrosEconomicosSchema.safeParse({
+    dias_uteis_ano: formData.get("dias_uteis_ano"),
+    margem_lucro: formData.get("margem_lucro"),
+    impostos: formData.get("impostos"),
+    taxas: formData.get("taxas"),
+    fundo_reserva: formData.get("fundo_reserva"),
+    fundo_investimento: formData.get("fundo_investimento"),
+  });
+
+  if (!parsed.success) {
+    const errors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      const path = String(issue.path[0] ?? "");
+      if (path && !errors[path]) errors[path] = issue.message;
+    }
+    return { ok: false, message: "Verifique os campos destacados.", errors };
+  }
+
+  const supabase = await createClientUntyped();
+  const atualizado_em = new Date().toISOString();
+  const rows = Object.entries(parsed.data).map(([chave, valor]) => ({
+    chave,
+    valor,
+    unidade: PARAMETROS_META[chave as keyof typeof PARAMETROS_META].unidade,
+    descricao: PARAMETROS_META[chave as keyof typeof PARAMETROS_META].descricao,
+    atualizado_em,
+  }));
+
+  const { error } = await supabase.from("parametros").upsert(rows, {
+    onConflict: "chave",
+  });
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/orcamento/parametros");
+  revalidatePath("/orcamento");
+  revalidatePath("/custeio");
+  revalidatePath("/analises");
+  return { ok: true, message: "Parâmetros econômicos atualizados." };
 }

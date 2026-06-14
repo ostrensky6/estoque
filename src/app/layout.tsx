@@ -19,8 +19,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lab Custos & Estoque",
-  description: "Custeio de análises e controle de estoque do laboratório",
+  title: "Kontrol App",
+  description: "Custeio de análises, orçamento e controle de estoque do laboratório",
 };
 
 const ORDEM = ["tecnico", "coordenador", "gestor", "admin"];
@@ -44,38 +44,71 @@ export default async function RootLayout({
       .single();
     perfil = data;
   }
+
   const nivel = perfil ? ORDEM.indexOf(perfil.papel) : -1;
   const ehGestor = nivel >= ORDEM.indexOf("gestor");
   const ehAdmin = perfil?.papel === "admin";
 
   const grupos: NavGroup[] = [
     {
-      title: "Orçamento",
+      title: "Análises",
       accent: "emerald",
       links: [
-        { href: "/orcamento", label: "Orçamentos", desc: "cliente, análises e valor final" },
-        { href: "/custeio", label: "Custeio por análise", desc: "tabela de custos e preços" },
-        { href: "/analises", label: "Análises", desc: "painel técnico e materiais" },
+        { href: "/analises", label: "Painel de análises", desc: "base técnica da operação" },
+        { href: "/analises", label: "Catálogo de análises", desc: "código, finalidade e matriz" },
+        { href: "/analises", label: "Protocolos/etapas", desc: "atividades, tempos e gargalos" },
+        { href: "/insumos", label: "Consumo por análise", desc: "reagentes, controles e perdas" },
+        { href: "/analises", label: "Lotes/sublotes analíticos", desc: "rodadas e capacidade do protocolo" },
+        { href: "/custeio", label: "Custeio por análise", desc: "custo técnico e preço base" },
+        { href: "/custeio", label: "Capacidade operacional", desc: "amostras, execuções e gargalos" },
       ],
     },
     {
       title: "Estoque",
       accent: "blue",
       links: [
-        { href: "/planejamento", label: "Planejamento", desc: "demanda e reserva de insumos" },
-        { href: "/estoque", label: "Estoque", desc: "saldo, lotes e alertas" },
-        { href: "/compras", label: "Compras", desc: "reposição e pedidos" },
+        { href: "/estoque", label: "Visão de estoque", desc: "saldos, lotes e rastreio" },
+        { href: "/cadastros/insumos", label: "Insumos", desc: "materiais e políticas de reposição" },
+        { href: "/estoque", label: "Lotes", desc: "validade, status e localização" },
+        { href: "/planejamento", label: "Reservas", desc: "compromissos de consumo" },
+        { href: "/planejamento", label: "Planejamento de demanda", desc: "demanda e reserva de insumos" },
+        { href: "/compras", label: "Compras e reposição", desc: "solicitações e recebimentos" },
+        { href: "/estoque", label: "Alertas", desc: "reposição, quarentena e vencimento" },
       ],
     },
     {
-      title: "Configuração",
+      title: "Orçamento",
+      accent: "amber",
+      links: [
+        { href: "/orcamento/demandas", label: "Demandas/Propostas", desc: "entrada antes do orçamento formal" },
+        { href: "/orcamento", label: "Orçamentos", desc: "análises, projetos ou ambos" },
+        { href: "/orcamento/projetos", label: "Detalhes de projetos", desc: "custos, rubricas e cronograma" },
+        { href: "/orcamento/parametros", label: "Parâmetros econômicos", desc: "margens, impostos e fundos" },
+      ],
+    },
+    {
+      title: "Cadastros",
+      accent: "violet",
+      links: [
+        { href: "/cadastros/clientes", label: "Clientes" },
+        { href: "/cadastros/projetos", label: "Projetos" },
+        { href: "/cadastros/fornecedores", label: "Fornecedores" },
+        { href: "/cadastros/equipamentos", label: "Equipamentos" },
+        { href: "/cadastros/tecnicos", label: "Técnicos" },
+        { href: "/cadastros/locais", label: "Locais" },
+        { href: "/cadastros/overhead", label: "Overhead" },
+        { href: "/cadastros", label: "Outros cadastros-base" },
+      ],
+    },
+    {
+      title: "Governança",
       accent: "slate",
       links: [
-        { href: "/cadastros", label: "Cadastros", desc: "equipamentos, insumos, técnicos…" },
-        { href: "/parametros", label: "Parâmetros", desc: "fatores de preço, dias úteis…" },
-        { href: "/insumos", label: "Consumo por análise", desc: "grupos e modo de cobrança" },
-        ...(ehGestor ? [{ href: "/auditoria", label: "Auditoria" }] : []),
-        ...(ehAdmin ? [{ href: "/usuarios", label: "Usuários" }] : []),
+        ...(ehGestor ? [{ href: "/auditoria", label: "Auditoria", desc: "trilha de alterações" }] : []),
+        ...(ehAdmin ? [{ href: "/usuarios", label: "Usuários", desc: "perfis e acesso" }] : []),
+        ...(ehAdmin
+          ? [{ href: "/usuarios", label: "Papéis e permissões", desc: "técnico, coordenador, gestor e admin" }]
+          : []),
       ],
     },
   ];
@@ -93,15 +126,15 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-        {user ? (
-          <div className="md:flex md:min-h-dvh">
-            <Sidebar groups={grupos} perfil={perfil} userEmail={user.email ?? null} />
-            <div className="min-w-0 flex-1">{children}</div>
-            <CommandPalette groups={grupos} />
-          </div>
-        ) : (
-          children
-        )}
+          {user ? (
+            <div className="md:flex md:min-h-dvh">
+              <Sidebar groups={grupos} perfil={perfil} userEmail={user.email ?? null} />
+              <div className="min-w-0 flex-1">{children}</div>
+              <CommandPalette groups={grupos} />
+            </div>
+          ) : (
+            children
+          )}
           <Toaster />
         </ThemeProvider>
       </body>

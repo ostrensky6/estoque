@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useActionState } from "react";
 import { entrar } from "@/lib/actions/auth";
 import type { FormState } from "@/lib/actions/cadastros";
@@ -13,11 +14,15 @@ export default function LoginPage() {
     <div className="app-canvas flex min-h-dvh items-center justify-center px-6 font-sans dark:bg-zinc-950">
       <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-lg ring-1 ring-slate-900/5 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-blue-600 text-base font-bold text-white shadow-sm">
-            L
-          </span>
+          <Image
+            src="/logos/kontrol-app.png"
+            alt=""
+            width={979}
+            height={979}
+            className="h-9 w-9 shrink-0 rounded-lg object-contain shadow-sm"
+          />
           <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Lab Custos &amp; Estoque
+            Kontrol App
           </h1>
         </div>
         <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">Entre para continuar.</p>

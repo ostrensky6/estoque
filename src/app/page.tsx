@@ -1,76 +1,220 @@
+import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-type Tom = "emerald" | "blue";
+type Tom = "emerald" | "blue" | "amber" | "red" | "slate";
 
-const TOM: Record<
+type EstoqueSaldo = {
+  insumo_id: number;
+  especificacao: string | null;
+  unidade: string | null;
+  em_maos: number | null;
+  em_quarentena: number | null;
+  reservado: number | null;
+  disponivel: number | null;
+  ponto_reposicao: number | null;
+  estoque_seguranca: number | null;
+  categoria_compra: string | null;
+};
+
+type AlertaEstoque = {
+  tipo: string;
+  insumo_id: number;
+  especificacao: string | null;
+  validade: string | null;
+  valor: number | null;
+  referencia: number | null;
+};
+
+type PedidoCompra = {
+  id: number;
+  status: string;
+  data_solicitacao: string | null;
+  projeto: string | null;
+};
+
+const TONS: Record<
   Tom,
   {
-    bar: string;
-    chipBg: string;
-    chipText: string;
-    hover: string;
-    numBg: string;
-    numText: string;
-    numHover: string;
+    dot: string;
+    panel: string;
+    badge: string;
+    badgeText: string;
+    border: string;
+    link: string;
   }
 > = {
   emerald: {
-    bar: "bg-emerald-500",
-    chipBg: "bg-emerald-100",
-    chipText: "text-emerald-700",
-    hover: "hover:border-emerald-300 hover:bg-emerald-50/50",
-    numBg: "bg-emerald-50",
-    numText: "text-emerald-700",
-    numHover: "group-hover:bg-emerald-600 group-hover:text-white",
+    dot: "bg-emerald-500",
+    panel: "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/20",
+    badge: "bg-emerald-100 dark:bg-emerald-950/50",
+    badgeText: "text-emerald-800 dark:text-emerald-300",
+    border: "border-emerald-300",
+    link: "text-emerald-700 hover:text-emerald-800 dark:text-emerald-300",
   },
   blue: {
-    bar: "bg-blue-500",
-    chipBg: "bg-blue-100",
-    chipText: "text-blue-700",
-    hover: "hover:border-blue-300 hover:bg-blue-50/50",
-    numBg: "bg-blue-50",
-    numText: "text-blue-700",
-    numHover: "group-hover:bg-blue-600 group-hover:text-white",
+    dot: "bg-blue-500",
+    panel: "border-blue-200 bg-blue-50/60 dark:border-blue-900/50 dark:bg-blue-950/20",
+    badge: "bg-blue-100 dark:bg-blue-950/50",
+    badgeText: "text-blue-800 dark:text-blue-300",
+    border: "border-blue-300",
+    link: "text-blue-700 hover:text-blue-800 dark:text-blue-300",
+  },
+  amber: {
+    dot: "bg-amber-500",
+    panel: "border-amber-200 bg-amber-50/80 dark:border-amber-900/50 dark:bg-amber-950/20",
+    badge: "bg-amber-100 dark:bg-amber-950/50",
+    badgeText: "text-amber-900 dark:text-amber-300",
+    border: "border-amber-300",
+    link: "text-amber-800 hover:text-amber-900 dark:text-amber-300",
+  },
+  red: {
+    dot: "bg-red-500",
+    panel: "border-red-200 bg-red-50/80 dark:border-red-900/50 dark:bg-red-950/20",
+    badge: "bg-red-100 dark:bg-red-950/50",
+    badgeText: "text-red-800 dark:text-red-300",
+    border: "border-red-300",
+    link: "text-red-700 hover:text-red-800 dark:text-red-300",
+  },
+  slate: {
+    dot: "bg-slate-400",
+    panel: "border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-900",
+    badge: "bg-slate-100 dark:bg-zinc-800",
+    badgeText: "text-slate-700 dark:text-zinc-300",
+    border: "border-slate-200",
+    link: "text-slate-700 hover:text-slate-950 dark:text-zinc-300",
   },
 };
 
-function Passo({
-  numero,
-  href,
-  titulo,
-  desc,
-  extra,
+const fmt = (v: number | null | undefined) =>
+  (v ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+
+const pct = (parte: number, total: number) =>
+  total > 0 ? `${Math.round((parte / total) * 100)}%` : "0%";
+
+function Badge({ children, tom }: { children: React.ReactNode; tom: Tom }) {
+  const t = TONS[tom];
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${t.badge} ${t.badgeText}`}>
+      {children}
+    </span>
+  );
+}
+
+function Kpi({
+  label,
+  valor,
+  detalhe,
   tom,
 }: {
-  numero: number;
-  href: string;
-  titulo: string;
-  desc: string;
-  extra?: React.ReactNode;
+  label: string;
+  valor: string | number;
+  detalhe: string;
   tom: Tom;
 }) {
-  const t = TOM[tom];
+  const t = TONS[tom];
   return (
-    <Link
-      href={href}
-      className={`group flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 transition-colors ${t.hover} dark:border-zinc-800 dark:bg-zinc-900`}
-    >
-      <span
-        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${t.numBg} ${t.numText} ${t.numHover} dark:bg-zinc-800 dark:text-zinc-300`}
-      >
-        {numero}
-      </span>
-      <span className="min-w-0">
-        <span className="block text-sm font-semibold text-slate-900 dark:text-slate-100">
-          {titulo}
-        </span>
-        <span className="block text-xs leading-snug text-slate-500">{desc}</span>
-        {extra}
-      </span>
-    </Link>
+    <div className={`rounded-lg border p-4 ${t.panel}`}>
+      <div className="flex items-center gap-2 text-xs font-medium uppercase text-slate-500 dark:text-zinc-400">
+        <span className={`h-2 w-2 rounded-full ${t.dot}`} />
+        {label}
+      </div>
+      <div className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">
+        {valor}
+      </div>
+      <p className="mt-1 text-xs leading-snug text-slate-600 dark:text-zinc-400">{detalhe}</p>
+    </div>
+  );
+}
+
+function JornadaCard({
+  tom,
+  titulo,
+  subtitulo,
+  badge,
+  passos,
+}: {
+  tom: Tom;
+  titulo: string;
+  subtitulo: string;
+  badge: string;
+  passos: Array<{ titulo: string; desc: string; href: string }>;
+}) {
+  const t = TONS[tom];
+  return (
+    <section className={`rounded-lg border bg-white shadow-sm dark:bg-zinc-900 ${t.border}`}>
+      <div className={`h-1 rounded-t-lg ${t.dot}`} />
+      <div className="p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-950 dark:text-white">{titulo}</h2>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-zinc-400">{subtitulo}</p>
+          </div>
+          <Badge tom={tom}>{badge}</Badge>
+        </div>
+        <div className="mt-5 grid gap-2">
+          {passos.map((p, i) => (
+            <Link
+              key={p.href}
+              href={p.href}
+              className="group flex gap-3 rounded-lg border border-slate-200 bg-white p-3 transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-950/40 dark:hover:bg-zinc-900"
+            >
+              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${t.badge} ${t.badgeText}`}>
+                {i + 1}
+              </span>
+              <span className="min-w-0">
+                <span className={`block text-sm font-semibold ${t.link}`}>{p.titulo}</span>
+                <span className="block text-xs leading-snug text-slate-500 dark:text-zinc-400">{p.desc}</span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ListaProblemas({
+  titulo,
+  href,
+  tom,
+  vazio,
+  itens,
+}: {
+  titulo: string;
+  href: string;
+  tom: Tom;
+  vazio: string;
+  itens: Array<{ titulo: string; meta: string }>;
+}) {
+  const t = TONS[tom];
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-slate-950 dark:text-white">{titulo}</h3>
+        <Link href={href} className={`text-xs font-semibold ${t.link}`}>
+          abrir
+        </Link>
+      </div>
+      <ul className="mt-3 space-y-2">
+        {itens.length > 0 ? (
+          itens.map((item, i) => (
+            <li key={`${item.titulo}-${i}`} className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/40">
+              <div className="truncate text-sm font-medium text-slate-900 dark:text-zinc-100" title={item.titulo}>
+                {item.titulo}
+              </div>
+              <div className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">{item.meta}</div>
+            </li>
+          ))
+        ) : (
+          <li className="rounded-md border border-slate-100 bg-slate-50 px-3 py-4 text-sm text-slate-500 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-400">
+            {vazio}
+          </li>
+        )}
+      </ul>
+    </section>
   );
 }
 
@@ -78,198 +222,192 @@ export default async function Home() {
   const supabase = await createClient();
   const [
     { count: nAnalises },
-    { data: alertas },
+    { data: alertasRaw },
+    { data: saldoRaw },
     { count: nPlanos },
-    { count: nPedidosAbertos },
+    { data: pedidosRaw },
   ] = await Promise.all([
     supabase.from("analises").select("*", { count: "exact", head: true }).eq("ativo", true),
-    supabase.from("v_alertas_estoque").select("tipo"),
+    supabase.from("v_alertas_estoque").select("*"),
+    supabase.from("v_estoque_saldo").select("*").order("especificacao"),
     supabase.from("planejamento").select("*", { count: "exact", head: true }),
     supabase
       .from("pedidos_compra")
-      .select("*", { count: "exact", head: true })
-      .in("status", ["solicitado", "aprovado", "enviado"]),
+      .select("id, status, data_solicitacao, projeto")
+      .in("status", ["solicitado", "aprovado", "enviado"])
+      .order("criado_em", { ascending: false }),
   ]);
 
-  const nAlertas = alertas?.length ?? 0;
-  const nRepor = (alertas ?? []).filter((a) => a.tipo === "reposicao").length;
+  const alertas = (alertasRaw ?? []) as AlertaEstoque[];
+  const saldo = (saldoRaw ?? []) as EstoqueSaldo[];
+  const pedidos = (pedidosRaw ?? []) as PedidoCompra[];
+
+  const alertasReposicao = alertas.filter((a) => a.tipo === "reposicao");
+  const alertasVencimento = alertas.filter((a) => a.tipo === "vencimento");
+  const alertasVencidos = alertas.filter((a) => a.tipo === "vencido");
+  const semDisponivel = saldo.filter((s) => (s.disponivel ?? 0) <= 0);
+  const emQuarentena = saldo.filter((s) => (s.em_quarentena ?? 0) > 0);
+  const criticosParaComprar = saldo
+    .filter((s) => (s.ponto_reposicao ?? 0) > 0 && (s.disponivel ?? 0) <= (s.ponto_reposicao ?? 0))
+    .map((s) => ({
+      titulo: s.especificacao ?? `Insumo #${s.insumo_id}`,
+      meta: `disp. ${fmt(s.disponivel)} ${s.unidade ?? ""} · ponto ${fmt(s.ponto_reposicao)} · sugerido ${fmt(
+        Math.max(0, (s.ponto_reposicao ?? 0) + (s.estoque_seguranca ?? 0) - (s.disponivel ?? 0)),
+      )}`,
+      peso: (s.categoria_compra === "critico" ? 100000 : 0) + Math.max(0, (s.ponto_reposicao ?? 0) - (s.disponivel ?? 0)),
+    }))
+    .sort((a, b) => b.peso - a.peso);
+
+  const prioridadeTom: Tom = alertasVencidos.length > 0 || semDisponivel.length > 0 ? "red" : alertas.length > 0 ? "amber" : "blue";
+  const statusGeral =
+    alertas.length > 0
+      ? `${alertas.length} alertas ativos`
+      : pedidos.length > 0
+        ? `${pedidos.length} compras em andamento`
+        : "estoque sem alertas";
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10 font-sans text-slate-900 dark:text-slate-100">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-        Lab Custos &amp; Estoque
-      </h1>
-      <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
-        Dois fluxos independentes:{" "}
-        <b className="font-semibold text-emerald-700 dark:text-emerald-400">Orçamento</b>{" "}
-        (da demanda do cliente ao preço final) e{" "}
-        <b className="font-semibold text-blue-700 dark:text-blue-400">Estoque</b>{" "}
-        (do planejamento à reposição).
-      </p>
-
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        {/* Bloco Orçamento */}
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/5 dark:border-zinc-800 dark:bg-zinc-900/60">
-          <div className="h-1 bg-emerald-500" />
-          <div className="p-5">
-            <div className="flex items-baseline justify-between">
-              <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-slate-100">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                Orçamento
-              </h2>
-              <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                {nAnalises ?? 0} análises ativas
-              </span>
-            </div>
-            <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-              Da demanda do cliente até o valor final: reagentes + equipamento +
-              pessoal → custo analítico → overhead → fatores → preço.
-            </p>
-            <div className="mt-4 space-y-2">
-              <Passo
-                tom="emerald"
-                numero={1}
-                href="/orcamento"
-                titulo="Orçamentos"
-                desc="Cadastre cliente e análises solicitadas; gere o documento com a cascata de custos até o valor final."
-              />
-              <Passo
-                tom="emerald"
-                numero={2}
-                href="/analises"
-                titulo="Análises"
-                desc="Painel técnico: capacidade, tempos, equipamentos e materiais de cada análise."
-              />
-              <Passo
-                tom="emerald"
-                numero={3}
-                href="/custeio"
-                titulo="Custeio por análise"
-                desc="Tabela de referência: custo analítico, overhead e preço de cada análise."
-              />
+    <main className="mx-auto max-w-6xl px-5 py-8 font-sans text-slate-900 dark:text-slate-100 sm:px-6">
+      <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+        <div>
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logos/kontrol-app.png"
+              alt=""
+              width={979}
+              height={979}
+              className="h-12 w-12 shrink-0 rounded-lg object-contain shadow-sm"
+              priority
+            />
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-4xl">
+                Kontrol App
+              </h1>
+              <p className="mt-1 text-sm text-slate-600 dark:text-zinc-400">
+                Orçamento, planejamento, estoque e compras no mesmo fluxo de decisão.
+              </p>
             </div>
           </div>
-        </section>
-
-        {/* Bloco Estoque */}
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/5 dark:border-zinc-800 dark:bg-zinc-900/60">
-          <div className="h-1 bg-blue-500" />
-          <div className="p-5">
-            <div className="flex items-baseline justify-between">
-              <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-slate-100">
-                <span className="h-2 w-2 rounded-full bg-blue-500" />
-                Estoque
-              </h2>
-              {nAlertas > 0 ? (
-                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
-                  {nAlertas} alertas
-                </span>
-              ) : (
-                <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
-                  sem alertas
-                </span>
-              )}
-            </div>
-            <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-              Ciclo completo: planejar análises → reservar insumos → consumir por
-              FEFO → repor o que vai faltar.
-            </p>
-            <div className="mt-4 space-y-2">
-              <Passo
-                tom="blue"
-                numero={1}
-                href="/planejamento"
-                titulo="Planejamento"
-                desc="Planeje as análises, calcule a demanda de insumos e reserve o estoque."
-                extra={
-                  <span className="mt-0.5 block text-[11px] font-medium text-slate-400">
-                    {nPlanos ?? 0} planos criados
-                  </span>
-                }
-              />
-              <Passo
-                tom="blue"
-                numero={2}
-                href="/estoque"
-                titulo="Estoque"
-                desc="Saldo por reagente, lotes, validade e alertas de reposição/vencimento."
-              />
-              <Passo
-                tom="blue"
-                numero={3}
-                href="/compras"
-                titulo="Compras"
-                desc="Sugestões do que comprar e ciclo solicitação → aprovação → recebimento."
-                extra={
-                  <span className="mt-0.5 block text-[11px] font-medium text-slate-400">
-                    {nPedidosAbertos ?? 0} pedidos em aberto
-                    {nRepor > 0 ? ` · ${nRepor} itens abaixo do ponto de reposição` : ""}
-                  </span>
-                }
-              />
-            </div>
-          </div>
-        </section>
-      </div>
-
-      {/* Bloco Configuração */}
-      <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/5 dark:border-zinc-800 dark:bg-zinc-900/60">
-        <div className="h-1 bg-slate-300 dark:bg-slate-600" />
-        <div className="p-5">
-          <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-slate-100">
-            <span className="h-2 w-2 rounded-full bg-slate-400" />
-            Configuração
-          </h2>
-          <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-            Dados-base que alimentam os dois fluxos.
+          <p className="mt-5 max-w-3xl text-base leading-relaxed text-slate-700 dark:text-zinc-300">
+            O Kontrol transforma a demanda do laboratório em preço, reserva de insumos,
+            consumo por FEFO e reposição. Esta abertura também é o painel de atenção:
+            mostra o que precisa de compra, aceite, baixa ou revisão antes de virar
+            problema operacional.
           </p>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <Link
-              href="/parametros"
-              className="rounded-lg border border-slate-200 bg-white p-3 text-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50/50 dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <span className="block font-semibold text-slate-900 dark:text-slate-100">Parâmetros</span>
-              <span className="block text-xs text-slate-500">
-                Fatores de preço (margem, impostos, fundos) e constantes do custeio.
-              </span>
-            </Link>
-            <Link
-              href="/cadastros"
-              className="rounded-lg border border-slate-200 bg-white p-3 text-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <span className="block font-semibold text-slate-900 dark:text-slate-100">Cadastros</span>
-              <span className="block text-xs text-slate-500">
-                Equipamentos, insumos, técnicos, overhead, fornecedores.
-              </span>
-            </Link>
-            <Link
-              href="/parametros"
-              className="rounded-lg border border-slate-200 bg-white p-3 text-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <span className="block font-semibold text-slate-900 dark:text-slate-100">Parâmetros</span>
-              <span className="block text-xs text-slate-500">
-                Fatores de preço (margem, impostos, fundos) e bases de rateio.
-              </span>
-            </Link>
-            <Link
-              href="/auditoria"
-              className="rounded-lg border border-slate-200 bg-white p-3 text-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <span className="block font-semibold text-slate-900 dark:text-slate-100">Auditoria</span>
-              <span className="block text-xs text-slate-500">
-                Histórico de alterações com usuário responsável.
-              </span>
-            </Link>
-            <Link
-              href="/usuarios"
-              className="rounded-lg border border-slate-200 bg-white p-3 text-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <span className="block font-semibold text-slate-900 dark:text-slate-100">Usuários</span>
-              <span className="block text-xs text-slate-500">
-                Perfis e papéis (técnico, coordenador, gestor, admin).
-              </span>
-            </Link>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Badge tom={prioridadeTom}>{statusGeral}</Badge>
+            <Badge tom="emerald">{nAnalises ?? 0} análises ativas</Badge>
+            <Badge tom="blue">{nPlanos ?? 0} planejamentos</Badge>
+            <Badge tom="slate">{saldo.length} insumos monitorados</Badge>
           </div>
+        </div>
+
+        <div className={`rounded-lg border p-5 shadow-sm ${TONS[prioridadeTom].panel}`}>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold uppercase text-slate-600 dark:text-zinc-300">
+              Atenção de hoje
+            </h2>
+            <Badge tom={prioridadeTom}>{alertas.length + semDisponivel.length} pontos</Badge>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <Kpi label="Reposição" valor={alertasReposicao.length} detalhe="abaixo do ponto configurado" tom="amber" />
+            <Kpi label="Vencidos" valor={alertasVencidos.length} detalhe="lotes aceitos com validade vencida" tom="red" />
+            <Kpi label="Sem disponível" valor={semDisponivel.length} detalhe={`${pct(semDisponivel.length, saldo.length)} dos insumos`} tom="red" />
+            <Kpi label="Pedidos" valor={pedidos.length} detalhe="solicitados, aprovados ou enviados" tom="blue" />
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Kpi label="Comprar agora" valor={criticosParaComprar.length} detalhe="itens abaixo do ponto de reposição" tom={criticosParaComprar.length ? "amber" : "emerald"} />
+        <Kpi label="Vencendo" valor={alertasVencimento.length} detalhe="lotes dentro da janela de vencimento" tom={alertasVencimento.length ? "amber" : "emerald"} />
+        <Kpi label="Quarentena" valor={emQuarentena.length} detalhe="insumos com saldo aguardando aceite" tom={emQuarentena.length ? "blue" : "emerald"} />
+        <Kpi label="Cobertura" valor={pct(Math.max(0, saldo.length - semDisponivel.length), saldo.length)} detalhe="insumos com saldo disponível positivo" tom="slate" />
+      </section>
+
+      <section className="mt-8 grid gap-6 lg:grid-cols-2">
+        <JornadaCard
+          tom="emerald"
+          titulo="Orçamento"
+          subtitulo="Da solicitação do cliente ao preço final, com análises, custos diretos, overhead e fatores comerciais documentados."
+          badge={`${nAnalises ?? 0} análises ativas`}
+          passos={[
+            { href: "/orcamento/demandas", titulo: "Demandas/Propostas", desc: "Registre a entrada comercial antes do orçamento formal." },
+            { href: "/orcamento", titulo: "Orçamentos", desc: "Monte demandas, vincule análises e gere o documento comercial." },
+            { href: "/orcamento/projetos", titulo: "Detalhes de projetos", desc: "Inclua rubricas, custos próprios e cronograma do projeto." },
+            { href: "/analises", titulo: "Análises", desc: "Revise capacidade, tempos, equipamentos e materiais por protocolo." },
+            { href: "/orcamento/parametros", titulo: "Parâmetros econômicos", desc: "Ajuste margens, impostos, fundos e bases de rateio." },
+          ]}
+        />
+        <JornadaCard
+          tom="blue"
+          titulo="Estoque"
+          subtitulo="Do planejamento à reposição: calcula demanda, reserva insumos, baixa por FEFO e aciona compras quando o saldo fica insuficiente."
+          badge={statusGeral}
+          passos={[
+            { href: "/planejamento", titulo: "Planejamento", desc: "Calcule consumo por campanha e reserve material antes da execução." },
+            { href: "/estoque", titulo: "Estoque e lotes", desc: "Veja saldo, validade, quarentena, bloqueios e rastreabilidade." },
+            { href: "/compras", titulo: "Compras", desc: "Transforme alertas em solicitação, aprovação, envio e recebimento." },
+          ]}
+        />
+      </section>
+
+      <section className="mt-8 grid gap-4 lg:grid-cols-3">
+        <ListaProblemas
+          titulo="Prioridade de compra"
+          href="/compras"
+          tom="amber"
+          vazio="Nenhum insumo abaixo do ponto de reposição."
+          itens={criticosParaComprar.slice(0, 5)}
+        />
+        <ListaProblemas
+          titulo="Validade e uso"
+          href="/estoque"
+          tom={alertasVencidos.length ? "red" : "amber"}
+          vazio="Nenhum lote vencido ou vencendo dentro da janela."
+          itens={[...alertasVencidos, ...alertasVencimento].slice(0, 5).map((a) => ({
+            titulo: a.especificacao ?? `Insumo #${a.insumo_id}`,
+            meta: `${a.tipo === "vencido" ? "vencido" : "vence em breve"}${a.validade ? ` · ${a.validade}` : ""} · saldo ${fmt(a.valor)}`,
+          }))}
+        />
+        <ListaProblemas
+          titulo="Compras em andamento"
+          href="/compras"
+          tom="blue"
+          vazio="Nenhum pedido aberto no ciclo de compras."
+          itens={pedidos.slice(0, 5).map((p) => ({
+            titulo: `Pedido #${p.id}`,
+            meta: `${p.status}${p.data_solicitacao ? ` · ${p.data_solicitacao}` : ""}${p.projeto ? ` · ${p.projeto}` : ""}`,
+          }))}
+        />
+      </section>
+
+      <section className="mt-8 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Base de controle</h2>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-zinc-400">
+              Cadastros, permissões e auditoria sustentam os dois fluxos: sem isso,
+              custo, estoque e compra perdem rastreabilidade.
+            </p>
+          </div>
+          <Badge tom="slate">governança</Badge>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {[
+            ["Cadastros", "/cadastros", "Insumos, equipamentos, técnicos, fornecedores, locais e parâmetros."],
+            ["Auditoria", "/auditoria", "Trilha de alterações para saldo, lote, compra, orçamento e cadastros."],
+            ["Usuários", "/usuarios", "Papéis de técnico, coordenador, gestor e administrador."],
+          ].map(([titulo, href, desc]) => (
+            <Link
+              key={href}
+              href={href}
+              className="rounded-lg border border-slate-200 bg-slate-50 p-3 transition-colors hover:border-slate-300 hover:bg-white dark:border-zinc-800 dark:bg-zinc-950/40 dark:hover:bg-zinc-900"
+            >
+              <span className="block text-sm font-semibold text-slate-900 dark:text-zinc-100">{titulo}</span>
+              <span className="mt-1 block text-xs leading-snug text-slate-500 dark:text-zinc-400">{desc}</span>
+            </Link>
+          ))}
         </div>
       </section>
     </main>
