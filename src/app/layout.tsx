@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
-import { sair } from "@/lib/actions/auth";
-import { SideNav, type NavGroup } from "@/components/layout/SideNav";
+import type { NavGroup } from "@/components/layout/SideNav";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { CommandPalette } from "@/components/layout/CommandPalette";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,12 +23,6 @@ export const metadata: Metadata = {
   description: "Custeio de análises e controle de estoque do laboratório",
 };
 
-const PAPEL_LABEL: Record<string, string> = {
-  tecnico: "Técnico",
-  coordenador: "Coordenador",
-  gestor: "Gestor",
-  admin: "Admin",
-};
 const ORDEM = ["tecnico", "coordenador", "gestor", "admin"];
 
 export default async function RootLayout({
@@ -78,6 +74,7 @@ export default async function RootLayout({
         { href: "/cadastros", label: "Cadastros", desc: "equipamentos, insumos, técnicos…" },
         { href: "/parametros", label: "Parâmetros", desc: "fatores de preço, dias úteis…" },
         { href: "/insumos", label: "Consumo por análise", desc: "grupos e modo de cobrança" },
+        { href: "/parametros", label: "Parâmetros", desc: "fatores de preço e constantes" },
         ...(ehGestor ? [{ href: "/auditoria", label: "Auditoria" }] : []),
         ...(ehAdmin ? [{ href: "/usuarios", label: "Usuários" }] : []),
       ],
@@ -87,52 +84,27 @@ export default async function RootLayout({
   return (
     <html
       lang="pt-BR"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="app-canvas min-h-dvh text-slate-900 dark:bg-zinc-950 dark:text-slate-100">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
         {user ? (
-          <div className="flex min-h-dvh flex-col md:flex-row">
-            <aside className="flex shrink-0 flex-col border-b border-slate-200/80 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950 md:sticky md:top-0 md:h-dvh md:w-64 md:border-b-0 md:border-r md:shadow-[1px_0_0_0_rgba(15,23,42,0.04),4px_0_24px_-12px_rgba(15,23,42,0.12)]">
-              <Link
-                href="/"
-                className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-4 dark:border-zinc-900"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-blue-600 text-sm font-bold text-white shadow-sm">
-                  L
-                </span>
-                <span className="flex flex-col leading-tight">
-                  <span className="text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                    Lab Custos
-                  </span>
-                  <span className="text-[11px] font-medium text-slate-400">
-                    Custeio &amp; Estoque
-                  </span>
-                </span>
-              </Link>
-              <SideNav groups={grupos} />
-              <div className="border-t border-slate-100 px-5 py-3 dark:border-zinc-900">
-                <p className="truncate text-xs font-medium text-slate-600 dark:text-slate-300">
-                  {perfil?.nome || perfil?.email || user.email}
-                </p>
-                <div className="mt-1.5 flex items-center justify-between">
-                  {perfil?.papel && (
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-zinc-800 dark:text-zinc-300">
-                      {PAPEL_LABEL[perfil.papel] ?? perfil.papel}
-                    </span>
-                  )}
-                  <form action={sair}>
-                    <button className="rounded px-2 py-1 text-xs font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-zinc-800">
-                      Sair
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </aside>
+          <div className="md:flex md:min-h-dvh">
+            <Sidebar groups={grupos} perfil={perfil} userEmail={user.email ?? null} />
             <div className="min-w-0 flex-1">{children}</div>
+            <CommandPalette groups={grupos} />
           </div>
         ) : (
           children
         )}
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

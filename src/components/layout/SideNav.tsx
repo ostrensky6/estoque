@@ -37,7 +37,13 @@ const ACCENT: Record<
   },
 };
 
-export function SideNav({ groups }: { groups: NavGroup[] }) {
+export function SideNav({
+  groups,
+  onNavigate,
+}: {
+  groups: NavGroup[];
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
 
   return (
@@ -60,6 +66,7 @@ export function SideNav({ groups }: { groups: NavGroup[] }) {
                   <li key={l.href}>
                     <Link
                       href={l.href}
+                      onClick={onNavigate}
                       className={`relative block rounded-md py-1.5 pl-3.5 pr-2 text-sm transition-colors ${
                         ativo
                           ? `${c.activeBg} font-semibold ${c.activeText}`

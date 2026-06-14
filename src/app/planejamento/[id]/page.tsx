@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { createAdminClientUntyped } from "@/lib/supabase/admin";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
 import { adicionarItem, removerItem, excluirPlano } from "@/lib/actions/planejamento";
-import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { PlanoAcoes } from "@/components/planejamento/PlanoAcoes";
+import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
+import { Combobox } from "@/components/ui/combobox";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export default async function PlanoDetalhe({
 
   const [{ data: itens }, { data: analises }, { data: reservas }] = await Promise.all([
     supabase.from("planejamento_itens").select("id, codigo_analise, n_amostras, n_controles, repeticoes, perda_percentual").eq("planejamento_id", planId).order("id"),
-    supabase.from("analises").select("codigo").order("codigo"),
+    supabase.from("analises").select("codigo, nome").order("codigo"),
     supabase.from("reservas_estoque").select("status").eq("planejamento_id", planId),
   ]);
 
@@ -95,12 +96,19 @@ export default async function PlanoDetalhe({
             <input type="hidden" name="planejamento_id" value={planId} />
             <div>
               <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Análise</label>
-              <select name="codigo_analise" className={inp} defaultValue="">
-                <option value="" disabled>Selecione…</option>
-                {(analises ?? []).map((a) => (
-                  <option key={a.codigo} value={a.codigo}>{a.codigo}</option>
-                ))}
-              </select>
+              <div className="w-64">
+                <Combobox
+                  name="codigo_analise"
+                  placeholder="Selecione…"
+                  searchPlaceholder="Buscar análise…"
+                  emptyText="Nenhuma análise."
+                  options={(analises ?? []).map((a) => ({
+                    value: a.codigo,
+                    label: a.codigo,
+                    hint: a.nome ?? undefined,
+                  }))}
+                />
+              </div>
             </div>
             <div>
               <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Amostras</label>
@@ -170,11 +178,10 @@ export default async function PlanoDetalhe({
           <div className="mt-6">
             <ConfirmActionButton
               action={excluirPlano}
-              fields={[{ name: "planejamento_id", value: planId }]}
+              fields={{ planejamento_id: planId }}
               trigger="Excluir plano"
-              triggerClassName="text-xs text-zinc-400 hover:text-red-600"
-              title="Excluir plano?"
-              body="Remove o plano e seus itens. Reservas em aberto devem ser liberadas antes. Esta ação não pode ser desfeita."
+              titulo="Excluir plano"
+              mensagem={`Excluir o plano “${plano.nome}”? Esta ação não pode ser desfeita.`}
               confirmLabel="Excluir plano"
             />
           </div>
