@@ -162,7 +162,7 @@ export default async function OrcamentoDetalhe({
               <thead className="bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/60">
                 <tr>
                   <th className="px-3 py-2 text-left">Análise</th>
-                  <th className="px-3 py-2">Custo/amostra</th>
+                  <th className="px-3 py-2 no-print">Custo/amostra</th>
                   <th className="px-3 py-2">Preço/amostra</th>
                   <th className="px-3 py-2">Amostras</th>
                   <th className="px-3 py-2">Subtotal</th>
@@ -175,7 +175,7 @@ export default async function OrcamentoDetalhe({
                     <td className="px-3 py-2 text-left font-medium">
                       {it.codigo_analise}
                     </td>
-                    <td className="px-3 py-2 tabular-nums text-zinc-500">
+                    <td className="px-3 py-2 tabular-nums text-zinc-500 no-print">
                       {brl(Number(it.custo_unitario))}
                     </td>
                     <td className="px-3 py-2 tabular-nums">
@@ -208,7 +208,7 @@ export default async function OrcamentoDetalhe({
                 <tfoot className="border-t border-zinc-200 bg-transparent dark:border-zinc-800 dark:bg-zinc-900/60">
                   <tr>
                     <td className="px-3 py-2.5 text-left font-medium">Total</td>
-                    <td className="px-3 py-2.5 tabular-nums text-zinc-500">
+                    <td className="px-3 py-2.5 tabular-nums text-zinc-500 no-print">
                       {brl(totalCusto)}
                     </td>
                     <td></td>

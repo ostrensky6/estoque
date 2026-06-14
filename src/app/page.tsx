@@ -234,6 +234,15 @@ export default async function Home() {
               </span>
             </Link>
             <Link
+              href="/parametros"
+              className="rounded-lg border border-slate-200 bg-white p-3 text-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              <span className="block font-semibold text-slate-900 dark:text-slate-100">Parâmetros</span>
+              <span className="block text-xs text-slate-500">
+                Fatores de preço (margem, impostos, fundos) e bases de rateio.
+              </span>
+            </Link>
+            <Link
               href="/auditoria"
               className="rounded-lg border border-slate-200 bg-white p-3 text-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-900"
             >
