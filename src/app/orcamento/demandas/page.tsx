@@ -1,6 +1,6 @@
-import Link from "next/link";
-import { createClientUntyped } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { criarDemanda } from "@/lib/actions/demandas";
+import { DemandasTable, type DemandaRow } from "@/components/orcamento/DemandasTable";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,7 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 };
 
 export default async function DemandasPage() {
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const [{ data: demandas }, { data: clientes }, { data: projetos }] = await Promise.all([
     supabase
       .from("demandas_propostas")
@@ -31,6 +31,22 @@ export default async function DemandasPage() {
     supabase.from("projetos").select("id, nome").order("nome"),
   ]);
   const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
+  const linhas: DemandaRow[] = (demandas ?? []).map((d) => {
+    const st = STATUS[d.status] ?? { label: d.status, cls: "" };
+    return {
+      id: d.id as number,
+      titulo: d.titulo ?? "Demanda sem título",
+      cliente: d.cliente_nome ?? "—",
+      modalidade: d.modalidade,
+      modalidadeLabel: MODALIDADES[d.modalidade] ?? d.modalidade,
+      projeto: d.projeto_id ? projetoNome.get(d.projeto_id) ?? "—" : "—",
+      prazo: d.prazo_esperado ?? "—",
+      prioridade: d.prioridade ?? "—",
+      dataSolicitacao: d.data_solicitacao ?? "—",
+      status: d.status,
+      statusLabel: st.label,
+    };
+  });
   const inp =
     "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
 
@@ -91,50 +107,8 @@ export default async function DemandasPage() {
           </button>
         </form>
 
-        <div className="mt-6 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
-              <tr>
-                <th className="px-4 py-3 text-left">Demanda</th>
-                <th className="px-4 py-3 text-left">Cliente</th>
-                <th className="px-4 py-3 text-left">Modalidade</th>
-                <th className="px-4 py-3 text-left">Projeto</th>
-                <th className="px-4 py-3 text-left">Prazo</th>
-                <th className="px-4 py-3 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {(demandas ?? []).map((d) => {
-                const st = STATUS[d.status] ?? { label: d.status, cls: "bg-zinc-100" };
-                return (
-                  <tr key={d.id} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/40">
-                    <td className="px-4 py-2.5">
-                      <Link href={`/orcamento/demandas/${d.id}`} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
-                        {d.titulo}
-                      </Link>
-                      <span className="block text-xs text-zinc-400">
-                        Solicitada em {d.data_solicitacao ?? "—"} · prioridade {d.prioridade}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-zinc-500">{d.cliente_nome ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-zinc-500">{MODALIDADES[d.modalidade] ?? d.modalidade}</td>
-                    <td className="px-4 py-2.5 text-zinc-500">{d.projeto_id ? projetoNome.get(d.projeto_id) ?? "—" : "—"}</td>
-                    <td className="px-4 py-2.5 text-zinc-500">{d.prazo_esperado ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-center">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-              {(demandas ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-zinc-400">
-                    Nenhuma demanda registrada.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="mt-6">
+          <DemandasTable rows={linhas} />
         </div>
       </main>
     </div>

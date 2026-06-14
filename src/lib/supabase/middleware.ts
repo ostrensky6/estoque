@@ -5,6 +5,10 @@ const PUBLICAS = ["/login", "/auth"];
 
 /** Atualiza a sessão e protege rotas (redireciona não autenticados ao /login). */
 export async function updateSession(request: NextRequest) {
+  if (process.env.PLAYWRIGHT_MOCK_SUPABASE === "1") {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

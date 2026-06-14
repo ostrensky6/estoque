@@ -1,12 +1,10 @@
 import Link from "next/link";
-import { createClientUntyped } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { criarOrcamento } from "@/lib/actions/orcamentos";
+import { OrcamentosTable, type OrcamentoRow } from "@/components/orcamento/OrcamentosTable";
 import { calcularOrcamentoProjetoLegacy, itemProjetoTotal } from "@/lib/project-budget/legacy";
 
 export const dynamic = "force-dynamic";
-
-const brl = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   rascunho: { label: "Rascunho", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
@@ -41,11 +39,12 @@ type Linha = {
   custosProjeto: number;
   total: number;
   status: string;
+  statusLabel: string;
   criadoEm: string;
 };
 
 export default async function OrcamentosPage() {
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const [{ data: orcamentos }, { data: orcProjetos }, { data: projetos }] = await Promise.all([
     supabase
       .from("orcamentos")
@@ -78,6 +77,7 @@ export default async function OrcamentosPage() {
       custosProjeto: 0,
       total,
       status: o.status,
+      statusLabel: STATUS[o.status]?.label ?? o.status,
       criadoEm: o.criado_em,
     };
   });
@@ -112,13 +112,28 @@ export default async function OrcamentosPage() {
       custosProjeto: custos.reduce((a, it) => a + itemProjetoTotal(it), 0),
       total: calculo.grossTotal,
       status: o.status,
+      statusLabel: STATUS[o.status]?.label ?? o.status,
       criadoEm: o.criado_em,
     };
   });
 
-  const linhas = [...linhasAnalises, ...linhasProjeto].sort(
+  const linhas: OrcamentoRow[] = [...linhasAnalises, ...linhasProjeto].sort(
     (a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime(),
-  );
+  ).map((linha) => ({
+    key: linha.key,
+    href: linha.href,
+    titulo: linha.titulo,
+    cliente: linha.cliente,
+    projeto: linha.projeto,
+    data: linha.data,
+    tipo: linha.tipo,
+    tipoLabel: TIPO[linha.tipo],
+    analises: linha.analises,
+    custosProjeto: linha.custosProjeto,
+    total: linha.total,
+    status: linha.status,
+    statusLabel: linha.statusLabel,
+  }));
 
   const inp =
     "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
@@ -169,50 +184,8 @@ export default async function OrcamentosPage() {
           </button>
         </form>
 
-        <div className="mt-6 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
-              <tr>
-                <th className="px-4 py-3 text-left">Orçamento</th>
-                <th className="px-4 py-3 text-left">Tipo</th>
-                <th className="px-4 py-3 text-left">Projeto</th>
-                <th className="px-4 py-3 text-right">Análises</th>
-                <th className="px-4 py-3 text-right">Projeto</th>
-                <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {linhas.map((o) => {
-                const st = STATUS[o.status] ?? { label: o.status, cls: "bg-zinc-100" };
-                return (
-                  <tr key={o.key} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/40">
-                    <td className="px-4 py-2.5">
-                      <Link href={o.href} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
-                        {o.titulo}
-                      </Link>
-                      <span className="block text-xs text-zinc-400">{o.cliente} · {o.data}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-zinc-500">{TIPO[o.tipo]}</td>
-                    <td className="px-4 py-2.5 text-zinc-500">{o.projeto}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{o.analises}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{brl(o.custosProjeto)}</td>
-                    <td className="px-4 py-2.5 text-right font-semibold tabular-nums">{brl(o.total)}</td>
-                    <td className="px-4 py-2.5 text-center">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-              {linhas.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-zinc-400">
-                    Nenhum orçamento ainda. Crie o primeiro acima.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="mt-6">
+          <OrcamentosTable rows={linhas} />
         </div>
       </main>
     </div>

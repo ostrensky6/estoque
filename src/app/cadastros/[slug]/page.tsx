@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { CADASTROS, type Campo } from "@/lib/cadastros/config";
 import { CrudShell } from "@/components/cadastros/CrudShell";
+import { Button } from "@/components/ui/button";
 import { equipCustoDia } from "@/lib/costing/engine";
 
 export const dynamic = "force-dynamic";
@@ -102,26 +103,23 @@ export default async function CadastroPage({
   }
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="mx-auto max-w-6xl px-6 py-10">
         <nav className="flex flex-wrap gap-2 text-xs">
           {Object.values(CADASTROS).map((c) => (
-            <Link
+            <Button
               key={c.slug}
-              href={`/cadastros/${c.slug}`}
-              className={`rounded-full px-3 py-1 ${
-                c.slug === slug
-                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                  : "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300"
-              }`}
+              asChild
+              size="sm"
+              variant={c.slug === slug ? "default" : "secondary"}
             >
-              {c.titulo}
-            </Link>
+              <Link href={`/cadastros/${c.slug}`}>{c.titulo}</Link>
+            </Button>
           ))}
         </nav>
 
         <h1 className="mt-6 text-2xl font-semibold tracking-tight">{cfg.titulo}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-zinc-500">{cfg.subtitulo}</p>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{cfg.subtitulo}</p>
 
         <div className="mt-6">
           <CrudShell

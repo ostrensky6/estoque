@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { createClientUntyped } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { criarOrcamentoProjeto } from "@/lib/actions/orcamento-projetos";
+import {
+  ProjetoOrcamentosTable,
+  type ProjetoOrcamentoRow,
+} from "@/components/orcamento/ProjetoOrcamentosTable";
 import { calcularOrcamentoProjetoLegacy, itemProjetoTotal } from "@/lib/project-budget/legacy";
 
 export const dynamic = "force-dynamic";
-
-const brl = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   rascunho: { label: "Rascunho", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
@@ -26,7 +27,7 @@ type Custo = {
 };
 
 export default async function OrcamentoProjetosPage() {
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const [{ data: orcamentos }, { data: projetos }] = await Promise.all([
     supabase
       .from("orcamento_projetos")
@@ -38,6 +39,42 @@ export default async function OrcamentoProjetosPage() {
   ]);
 
   const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
+  const linhas: ProjetoOrcamentoRow[] = (orcamentos ?? []).map((o) => {
+    const analises = (o.orcamento_projeto_analises as Analise[]) ?? [];
+    const custos = (o.orcamento_projeto_custos as Custo[]) ?? [];
+    const totalLab = analises.reduce((a, it) => a + Number(it.n_amostras) * Number(it.preco_unitario), 0);
+    const totalCustos = custos.reduce((a, it) => a + itemProjetoTotal(it), 0);
+    const calculo = calcularOrcamentoProjetoLegacy(
+      [
+        ...analises.map((it) => ({
+          rubrica: "MC",
+          quantidade: Number(it.n_amostras),
+          preco_unitario: Number(it.preco_unitario),
+        })),
+        ...custos,
+      ],
+      {
+        impostos_legacy: Number(o.impostos_legacy ?? o.impostos ?? 0),
+        incubacao: Number(o.incubacao ?? 0),
+        reserva: Number(o.reserva ?? 0),
+        investimentos: Number(o.investimentos ?? 0),
+        lucro: Number(o.lucro ?? o.margem_lucro ?? 0),
+      },
+    );
+    const st = STATUS[o.status] ?? { label: o.status, cls: "" };
+    return {
+      id: o.id as number,
+      titulo: o.titulo ?? `Orçamento ${o.id}`,
+      cliente: o.cliente_nome ?? "—",
+      projeto: o.projeto_id ? projetoNome.get(o.projeto_id) ?? "—" : "—",
+      data: o.data_orcamento ?? "sem data",
+      totalLab,
+      totalCustos,
+      total: calculo.grossTotal || totalLab + totalCustos,
+      status: o.status,
+      statusLabel: st.label,
+    };
+  });
   const inp =
     "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
 
@@ -92,73 +129,8 @@ export default async function OrcamentoProjetosPage() {
           </button>
         </form>
 
-        <div className="mt-6 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
-              <tr>
-                <th className="px-4 py-3 text-left">Orçamento</th>
-                <th className="px-4 py-3 text-left">Cliente</th>
-                <th className="px-4 py-3 text-left">Projeto</th>
-                <th className="px-4 py-3 text-right">Laboratório</th>
-                <th className="px-4 py-3 text-right">Custos do projeto</th>
-                <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {(orcamentos ?? []).map((o) => {
-                const analises = (o.orcamento_projeto_analises as Analise[]) ?? [];
-                const custos = (o.orcamento_projeto_custos as Custo[]) ?? [];
-                const totalLab = analises.reduce((a, it) => a + Number(it.n_amostras) * Number(it.preco_unitario), 0);
-                const totalCustos = custos.reduce((a, it) => a + itemProjetoTotal(it), 0);
-                const calculo = calcularOrcamentoProjetoLegacy(
-                  [
-                    ...analises.map((it) => ({
-                      rubrica: "MC",
-                      quantidade: Number(it.n_amostras),
-                      preco_unitario: Number(it.preco_unitario),
-                    })),
-                    ...custos,
-                  ],
-                  {
-                    impostos_legacy: Number(o.impostos_legacy ?? o.impostos ?? 0),
-                    incubacao: Number(o.incubacao ?? 0),
-                    reserva: Number(o.reserva ?? 0),
-                    investimentos: Number(o.investimentos ?? 0),
-                    lucro: Number(o.lucro ?? o.margem_lucro ?? 0),
-                  },
-                );
-                const total = calculo.grossTotal || totalLab + totalCustos;
-                const st = STATUS[o.status] ?? { label: o.status, cls: "bg-zinc-100" };
-
-                return (
-                  <tr key={o.id} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/40">
-                    <td className="px-4 py-2.5">
-                      <Link href={`/orcamento/projetos/${o.id}`} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
-                        {o.titulo}
-                      </Link>
-                      <span className="block text-xs text-zinc-400">{o.data_orcamento ?? "sem data"}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-zinc-500">{o.cliente_nome ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-zinc-500">{o.projeto_id ? projetoNome.get(o.projeto_id) ?? "—" : "—"}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{brl(totalLab)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{brl(totalCustos)}</td>
-                    <td className="px-4 py-2.5 text-right font-semibold tabular-nums">{brl(total)}</td>
-                    <td className="px-4 py-2.5 text-center">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-              {(orcamentos ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-zinc-400">
-                    Nenhum orçamento de projeto ainda.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="mt-6">
+          <ProjetoOrcamentosTable rows={linhas} />
         </div>
       </main>
     </div>

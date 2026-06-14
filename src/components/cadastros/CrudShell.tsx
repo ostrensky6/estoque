@@ -22,13 +22,52 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp, ChevronsUpDown, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronsUpDown, MoreHorizontal, Plus, Search } from "lucide-react";
 import type { Campo, Coluna } from "@/lib/cadastros/config";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   salvarRegistro,
   excluirRegistro,
   type FormState,
 } from "@/lib/actions/cadastros";
+import { cn } from "@/lib/utils";
 
 type Registro = Record<string, unknown>;
 
@@ -167,19 +206,12 @@ export function CrudShell({
       enableSorting: false,
       enableGlobalFilter: false,
       cell: (ctx) => (
-        <>
-          <button
-            onClick={() => editar(ctx.row.original)}
-            className="rounded px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-700"
-          >
-            Editar
-          </button>
-          <DeleteButton
-            slug={slug}
-            id={ctx.row.original.id as number}
-            rotulo={String(ctx.row.original[rotulo] ?? "")}
-          />
-        </>
+        <RowActions
+          onEdit={() => editar(ctx.row.original)}
+          slug={slug}
+          id={ctx.row.original.id as number}
+          rotulo={String(ctx.row.original[rotulo] ?? "")}
+        />
       ),
     });
     return dataCols;
@@ -214,20 +246,17 @@ export function CrudShell({
   const { pageIndex, pageSize } = table.getState().pagination;
   const pageCount = table.getPageCount();
 
-  const selectCls =
-    "rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-xs dark:border-zinc-700 dark:bg-zinc-950";
-
   return (
     <div>
       {/* Toolbar: busca + filtros + novo */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-          <input
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
             placeholder="Buscar…"
-            className="w-56 rounded-md border border-zinc-300 bg-white py-2 pl-8 pr-3 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+            className="w-56 pl-8"
           />
         </div>
 
@@ -236,11 +265,11 @@ export function CrudShell({
           const col = table.getColumn(c.key);
           const val = (col?.getFilterValue() as string) ?? "";
           return (
-            <select
+            <Select
               key={c.key}
               value={val}
               onChange={(e) => col?.setFilterValue(e.target.value || undefined)}
-              className={selectCls}
+              className="h-8 w-auto px-2 py-1.5 text-xs"
               aria-label={`Filtrar por ${c.label}`}
             >
               <option value="">{c.label}: todos</option>
@@ -256,103 +285,112 @@ export function CrudShell({
                   </option>
                 ))
               )}
-            </select>
+            </Select>
           );
         })}
 
-        <span className="text-xs text-zinc-400">
+        <Badge variant={temFiltro ? "secondary" : "muted"}>
           {temFiltro ? `${totalFiltrado} de ${rows.length}` : `${rows.length} registro(s)`}
-        </span>
+        </Badge>
 
-        <button
-          onClick={novo}
-          className="ml-auto rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-500"
-        >
-          + Novo {singular}
-        </button>
+        <Button onClick={novo} className="ml-auto">
+          <Plus />
+          Novo {singular}
+        </Button>
       </div>
 
       {/* Tabela */}
-      <div className="mt-4 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <table className="w-full text-sm">
-          <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
+      <div className="mt-4 overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+        <Table>
+          <TableHeader className="bg-muted/60">
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id}>
+              <TableRow key={hg.id} className="hover:bg-transparent">
                 {hg.headers.map((header) => {
                   const meta = header.column.columnDef.meta as ColMeta | undefined;
                   const alinhaDir = meta?.alinhar === "right" || header.column.id === "_acoes";
                   const sorted = header.column.getIsSorted();
                   return (
-                    <th
+                    <TableHead
                       key={header.id}
-                      className={`px-4 py-3 ${alinhaDir ? "text-right" : "text-left"} ${meta?.calculada ? "text-emerald-600 dark:text-emerald-400" : ""}`}
+                      className={cn(
+                        alinhaDir ? "text-right" : "text-left",
+                        meta?.calculada && "text-primary",
+                      )}
                     >
                       {header.column.getCanSort() ? (
-                        <button
-                          type="button"
-                          onClick={header.column.getToggleSortingHandler()}
-                          className={`inline-flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200 ${alinhaDir ? "flex-row-reverse" : ""}`}
-                        >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {sorted === "asc" ? (
-                            <ChevronUp className="h-3.5 w-3.5" />
-                          ) : sorted === "desc" ? (
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          ) : (
-                            <ChevronsUpDown className="h-3.5 w-3.5 opacity-40" />
-                          )}
-                        </button>
+                        <Tooltip content={`Ordenar por ${String(header.column.columnDef.header)}`}>
+                          <button
+                            type="button"
+                            onClick={header.column.getToggleSortingHandler()}
+                            className={cn(
+                              "inline-flex items-center gap-1 hover:text-foreground",
+                              alinhaDir && "flex-row-reverse",
+                            )}
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {sorted === "asc" ? (
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            ) : sorted === "desc" ? (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronsUpDown className="h-3.5 w-3.5 opacity-40" />
+                            )}
+                          </button>
+                        </Tooltip>
                       ) : (
                         flexRender(header.column.columnDef.header, header.getContext())
                       )}
-                    </th>
+                    </TableHead>
                   );
                 })}
-              </tr>
+              </TableRow>
             ))}
-          </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          </TableHeader>
+          <TableBody>
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+              <TableRow key={row.id}>
                 {row.getVisibleCells().map((cell) => {
                   const meta = cell.column.columnDef.meta as ColMeta | undefined;
                   const cls =
                     cell.column.id === "_acoes"
-                      ? "px-4 py-2.5 text-right whitespace-nowrap"
-                      : `px-4 py-2.5 ${meta?.alinhar === "right" ? "text-right tabular-nums" : "text-left"} ${meta?.calculada ? "font-medium text-emerald-700 dark:text-emerald-400" : ""}`;
+                      ? "text-right whitespace-nowrap"
+                      : cn(
+                          meta?.alinhar === "right" ? "text-right tabular-nums" : "text-left",
+                          meta?.calculada && "font-medium text-primary",
+                        );
                   return (
-                    <td key={cell.id} className={cls}>
+                    <TableCell key={cell.id} className={cls}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
+                    </TableCell>
                   );
                 })}
-              </tr>
+              </TableRow>
             ))}
             {table.getRowModel().rows.length === 0 && (
-              <tr>
-                <td
+              <TableRow>
+                <TableCell
                   colSpan={colunas.length + 1}
-                  className="px-4 py-10 text-center text-zinc-400"
+                  className="py-10 text-center text-muted-foreground"
                 >
                   {temFiltro
                     ? "Nenhum registro encontrado para a busca/filtro."
                     : `Nenhum registro. Clique em “Novo ${singular}”.`}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {/* Paginação (só quando passa de uma página) */}
       {pageCount > 1 && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <span>Linhas por página</span>
-            <select
+            <Select
               value={pageSize}
               onChange={(e) => table.setPageSize(Number(e.target.value))}
-              className={selectCls}
+              className="h-8 w-auto px-2 py-1.5 text-xs"
               aria-label="Linhas por página"
             >
               {[25, 50, 100].map((n) => (
@@ -361,36 +399,42 @@ export function CrudShell({
                 </option>
               ))}
               <option value={100000}>Todos</option>
-            </select>
+            </Select>
           </div>
           <div className="flex items-center gap-3">
             <span>
               Página {pageIndex + 1} de {Math.max(1, pageCount)}
             </span>
-            <button
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
-              className="rounded border border-zinc-300 px-2 py-1 hover:bg-zinc-100 disabled:opacity-40 dark:border-zinc-700 dark:hover:bg-zinc-800"
             >
               Anterior
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
-              className="rounded border border-zinc-300 px-2 py-1 hover:bg-zinc-100 disabled:opacity-40 dark:border-zinc-700 dark:hover:bg-zinc-800"
             >
               Próxima
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {aberto && (
-        <Drawer
+        <CadastroDrawer
+          open={aberto}
           slug={slug}
           singular={singular}
           campos={campos}
           registro={editando}
+          onOpenChange={setAberto}
           onClose={() => setAberto(false)}
         />
       )}
@@ -398,9 +442,61 @@ export function CrudShell({
   );
 }
 
-function DeleteButton({ slug, id, rotulo }: { slug: string; id: number; rotulo: string }) {
-  const router = useRouter();
+function RowActions({
+  onEdit,
+  slug,
+  id,
+  rotulo,
+}: {
+  onEdit: () => void;
+  slug: string;
+  id: number;
+  rotulo: string;
+}) {
   const [confirmar, setConfirmar] = useState(false);
+
+  return (
+    <>
+      <DropdownMenu>
+        <Tooltip content="Ações do registro">
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" aria-label="Abrir ações do registro">
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+        </Tooltip>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={onEdit}>Editar</DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" onSelect={() => setConfirmar(true)}>
+            Excluir
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DeleteRegistroDialog
+        open={confirmar}
+        onOpenChange={setConfirmar}
+        slug={slug}
+        id={id}
+        rotulo={rotulo}
+      />
+    </>
+  );
+}
+
+function DeleteRegistroDialog({
+  open,
+  onOpenChange,
+  slug,
+  id,
+  rotulo,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  slug: string;
+  id: number;
+  rotulo: string;
+}) {
+  const router = useRouter();
   const [state, action, pending] = useActionState<FormState, FormData>(
     excluirRegistro,
     { ok: false },
@@ -411,68 +507,58 @@ function DeleteButton({ slug, id, rotulo }: { slug: string; id: number; rotulo: 
   }, [state, router]);
 
   return (
-    <>
-      <button
-        onClick={() => setConfirmar(true)}
-        className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
-      >
-        Excluir
-      </button>
-
-      {confirmar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => !pending && setConfirmar(false)}
-          />
-          <div className="relative w-full max-w-sm rounded-xl bg-white p-6 text-left shadow-xl dark:bg-zinc-900">
-            <h3 className="text-base font-semibold">Excluir registro</h3>
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-              Tem certeza que deseja excluir <b>“{rotulo}”</b>? Esta ação não pode
-              ser desfeita.
-            </p>
-            {state.message && !state.ok && (
-              <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
-                {state.message}
-              </p>
-            )}
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                onClick={() => setConfirmar(false)}
-                disabled={pending}
-                className="rounded-md px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              >
-                Cancelar
-              </button>
-              <form action={action}>
-                <input type="hidden" name="_slug" value={slug} />
-                <input type="hidden" name="_id" value={id} />
-                <button
-                  disabled={pending}
-                  className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
-                >
-                  {pending ? "Excluindo…" : "Excluir"}
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    <Dialog open={open} onOpenChange={(nextOpen) => !pending && onOpenChange(nextOpen)}>
+      <DialogContent className="max-w-sm" showCloseButton={!pending}>
+        <DialogHeader>
+          <DialogTitle>Excluir registro</DialogTitle>
+          <DialogDescription>
+            Tem certeza que deseja excluir <b>“{rotulo}”</b>? Esta ação não pode
+            ser desfeita.
+          </DialogDescription>
+        </DialogHeader>
+        {state.message && !state.ok && (
+          <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {state.message}
+          </p>
+        )}
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            disabled={pending}
+          >
+            Cancelar
+          </Button>
+          <form action={action}>
+            <input type="hidden" name="_slug" value={slug} />
+            <input type="hidden" name="_id" value={id} />
+            <Button disabled={pending} variant="destructive" size="sm">
+              {pending ? "Excluindo…" : "Excluir"}
+            </Button>
+          </form>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-function Drawer({
+function CadastroDrawer({
+  open,
   slug,
   singular,
   campos,
   registro,
+  onOpenChange,
   onClose,
 }: {
+  open: boolean;
   slug: string;
   singular: string;
   campos: Campo[];
   registro: Registro | null;
+  onOpenChange: (open: boolean) => void;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -489,17 +575,16 @@ function Drawer({
   }, [state.ok, router, onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative h-full w-full max-w-2xl overflow-y-auto bg-white p-6 shadow-xl dark:bg-zinc-900">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>
             {registro ? `Editar ${singular}` : `Novo ${singular}`}
-          </h2>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600">
-            ✕
-          </button>
-        </div>
+          </DrawerTitle>
+          <DrawerDescription className="sr-only">
+            Preencha os campos obrigatórios e salve para atualizar o cadastro.
+          </DrawerDescription>
+        </DrawerHeader>
 
         <form action={action} className="mt-6 grid grid-cols-2 gap-4">
           <input type="hidden" name="_slug" value={slug} />
@@ -510,7 +595,7 @@ function Drawer({
           {campos.map((c) => (
             <Fragment key={c.name}>
               {c.grupo && (
-                <h3 className="col-span-2 mt-2 border-b border-zinc-100 pb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
+                <h3 className="col-span-2 mt-2 border-b border-border pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {c.grupo}
                 </h3>
               )}
@@ -523,29 +608,26 @@ function Drawer({
           ))}
 
           {state.message && !state.ok && (
-            <p className="col-span-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            <p className="col-span-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {state.message}
             </p>
           )}
 
-          <div className="col-span-2 mt-2 flex justify-end gap-2">
-            <button
+          <DrawerFooter className="col-span-2">
+            <Button
               type="button"
+              variant="ghost"
               onClick={onClose}
-              className="rounded-md px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               Cancelar
-            </button>
-            <button
-              disabled={pending}
-              className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
-            >
+            </Button>
+            <Button disabled={pending}>
               {pending ? "Salvando…" : "Salvar"}
-            </button>
-          </div>
+            </Button>
+          </DrawerFooter>
         </form>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -559,43 +641,56 @@ function CampoInput({
   erro?: string;
 }) {
   const base =
-    "mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm dark:bg-zinc-950 " +
+    "mt-1 " +
     (erro
-      ? "border-red-400 focus:border-red-500"
-      : "border-zinc-300 focus:border-emerald-500 dark:border-zinc-700") +
-    " focus:outline-none focus:ring-1 focus:ring-emerald-500";
+      ? "border-destructive focus-visible:ring-destructive"
+      : "");
   const span = campo.colSpan === 2 ? "col-span-2" : "col-span-1";
   const v = valor == null ? "" : String(valor);
 
   return (
     <div className={span}>
-      <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
+      <Label className="block">
         {campo.label}
-        {campo.obrigatorio && <span className="text-red-500"> *</span>}
-      </label>
+        {campo.obrigatorio && <span className="text-destructive"> *</span>}
+      </Label>
 
       {campo.tipo === "textarea" ? (
-        <textarea name={campo.name} defaultValue={v} rows={3} placeholder={campo.placeholder} className={base} />
+        <Textarea
+          name={campo.name}
+          defaultValue={v}
+          rows={3}
+          placeholder={campo.placeholder}
+          className={cn(
+            "mt-1",
+            erro && "border-destructive focus-visible:ring-destructive",
+          )}
+        />
       ) : campo.tipo === "select" ? (
-        <select name={campo.name} defaultValue={v} className={base}>
+        <Select
+          name={campo.name}
+          defaultValue={v}
+          className={cn(
+            "mt-1",
+            erro && "border-destructive focus-visible:ring-destructive",
+          )}
+        >
           <option value="">—</option>
           {campo.opcoes?.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
           ))}
-        </select>
+        </Select>
       ) : campo.tipo === "checkbox" ? (
         <div className="mt-2">
-          <input
-            type="checkbox"
+          <Checkbox
             name={campo.name}
             defaultChecked={valor === undefined ? Boolean(campo.padraoLigado) : Boolean(valor)}
-            className="h-4 w-4 rounded border-zinc-300 text-emerald-600"
           />
         </div>
       ) : (
-        <input
+        <Input
           name={campo.name}
           defaultValue={v}
           placeholder={campo.placeholder}
@@ -621,9 +716,9 @@ function CampoInput({
       )}
 
       {erro ? (
-        <p className="mt-1 text-xs text-red-600">{erro}</p>
+        <p className="mt-1 text-xs text-destructive">{erro}</p>
       ) : campo.ajuda ? (
-        <p className="mt-1 text-xs text-zinc-400">{campo.ajuda}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{campo.ajuda}</p>
       ) : null}
     </div>
   );

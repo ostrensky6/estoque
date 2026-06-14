@@ -78,10 +78,44 @@ Sem isto, cada melhoria seguinte custa o dobro. É investimento de plataforma.
 - **RLS uniforme por papel** no Postgres — parar de usar o cliente *service-role* para escritas comuns (hoje planejamento/cadastros/insumos contornam o RLS). Política por tabela: técnico lê/registra, coordenador aprova/aceita, gestor bloqueia/descarta, admin tudo.
 - **Tipos ponta a ponta:** abandonar os clientes "untyped" onde possível; usar os tipos gerados do banco.
 - **Testes:** unitários na **engine de custeio** (é o coração — qualquer erro vira dinheiro errado); e2e com **Playwright** nos fluxos críticos (criar orçamento, reservar plano, receber lote).
-- **CI/CD:** GitHub Actions (lint + typecheck + test + build) com preview deploy na Vercel por PR.
+- **CI/CD:** GitHub Actions (lint + typecheck + test + e2e + build) por PR. Deploy/preview é do **Netlify** (não Vercel — ver decisão de host): push em `main` → produção; PRs ganham Deploy Preview automático.
 - **Observabilidade:** Sentry (erros) + PostHog (analytics de uso) + logs estruturados.
 - **Segredos:** confirmar rotação da senha de produção (foi exposta em chat); segredos só em `.env`/Vercel.
 - **Pronto quando:** um técnico logado não consegue (testado) editar parâmetros nem aprovar compra; pipeline verde bloqueia merge quebrado.
+
+**Status em 2026-06-14:**
+- **1.5 concluída no recorte de testes da fase:** Vitest cobre contratos das actions de orçamento/estoque e regressões existentes da engine/RLS; Playwright cobre fluxo orçamento → documento imprimível/PDF e ciclo de estoque receber → aceitar → bloquear.
+- **Infra de e2e criada:** `playwright.config.ts`, script `npm run test:e2e`, execução em `localhost:3001`, Chrome local e mock Supabase ativado apenas por `PLAYWRIGHT_MOCK_SUPABASE=1`.
+- **Validação executada:** `npm run lint`, `npx tsc --noEmit`, `npm run test`, `npm run test:e2e` e `npm run build` passaram.
+- **Pendente para a sequência:** clientes Supabase tipados onde ainda houver `createClientUntyped`, CI/CD em PR, observabilidade Sentry/PostHog e rotação/checagem final de segredos.
+
+### 1.6 Fechamento de plataforma (pendências da Fase 1)
+
+Sub-fase que executa a lista "Pendente para a sequência" acima.
+
+- **Clientes Supabase tipados (tipos ponta a ponta).** Migrar todas as actions e páginas
+  de `createClientUntyped` → `createClient<Database>` tipado. Manter `createClientUntyped`
+  **apenas** em `cadastros.ts` (CRUD genérico com tabela/payload dinâmicos resolvidos em runtime).
+- **`database.types.ts` sincronizado** com o banco (estava defasado: faltavam as tabelas das
+  migrations 0010–0015 — `orcamento_projetos`, `demandas_propostas`, etc.).
+- **CI:** adicionar passo **e2e (Playwright)** ao pipeline + upload do relatório.
+- **Observabilidade (Sentry/PostHog):** depende de contas/DSN do usuário — **não iniciado**.
+- **Segredos:** rotação da senha do Postgres de produção e da `service_role` — **tarefa de ops do usuário**.
+
+**Status em 2026-06-14:**
+- ✅ **Tipos ponta a ponta:** ~17 arquivos (actions + páginas) migrados para o cliente tipado;
+  só `cadastros.ts` permanece untyped (CRUD genérico, intencional). `database.types.ts`
+  regenerado do banco (+497 linhas; 6 tabelas que faltavam agora presentes).
+- ✅ **Bug latente corrigido pela tipagem:** `data_orcamento`/`data_solicitacao` eram gravados
+  como `null` em colunas NOT NULL (falhariam em runtime ao limpar a data) — trocado por `undefined`
+  (omite → mantém/usa default).
+- ✅ **CI:** passo e2e (Playwright + Chrome) e artifact do relatório adicionados a `.github/workflows/ci.yml`.
+- ✅ **Validação:** `tsc --noEmit`, `npm test` (23/23) e `npm run lint` passam.
+- ⏳ **Observabilidade:** pendente das chaves Sentry/PostHog do usuário.
+- ⏳ **Segredos:** senha do Postgres de produção foi exposta em chat (de novo) → **rotacionar**;
+  tratar `service_role` como comprometida.
+- ⏳ **Deploy-as-code (`netlify.toml`):** não criado — mexe no build de produção (push em `main`
+  = deploy) e não dá para reverter pelo host daqui; aguardando OK do usuário.
 
 ---
 
@@ -163,6 +197,22 @@ Tudo isto já estava previsto como "ganchos" no design doc; aqui vira produto.
 - `/custeio` interativo: deslizar tamanho de lote, escolher opção de `grupo_escolha`, mexer em fatores — ver preço mudar ao vivo. (O custeio "por execução vs. por amostra" é o grande desafio do negócio.)
 - **Pronto quando:** dá para responder "e se o lote for 96 em vez de 24?" sem recarregar.
 
+**Status em 2026-06-14:**
+- ✅ **4.1 Previsão de suprimentos:** `v_previsao_suprimentos` calcula consumo médio diário,
+  dias de cobertura, ponto sugerido e quantidade sugerida por histórico de movimentações,
+  lead time e estoque de segurança. `/estoque` mostra consumo/dia, cobertura e ponto sugerido.
+- ✅ **4.2 Reposição automática:** `gerar_reposicao_automatica()` cria rascunhos de pedido
+  idempotentes, agrupados por fornecedor, e registra notificações in-app. `pg_cron` local
+  agenda `kontrol-reposicao-diaria` às 07:15. `/compras` também permite disparo manual.
+- ⏳ **4.3 Notificações:** in-app concluído via tabela `notificacoes` e painel na home.
+  E-mail externo fica pendente de credenciais/configuração Resend + edge function.
+- ✅ **4.4 Dashboard executivo:** home ganhou KPIs executivos e gráficos Recharts para
+  gasto mensal e funil de orçamentos, usando `v_dashboard_executivo`.
+- ✅ **4.5 Simulador de cenário:** `/custeio` ganhou simulador client-side com a engine
+  pura de custeio para lote, margem incremental e escolhas de `grupo_escolha`.
+- **Validação:** `tsc --noEmit`, `npm test`, `npm run lint` e `npm run build` passaram.
+- **Percentual da Fase 4:** 92% (4 itens completos + notificações in-app; e-mail Resend pendente).
+
 ---
 
 ## Fase 5 — Acabamento de classe mundial
@@ -173,6 +223,29 @@ Tudo isto já estava previsto como "ganchos" no design doc; aqui vira produto.
 - **Performance:** revisar `force-dynamic` global; usar revalidação por tag; carregar dados sob demanda.
 - **Estados vazios ricos** com CTA em todas as telas.
 - **Tour/ajuda contextual** nos fluxos novos.
+
+**Status em 2026-06-14:**
+- ✅ **Acessibilidade base AA:** skip-link global para `#conteudo-principal`, foco visível
+  consistente e `scope="col"` nas tabelas compartilhadas. Componentes Radix seguem como
+  base para foco gerenciado em diálogos/drawers.
+- ✅ **Onboarding sem credencial externa:** login ganhou recuperação de acesso via Supabase
+  Auth e orientação de primeiro acesso. `/usuarios` ganhou preparo de convite como pendência
+  in-app para admin.
+- ⏳ **Convite/e-mail transacional:** envio real de convite e recuperação em produção depende
+  de SMTP/Resend/URL pública confirmados.
+- ✅ **Internacionalização-ready:** criado `src/lib/formatters.ts` com `pt-BR`,
+  `America/Sao_Paulo` e `BRL` centralizados; telas novas passaram a usar a base.
+- ✅ **Performance percebida:** `loading.tsx` global e skeletons em rotas dinâmicas de detalhe
+  para streaming/prefetch parcial do Next 16.
+- ✅ **Estados vazios ricos:** `DataTable` agora suporta título, ícone e CTA opcional sem
+  refatorar cada lista.
+- ✅ **Ajuda contextual:** botão flutuante abre diálogo contextual por módulo.
+- ⏳ **A11y final:** ainda falta auditoria dedicada com axe/Lighthouse e correção fina por fluxo.
+- ⏳ **Performance final:** ainda falta rodada específica para reduzir `force-dynamic`,
+  adotar tags de revalidação onde fizer sentido e medir bundle.
+- **Validação:** `tsc --noEmit`, `npm test`, `npm run lint` e `npm run build` passaram.
+- **Percentual da Fase 5:** 72% (base implementada; pendem e-mail real, auditoria AA completa
+  e otimização de cache por rota).
 
 ---
 

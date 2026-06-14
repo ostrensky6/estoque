@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClientUntyped } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "./cadastros";
 
 /**
@@ -39,7 +39,7 @@ export async function salvarParametros(
     return { ok: false, message: "Verifique os campos destacados.", errors };
   }
 
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   for (const u of updates) {
     const { error } = await supabase
       .from("parametros")

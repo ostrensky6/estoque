@@ -1,6 +1,7 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { criarPedido } from "@/lib/actions/compras";
+import { ComprasTable, type CompraRow } from "@/components/compras/ComprasTable";
+import { GerarReposicaoButton } from "@/components/compras/GerarReposicaoButton";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 
 export default async function ComprasPage() {
   const supabase = await createClient();
-  const [{ data: pedidos }, { data: fornecedores }, { data: saldo }, { data: projetos }] = await Promise.all([
+  const [{ data: pedidos }, { data: fornecedores }, { data: saldo }, { data: projetos }, { data: previsao }] = await Promise.all([
     supabase
       .from("pedidos_compra")
       .select("id, status, projeto, projeto_id, solicitante, data_solicitacao, fornecedores(nome)")
@@ -24,8 +25,23 @@ export default async function ComprasPage() {
     supabase.from("fornecedores").select("id, nome").eq("ativo", true).order("nome"),
     supabase.from("v_estoque_saldo").select("*"),
     supabase.from("projetos").select("id, nome").order("nome"),
+    supabase.from("v_previsao_suprimentos").select("*").order("qtd_sugerida_compra", { ascending: false }),
   ]);
   const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
+  const linhas: CompraRow[] = (pedidos ?? []).map((p) => {
+    const st = STATUS[p.status] ?? { label: p.status, cls: "" };
+    const fornecedor = (p.fornecedores as { nome: string | null } | null)?.nome ?? "—";
+    const projeto = p.projeto_id != null ? projetoNome.get(p.projeto_id) ?? "—" : p.projeto ?? "—";
+    return {
+      id: p.id as number,
+      pedido: `#${p.id} · ${p.data_solicitacao ?? "—"}`,
+      fornecedor,
+      projeto,
+      solicitante: p.solicitante ?? "—",
+      status: p.status,
+      statusLabel: st.label,
+    };
+  });
 
   // sugestões de compra: disponível abaixo do ponto de reposição
   const sugestoes = (saldo ?? [])
@@ -38,6 +54,16 @@ export default async function ComprasPage() {
       categoria: s.categoria_compra,
     }))
     .sort((a, b) => b.sugerido - a.sugerido);
+  const sugestoesHistoricas = (previsao ?? [])
+    .filter((p) => Number(p.qtd_sugerida_compra ?? 0) > 0)
+    .map((p) => ({
+      especificacao: p.especificacao,
+      disponivel: Number(p.disponivel ?? 0),
+      sugerido: Number(p.qtd_sugerida_compra ?? 0),
+      categoria: p.categoria_compra,
+    }))
+    .slice(0, 8);
+  const sugestoesRender = sugestoesHistoricas.length > 0 ? sugestoesHistoricas : sugestoes;
 
   const inp = "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
 
@@ -51,16 +77,24 @@ export default async function ComprasPage() {
         </p>
 
         {/* sugestões */}
-        {sugestoes.length > 0 && (
+        {(sugestoes.length > 0 || sugestoesHistoricas.length > 0) && (
           <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
-            <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-              Sugestões de compra ({sugestoes.length}) — abaixo do ponto de reposição
-            </h2>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                  Sugestões de compra ({Math.max(sugestoes.length, sugestoesHistoricas.length)})
+                </h2>
+                <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/80">
+                  Combina ponto configurado com consumo histórico, lead time e estoque de segurança.
+                </p>
+              </div>
+              <GerarReposicaoButton />
+            </div>
             <ul className="mt-2 space-y-1 text-xs text-amber-900 dark:text-amber-200">
-              {sugestoes.slice(0, 8).map((s, i) => (
+              {sugestoesRender.slice(0, 8).map((s, i) => (
                 <li key={i} className="flex justify-between gap-4">
                   <span className="truncate">
-                    {s.categoria === "critico" && "🔴 "}
+                    {s.categoria === "critico" && "Critico · "}
                     {s.especificacao}
                   </span>
                   <span className="shrink-0 tabular-nums">
@@ -71,6 +105,21 @@ export default async function ComprasPage() {
             </ul>
           </div>
         )}
+
+        <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+                Reposição automática
+              </h2>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-blue-900/80 dark:text-blue-200/80">
+                A mesma rotina que será agendada no Supabase cron pode ser disparada manualmente aqui.
+                Agendamento diário e e-mail externo dependem das credenciais/configuração do Supabase cron e Resend.
+              </p>
+            </div>
+            <GerarReposicaoButton />
+          </div>
+        </div>
 
         {/* novo pedido */}
         <form action={criarPedido} className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -101,50 +150,8 @@ export default async function ComprasPage() {
           </button>
         </form>
 
-        {/* lista */}
-        <div className="mt-6 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
-              <tr>
-                <th className="px-4 py-3 text-left">Pedido</th>
-                <th className="px-4 py-3 text-left">Fornecedor</th>
-                <th className="px-4 py-3 text-left">Projeto</th>
-                <th className="px-4 py-3 text-left">Solicitante</th>
-                <th className="px-4 py-3 text-center">Status</th>
-                {/* colunas fixas; projeto agora prioriza o vínculo */}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {(pedidos ?? []).map((p) => {
-                const st = STATUS[p.status] ?? { label: p.status, cls: "bg-zinc-100" };
-                const forn = (p.fornecedores as { nome: string | null } | null)?.nome;
-                return (
-                  <tr key={p.id} className="hover:bg-transparent dark:hover:bg-zinc-800/40">
-                    <td className="px-4 py-2.5">
-                      <Link href={`/compras/${p.id}`} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
-                        #{p.id} · {p.data_solicitacao}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2.5 text-zinc-500">{forn ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-zinc-500">
-                      {p.projeto_id != null ? projetoNome.get(p.projeto_id) ?? "—" : p.projeto ?? "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-zinc-500">{p.solicitante ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-center">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-              {(pedidos ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-zinc-400">
-                    Nenhum pedido. Crie uma solicitação acima.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="mt-6">
+          <ComprasTable rows={linhas} />
         </div>
       </main>
     </div>

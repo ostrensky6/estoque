@@ -130,6 +130,87 @@ export type Database = {
         }
         Relationships: []
       }
+      demandas_propostas: {
+        Row: {
+          cliente_cnpj: string | null
+          cliente_contato: string | null
+          cliente_id: number | null
+          cliente_nome: string | null
+          criado_em: string
+          data_solicitacao: string
+          descricao: string | null
+          escopo_preliminar: string | null
+          id: number
+          instituicao: string | null
+          modalidade: string
+          observacoes: string | null
+          origem: string | null
+          prazo_esperado: string | null
+          prioridade: string
+          projeto_id: number | null
+          responsavel_interno: string | null
+          status: string
+          titulo: string
+        }
+        Insert: {
+          cliente_cnpj?: string | null
+          cliente_contato?: string | null
+          cliente_id?: number | null
+          cliente_nome?: string | null
+          criado_em?: string
+          data_solicitacao?: string
+          descricao?: string | null
+          escopo_preliminar?: string | null
+          id?: never
+          instituicao?: string | null
+          modalidade?: string
+          observacoes?: string | null
+          origem?: string | null
+          prazo_esperado?: string | null
+          prioridade?: string
+          projeto_id?: number | null
+          responsavel_interno?: string | null
+          status?: string
+          titulo: string
+        }
+        Update: {
+          cliente_cnpj?: string | null
+          cliente_contato?: string | null
+          cliente_id?: number | null
+          cliente_nome?: string | null
+          criado_em?: string
+          data_solicitacao?: string
+          descricao?: string | null
+          escopo_preliminar?: string | null
+          id?: never
+          instituicao?: string | null
+          modalidade?: string
+          observacoes?: string | null
+          origem?: string | null
+          prazo_esperado?: string | null
+          prioridade?: string
+          projeto_id?: number | null
+          responsavel_interno?: string | null
+          status?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demandas_propostas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandas_propostas_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       equipamento_analise: {
         Row: {
           codigo_analise: string
@@ -166,41 +247,105 @@ export type Database = {
           },
         ]
       }
+      equipamento_manutencoes: {
+        Row: {
+          criado_em: string
+          custo: number | null
+          data: string | null
+          descricao: string | null
+          equipamento_id: number
+          id: number
+          responsavel: string | null
+        }
+        Insert: {
+          criado_em?: string
+          custo?: number | null
+          data?: string | null
+          descricao?: string | null
+          equipamento_id: number
+          id?: never
+          responsavel?: string | null
+        }
+        Update: {
+          criado_em?: string
+          custo?: number | null
+          data?: string | null
+          descricao?: string | null
+          equipamento_id?: number
+          id?: never
+          responsavel?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipamento_manutencoes_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       equipamentos: {
         Row: {
           custo_unitario: number
           data_aquisicao: string | null
+          data_baixa: string | null
           id: number
           manutencao_anual_fixa: number | null
           nome: string
+          numero_patrimonio: string | null
+          numero_serie: string | null
           percentual_manutencao_anual: number
           possui: boolean
+          professor_id: number | null
+          proprietario: string
           quantidade: number
+          situacao: string
           vida_util_anos: number | null
         }
         Insert: {
           custo_unitario?: number
           data_aquisicao?: string | null
+          data_baixa?: string | null
           id?: never
           manutencao_anual_fixa?: number | null
           nome: string
+          numero_patrimonio?: string | null
+          numero_serie?: string | null
           percentual_manutencao_anual?: number
           possui?: boolean
+          professor_id?: number | null
+          proprietario?: string
           quantidade?: number
+          situacao?: string
           vida_util_anos?: number | null
         }
         Update: {
           custo_unitario?: number
           data_aquisicao?: string | null
+          data_baixa?: string | null
           id?: never
           manutencao_anual_fixa?: number | null
           nome?: string
+          numero_patrimonio?: string | null
+          numero_serie?: string | null
           percentual_manutencao_anual?: number
           possui?: boolean
+          professor_id?: number | null
+          proprietario?: string
           quantidade?: number
+          situacao?: string
           vida_util_anos?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "equipamentos_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "professores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       estoque_movimentacoes: {
         Row: {
@@ -252,6 +397,13 @@ export type Database = {
             columns: ["insumo_id"]
             isOneToOne: false
             referencedRelation: "v_estoque_saldo"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "estoque_movimentacoes_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_previsao_suprimentos"
             referencedColumns: ["insumo_id"]
           },
           {
@@ -318,6 +470,39 @@ export type Database = {
             referencedColumns: ["codigo"]
           },
         ]
+      }
+      eventos_status: {
+        Row: {
+          criado_em: string
+          de_status: string | null
+          entidade: string
+          entidade_id: number
+          id: number
+          observacao: string | null
+          para_status: string
+          usuario: string | null
+        }
+        Insert: {
+          criado_em?: string
+          de_status?: string | null
+          entidade: string
+          entidade_id: number
+          id?: never
+          observacao?: string | null
+          para_status: string
+          usuario?: string | null
+        }
+        Update: {
+          criado_em?: string
+          de_status?: string | null
+          entidade?: string
+          entidade_id?: number
+          id?: never
+          observacao?: string | null
+          para_status?: string
+          usuario?: string | null
+        }
+        Relationships: []
       }
       fornecedores: {
         Row: {
@@ -429,6 +614,13 @@ export type Database = {
             referencedRelation: "v_estoque_saldo"
             referencedColumns: ["insumo_id"]
           },
+          {
+            foreignKeyName: "insumo_analise_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_previsao_suprimentos"
+            referencedColumns: ["insumo_id"]
+          },
         ]
       }
       insumos: {
@@ -443,6 +635,7 @@ export type Database = {
           especificacao: string
           estoque_seguranca: number
           fabricante: string | null
+          fator_conversao: number
           fornecedor_alt_id: number | null
           fornecedor_id: number | null
           id: number
@@ -467,6 +660,7 @@ export type Database = {
           especificacao: string
           estoque_seguranca?: number
           fabricante?: string | null
+          fator_conversao?: number
           fornecedor_alt_id?: number | null
           fornecedor_id?: number | null
           id?: never
@@ -491,6 +685,7 @@ export type Database = {
           especificacao?: string
           estoque_seguranca?: number
           fabricante?: string | null
+          fator_conversao?: number
           fornecedor_alt_id?: number | null
           fornecedor_id?: number | null
           id?: never
@@ -642,6 +837,13 @@ export type Database = {
             referencedColumns: ["insumo_id"]
           },
           {
+            foreignKeyName: "lotes_estoque_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_previsao_suprimentos"
+            referencedColumns: ["insumo_id"]
+          },
+          {
             foreignKeyName: "lotes_estoque_local_id_fkey"
             columns: ["local_id"]
             isOneToOne: false
@@ -649,6 +851,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notificacoes: {
+        Row: {
+          canal: string
+          corpo: string | null
+          criado_em: string
+          dedupe_key: string | null
+          entidade_id: number | null
+          entidade_tipo: string | null
+          id: number
+          lida_em: string | null
+          papel_destino: string | null
+          status: string
+          tipo: string
+          titulo: string
+          usuario_destino: string | null
+        }
+        Insert: {
+          canal?: string
+          corpo?: string | null
+          criado_em?: string
+          dedupe_key?: string | null
+          entidade_id?: number | null
+          entidade_tipo?: string | null
+          id?: never
+          lida_em?: string | null
+          papel_destino?: string | null
+          status?: string
+          tipo: string
+          titulo: string
+          usuario_destino?: string | null
+        }
+        Update: {
+          canal?: string
+          corpo?: string | null
+          criado_em?: string
+          dedupe_key?: string | null
+          entidade_id?: number | null
+          entidade_tipo?: string | null
+          id?: never
+          lida_em?: string | null
+          papel_destino?: string | null
+          status?: string
+          tipo?: string
+          titulo?: string
+          usuario_destino?: string | null
+        }
+        Relationships: []
       }
       orcamento_itens: {
         Row: {
@@ -692,6 +942,304 @@ export type Database = {
           },
         ]
       }
+      orcamento_projeto_analises: {
+        Row: {
+          codigo_analise: string
+          custo_unitario: number
+          id: number
+          n_amostras: number
+          orcamento_projeto_id: number
+          preco_unitario: number
+        }
+        Insert: {
+          codigo_analise: string
+          custo_unitario?: number
+          id?: never
+          n_amostras?: number
+          orcamento_projeto_id: number
+          preco_unitario?: number
+        }
+        Update: {
+          codigo_analise?: string
+          custo_unitario?: number
+          id?: never
+          n_amostras?: number
+          orcamento_projeto_id?: number
+          preco_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_projeto_analises_codigo_analise_fkey"
+            columns: ["codigo_analise"]
+            isOneToOne: false
+            referencedRelation: "analises"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "orcamento_projeto_analises_orcamento_projeto_id_fkey"
+            columns: ["orcamento_projeto_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orcamento_projeto_catalogo: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          categoria: string | null
+          criado_em: string
+          descricao: string
+          id: string
+          origem: string
+          preco_unitario: number
+          rubrica: string
+          unidade: string | null
+          valid_from: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          categoria?: string | null
+          criado_em?: string
+          descricao: string
+          id: string
+          origem?: string
+          preco_unitario?: number
+          rubrica: string
+          unidade?: string | null
+          valid_from?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          categoria?: string | null
+          criado_em?: string
+          descricao?: string
+          id?: string
+          origem?: string
+          preco_unitario?: number
+          rubrica?: string
+          unidade?: string | null
+          valid_from?: string | null
+        }
+        Relationships: []
+      }
+      orcamento_projeto_custos: {
+        Row: {
+          catalogo_item_id: string | null
+          categoria: string
+          custo_unitario: number
+          descricao: string
+          id: number
+          meses_selecionados: number[]
+          orcamento_projeto_id: number
+          origem: string
+          preco_unitario: number
+          quantidade: number
+          rubrica: string | null
+          unidade: string | null
+        }
+        Insert: {
+          catalogo_item_id?: string | null
+          categoria: string
+          custo_unitario?: number
+          descricao: string
+          id?: never
+          meses_selecionados?: number[]
+          orcamento_projeto_id: number
+          origem?: string
+          preco_unitario?: number
+          quantidade?: number
+          rubrica?: string | null
+          unidade?: string | null
+        }
+        Update: {
+          catalogo_item_id?: string | null
+          categoria?: string
+          custo_unitario?: number
+          descricao?: string
+          id?: never
+          meses_selecionados?: number[]
+          orcamento_projeto_id?: number
+          origem?: string
+          preco_unitario?: number
+          quantidade?: number
+          rubrica?: string | null
+          unidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_projeto_custos_catalogo_item_id_fkey"
+            columns: ["catalogo_item_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_projeto_catalogo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_projeto_custos_orcamento_projeto_id_fkey"
+            columns: ["orcamento_projeto_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orcamento_projeto_templates: {
+        Row: {
+          criado_em: string
+          descricao: string | null
+          id: number
+          itens: Json
+          nome: string
+          origem: string
+          parametros: Json
+        }
+        Insert: {
+          criado_em?: string
+          descricao?: string | null
+          id?: never
+          itens?: Json
+          nome: string
+          origem?: string
+          parametros?: Json
+        }
+        Update: {
+          criado_em?: string
+          descricao?: string | null
+          id?: never
+          itens?: Json
+          nome?: string
+          origem?: string
+          parametros?: Json
+        }
+        Relationships: []
+      }
+      orcamento_projetos: {
+        Row: {
+          cliente_cnpj: string | null
+          cliente_contato: string | null
+          cliente_detalhes: string | null
+          cliente_email: string | null
+          cliente_endereco: string | null
+          cliente_id: number | null
+          cliente_nome: string | null
+          cliente_telefone: string | null
+          coordenador: string | null
+          criado_em: string
+          cronograma: string | null
+          data_orcamento: string
+          demanda_id: number | null
+          escopo: string | null
+          id: number
+          impostos: number
+          impostos_legacy: number
+          incubacao: number
+          investimentos: number
+          lucro: number
+          margem_lucro: number
+          numero: string | null
+          observacoes: string | null
+          project_months: number
+          projeto_id: number | null
+          proprietario: string | null
+          reserva: number
+          responsavel: string | null
+          status: string
+          titulo: string
+          validade_dias: number
+        }
+        Insert: {
+          cliente_cnpj?: string | null
+          cliente_contato?: string | null
+          cliente_detalhes?: string | null
+          cliente_email?: string | null
+          cliente_endereco?: string | null
+          cliente_id?: number | null
+          cliente_nome?: string | null
+          cliente_telefone?: string | null
+          coordenador?: string | null
+          criado_em?: string
+          cronograma?: string | null
+          data_orcamento?: string
+          demanda_id?: number | null
+          escopo?: string | null
+          id?: never
+          impostos?: number
+          impostos_legacy?: number
+          incubacao?: number
+          investimentos?: number
+          lucro?: number
+          margem_lucro?: number
+          numero?: string | null
+          observacoes?: string | null
+          project_months?: number
+          projeto_id?: number | null
+          proprietario?: string | null
+          reserva?: number
+          responsavel?: string | null
+          status?: string
+          titulo: string
+          validade_dias?: number
+        }
+        Update: {
+          cliente_cnpj?: string | null
+          cliente_contato?: string | null
+          cliente_detalhes?: string | null
+          cliente_email?: string | null
+          cliente_endereco?: string | null
+          cliente_id?: number | null
+          cliente_nome?: string | null
+          cliente_telefone?: string | null
+          coordenador?: string | null
+          criado_em?: string
+          cronograma?: string | null
+          data_orcamento?: string
+          demanda_id?: number | null
+          escopo?: string | null
+          id?: never
+          impostos?: number
+          impostos_legacy?: number
+          incubacao?: number
+          investimentos?: number
+          lucro?: number
+          margem_lucro?: number
+          numero?: string | null
+          observacoes?: string | null
+          project_months?: number
+          projeto_id?: number | null
+          proprietario?: string | null
+          reserva?: number
+          responsavel?: string | null
+          status?: string
+          titulo?: string
+          validade_dias?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_projetos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_projetos_demanda_id_fkey"
+            columns: ["demanda_id"]
+            isOneToOne: false
+            referencedRelation: "demandas_propostas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_projetos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orcamentos: {
         Row: {
           cliente_cnpj: string | null
@@ -701,11 +1249,13 @@ export type Database = {
           cliente_nome: string
           criado_em: string
           data_orcamento: string
+          demanda_id: number | null
           id: number
           observacoes: string | null
           projeto_id: number | null
           responsavel: string | null
           status: string
+          tipo: string
           validade_dias: number
         }
         Insert: {
@@ -716,11 +1266,13 @@ export type Database = {
           cliente_nome: string
           criado_em?: string
           data_orcamento?: string
+          demanda_id?: number | null
           id?: never
           observacoes?: string | null
           projeto_id?: number | null
           responsavel?: string | null
           status?: string
+          tipo?: string
           validade_dias?: number
         }
         Update: {
@@ -731,11 +1283,13 @@ export type Database = {
           cliente_nome?: string
           criado_em?: string
           data_orcamento?: string
+          demanda_id?: number | null
           id?: never
           observacoes?: string | null
           projeto_id?: number | null
           responsavel?: string | null
           status?: string
+          tipo?: string
           validade_dias?: number
         }
         Relationships: [
@@ -744,6 +1298,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamentos_demanda_id_fkey"
+            columns: ["demanda_id"]
+            isOneToOne: false
+            referencedRelation: "demandas_propostas"
             referencedColumns: ["id"]
           },
           {
@@ -904,6 +1465,13 @@ export type Database = {
             referencedColumns: ["insumo_id"]
           },
           {
+            foreignKeyName: "pedidos_compra_itens_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_previsao_suprimentos"
+            referencedColumns: ["insumo_id"]
+          },
+          {
             foreignKeyName: "pedidos_compra_itens_lote_id_fkey"
             columns: ["lote_id"]
             isOneToOne: false
@@ -1029,38 +1597,74 @@ export type Database = {
           },
         ]
       }
+      professores: {
+        Row: {
+          ativo: boolean
+          criado_em: string
+          departamento: string | null
+          email: string | null
+          id: number
+          nome: string
+          observacoes: string | null
+          siape: string | null
+          telefone: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          criado_em?: string
+          departamento?: string | null
+          email?: string | null
+          id?: never
+          nome: string
+          observacoes?: string | null
+          siape?: string | null
+          telefone?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          criado_em?: string
+          departamento?: string | null
+          email?: string | null
+          id?: never
+          nome?: string
+          observacoes?: string | null
+          siape?: string | null
+          telefone?: string | null
+        }
+        Relationships: []
+      }
       projetos: {
         Row: {
           cliente_id: number | null
+          coordenador: string | null
           criado_em: string
           data_fim: string | null
           data_inicio: string | null
           descricao: string | null
           id: number
           nome: string
-          responsavel: string | null
           status: string
         }
         Insert: {
           cliente_id?: number | null
+          coordenador?: string | null
           criado_em?: string
           data_fim?: string | null
           data_inicio?: string | null
           descricao?: string | null
           id?: never
           nome: string
-          responsavel?: string | null
           status?: string
         }
         Update: {
           cliente_id?: number | null
+          coordenador?: string | null
           criado_em?: string
           data_fim?: string | null
           data_inicio?: string | null
           descricao?: string | null
           id?: never
           nome?: string
-          responsavel?: string | null
           status?: string
         }
         Relationships: [
@@ -1114,6 +1718,13 @@ export type Database = {
             referencedColumns: ["insumo_id"]
           },
           {
+            foreignKeyName: "reservas_estoque_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_previsao_suprimentos"
+            referencedColumns: ["insumo_id"]
+          },
+          {
             foreignKeyName: "reservas_estoque_planejamento_id_fkey"
             columns: ["planejamento_id"]
             isOneToOne: false
@@ -1162,6 +1773,21 @@ export type Database = {
         }
         Relationships: []
       }
+      v_dashboard_executivo: {
+        Row: {
+          compras_abertas_valor: number | null
+          gasto_por_projeto_mes: Json | null
+          lotes_vencendo_horizonte: number | null
+          margem_media_pct: number | null
+          orcamentos_aprovados: number | null
+          orcamentos_enviados: number | null
+          orcamentos_perdidos: number | null
+          orcamentos_rascunho: number | null
+          valor_estoque_ativo: number | null
+          valor_vencendo_horizonte: number | null
+        }
+        Relationships: []
+      }
       v_estoque_saldo: {
         Row: {
           bloqueado: number | null
@@ -1181,6 +1807,39 @@ export type Database = {
         }
         Relationships: []
       }
+      v_previsao_suprimentos: {
+        Row: {
+          categoria_compra: string | null
+          consumo_janela: number | null
+          consumo_medio_diario: number | null
+          custo_unitario: number | null
+          dias_cobertura: number | null
+          disponivel: number | null
+          em_maos: number | null
+          especificacao: string | null
+          estoque_seguranca: number | null
+          fornecedor_id: number | null
+          fornecedor_nome: string | null
+          insumo_id: number | null
+          janela_dias: number | null
+          lead_time_dias: number | null
+          ponto_reposicao_configurado: number | null
+          ponto_reposicao_sugerido: number | null
+          qtd_pedida_aberta: number | null
+          qtd_sugerida_compra: number | null
+          reservado: number | null
+          unidade: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insumos_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       aceitar_lote: {
@@ -1198,8 +1857,22 @@ export type Database = {
         Args: { p_justificativa: string; p_lote_id: number }
         Returns: undefined
       }
+      entrada_inventario: {
+        Args: {
+          p_codigo?: string
+          p_custo?: number
+          p_fornecedor?: string
+          p_insumo_id: number
+          p_motivo?: string
+          p_quantidade: number
+          p_validade?: string
+        }
+        Returns: number
+      }
       fn_exige_papel: { Args: { p_min: string }; Returns: undefined }
+      gerar_reposicao_automatica: { Args: never; Returns: Json }
       liberar_plano: { Args: { p_planejamento_id: number }; Returns: undefined }
+      papel_minimo: { Args: { p_min: string }; Returns: boolean }
       receber_lote: {
         Args: {
           p_codigo?: string

@@ -1,21 +1,22 @@
 import { createClient } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
-import { ReceberLoteButton } from "@/components/estoque/ReceberLote";
-import { LoteAcoes } from "@/components/estoque/LoteAcoes";
+import {
+  LotesTable,
+  SaldoTable,
+  type LoteRow,
+  type SaldoRow,
+} from "@/components/estoque/EstoqueTables";
 
 export const dynamic = "force-dynamic";
 
-const LOTE_STATUS: Record<string, { label: string; cls: string }> = {
-  quarentena: { label: "Quarentena", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
-  aceito: { label: "Aceito", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" },
-  em_uso: { label: "Em uso", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
-  bloqueado: { label: "Bloqueado", cls: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300" },
-  consumido: { label: "Consumido", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
-  descartado: { label: "Descartado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
+const LOTE_STATUS: Record<string, string> = {
+  quarentena: "Quarentena",
+  aceito: "Aceito",
+  em_uso: "Em uso",
+  bloqueado: "Bloqueado",
+  consumido: "Consumido",
+  descartado: "Descartado",
 };
-
-const fmt = (v: number | null) =>
-  (v ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
 type Alerta = {
   tipo: string;
@@ -34,7 +35,7 @@ const ALERTA_META: Record<string, { label: string; cls: string }> = {
 
 export default async function EstoquePage() {
   const supabase = await createClient();
-  const [{ data: saldo }, { data: alertas }, { data: lotes }] = await Promise.all([
+  const [{ data: saldo }, { data: alertas }, { data: lotes }, { data: previsao }] = await Promise.all([
     supabase.from("v_estoque_saldo").select("*").order("especificacao"),
     supabase.from("v_alertas_estoque").select("*"),
     supabase
@@ -42,6 +43,7 @@ export default async function EstoquePage() {
       .select("id, codigo_lote, validade, quantidade_atual, status, insumos(especificacao, unidade)")
       .not("status", "in", "(consumido,descartado)")
       .order("validade", { nullsFirst: false }),
+    supabase.from("v_previsao_suprimentos").select("*"),
   ]);
   const [podeAceitar, podeGerir] = await Promise.all([
     temPapel("coordenador"),
@@ -54,6 +56,47 @@ export default async function EstoquePage() {
     vencimento: al.filter((a) => a.tipo === "vencimento"),
     vencido: al.filter((a) => a.tipo === "vencido"),
   };
+  const previsaoMap = new Map((previsao ?? []).map((p) => [p.insumo_id, p]));
+  const saldoRows: SaldoRow[] = (saldo ?? []).map((s) => {
+    const prev = previsaoMap.get(s.insumo_id);
+    const pontoReposicao = Number(s.ponto_reposicao ?? 0);
+    const disponivel = Number(s.disponivel ?? 0);
+    const emMaos = Number(s.em_maos ?? 0);
+    const pontoSugerido = Number(prev?.ponto_reposicao_sugerido ?? pontoReposicao);
+    const repor = pontoReposicao > 0 && disponivel <= pontoReposicao;
+    const semEstoque = emMaos <= 0;
+    const status = repor ? "repor" : semEstoque ? "sem_estoque" : "ok";
+    return {
+      insumoId: s.insumo_id as number,
+      especificacao: s.especificacao ?? "—",
+      unidade: s.unidade ?? "—",
+      emMaos,
+      emQuarentena: Number(s.em_quarentena ?? 0),
+      reservado: Number(s.reservado ?? 0),
+      disponivel,
+      pontoReposicao,
+      consumoMedioDiario: Number(prev?.consumo_medio_diario ?? 0),
+      diasCobertura: prev?.dias_cobertura == null ? null : Number(prev.dias_cobertura),
+      pontoSugerido,
+      status,
+      statusLabel: status === "repor" ? "Repor" : status === "sem_estoque" ? "Sem estoque" : "OK",
+    };
+  });
+  const hoje = new Date();
+  const loteRows: LoteRow[] = (lotes ?? []).map((l) => {
+    const ins = l.insumos as { especificacao: string | null; unidade: string | null } | null;
+    return {
+      id: l.id as number,
+      especificacao: ins?.especificacao ?? "—",
+      unidade: ins?.unidade ?? "",
+      codigoLote: l.codigo_lote ?? "—",
+      validade: l.validade ?? "—",
+      quantidadeAtual: Number(l.quantidade_atual ?? 0),
+      status: l.status,
+      statusLabel: LOTE_STATUS[l.status] ?? l.status,
+      vencido: l.validade != null && new Date(l.validade) < hoje,
+    };
+  });
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -90,72 +133,13 @@ export default async function EstoquePage() {
           ))}
         </div>
 
-        {/* Saldo */}
-        <div className="mt-8 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
-              <tr>
-                <th className="px-4 py-3 text-left">Reagente</th>
-                <th className="px-4 py-3 text-left">Un.</th>
-                <th className="px-4 py-3 text-right">Em mãos</th>
-                <th className="px-4 py-3 text-right">Quarentena</th>
-                <th className="px-4 py-3 text-right">Reservado</th>
-                <th className="px-4 py-3 text-right">Disponível</th>
-                <th className="px-4 py-3 text-right">Ponto repos.</th>
-                <th className="px-4 py-3 text-center">Status</th>
-                <th className="px-4 py-3 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {saldo?.map((s) => {
-                const repor = (s.ponto_reposicao ?? 0) > 0 && (s.disponivel ?? 0) <= (s.ponto_reposicao ?? 0);
-                const semEstoque = (s.em_maos ?? 0) <= 0;
-                return (
-                  <tr key={s.insumo_id} className="hover:bg-transparent dark:hover:bg-zinc-800/40">
-                    <td className="px-4 py-2.5 max-w-xs truncate" title={s.especificacao ?? ""}>
-                      {s.especificacao}
-                    </td>
-                    <td className="px-4 py-2.5 text-zinc-500">{s.unidade ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{fmt(s.em_maos)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-amber-600 dark:text-amber-400">
-                      {(s.em_quarentena ?? 0) > 0 ? fmt(s.em_quarentena) : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-zinc-500">{fmt(s.reservado)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums font-medium">{fmt(s.disponivel)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-zinc-500">
-                      {(s.ponto_reposicao ?? 0) > 0 ? fmt(s.ponto_reposicao) : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-center">
-                      {repor ? (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
-                          Repor
-                        </span>
-                      ) : semEstoque ? (
-                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800">
-                          Sem estoque
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-                          OK
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <ReceberLoteButton
-                        insumoId={s.insumo_id as number}
-                        especificacao={s.especificacao ?? ""}
-                        unidade={s.unidade}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="mt-8">
+          <SaldoTable rows={saldoRows} />
         </div>
         <p className="mt-3 text-xs text-zinc-400">
-          {saldo?.length ?? 0} reagentes · defina o ponto de reposição em
-          Cadastros → Insumos para ativar os alertas.
+          {saldoRows.length} reagentes · previsão usa consumo dos últimos{" "}
+          {previsao?.[0]?.janela_dias ?? 90} dias, lead time e estoque de segurança.
+          Ajuste o ponto manual em Cadastros → Insumos quando precisar travar uma política.
         </p>
 
         {/* Lotes (rastreabilidade + estados) */}
@@ -166,56 +150,8 @@ export default async function EstoquePage() {
           Material recebido entra em <b>quarentena</b> e só fica disponível após
           aceitação. Consumo por FEFO (vence antes, sai antes).
         </p>
-        <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
-              <tr>
-                <th className="px-4 py-3 text-left">Reagente</th>
-                <th className="px-4 py-3 text-left">Lote</th>
-                <th className="px-4 py-3 text-left">Validade</th>
-                <th className="px-4 py-3 text-right">Saldo</th>
-                <th className="px-4 py-3 text-center">Estado</th>
-                <th className="px-4 py-3 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {(lotes ?? []).map((l) => {
-                const ins = l.insumos as { especificacao: string | null; unidade: string | null } | null;
-                const st = LOTE_STATUS[l.status] ?? { label: l.status, cls: "bg-zinc-100" };
-                const vencido = l.validade != null && new Date(l.validade) < new Date();
-                return (
-                  <tr key={l.id} className="hover:bg-transparent dark:hover:bg-zinc-800/40">
-                    <td className="px-4 py-2.5 max-w-xs truncate" title={ins?.especificacao ?? ""}>{ins?.especificacao}</td>
-                    <td className="px-4 py-2.5 text-zinc-500">{l.codigo_lote ?? "—"}</td>
-                    <td className={`px-4 py-2.5 ${vencido ? "font-medium text-red-600" : "text-zinc-500"}`}>
-                      {l.validade ?? "—"}{vencido ? " ⚠" : ""}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">
-                      {fmt(l.quantidade_atual)} {ins?.unidade ?? ""}
-                    </td>
-                    <td className="px-4 py-2.5 text-center">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <LoteAcoes
-                        loteId={l.id as number}
-                        status={l.status}
-                        podeAceitar={podeAceitar}
-                        podeGerir={podeGerir}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-              {(lotes ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-zinc-400">
-                    Nenhum lote em estoque. Use “+ Lote” na tabela acima para receber.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="mt-3">
+          <LotesTable rows={loteRows} podeAceitar={podeAceitar} podeGerir={podeGerir} />
         </div>
       </main>
     </div>

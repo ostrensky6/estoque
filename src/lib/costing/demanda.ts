@@ -98,26 +98,31 @@ export async function computarDemandaPlano(
   const ids = [...agg.keys()];
   if (ids.length === 0) return [];
 
-  const { data: saldo } = await supabase
-    .from("v_estoque_saldo")
-    .select("insumo_id, unidade, disponivel")
-    .in("insumo_id", ids);
+  const [{ data: saldo }, { data: convs }] = await Promise.all([
+    supabase.from("v_estoque_saldo").select("insumo_id, unidade, disponivel").in("insumo_id", ids),
+    supabase.from("insumos").select("id, fator_conversao").in("id", ids),
+  ]);
   const sMap = new Map(
     (saldo ?? []).map((s) => [s.insumo_id as number, s as { unidade: string | null; disponivel: number }]),
   );
+  // 2.5 — ponte de unidades: a demanda é calculada em unidades de CONSUMO; o
+  // estoque está em unidades de ESTOQUE. Converte antes de comparar/reservar.
+  const fMap = new Map((convs ?? []).map((c) => [c.id as number, num(c.fator_conversao) || 1]));
 
   return ids
     .map((id) => {
       const d = agg.get(id)!;
       const s = sMap.get(id);
+      const fator = fMap.get(id) || 1;
+      const demanda = fator > 0 ? d.demanda / fator : d.demanda;
       const disponivel = num(s?.disponivel);
       return {
         insumo_id: id,
         especificacao: d.especificacao,
         unidade: s?.unidade ?? null,
-        demanda: d.demanda,
+        demanda,
         disponivel,
-        falta: Math.max(0, d.demanda - disponivel),
+        falta: Math.max(0, demanda - disponivel),
       };
     })
     .sort((a, b) => b.falta - a.falta || a.especificacao.localeCompare(b.especificacao));

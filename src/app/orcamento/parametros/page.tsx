@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClientUntyped } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
 import { ParametrosEconomicosForm } from "@/components/orcamento/ParametrosEconomicosForm";
 
@@ -35,7 +35,7 @@ const DEFAULTS: Record<ParamKey, number> = {
 };
 
 export default async function ParametrosEconomicosPage() {
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const [{ data: parametros }, { breakdowns, params }] = await Promise.all([
     supabase.from("parametros").select("chave, valor, atualizado_em"),
     calcularTodas(),

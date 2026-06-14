@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClientUntyped } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import {
   gerarOrcamentoAnalisesDaDemanda,
   gerarOrcamentoProjetoDaDemanda,
@@ -23,7 +23,7 @@ export default async function DemandaDetalhe({
 }) {
   const { id } = await params;
   const demandaId = Number(id);
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
 
   const { data: demanda } = await supabase
     .from("demandas_propostas")

@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createClientUntyped } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
+import { registrarEvento } from "./eventos";
 
 export type ParametrosEconomicosState = {
   ok: boolean;
@@ -67,7 +68,7 @@ export async function criarOrcamento(formData: FormData) {
   const cliente_nome =
     String(formData.get("cliente_nome") ?? "").trim() || "Cliente sem nome";
   const projeto_id = formData.get("projeto_id") ? Number(formData.get("projeto_id")) : null;
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
 
   if (tipo === "projeto" || tipo === "analises_projeto") {
     const titulo =
@@ -100,7 +101,7 @@ export async function criarOrcamento(formData: FormData) {
 export async function salvarCabecalho(formData: FormData) {
   const id = Number(formData.get("orcamento_id"));
   if (!id) return;
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
 
   const cliente_id = formData.get("cliente_id") ? Number(formData.get("cliente_id")) : null;
   const projeto_id = formData.get("projeto_id") ? Number(formData.get("projeto_id")) : null;
@@ -126,6 +127,13 @@ export async function salvarCabecalho(formData: FormData) {
     }
   }
 
+  const novoStatus = (formData.get("status") as string) || "rascunho";
+  const { data: anterior } = await supabase
+    .from("orcamentos")
+    .select("status")
+    .eq("id", id)
+    .single();
+
   const patch = {
     cliente_id,
     projeto_id,
@@ -133,14 +141,17 @@ export async function salvarCabecalho(formData: FormData) {
     cliente_cnpj,
     cliente_endereco,
     cliente_contato,
-    data_orcamento: (formData.get("data_orcamento") as string) || null,
+    data_orcamento: (formData.get("data_orcamento") as string) || undefined,
     validade_dias: Number(formData.get("validade_dias")) || 30,
     responsavel: (formData.get("responsavel") as string)?.trim() || null,
     observacoes: (formData.get("observacoes") as string)?.trim() || null,
-    status: (formData.get("status") as string) || "rascunho",
+    status: novoStatus,
   };
   const { error } = await supabase.from("orcamentos").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
+  if (anterior && anterior.status !== novoStatus) {
+    await registrarEvento("orcamento", id, anterior.status, novoStatus);
+  }
   revalidatePath(`/orcamento/${id}`);
   revalidatePath("/orcamento");
 }
@@ -155,7 +166,7 @@ export async function adicionarItemOrcamento(formData: FormData) {
   const { breakdowns } = await calcularTodas();
   const b = breakdowns.find((x) => x.codigo === codigo);
 
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   await supabase.from("orcamento_itens").insert({
     orcamento_id: id,
     codigo_analise: codigo,
@@ -170,7 +181,7 @@ export async function removerItemOrcamento(formData: FormData) {
   const id = Number(formData.get("orcamento_id"));
   const itemId = Number(formData.get("item_id"));
   if (!itemId) return;
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   await supabase.from("orcamento_itens").delete().eq("id", itemId);
   revalidatePath(`/orcamento/${id}`);
 }
@@ -179,7 +190,7 @@ export async function removerItemOrcamento(formData: FormData) {
 export async function recalcularOrcamento(formData: FormData) {
   const id = Number(formData.get("orcamento_id"));
   if (!id) return;
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const { data: itens } = await supabase
     .from("orcamento_itens")
     .select("id, codigo_analise")
@@ -198,7 +209,7 @@ export async function recalcularOrcamento(formData: FormData) {
 
 export async function excluirOrcamento(formData: FormData) {
   const id = Number(formData.get("orcamento_id"));
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   await supabase.from("orcamentos").delete().eq("id", id);
   revalidatePath("/orcamento");
   redirect("/orcamento");
@@ -226,7 +237,7 @@ export async function salvarParametrosEconomicos(
     return { ok: false, message: "Verifique os campos destacados.", errors };
   }
 
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const atualizado_em = new Date().toISOString();
   const rows = Object.entries(parsed.data).map(([chave, valor]) => ({
     chave,

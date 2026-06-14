@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createAdminClientUntyped } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
 import { adicionarItem, removerItem, excluirPlano } from "@/lib/actions/planejamento";
+import { comprarFaltasDoPlano } from "@/lib/actions/compras";
 import { PlanoAcoes } from "@/components/planejamento/PlanoAcoes";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Combobox } from "@/components/ui/combobox";
@@ -18,7 +19,7 @@ export default async function PlanoDetalhe({
 }) {
   const { id } = await params;
   const planId = Number(id);
-  const supabase = createAdminClientUntyped();
+  const supabase = await createClient();
 
   const { data: plano } = await supabase
     .from("planejamento")
@@ -134,9 +135,19 @@ export default async function PlanoDetalhe({
 
         {/* demanda */}
         <section className="mt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-            Demanda de insumos {temFalta && <span className="text-amber-600">· há faltas</span>}
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+              Demanda de insumos {temFalta && <span className="text-amber-600">· há faltas</span>}
+            </h2>
+            {temFalta && (
+              <form action={comprarFaltasDoPlano}>
+                <input type="hidden" name="planejamento_id" value={planId} />
+                <button className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500">
+                  Comprar faltas
+                </button>
+              </form>
+            )}
+          </div>
           <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <table className="w-full text-sm">
               <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">

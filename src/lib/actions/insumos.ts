@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClientUntyped } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
 /** Atualiza as etiquetas de uma linha de insumo_analise (grupo + modo de cobrança). */
 export async function atualizarInsumoLinha(formData: FormData) {
@@ -12,7 +12,7 @@ export async function atualizarInsumoLinha(formData: FormData) {
   const grupo_escolha = grupoRaw ? grupoRaw : null;
   const modo_cobranca = modoRaw ? modoRaw : null;
 
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("insumo_analise")
     .update({ grupo_escolha, modo_cobranca })
@@ -35,7 +35,7 @@ export async function marcarGrupoPorExecucao(formData: FormData) {
 
   if (!grupo || especificacoes.length === 0) return;
 
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("insumo_analise")
     .update({ grupo_escolha: grupo, modo_cobranca: "por_execucao" })

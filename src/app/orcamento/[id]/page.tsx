@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClientUntyped } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
 import { PrintButton } from "@/components/orcamento/PrintButton";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
@@ -12,6 +12,9 @@ import {
   recalcularOrcamento,
   excluirOrcamento,
 } from "@/lib/actions/orcamentos";
+import { gerarPlanejamentoDeOrcamento } from "@/lib/actions/planejamento";
+import { listarEventos } from "@/lib/actions/eventos";
+import { Timeline } from "@/components/common/Timeline";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +36,7 @@ export default async function OrcamentoDetalhe({
 }) {
   const { id } = await params;
   const orcId = Number(id);
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
 
   const { data: orc } = await supabase
     .from("orcamentos")
@@ -78,6 +81,8 @@ export default async function OrcamentoDetalhe({
     return atual != null && Math.abs(atual - Number(it.preco_unitario)) > 0.005;
   });
 
+  const eventos = await listarEventos("orcamento", orcId);
+
   const validade =
     orc.data_orcamento && orc.validade_dias
       ? new Date(
@@ -99,6 +104,14 @@ export default async function OrcamentoDetalhe({
           </Link>
           <div className="flex items-center gap-2">
             <PrintButton />
+            {orc.status === "aprovado" && itens.length > 0 && (
+              <form action={gerarPlanejamentoDeOrcamento}>
+                <input type="hidden" name="orcamento_id" value={orcId} />
+                <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500">
+                  Gerar planejamento
+                </button>
+              </form>
+            )}
             <form action={recalcularOrcamento}>
               <input type="hidden" name="orcamento_id" value={orcId} />
               <button className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
@@ -359,6 +372,14 @@ export default async function OrcamentoDetalhe({
               </button>
             </div>
           </form>
+        </section>
+
+        <section className="no-print mt-6 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="text-sm font-semibold">Linha do tempo</h2>
+          <p className="mt-1 mb-3 text-xs text-zinc-500">
+            Transições de status registradas (salve mudando o status acima para gerar eventos).
+          </p>
+          <Timeline eventos={eventos} />
         </section>
 
         <div className="no-print mt-6">

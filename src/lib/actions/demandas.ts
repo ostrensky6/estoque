@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClientUntyped } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
 const listaPath = "/orcamento/demandas";
 
@@ -20,7 +20,7 @@ function numeroOuNull(formData: FormData, chave: string) {
 
 async function clienteSnapshot(clienteId: number | null) {
   if (!clienteId) return null;
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("clientes")
     .select("nome, cnpj, contato, email, telefone")
@@ -30,7 +30,7 @@ async function clienteSnapshot(clienteId: number | null) {
 }
 
 export async function criarDemanda(formData: FormData) {
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const clienteId = numeroOuNull(formData, "cliente_id");
   const cliente = await clienteSnapshot(clienteId);
 
@@ -62,7 +62,7 @@ export async function salvarDemanda(formData: FormData) {
   const id = Number(formData.get("demanda_id"));
   if (!id) return;
 
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const clienteId = numeroOuNull(formData, "cliente_id");
   const cliente = await clienteSnapshot(clienteId);
 
@@ -75,7 +75,7 @@ export async function salvarDemanda(formData: FormData) {
     cliente_contato: cliente?.contato || cliente?.email || cliente?.telefone || texto(formData, "cliente_contato"),
     instituicao: texto(formData, "instituicao"),
     responsavel_interno: texto(formData, "responsavel_interno"),
-    data_solicitacao: texto(formData, "data_solicitacao"),
+    data_solicitacao: texto(formData, "data_solicitacao") ?? undefined,
     prazo_esperado: texto(formData, "prazo_esperado"),
     modalidade: texto(formData, "modalidade") || "analises",
     status: texto(formData, "status") || "nova",
@@ -96,7 +96,7 @@ export async function gerarOrcamentoAnalisesDaDemanda(formData: FormData) {
   const id = Number(formData.get("demanda_id"));
   if (!id) return;
 
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const { data: demanda } = await supabase
     .from("demandas_propostas")
     .select("*")
@@ -129,7 +129,7 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
   const id = Number(formData.get("demanda_id"));
   if (!id) return;
 
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const { data: demanda } = await supabase
     .from("demandas_propostas")
     .select("*")

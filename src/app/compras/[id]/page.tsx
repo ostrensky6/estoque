@@ -8,6 +8,8 @@ import {
   receberItemPedido,
 } from "@/lib/actions/compras";
 import { PedidoAcoes } from "@/components/compras/PedidoAcoes";
+import { listarEventos } from "@/lib/actions/eventos";
+import { Timeline } from "@/components/common/Timeline";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +47,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
     temPapel("coordenador"),
   ]);
 
+  const eventos = await listarEventos("pedido_compra", pedidoId);
   const editavel = pedido.status === "solicitado";
   const recebivel = (pedido.status === "aprovado" || pedido.status === "enviado") && podeGerir;
   const forn = (pedido.fornecedores as { nome: string | null } | null)?.nome;
@@ -160,6 +163,13 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
         {/* ações de status */}
         <section className="mt-8">
           <PedidoAcoes pedidoId={pedidoId} status={pedido.status} podeGerir={podeGerir} />
+        </section>
+
+        <section className="mt-8 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="text-sm font-semibold">Linha do tempo</h2>
+          <div className="mt-3">
+            <Timeline eventos={eventos} />
+          </div>
         </section>
       </main>
     </div>

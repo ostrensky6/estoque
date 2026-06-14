@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { atualizarInsumoLinha } from "@/lib/actions/insumos";
-import { Combobox } from "@/components/ui/combobox";
+import {
+  InsumosAnaliseTable,
+  type InsumoAnaliseRow,
+} from "@/components/insumos/InsumosAnaliseTable";
 
 export const dynamic = "force-dynamic";
-
-const brl = (v: number | null) =>
-  (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default async function InsumosPage({
   searchParams,
@@ -44,6 +43,25 @@ export default async function InsumosPage({
       .sort()
       .map((g) => ({ value: g, label: g })),
   ];
+  const rows: InsumoAnaliseRow[] = (linhas ?? []).map((l) => {
+    const custo =
+      (l.insumos as { custo_unitario: number | null } | null)
+        ?.custo_unitario ?? 0;
+    const modo = l.modo_cobranca ?? "";
+    return {
+      id: l.id as number,
+      etapa: l.nome_etapa ?? "—",
+      atividade: l.nome_atividade ?? "—",
+      etapaAtividade: `${l.nome_etapa ?? ""} ${l.nome_atividade ?? ""}`.trim(),
+      especificacao: l.especificacao_insumo ?? "",
+      semInsumo: l.especificacao_insumo ? "não" : "sim",
+      custoUnitario: Number(custo),
+      quantidade: Number(l.quantidade_por_amostra ?? 0),
+      grupoEscolha: l.grupo_escolha ?? "",
+      modoCobranca: modo,
+      modoCobrancaLabel: modo === "por_execucao" ? "por execução" : "por amostra",
+    };
+  });
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -73,85 +91,12 @@ export default async function InsumosPage({
           ))}
         </nav>
 
-        <div className="mt-6 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-          <table className="w-full text-sm">
-            <thead className="bg-zinc-100 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
-              <tr>
-                <th className="px-3 py-2 text-left">Etapa / Atividade</th>
-                <th className="px-3 py-2 text-left">Insumo</th>
-                <th className="px-3 py-2 text-right">Custo un.</th>
-                <th className="px-3 py-2 text-right">Qtd/am.</th>
-                <th className="px-3 py-2 text-left">Grupo de escolha</th>
-                <th className="px-3 py-2 text-left">Cobrança</th>
-                <th className="px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {linhas?.map((l) => {
-                const custo =
-                  (l.insumos as { custo_unitario: number | null } | null)
-                    ?.custo_unitario ?? null;
-                return (
-                  <tr key={l.id}>
-                    <td className="px-3 py-2 text-xs text-zinc-500">
-                      {l.nome_etapa}
-                      <br />
-                      <span className="text-zinc-700 dark:text-zinc-300">
-                        {l.nome_atividade}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 max-w-xs truncate" title={l.especificacao_insumo ?? ""}>
-                      {l.especificacao_insumo ?? (
-                        <span className="text-red-500">(sem insumo)</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {brl(custo)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {l.quantidade_por_amostra ?? "—"}
-                    </td>
-                    <td colSpan={3} className="px-3 py-2">
-                      <form action={atualizarInsumoLinha} className="flex items-center gap-2">
-                        <input type="hidden" name="id" value={l.id} />
-                        <div className="w-44">
-                          <Combobox
-                            name="grupo_escolha"
-                            creatable
-                            defaultValue={l.grupo_escolha ?? ""}
-                            placeholder="(nenhum)"
-                            searchPlaceholder="Buscar ou criar…"
-                            emptyText="Digite para criar."
-                            options={grupoOptions}
-                            className="h-8 text-xs"
-                          />
-                        </div>
-                        <select
-                          name="modo_cobranca"
-                          defaultValue={l.modo_cobranca ?? ""}
-                          className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900"
-                        >
-                          <option value="">por amostra (padrão)</option>
-                          <option value="por_amostra">por amostra</option>
-                          <option value="por_execucao">por execução</option>
-                        </select>
-                        <button
-                          type="submit"
-                          className="rounded bg-zinc-900 px-3 py-1 text-xs text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900"
-                        >
-                          Salvar
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="mt-6">
+          <InsumosAnaliseTable rows={rows} grupoOptions={grupoOptions} />
         </div>
 
         <p className="mt-4 text-xs text-zinc-400">
-          {linhas?.length ?? 0} linhas · análise {atual}
+          {rows.length} linhas · análise {atual}
         </p>
       </main>
     </div>

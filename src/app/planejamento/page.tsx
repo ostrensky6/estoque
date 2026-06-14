@@ -1,6 +1,6 @@
-import Link from "next/link";
-import { createAdminClientUntyped } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { criarPlano } from "@/lib/actions/planejamento";
+import { PlanosTable, type PlanoRow } from "@/components/planejamento/PlanosTable";
 
 export const dynamic = "force-dynamic";
 
@@ -8,16 +8,16 @@ type Reserva = { status: string };
 
 function statusPlano(reservas: Reserva[]) {
   if (reservas.some((r) => r.status === "consumido"))
-    return { label: "Iniciado", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" };
+    return { status: "iniciado", label: "Iniciado" };
   if (reservas.some((r) => r.status === "reservado"))
-    return { label: "Reservado", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" };
+    return { status: "reservado", label: "Reservado" };
   if (reservas.length > 0)
-    return { label: "Liberado", cls: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400" };
-  return { label: "Rascunho", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" };
+    return { status: "liberado", label: "Liberado" };
+  return { status: "rascunho", label: "Rascunho" };
 }
 
 export default async function PlanejamentoPage() {
-  const supabase = createAdminClientUntyped();
+  const supabase = await createClient();
   const [{ data: planos }, { data: projetos }] = await Promise.all([
     supabase
       .from("planejamento")
@@ -26,6 +26,19 @@ export default async function PlanejamentoPage() {
     supabase.from("projetos").select("id, nome").order("nome"),
   ]);
   const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
+  const linhas: PlanoRow[] = (planos ?? []).map((p) => {
+    const itens = (p.planejamento_itens as { count: number }[])?.[0]?.count ?? 0;
+    const st = statusPlano((p.reservas_estoque as Reserva[]) ?? []);
+    return {
+      id: p.id as number,
+      nome: p.nome ?? "Plano sem nome",
+      projeto: p.projeto_id != null ? projetoNome.get(p.projeto_id) ?? "—" : "—",
+      dataAlvo: p.data_alvo ?? "—",
+      itens,
+      status: st.status,
+      statusLabel: st.label,
+    };
+  });
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -60,47 +73,8 @@ export default async function PlanejamentoPage() {
           </button>
         </form>
 
-        {/* lista */}
-        <div className="mt-6 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
-              <tr>
-                <th className="px-4 py-3 text-left">Plano</th>
-                <th className="px-4 py-3 text-left">Projeto</th>
-                <th className="px-4 py-3 text-left">Data alvo</th>
-                <th className="px-4 py-3 text-right">Análises</th>
-                <th className="px-4 py-3 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {(planos ?? []).map((p) => {
-                const itens = (p.planejamento_itens as { count: number }[])?.[0]?.count ?? 0;
-                const st = statusPlano((p.reservas_estoque as Reserva[]) ?? []);
-                return (
-                  <tr key={p.id} className="hover:bg-transparent dark:hover:bg-zinc-800/40">
-                    <td className="px-4 py-2.5">
-                      <Link href={`/planejamento/${p.id}`} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
-                        {p.nome}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2.5 text-zinc-500">{p.projeto_id != null ? projetoNome.get(p.projeto_id) ?? "—" : "—"}</td>
-                    <td className="px-4 py-2.5 text-zinc-500">{p.data_alvo ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{itens}</td>
-                    <td className="px-4 py-2.5 text-center">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-              {(planos ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-zinc-400">
-                    Nenhum plano ainda. Crie o primeiro acima.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="mt-6">
+          <PlanosTable rows={linhas} />
         </div>
       </main>
     </div>

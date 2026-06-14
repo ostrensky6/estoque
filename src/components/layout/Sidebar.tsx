@@ -1,11 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { SideNav, type NavGroup } from "@/components/layout/SideNav";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { sair } from "@/lib/actions/auth";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
 
 const PAPEL_LABEL: Record<string, string> = {
   tecnico: "Técnico",
@@ -15,6 +23,10 @@ const PAPEL_LABEL: Record<string, string> = {
 };
 
 type Perfil = { nome: string | null; email: string | null; papel: string } | null;
+
+function abrirPaletaComandos() {
+  window.dispatchEvent(new Event("kontrol:open-command-palette"));
+}
 
 /** Conteúdo da barra (logo + navegação + rodapé), reutilizado no rail e no drawer. */
 function SidebarContent({
@@ -33,18 +45,33 @@ function SidebarContent({
       <Link
         href="/"
         onClick={onNavigate}
-        className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-4 dark:border-zinc-900"
+        className="flex items-center justify-center border-b border-slate-100 px-4 py-5 dark:border-zinc-900"
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-blue-600 text-sm font-bold text-white shadow-sm">
-          L
-        </span>
-        <span className="flex flex-col leading-tight">
-          <span className="text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Lab Custos
-          </span>
-          <span className="text-[11px] font-medium text-slate-400">Custeio &amp; Estoque</span>
-        </span>
+        <Image
+          src="/logos/kontrol-app.png"
+          alt="Kontrol App"
+          width={1448}
+          height={1086}
+          className="h-auto w-48 max-w-full object-contain"
+          priority
+          unoptimized
+        />
       </Link>
+
+      <div className="border-b border-slate-100 px-3 py-2.5 dark:border-zinc-900">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={abrirPaletaComandos}
+          className="h-8 w-full justify-start gap-2 border-slate-200 bg-white text-sm text-slate-500 shadow-none hover:text-slate-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span className="min-w-0 flex-1 truncate text-left">Buscar ou executar</span>
+          <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500">
+            Ctrl K
+          </kbd>
+        </Button>
+      </div>
 
       <SideNav groups={groups} onNavigate={onNavigate} />
 
@@ -61,7 +88,7 @@ function SidebarContent({
           <div className="flex items-center gap-1">
             <ThemeToggle />
             <form action={sair}>
-              <button className="rounded px-2 py-1 text-xs font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-zinc-800">
+              <button className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-zinc-800">
                 Sair
               </button>
             </form>
@@ -88,59 +115,64 @@ export function Sidebar({
     <>
       {/* Barra superior (só mobile) */}
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 py-2.5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950 md:hidden">
-        <button
+        <Button
           type="button"
           aria-label="Abrir menu"
           onClick={() => setOpen(true)}
-          className="rounded p-1.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-zinc-800"
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-slate-600 dark:text-slate-300"
         >
           <Menu className="h-5 w-5" />
-        </button>
+        </Button>
         <Link
           href="/"
           className="flex items-center gap-2 font-bold tracking-tight text-slate-900 dark:text-slate-100"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-blue-600 text-xs font-bold text-white">
-            L
-          </span>
-          <span className="text-sm">Lab Custos</span>
+          <Image
+            src="/logos/kontrol-app.png"
+            alt="Kontrol App"
+            width={1448}
+            height={1086}
+            className="h-9 w-auto max-w-32 object-contain"
+            priority
+            unoptimized
+          />
         </Link>
-        <ThemeToggle />
+        <Button
+          type="button"
+          aria-label="Buscar ou executar ação"
+          onClick={abrirPaletaComandos}
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-slate-600 dark:text-slate-300"
+        >
+          <Search className="h-5 w-5" />
+        </Button>
       </div>
 
       {/* Rail estática (desktop) */}
-      <aside className="hidden shrink-0 flex-col border-r border-slate-200/80 bg-white md:sticky md:top-0 md:flex md:h-dvh md:w-64 md:shadow-[1px_0_0_0_rgba(15,23,42,0.04),4px_0_24px_-12px_rgba(15,23,42,0.12)] dark:border-zinc-800 dark:bg-zinc-950">
+      <aside className="hidden shrink-0 flex-col border-r border-slate-200/80 bg-white md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:shadow-[1px_0_0_0_rgba(15,23,42,0.04),4px_0_24px_-12px_rgba(15,23,42,0.12)] dark:border-zinc-800 dark:bg-zinc-950">
         <SidebarContent groups={groups} perfil={perfil} userEmail={userEmail} />
       </aside>
 
-      {/* Drawer (mobile) */}
-      {open && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 md:hidden"
-          onClick={fechar}
-          aria-hidden="true"
-        />
-      )}
-      <aside
-        className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-white shadow-xl transition-transform duration-200 ease-out md:hidden dark:bg-zinc-950"
-        style={{ transform: open ? "translateX(0)" : "translateX(-100%)" }}
-        aria-hidden={!open}
-      >
-        <button
-          type="button"
-          aria-label="Fechar menu"
-          onClick={fechar}
-          className="absolute right-3 top-3.5 z-10 rounded p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-zinc-800"
+      <Drawer open={open} onOpenChange={setOpen}>
+        <DrawerContent
+          className="left-0 right-auto w-[18rem] max-w-[86vw] border-l-0 border-r border-border bg-white p-0 dark:bg-zinc-950 md:hidden"
+          showCloseButton
         >
-          <X className="h-5 w-5" />
-        </button>
-        <SidebarContent
-          groups={groups}
-          perfil={perfil}
-          userEmail={userEmail}
-          onNavigate={fechar}
-        />
-      </aside>
+          <DrawerTitle className="sr-only">Menu de navegação</DrawerTitle>
+          <DrawerDescription className="sr-only">
+            Acesse módulos do Kontrol App e ações rápidas.
+          </DrawerDescription>
+          <SidebarContent
+            groups={groups}
+            perfil={perfil}
+            userEmail={userEmail}
+            onNavigate={fechar}
+          />
+        </DrawerContent>
+      </Drawer>
     </>
   );
 }

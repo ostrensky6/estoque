@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClientUntyped } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { PrintButton } from "@/components/orcamento/PrintButton";
 import {
   adicionarAnaliseProjeto,
@@ -16,6 +17,7 @@ import {
   itemProjetoTotal,
   RUBRICAS_PROJETO,
 } from "@/lib/project-budget/legacy";
+import { gerarPlanejamentoDeOrcamentoProjeto } from "@/lib/actions/planejamento";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +61,7 @@ export default async function OrcamentoProjetoDetalhe({
 }) {
   const { id } = await params;
   const orcId = Number(id);
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
 
   const { data: orc } = await supabase
     .from("orcamento_projetos")
@@ -126,7 +128,17 @@ export default async function OrcamentoProjetoDetalhe({
           <Link href="/orcamento/projetos" className="text-xs text-zinc-500 hover:underline">
             ← Orçamentos de projetos
           </Link>
-          <PrintButton />
+          <div className="flex items-center gap-2">
+            {orc.status === "aprovado" && analisesProjeto.length > 0 && (
+              <form action={gerarPlanejamentoDeOrcamentoProjeto}>
+                <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+                <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500">
+                  Gerar planejamento
+                </button>
+              </form>
+            )}
+            <PrintButton />
+          </div>
         </div>
 
         <section className="mt-4 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60 print:border-0 print:shadow-none">
@@ -437,10 +449,16 @@ export default async function OrcamentoProjetoDetalhe({
           </form>
         </section>
 
-        <form action={excluirOrcamentoProjeto} className="no-print mt-6">
-          <input type="hidden" name="orcamento_projeto_id" value={orcId} />
-          <button className="text-xs text-zinc-400 hover:text-red-600">Excluir orçamento de projeto</button>
-        </form>
+        <div className="no-print mt-6">
+          <ConfirmActionButton
+            action={excluirOrcamentoProjeto}
+            fields={{ orcamento_projeto_id: orcId }}
+            trigger="Excluir orçamento de projeto"
+            titulo="Excluir orçamento de projeto"
+            mensagem={`Excluir o orçamento de projeto “${orc.titulo}”? Esta ação não pode ser desfeita.`}
+            confirmLabel="Excluir orçamento de projeto"
+          />
+        </div>
       </main>
     </div>
   );
@@ -482,7 +500,7 @@ function TabelaAnalises({ itens, orcId }: { itens: Analise[]; orcId: number }) {
         <thead className="text-xs uppercase tracking-wide text-zinc-500">
           <tr>
             <th className="px-3 py-2 text-left">Análise</th>
-            <th className="px-3 py-2">Custo/amostra</th>
+            <th className="no-print px-3 py-2">Custo/amostra</th>
             <th className="px-3 py-2">Preço/amostra</th>
             <th className="px-3 py-2">Amostras</th>
             <th className="px-3 py-2">Subtotal</th>
@@ -493,7 +511,7 @@ function TabelaAnalises({ itens, orcId }: { itens: Analise[]; orcId: number }) {
           {itens.map((it) => (
             <tr key={it.id}>
               <td className="px-3 py-2 text-left font-medium">{it.codigo_analise}</td>
-              <td className="px-3 py-2 tabular-nums text-zinc-500">{brl(Number(it.custo_unitario))}</td>
+              <td className="no-print px-3 py-2 tabular-nums text-zinc-500">{brl(Number(it.custo_unitario))}</td>
               <td className="px-3 py-2 tabular-nums">{brl(Number(it.preco_unitario))}</td>
               <td className="px-3 py-2 tabular-nums">{Number(it.n_amostras)}</td>
               <td className="px-3 py-2 font-semibold tabular-nums">{brl(Number(it.preco_unitario) * Number(it.n_amostras))}</td>
@@ -536,7 +554,7 @@ function TabelaCustos({ itens, orcId }: { itens: Custo[]; orcId: number }) {
             <th className="px-3 py-2 text-left">Categoria</th>
             <th className="px-3 py-2 text-left">Descrição</th>
             <th className="px-3 py-2">Qtd.</th>
-            <th className="px-3 py-2">Custo unit.</th>
+            <th className="no-print px-3 py-2">Custo unit.</th>
             <th className="px-3 py-2">Preço unit.</th>
             <th className="px-3 py-2">Subtotal</th>
             <th className="no-print px-3 py-2"></th>
@@ -548,7 +566,7 @@ function TabelaCustos({ itens, orcId }: { itens: Custo[]; orcId: number }) {
               <td className="px-3 py-2 text-left">{CATEGORIAS[it.categoria] ?? it.categoria}</td>
               <td className="px-3 py-2 text-left font-medium">{it.descricao}</td>
               <td className="px-3 py-2 tabular-nums">{quantidadeLabel(it)}</td>
-              <td className="px-3 py-2 tabular-nums text-zinc-500">{brl(Number(it.custo_unitario))}</td>
+              <td className="no-print px-3 py-2 tabular-nums text-zinc-500">{brl(Number(it.custo_unitario))}</td>
               <td className="px-3 py-2 tabular-nums">{brl(Number(it.preco_unitario))}</td>
               <td className="px-3 py-2 font-semibold tabular-nums">{brl(itemProjetoTotal(it))}</td>
               <td className="no-print px-3 py-2">

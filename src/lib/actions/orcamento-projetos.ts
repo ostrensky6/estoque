@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClientUntyped } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
 
 const pathLista = "/orcamento/projetos";
@@ -43,7 +43,7 @@ function categoriaPorRubrica(rubrica: string) {
 
 async function carregarCliente(clienteId: number | null) {
   if (!clienteId) return null;
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("clientes")
     .select("nome, cnpj, contato, email, telefone")
@@ -53,7 +53,7 @@ async function carregarCliente(clienteId: number | null) {
 }
 
 export async function criarOrcamentoProjeto(formData: FormData) {
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const projetoId = formData.get("projeto_id") ? Number(formData.get("projeto_id")) : null;
   const titulo = texto(formData, "titulo") || "Novo orçamento de projeto";
 
@@ -92,7 +92,7 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
 
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const projetoId = formData.get("projeto_id") ? Number(formData.get("projeto_id")) : null;
   const clienteId = formData.get("cliente_id") ? Number(formData.get("cliente_id")) : null;
   const cliente = await carregarCliente(clienteId);
@@ -104,7 +104,7 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
     cliente_nome: cliente?.nome ?? texto(formData, "cliente_nome"),
     cliente_cnpj: cliente?.cnpj ?? texto(formData, "cliente_cnpj"),
     cliente_contato: cliente?.contato || cliente?.email || cliente?.telefone || texto(formData, "cliente_contato"),
-    data_orcamento: texto(formData, "data_orcamento"),
+    data_orcamento: texto(formData, "data_orcamento") ?? undefined,
     validade_dias: numero(formData, "validade_dias", 30),
     responsavel: texto(formData, "responsavel"),
     status: texto(formData, "status") || "rascunho",
@@ -142,7 +142,7 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
 
   const { breakdowns } = await calcularTodas();
   const breakdown = breakdowns.find((x) => x.codigo === codigo);
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const { error } = await supabase.from("orcamento_projeto_analises").insert({
     orcamento_projeto_id: id,
     codigo_analise: codigo,
@@ -163,7 +163,7 @@ export async function adicionarCustoProjeto(formData: FormData) {
   const custoUnitario = numero(formData, "custo_unitario");
   const precoUnitario = numero(formData, "preco_unitario", custoUnitario);
 
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const { error } = await supabase.from("orcamento_projeto_custos").insert({
     orcamento_projeto_id: id,
     categoria: texto(formData, "categoria") || categoriaPorRubrica(texto(formData, "rubrica") || "OU"),
@@ -185,7 +185,7 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
   const catalogoId = texto(formData, "catalogo_item_id");
   if (!id || !catalogoId) return;
 
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const { data: item, error: itemError } = await supabase
     .from("orcamento_projeto_catalogo")
     .select("id, rubrica, descricao, unidade, preco_unitario, categoria")
@@ -217,7 +217,7 @@ export async function removerAnaliseProjeto(formData: FormData) {
   const id = numero(formData, "orcamento_projeto_id");
   const itemId = numero(formData, "item_id");
   if (!id || !itemId) return;
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   await supabase.from("orcamento_projeto_analises").delete().eq("id", itemId);
   revalidatePath(`${pathLista}/${id}`);
 }
@@ -226,7 +226,7 @@ export async function removerCustoProjeto(formData: FormData) {
   const id = numero(formData, "orcamento_projeto_id");
   const itemId = numero(formData, "item_id");
   if (!id || !itemId) return;
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   await supabase.from("orcamento_projeto_custos").delete().eq("id", itemId);
   revalidatePath(`${pathLista}/${id}`);
 }
@@ -234,7 +234,7 @@ export async function removerCustoProjeto(formData: FormData) {
 export async function excluirOrcamentoProjeto(formData: FormData) {
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   await supabase.from("orcamento_projetos").delete().eq("id", id);
   revalidatePath(pathLista);
   redirect(pathLista);

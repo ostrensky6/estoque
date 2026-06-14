@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createClientUntyped } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "./cadastros";
 
 const schema = z.object({
@@ -21,10 +21,15 @@ const schema = z.object({
   ),
   codigo: z.preprocess((v) => (v === "" || v == null ? null : String(v)), z.string().nullable()),
   fornecedor: z.preprocess((v) => (v === "" || v == null ? null : String(v)), z.string().nullable()),
+  motivo: z.preprocess((v) => (v === "" || v == null ? null : String(v)), z.string().nullable()),
 });
 
-/** Recebe um lote (reposição = entrada) via RPC transacional. */
-export async function receberLote(
+/**
+ * 2.4 — Entrada de inventário / ajuste (porta avulsa, EXPLÍCITA). O recebimento
+ * "normal" de compra acontece pelo item do pedido (receberItemPedido). Aqui é a
+ * entrada sem pedido (contagem, doação, correção), com motivo próprio na trilha.
+ */
+export async function entradaInventario(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
@@ -35,6 +40,7 @@ export async function receberLote(
     custo: formData.get("custo"),
     codigo: formData.get("codigo"),
     fornecedor: formData.get("fornecedor"),
+    motivo: formData.get("motivo"),
   });
   if (!parsed.success) {
     const errors: Record<string, string> = {};
@@ -46,26 +52,27 @@ export async function receberLote(
   }
 
   const d = parsed.data;
-  const supabase = await createClientUntyped();
-  const { error } = await supabase.rpc("receber_lote", {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("entrada_inventario", {
     p_insumo_id: d.insumo_id,
     p_quantidade: d.quantidade,
     p_validade: d.validade ?? undefined,
     p_custo: d.custo ?? undefined,
     p_codigo: d.codigo ?? undefined,
     p_fornecedor: d.fornecedor ?? undefined,
+    p_motivo: d.motivo ?? undefined,
   });
   if (error) return { ok: false, message: error.message };
 
   revalidatePath("/estoque");
-  return { ok: true, message: "Lote recebido (em quarentena)." };
+  return { ok: true, message: "Entrada de inventário registrada (lote em quarentena)." };
 }
 
 async function rpcLote(
   fn: string,
   args: Record<string, unknown>,
 ): Promise<FormState> {
-  const supabase = await createClientUntyped();
+  const supabase = await createClient();
   const { error } = await supabase.rpc(fn as never, args as never);
   if (error) return { ok: false, message: error.message };
   revalidatePath("/estoque");

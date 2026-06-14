@@ -1,57 +1,83 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  Activity,
+  ArchiveRestore,
+  Boxes,
+  Building2,
+  Calculator,
+  CalendarClock,
+  ChevronDown,
+  ClipboardList,
+  Database,
+  FileText,
+  FlaskConical,
+  FolderKanban,
+  FolderOpen,
+  History,
+  Inbox,
+  LayoutDashboard,
+  LayoutGrid,
+  MapPin,
+  Microscope,
+  PackageSearch,
+  Percent,
+  ReceiptText,
+  ShieldCheck,
+  ShoppingCart,
+  SlidersHorizontal,
+  TestTube2,
+  Truck,
+  UserCog,
+  UsersRound,
+  type LucideIcon,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export type Accent = "emerald" | "blue" | "amber" | "violet" | "slate";
-export type NavLink = { href: string; label: string; desc?: string };
-export type NavGroup = { title: string; accent: Accent; links: NavLink[] };
+const ICONS = {
+  Activity,
+  ArchiveRestore,
+  Boxes,
+  Building2,
+  Calculator,
+  CalendarClock,
+  ClipboardList,
+  Database,
+  FileText,
+  FlaskConical,
+  FolderKanban,
+  FolderOpen,
+  History,
+  Inbox,
+  LayoutDashboard,
+  LayoutGrid,
+  MapPin,
+  Microscope,
+  PackageSearch,
+  Percent,
+  ReceiptText,
+  ShieldCheck,
+  ShoppingCart,
+  SlidersHorizontal,
+  TestTube2,
+  Truck,
+  UserCog,
+  UsersRound,
+} satisfies Record<string, LucideIcon>;
 
-const ACCENT: Record<
-  Accent,
-  { dot: string; header: string; activeBg: string; activeText: string; bar: string; hover: string }
-> = {
-  emerald: {
-    dot: "bg-emerald-500",
-    header: "text-emerald-700 dark:text-emerald-400",
-    activeBg: "bg-emerald-50 dark:bg-emerald-950/40",
-    activeText: "text-emerald-900 dark:text-emerald-200",
-    bar: "bg-emerald-500",
-    hover: "hover:bg-emerald-50/70 dark:hover:bg-emerald-950/30",
-  },
-  amber: {
-    dot: "bg-amber-500",
-    header: "text-amber-700 dark:text-amber-400",
-    activeBg: "bg-amber-50 dark:bg-amber-950/40",
-    activeText: "text-amber-900 dark:text-amber-200",
-    bar: "bg-amber-500",
-    hover: "hover:bg-amber-50/70 dark:hover:bg-amber-950/30",
-  },
-  violet: {
-    dot: "bg-violet-500",
-    header: "text-violet-700 dark:text-violet-400",
-    activeBg: "bg-violet-50 dark:bg-violet-950/40",
-    activeText: "text-violet-900 dark:text-violet-200",
-    bar: "bg-violet-500",
-    hover: "hover:bg-violet-50/70 dark:hover:bg-violet-950/30",
-  },
-  blue: {
-    dot: "bg-blue-500",
-    header: "text-blue-700 dark:text-blue-400",
-    activeBg: "bg-blue-50 dark:bg-blue-950/40",
-    activeText: "text-blue-900 dark:text-blue-200",
-    bar: "bg-blue-500",
-    hover: "hover:bg-blue-50/70 dark:hover:bg-blue-950/30",
-  },
-  slate: {
-    dot: "bg-slate-400",
-    header: "text-slate-600 dark:text-slate-400",
-    activeBg: "bg-slate-100 dark:bg-slate-800/50",
-    activeText: "text-slate-900 dark:text-slate-100",
-    bar: "bg-slate-400",
-    hover: "hover:bg-slate-100/70 dark:hover:bg-slate-800/30",
-  },
+export type NavIcon = keyof typeof ICONS;
+export type NavLink = {
+  href: string;
+  label: string;
+  desc?: string;
+  icon?: NavIcon;
+  shortcut?: string;
 };
+export type NavGroup = { title: string; accent: Accent; icon?: NavIcon; links: NavLink[] };
 
 export function SideNav({
   groups,
@@ -61,56 +87,115 @@ export function SideNav({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const [collapsedActiveGroup, setCollapsedActiveGroup] = useState<string | null>(null);
+
+  function estaAtivo(href: string) {
+    return pathname === href || pathname.startsWith(href + "/");
+  }
 
   return (
-    <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-4">
+    <nav className="flex-1 overflow-y-auto px-3 py-3">
       {groups.map((g) => {
-        const c = ACCENT[g.accent];
-        const destacarTitulo = ["Análises", "Estoque", "Orçamento"].includes(g.title);
+        const GrupoIcone = g.icon ? ICONS[g.icon] : Activity;
+        const temLinkAtivo = g.links.some((l) => estaAtivo(l.href));
+        const aberto =
+          openGroup === g.title ||
+          (openGroup === null && temLinkAtivo && collapsedActiveGroup !== g.title);
         return (
           <section
             key={g.title}
-            className="rounded-lg border border-slate-200/80 bg-white/50 p-2 shadow-[0_1px_0_rgba(15,23,42,0.03)] dark:border-zinc-800/90 dark:bg-zinc-950/40"
+            className="border-b border-slate-100 py-1.5 last:border-b-0 dark:border-zinc-900"
           >
-            <h3
-              className={`flex items-center gap-2 px-2 py-1 text-[13px] ${
-                destacarTitulo ? "font-extrabold" : "font-bold"
-              } uppercase tracking-wide ${c.header}`}
+            <button
+              type="button"
+              onClick={() => {
+                if (aberto) {
+                  setOpenGroup(null);
+                  setCollapsedActiveGroup(temLinkAtivo ? g.title : null);
+                  return;
+                }
+
+                setOpenGroup(g.title);
+                setCollapsedActiveGroup(null);
+              }}
+              aria-expanded={aberto}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-zinc-900",
+                aberto || temLinkAtivo
+                  ? "text-slate-900 dark:text-slate-100"
+                  : "text-slate-500 dark:text-zinc-400",
+              )}
             >
-              <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
-              {g.title}
-            </h3>
-            <ul className="mt-2 space-y-0.5">
-              {g.links.map((l) => {
-                const ativo =
-                  pathname === l.href || pathname.startsWith(l.href + "/");
-                return (
-                  <li key={`${l.href}:${l.label}`}>
-                    <Link
-                      href={l.href}
-                      onClick={onNavigate}
-                      className={`relative block rounded-md py-1.5 pl-3.5 pr-2 text-sm transition-colors ${
-                        ativo
-                          ? `${c.activeBg} font-semibold ${c.activeText}`
-                          : `font-medium text-slate-600 dark:text-slate-300 ${c.hover}`
-                      }`}
-                    >
-                      {ativo && (
-                        <span
-                          className={`absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full ${c.bar}`}
-                        />
-                      )}
-                      {l.label}
-                      {l.desc && (
-                        <span className="mt-0.5 block text-[11px] font-normal leading-tight text-slate-400 dark:text-slate-500">
-                          {l.desc}
+              <span
+                className={cn(
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border",
+                  temLinkAtivo
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-300"
+                    : "border-slate-200 bg-white text-slate-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-500",
+                )}
+              >
+                <GrupoIcone className="h-3.5 w-3.5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[10px] font-bold uppercase tracking-wide">
+                  {g.title}
+                </span>
+                <span className="mt-0.5 block text-[10px] font-medium text-slate-400 dark:text-zinc-500">
+                  {g.links.length} itens
+                </span>
+              </span>
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 text-slate-400 transition-transform dark:text-zinc-500",
+                  aberto && "rotate-180",
+                )}
+              />
+            </button>
+            {aberto && (
+              <ul className="ml-5 space-y-0.5 border-l border-slate-200 py-1 pl-3 dark:border-zinc-800">
+                {g.links.map((l) => {
+                  const ativo = estaAtivo(l.href);
+                  const LinkIcone = l.icon ? ICONS[l.icon] : undefined;
+                  return (
+                    <li key={`${l.href}:${l.label}`}>
+                      <Link
+                        href={l.href}
+                        onClick={onNavigate}
+                        className={cn(
+                          "relative flex min-h-9 items-start gap-2 rounded-md py-1.5 pl-2.5 pr-2 transition-colors",
+                          ativo
+                            ? "bg-emerald-50 font-semibold text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-100"
+                            : "font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-zinc-100",
+                        )}
+                      >
+                        {ativo && (
+                          <span
+                            className="absolute -left-[13px] top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-emerald-500"
+                          />
+                        )}
+                        {LinkIcone && (
+                          <LinkIcone className="mt-0.5 h-3.5 w-3.5 shrink-0 text-current opacity-70" />
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] leading-5">{l.label}</span>
+                          {ativo && l.desc && (
+                            <span className="mt-0.5 block text-[11px] font-normal leading-tight text-slate-500 dark:text-zinc-500">
+                              {l.desc}
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+                        {l.shortcut && (
+                          <kbd className="mt-0.5 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-500">
+                            {l.shortcut}
+                          </kbd>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </section>
         );
       })}

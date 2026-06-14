@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
-import { atualizarPapel } from "@/lib/actions/usuarios";
+import { ConviteUsuarioForm } from "@/components/usuarios/ConviteUsuarioForm";
+import { UsuariosTable, type UsuarioRow } from "@/components/usuarios/UsuariosTable";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,14 @@ export default async function UsuariosPage() {
     .from("perfis")
     .select("id, nome, email, papel, criado_em")
     .order("email");
+  const papelLabel = new Map(PAPEIS.map((papel) => [papel.value, papel.label]));
+  const linhas: UsuarioRow[] = (perfis ?? []).map((perfil) => ({
+    id: String(perfil.id),
+    nome: perfil.nome ?? "—",
+    email: perfil.email ?? "—",
+    papel: perfil.papel,
+    papelLabel: papelLabel.get(perfil.papel) ?? perfil.papel,
+  }));
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -35,41 +44,10 @@ export default async function UsuariosPage() {
           compras e aceita lotes; gestor bloqueia/descarta lotes; admin gerencia tudo.
         </p>
 
-        <div className="mt-6 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
-              <tr>
-                <th className="px-4 py-3 text-left">Usuário</th>
-                <th className="px-4 py-3 text-left">E-mail</th>
-                <th className="px-4 py-3 text-left">Papel</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {(perfis ?? []).map((p) => (
-                <tr key={p.id}>
-                  <td className="px-4 py-2.5">{p.nome ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-zinc-500">{p.email}</td>
-                  <td className="px-4 py-2.5">
-                    <form action={atualizarPapel} className="flex items-center gap-2">
-                      <input type="hidden" name="id" value={p.id} />
-                      <select
-                        name="papel"
-                        defaultValue={p.papel}
-                        className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-                      >
-                        {PAPEIS.map((pp) => (
-                          <option key={pp.value} value={pp.value}>{pp.label}</option>
-                        ))}
-                      </select>
-                      <button className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900">
-                        Salvar
-                      </button>
-                    </form>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <ConviteUsuarioForm />
+
+        <div className="mt-6">
+          <UsuariosTable rows={linhas} />
         </div>
       </main>
     </div>

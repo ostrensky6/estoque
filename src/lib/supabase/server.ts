@@ -8,6 +8,11 @@ import type { Database } from "./database.types";
  * Lê e grava cookies de sessão (auth) via next/headers.
  */
 export async function createClient() {
+  if (process.env.PLAYWRIGHT_MOCK_SUPABASE === "1") {
+    const { createMockSupabaseClient } = await import("@/lib/testing/mock-supabase");
+    return createMockSupabaseClient() as unknown as ReturnType<typeof createServerClient<Database>>;
+  }
+
   const cookieStore = await cookies();
 
   return createServerClient<Database>(

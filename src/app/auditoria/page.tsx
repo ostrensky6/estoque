@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
+import { AuditoriaTable, type AuditoriaRow } from "@/components/auditoria/AuditoriaTable";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,24 @@ export default async function AuditoriaPage({
     .limit(200);
   if (tabela) q = q.eq("tabela", tabela);
   const { data: registros } = await q;
+  const linhas: AuditoriaRow[] = (registros ?? []).map((r) => {
+    const a = ACAO[r.acao] ?? { label: r.acao, cls: "" };
+    return {
+      id: r.id as number,
+      quando: new Date(r.criado_em).toLocaleString("pt-BR"),
+      usuario: r.usuario ?? "—",
+      tabela: r.tabela,
+      tabelaLabel: LABEL[r.tabela] ?? r.tabela,
+      registro: `#${r.registro_id}`,
+      acao: r.acao,
+      acaoLabel: a.label,
+      alteracao: resumoDiff(
+        r.acao,
+        r.valor_anterior as Record<string, unknown> | null,
+        r.valor_novo as Record<string, unknown> | null,
+      ),
+    };
+  });
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -88,51 +107,8 @@ export default async function AuditoriaPage({
           ))}
         </nav>
 
-        <div className="mt-4 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
-              <tr>
-                <th className="px-4 py-3 text-left">Quando</th>
-                <th className="px-4 py-3 text-left">Usuário</th>
-                <th className="px-4 py-3 text-left">Tabela</th>
-                <th className="px-4 py-3 text-center">Ação</th>
-                <th className="px-4 py-3 text-left">Alteração</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {(registros ?? []).map((r) => {
-                const a = ACAO[r.acao] ?? { label: r.acao, cls: "bg-zinc-100" };
-                return (
-                  <tr key={r.id}>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-zinc-500">
-                      {new Date(r.criado_em).toLocaleString("pt-BR")}
-                    </td>
-                    <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-300">{r.usuario ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-zinc-500">
-                      {LABEL[r.tabela] ?? r.tabela} <span className="text-zinc-400">#{r.registro_id}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-center">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${a.cls}`}>{a.label}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-xs text-zinc-600 dark:text-zinc-300">
-                      {resumoDiff(
-                        r.acao,
-                        r.valor_anterior as Record<string, unknown> | null,
-                        r.valor_novo as Record<string, unknown> | null,
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-              {(registros ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-zinc-400">
-                    Nenhum evento de auditoria ainda.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="mt-4">
+          <AuditoriaTable rows={linhas} />
         </div>
       </main>
     </div>

@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { ExecutiveCharts } from "@/components/dashboard/ExecutiveCharts";
+import { formatCompactCurrency, formatNumber } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +35,27 @@ type PedidoCompra = {
   status: string;
   data_solicitacao: string | null;
   projeto: string | null;
+};
+
+type DashboardExecutivo = {
+  valor_estoque_ativo: number | null;
+  valor_vencendo_horizonte: number | null;
+  lotes_vencendo_horizonte: number | null;
+  orcamentos_rascunho: number | null;
+  orcamentos_enviados: number | null;
+  orcamentos_aprovados: number | null;
+  orcamentos_perdidos: number | null;
+  margem_media_pct: number | null;
+  compras_abertas_valor: number | null;
+  gasto_por_projeto_mes: unknown;
+};
+
+type Notificacao = {
+  id: number;
+  tipo: string;
+  titulo: string;
+  corpo: string | null;
+  criado_em: string;
 };
 
 const TONS: Record<
@@ -87,9 +110,6 @@ const TONS: Record<
     link: "text-slate-700 hover:text-slate-950 dark:text-zinc-300",
   },
 };
-
-const fmt = (v: number | null | undefined) =>
-  (v ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
 const pct = (parte: number, total: number) =>
   total > 0 ? `${Math.round((parte / total) * 100)}%` : "0%";
@@ -226,6 +246,8 @@ export default async function Home() {
     { data: saldoRaw },
     { count: nPlanos },
     { data: pedidosRaw },
+    { data: dashboardRaw },
+    { data: notificacoesRaw },
   ] = await Promise.all([
     supabase.from("analises").select("*", { count: "exact", head: true }).eq("ativo", true),
     supabase.from("v_alertas_estoque").select("*"),
@@ -236,11 +258,29 @@ export default async function Home() {
       .select("id, status, data_solicitacao, projeto")
       .in("status", ["solicitado", "aprovado", "enviado"])
       .order("criado_em", { ascending: false }),
+    supabase.from("v_dashboard_executivo").select("*").maybeSingle(),
+    supabase
+      .from("notificacoes")
+      .select("id, tipo, titulo, corpo, criado_em")
+      .eq("status", "nao_lida")
+      .order("criado_em", { ascending: false })
+      .limit(5),
   ]);
 
   const alertas = (alertasRaw ?? []) as AlertaEstoque[];
   const saldo = (saldoRaw ?? []) as EstoqueSaldo[];
   const pedidos = (pedidosRaw ?? []) as PedidoCompra[];
+  const dashboard = dashboardRaw as DashboardExecutivo | null;
+  const notificacoes = (notificacoesRaw ?? []) as Notificacao[];
+  const gastos = Array.isArray(dashboard?.gasto_por_projeto_mes)
+    ? (dashboard.gasto_por_projeto_mes as Array<{ mes: string; projeto: string; gasto: number }>)
+    : [];
+  const funil = [
+    { status: "Rascunho", total: Number(dashboard?.orcamentos_rascunho ?? 0) },
+    { status: "Enviado", total: Number(dashboard?.orcamentos_enviados ?? 0) },
+    { status: "Aprovado", total: Number(dashboard?.orcamentos_aprovados ?? 0) },
+    { status: "Perdido", total: Number(dashboard?.orcamentos_perdidos ?? 0) },
+  ];
 
   const alertasReposicao = alertas.filter((a) => a.tipo === "reposicao");
   const alertasVencimento = alertas.filter((a) => a.tipo === "vencimento");
@@ -251,7 +291,7 @@ export default async function Home() {
     .filter((s) => (s.ponto_reposicao ?? 0) > 0 && (s.disponivel ?? 0) <= (s.ponto_reposicao ?? 0))
     .map((s) => ({
       titulo: s.especificacao ?? `Insumo #${s.insumo_id}`,
-      meta: `disp. ${fmt(s.disponivel)} ${s.unidade ?? ""} · ponto ${fmt(s.ponto_reposicao)} · sugerido ${fmt(
+      meta: `disp. ${formatNumber(s.disponivel)} ${s.unidade ?? ""} · ponto ${formatNumber(s.ponto_reposicao)} · sugerido ${formatNumber(
         Math.max(0, (s.ponto_reposicao ?? 0) + (s.estoque_seguranca ?? 0) - (s.disponivel ?? 0)),
       )}`,
       peso: (s.categoria_compra === "critico" ? 100000 : 0) + Math.max(0, (s.ponto_reposicao ?? 0) - (s.disponivel ?? 0)),
@@ -273,15 +313,16 @@ export default async function Home() {
           <div className="flex items-center gap-3">
             <Image
               src="/logos/kontrol-app.png"
-              alt=""
-              width={979}
-              height={979}
-              className="h-12 w-12 shrink-0 rounded-lg object-contain shadow-sm"
+              alt="Kontrol App"
+              width={1448}
+              height={1086}
+              className="h-auto w-40 shrink-0 object-contain sm:w-48"
               priority
+              unoptimized
             />
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-4xl">
-                Kontrol App
+                Painel de decisão operacional
               </h1>
               <p className="mt-1 text-sm text-slate-600 dark:text-zinc-400">
                 Orçamento, planejamento, estoque e compras no mesmo fluxo de decisão.
@@ -325,6 +366,27 @@ export default async function Home() {
         <Kpi label="Cobertura" valor={pct(Math.max(0, saldo.length - semDisponivel.length), saldo.length)} detalhe="insumos com saldo disponível positivo" tom="slate" />
       </section>
 
+      <section className="mt-8">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Dashboard executivo</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-zinc-400">
+              Estoque, compras, margem e funil comercial em uma leitura rápida.
+            </p>
+          </div>
+          <Badge tom="blue">{notificacoes.length} notificações in-app</Badge>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Kpi label="Estoque ativo" valor={formatCompactCurrency(dashboard?.valor_estoque_ativo)} detalhe="saldo aceito/em uso valorizado" tom="emerald" />
+          <Kpi label="Vencendo" valor={formatCompactCurrency(dashboard?.valor_vencendo_horizonte)} detalhe={`${dashboard?.lotes_vencendo_horizonte ?? 0} lotes no horizonte`} tom={(dashboard?.lotes_vencendo_horizonte ?? 0) > 0 ? "amber" : "emerald"} />
+          <Kpi label="Compras abertas" valor={formatCompactCurrency(dashboard?.compras_abertas_valor)} detalhe="valor estimado em pedidos abertos" tom="blue" />
+          <Kpi label="Margem média" valor={`${formatNumber(dashboard?.margem_media_pct)}%`} detalhe="orçamentos com snapshot de preço" tom="slate" />
+        </div>
+        <div className="mt-4">
+          <ExecutiveCharts gastos={gastos} funil={funil} />
+        </div>
+      </section>
+
       <section className="mt-8 grid gap-6 lg:grid-cols-2">
         <JornadaCard
           tom="emerald"
@@ -352,7 +414,7 @@ export default async function Home() {
         />
       </section>
 
-      <section className="mt-8 grid gap-4 lg:grid-cols-3">
+      <section className="mt-8 grid gap-4 lg:grid-cols-4">
         <ListaProblemas
           titulo="Prioridade de compra"
           href="/compras"
@@ -367,7 +429,7 @@ export default async function Home() {
           vazio="Nenhum lote vencido ou vencendo dentro da janela."
           itens={[...alertasVencidos, ...alertasVencimento].slice(0, 5).map((a) => ({
             titulo: a.especificacao ?? `Insumo #${a.insumo_id}`,
-            meta: `${a.tipo === "vencido" ? "vencido" : "vence em breve"}${a.validade ? ` · ${a.validade}` : ""} · saldo ${fmt(a.valor)}`,
+            meta: `${a.tipo === "vencido" ? "vencido" : "vence em breve"}${a.validade ? ` · ${a.validade}` : ""} · saldo ${formatNumber(a.valor)}`,
           }))}
         />
         <ListaProblemas
@@ -378,6 +440,16 @@ export default async function Home() {
           itens={pedidos.slice(0, 5).map((p) => ({
             titulo: `Pedido #${p.id}`,
             meta: `${p.status}${p.data_solicitacao ? ` · ${p.data_solicitacao}` : ""}${p.projeto ? ` · ${p.projeto}` : ""}`,
+          }))}
+        />
+        <ListaProblemas
+          titulo="Notificações"
+          href="/compras"
+          tom="slate"
+          vazio="Nenhuma notificação in-app pendente."
+          itens={notificacoes.map((n) => ({
+            titulo: n.titulo,
+            meta: `${n.tipo}${n.corpo ? ` · ${n.corpo}` : ""}`,
           }))}
         />
       </section>
