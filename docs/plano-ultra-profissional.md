@@ -51,16 +51,15 @@ e os módulos /orcamento, /custeio, /analises, /planejamento, /estoque, /compras
 - [x] **Confirmação ao excluir.** Novo `ConfirmActionButton`
   (`src/components/common/`) com modal custom, usado em "Excluir orçamento" e
   "Excluir plano".
-  *Pronto:* exclusões pedem confirmação sem `confirm()` nativo. ✅
-  *Resta:* o "Iniciar (baixa definitiva)" em `PlanoAcoes` ainda usa `confirm()`
-  nativo — migrar para o mesmo modal.
-- [ ] **`grupo_escolha` como combobox.** Hoje é texto livre em `/insumos` — digitar
-  errado quebra o agrupamento silenciosamente.
-  *Pronto:* seleção a partir dos grupos existentes (+ criar novo explicitamente).
-- [ ] **Tag dos reagentes de sequenciamento.** Kits MiSeq / flow cell sem
-  `grupo_escolha`/`modo_cobranca=por_execucao` inflam o custo (ver
-  `achados-dados-planilha`).
-  *Pronto:* MiSeq num grupo de escolha + `por_execucao`; custo/amostra cai com o lote.
+  *Pronto:* exclusões pedem confirmação sem `confirm()` nativo. ✅ O "Iniciar
+  (baixa definitiva)" em `PlanoAcoes` também migrou para modal custom. ✅
+- [x] **`grupo_escolha` como combobox.** `/insumos` usa `input + datalist` com os
+  grupos já existentes na análise (sugere os válidos, permite criar novo).
+  *Pronto:* sem texto-livre cego. ✅
+- [x] **Tag dos reagentes de sequenciamento.** `Illumina_Sh_qPCR` tinha os 7 kits
+  MiSeq sem `grupo_escolha`/`por_execucao` (somavam ~R$55k/amostra). Corrigido no
+  seed e no banco.
+  *Pronto:* custo total caiu para R$ 514,27 (1 kit ÷ lote). ✅ verificado no /custeio.
 
 ## Fase 1 — Fundações de engenharia
 
