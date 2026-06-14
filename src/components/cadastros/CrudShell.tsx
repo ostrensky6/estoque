@@ -118,13 +118,33 @@ export function CrudShell({
     [colunas],
   );
 
-  // busca global: casa contra o valor JÁ FORMATADO (acha "Sim", "R$", "%"…)
+  // mapa value->label dos campos select, p/ exibir e buscar pelo rótulo amigável
+  const rotuloSelect = useMemo(() => {
+    const m: Record<string, Map<string, string>> = {};
+    for (const campo of campos) {
+      if (campo.tipo === "select" && campo.opcoes) {
+        m[campo.name] = new Map(campo.opcoes.map((o) => [String(o.value), o.label]));
+      }
+    }
+    return m;
+  }, [campos]);
+
+  const exibir = useCallback(
+    (key: string, value: unknown, tipo?: Coluna["tipo"]) => {
+      const map = rotuloSelect[key];
+      if (map && value != null && value !== "") return map.get(String(value)) ?? fmt(value, tipo);
+      return fmt(value, tipo);
+    },
+    [rotuloSelect],
+  );
+
+  // busca global: casa contra o valor EXIBIDO (rótulo de select, "Sim", "R$", "%"…)
   const globalFilterFn = useCallback<FilterFn<Registro>>(
     (row, columnId, filterValue) => {
-      const formatted = fmt(row.getValue(columnId), tipoPorKey[columnId]);
+      const formatted = exibir(columnId, row.getValue(columnId), tipoPorKey[columnId]);
       return String(formatted).toLowerCase().includes(String(filterValue).toLowerCase());
     },
-    [tipoPorKey],
+    [exibir, tipoPorKey],
   );
 
   const columns = useMemo<ColumnDef<Registro>[]>(() => {
@@ -132,7 +152,7 @@ export function CrudShell({
       id: c.key,
       accessorFn: (row) => row[c.key],
       header: c.label,
-      cell: (ctx) => fmt(ctx.getValue(), c.tipo),
+      cell: (ctx) => exibir(c.key, ctx.getValue(), c.tipo),
       enableSorting: true,
       sortingFn:
         c.tipo === "currency" || c.tipo === "number" || c.tipo === "percent"
@@ -163,7 +183,7 @@ export function CrudShell({
       ),
     });
     return dataCols;
-  }, [colunas, slug, rotulo, editar]);
+  }, [colunas, slug, rotulo, editar, exibir]);
 
   // O React Compiler não memoiza componentes que usam useReactTable (a API
   // retorna funções não-memoizáveis); o TanStack faz a própria memoização e os
