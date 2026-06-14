@@ -101,13 +101,13 @@ function SidebarContent({
         <div className="flex items-center justify-center gap-4">
           <Image
             src="/logos/gia.svg"
-            alt="Instituto GIA"
+            alt="GIA"
             width={1767}
             height={1434}
-            className="h-8 w-auto object-contain opacity-80 dark:opacity-100 dark:brightness-0 dark:invert"
+            className="h-10 w-auto object-contain opacity-80 dark:opacity-100 dark:brightness-0 dark:invert"
             unoptimized
           />
-          <span className="h-8 w-px bg-slate-200 dark:bg-zinc-800" aria-hidden="true" />
+          <span className="h-9 w-px bg-slate-200 dark:bg-zinc-800" aria-hidden="true" />
           <Image
             src="/logos/atgc.svg"
             alt="ATGC"
@@ -121,7 +121,7 @@ function SidebarContent({
           {APP_NAME}
         </p>
         <p className="text-center text-[10px] leading-tight text-slate-500 dark:text-zinc-400">
-          Uma parceria Instituto GIA &amp; ATGC
+          Uma parceria GIA &amp; ATGC
         </p>
         <p className="mt-0.5 text-center text-[10px] leading-tight text-slate-500 dark:text-zinc-400">
           Versão {APP_VERSION} · {APP_YEAR}
