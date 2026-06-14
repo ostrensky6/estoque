@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClientUntyped } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
 import { PrintButton } from "@/components/orcamento/PrintButton";
+import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import {
   salvarCabecalho,
   adicionarItemOrcamento,
@@ -356,12 +357,17 @@ export default async function OrcamentoDetalhe({
           </form>
         </section>
 
-        <form action={excluirOrcamento} className="no-print mt-6">
-          <input type="hidden" name="orcamento_id" value={orcId} />
-          <button className="text-xs text-zinc-400 hover:text-red-600">
-            Excluir orçamento
-          </button>
-        </form>
+        <div className="no-print mt-6">
+          <ConfirmActionButton
+            action={excluirOrcamento}
+            fields={[{ name: "orcamento_id", value: orcId }]}
+            trigger="Excluir orçamento"
+            triggerClassName="text-xs text-zinc-400 hover:text-red-600"
+            title="Excluir orçamento?"
+            body="Remove o orçamento e todas as análises incluídas. Esta ação não pode ser desfeita."
+            confirmLabel="Excluir orçamento"
+          />
+        </div>
       </main>
     </div>
   );

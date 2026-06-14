@@ -48,10 +48,12 @@ e os módulos /orcamento, /custeio, /analises, /planejamento, /estoque, /compras
 - [ ] **Fatores de preço reais.** Os 5 fatores estão em 0 no seed (preço == custo).
   O laboratório precisa preencher os valores reais em `/parametros`.
   *Pronto:* Σ fatores > 0 reflete a política comercial; preço de venda ≠ custo.
-- [ ] **Confirmação ao excluir.** "Excluir orçamento" e "Excluir plano" submetem
-  sem confirmação (ou usam `confirm()` nativo).
-  *Pronto:* modal de confirmação custom (reusar o padrão do `CrudShell`) em toda
-  ação destrutiva; nenhum `confirm()` nativo.
+- [x] **Confirmação ao excluir.** Novo `ConfirmActionButton`
+  (`src/components/common/`) com modal custom, usado em "Excluir orçamento" e
+  "Excluir plano".
+  *Pronto:* exclusões pedem confirmação sem `confirm()` nativo. ✅
+  *Resta:* o "Iniciar (baixa definitiva)" em `PlanoAcoes` ainda usa `confirm()`
+  nativo — migrar para o mesmo modal.
 - [ ] **`grupo_escolha` como combobox.** Hoje é texto livre em `/insumos` — digitar
   errado quebra o agrupamento silenciosamente.
   *Pronto:* seleção a partir dos grupos existentes (+ criar novo explicitamente).
@@ -126,13 +128,15 @@ e os módulos /orcamento, /custeio, /analises, /planejamento, /estoque, /compras
 
 ---
 
-## Decisões pendentes do usuário (destravam as Fases 1+)
+## Decisões (travadas em 2026-06-13)
 
-1. **Profundidade das libs**: adotar shadcn/Radix + TanStack agora ou incremental?
-2. **PDF**: client (`window.print`) ou server-side (com marca/numeração)?
-3. **Janela para o refactor de RLS** (sair do service-role nas escritas).
-4. **Escopo de previsão**: começar simples (consumo médio) antes de qualquer ML.
-5. **Marca / dados fiscais** para os documentos (logo, CNPJ, textos legais).
+1. **Libs**: abraçar o stack completo — shadcn/ui + Radix + TanStack Table + cmdk
+   + sonner + next-themes.
+2. **PDF**: server-side (com marca e numeração).
+3. **RLS**: política uniforme por papel (Fase 1.5), saindo do service-role.
+4. **Previsão**: estatística simples (consumo médio) antes de qualquer ML.
+5. **Marca / dados fiscais** dos documentos: **pendente** — o usuário fornece
+   antes da Fase 3.2 (logo, CNPJ, textos legais).
 
 ## Convenções a preservar
 
