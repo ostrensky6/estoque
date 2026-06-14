@@ -4,6 +4,7 @@ import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import type { NavGroup } from "@/components/layout/SideNav";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { CommandPalette } from "@/components/layout/CommandPalette";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -96,6 +97,7 @@ export default async function RootLayout({
           <div className="md:flex md:min-h-dvh">
             <Sidebar groups={grupos} perfil={perfil} userEmail={user.email ?? null} />
             <div className="min-w-0 flex-1">{children}</div>
+            <CommandPalette groups={grupos} />
           </div>
         ) : (
           children
