@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { atualizarInsumoLinha } from "@/lib/actions/insumos";
+import { Combobox } from "@/components/ui/combobox";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,20 @@ export default async function InsumosPage({
     )
     .eq("codigo_analise", atual)
     .order("id");
+
+  // grupos de escolha já existentes (em todas as análises) p/ reaproveitar
+  const { data: gruposRaw } = await supabase
+    .from("insumo_analise")
+    .select("grupo_escolha")
+    .not("grupo_escolha", "is", null);
+  const grupoOptions = [
+    { value: "", label: "(nenhum)" },
+    ...[
+      ...new Set((gruposRaw ?? []).map((g) => g.grupo_escolha).filter(Boolean) as string[]),
+    ]
+      .sort()
+      .map((g) => ({ value: g, label: g })),
+  ];
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -99,12 +114,18 @@ export default async function InsumosPage({
                     <td colSpan={3} className="px-3 py-2">
                       <form action={atualizarInsumoLinha} className="flex items-center gap-2">
                         <input type="hidden" name="id" value={l.id} />
-                        <input
-                          name="grupo_escolha"
-                          defaultValue={l.grupo_escolha ?? ""}
-                          placeholder="(nenhum)"
-                          className="w-44 rounded border border-zinc-300 bg-white px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900"
-                        />
+                        <div className="w-44">
+                          <Combobox
+                            name="grupo_escolha"
+                            creatable
+                            defaultValue={l.grupo_escolha ?? ""}
+                            placeholder="(nenhum)"
+                            searchPlaceholder="Buscar ou criar…"
+                            emptyText="Digite para criar."
+                            options={grupoOptions}
+                            className="h-8 text-xs"
+                          />
+                        </div>
                         <select
                           name="modo_cobranca"
                           defaultValue={l.modo_cobranca ?? ""}

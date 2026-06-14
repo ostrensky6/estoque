@@ -4,6 +4,7 @@ import { createClientUntyped } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
 import { PrintButton } from "@/components/orcamento/PrintButton";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
+import { Combobox } from "@/components/ui/combobox";
 import {
   salvarCabecalho,
   adicionarItemOrcamento,
@@ -48,7 +49,7 @@ export default async function OrcamentoDetalhe({
         .select("id, codigo_analise, n_amostras, custo_unitario, preco_unitario")
         .eq("orcamento_id", orcId)
         .order("id"),
-      supabase.from("analises").select("codigo").eq("ativo", true).order("codigo"),
+      supabase.from("analises").select("codigo, nome").eq("ativo", true).order("codigo"),
       calcularTodas(),
       supabase.from("clientes").select("id, nome").eq("ativo", true).order("nome"),
       supabase.from("projetos").select("id, nome").order("nome"),
@@ -252,16 +253,19 @@ export default async function OrcamentoDetalhe({
               <label className="block text-[10px] uppercase tracking-wide text-zinc-400">
                 Análise
               </label>
-              <select name="codigo_analise" className={inp} defaultValue="">
-                <option value="" disabled>
-                  Selecione…
-                </option>
-                {(analises ?? []).map((a) => (
-                  <option key={a.codigo} value={a.codigo}>
-                    {a.codigo}
-                  </option>
-                ))}
-              </select>
+              <div className="w-64">
+                <Combobox
+                  name="codigo_analise"
+                  placeholder="Selecione…"
+                  searchPlaceholder="Buscar análise…"
+                  emptyText="Nenhuma análise."
+                  options={(analises ?? []).map((a) => ({
+                    value: a.codigo,
+                    label: a.codigo,
+                    hint: a.nome ?? undefined,
+                  }))}
+                />
+              </div>
             </div>
             <div>
               <label className="block text-[10px] uppercase tracking-wide text-zinc-400">
