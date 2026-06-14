@@ -1,5 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// Porta configurável para não colidir com o dev server do desenvolvedor
+// (ex.: E2E_PORT=3099 para uma auditoria isolada em modo mock).
+const PORT = process.env.E2E_PORT ?? "3001";
+const BASE_URL = `http://localhost:${PORT}`;
+
 export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
@@ -8,15 +13,15 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"], ["html", { open: "never", outputFolder: "output/playwright-report" }]],
   use: {
-    baseURL: "http://localhost:3001",
+    baseURL: BASE_URL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
   outputDir: "output/playwright",
   webServer: {
-    command: "npm run dev -- -p 3001",
-    url: "http://localhost:3001",
+    command: `npm run dev -- -p ${PORT}`,
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {

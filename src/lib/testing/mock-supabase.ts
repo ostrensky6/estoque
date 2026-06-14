@@ -101,6 +101,21 @@ const baseStore = (): Store => ({
   movimentacoes_estoque: [],
   lotes_estoque: [],
   perfis: [{ id: "user-e2e", nome: "Gestor E2E", email: "gestor@example.com", papel: "gestor" }],
+  notificacoes: [],
+  v_dashboard_executivo: [
+    {
+      valor_estoque_ativo: 0,
+      valor_vencendo_horizonte: 0,
+      lotes_vencendo_horizonte: 0,
+      orcamentos_rascunho: 1,
+      orcamentos_enviados: 0,
+      orcamentos_aprovados: 0,
+      orcamentos_perdidos: 0,
+      margem_media_pct: 0,
+      compras_abertas_valor: 0,
+      gasto_por_projeto_mes: [],
+    },
+  ],
 });
 
 const store = (globalThis as typeof globalThis & { __kontrolMockStore?: Store }).__kontrolMockStore ?? baseStore();
@@ -218,6 +233,10 @@ class MockQuery {
       ...result,
       data: Array.isArray(result.data) ? (result.data[0] ?? null) : result.data,
     }));
+  }
+
+  maybeSingle() {
+    return this.single();
   }
 
   then<TResult1 = { data: unknown; error: null }, TResult2 = never>(

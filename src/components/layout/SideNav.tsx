@@ -141,7 +141,7 @@ export function SideNav({
                 <span className="block truncate text-[10px] font-bold uppercase tracking-wide">
                   {g.title}
                 </span>
-                <span className="mt-0.5 block text-[10px] font-medium text-slate-400 dark:text-zinc-500">
+                <span className="mt-0.5 block text-[10px] font-medium text-slate-500 dark:text-zinc-400">
                   {g.links.length} itens
                 </span>
               </span>
@@ -186,7 +186,7 @@ export function SideNav({
                           )}
                         </span>
                         {l.shortcut && (
-                          <kbd className="mt-0.5 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-500">
+                          <kbd className="mt-0.5 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
                             {l.shortcut}
                           </kbd>
                         )}

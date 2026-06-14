@@ -285,6 +285,7 @@ export default async function OrcamentoDetalhe({
                 Nº de amostras
               </label>
               <input
+                aria-label="Nº de amostras"
                 name="n_amostras"
                 type="number"
                 min="1"
@@ -306,7 +307,7 @@ export default async function OrcamentoDetalhe({
             <input type="hidden" name="orcamento_id" value={orcId} />
             <div>
               <label className={lbl}>Cliente cadastrado</label>
-              <select name="cliente_id" defaultValue={orc.cliente_id ?? ""} className={`${inp} mt-1 w-full`}>
+              <select aria-label="Cliente cadastrado" name="cliente_id" defaultValue={orc.cliente_id ?? ""} className={`${inp} mt-1 w-full`}>
                 <option value="">— (preencher manualmente abaixo)</option>
                 {(clientes ?? []).map((c) => (
                   <option key={c.id} value={c.id}>{c.nome}</option>
@@ -318,7 +319,7 @@ export default async function OrcamentoDetalhe({
             </div>
             <div>
               <label className={lbl}>Projeto</label>
-              <select name="projeto_id" defaultValue={orc.projeto_id ?? ""} className={`${inp} mt-1 w-full`}>
+              <select aria-label="Projeto" name="projeto_id" defaultValue={orc.projeto_id ?? ""} className={`${inp} mt-1 w-full`}>
                 <option value="">—</option>
                 {(projetos ?? []).map((p) => (
                   <option key={p.id} value={p.id}>{p.nome}</option>
@@ -327,35 +328,35 @@ export default async function OrcamentoDetalhe({
             </div>
             <div className="sm:col-span-2">
               <label className={lbl}>Cliente (texto livre, se não cadastrado)</label>
-              <input name="cliente_nome" defaultValue={orc.cliente_nome ?? ""} className={`${inp} mt-1 w-full`} />
+              <input aria-label="Cliente (texto livre, se não cadastrado)" name="cliente_nome" defaultValue={orc.cliente_nome ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>CNPJ</label>
-              <input name="cliente_cnpj" defaultValue={orc.cliente_cnpj ?? ""} className={`${inp} mt-1 w-full`} />
+              <input aria-label="CNPJ" name="cliente_cnpj" defaultValue={orc.cliente_cnpj ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Contato (e-mail / telefone)</label>
-              <input name="cliente_contato" defaultValue={orc.cliente_contato ?? ""} className={`${inp} mt-1 w-full`} />
+              <input aria-label="Contato (e-mail / telefone)" name="cliente_contato" defaultValue={orc.cliente_contato ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div className="sm:col-span-2">
               <label className={lbl}>Endereço</label>
-              <input name="cliente_endereco" defaultValue={orc.cliente_endereco ?? ""} className={`${inp} mt-1 w-full`} />
+              <input aria-label="Endereço" name="cliente_endereco" defaultValue={orc.cliente_endereco ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Data do orçamento</label>
-              <input name="data_orcamento" type="date" defaultValue={orc.data_orcamento ?? ""} className={`${inp} mt-1 w-full`} />
+              <input aria-label="Data do orçamento" name="data_orcamento" type="date" defaultValue={orc.data_orcamento ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Validade (dias)</label>
-              <input name="validade_dias" type="number" min="0" step="1" defaultValue={orc.validade_dias ?? 30} className={`${inp} mt-1 w-full`} />
+              <input aria-label="Validade (dias)" name="validade_dias" type="number" min="0" step="1" defaultValue={orc.validade_dias ?? 30} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Responsável (laboratório)</label>
-              <input name="responsavel" defaultValue={orc.responsavel ?? ""} className={`${inp} mt-1 w-full`} />
+              <input aria-label="Responsável (laboratório)" name="responsavel" defaultValue={orc.responsavel ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Status</label>
-              <select name="status" defaultValue={orc.status ?? "rascunho"} className={`${inp} mt-1 w-full`}>
+              <select aria-label="Status" name="status" defaultValue={orc.status ?? "rascunho"} className={`${inp} mt-1 w-full`}>
                 <option value="rascunho">Rascunho</option>
                 <option value="enviado">Enviado</option>
                 <option value="aprovado">Aprovado</option>
@@ -364,7 +365,7 @@ export default async function OrcamentoDetalhe({
             </div>
             <div className="sm:col-span-2">
               <label className={lbl}>Observações</label>
-              <textarea name="observacoes" rows={3} defaultValue={orc.observacoes ?? ""} className={`${inp} mt-1 w-full`} />
+              <textarea aria-label="Observações" name="observacoes" rows={3} defaultValue={orc.observacoes ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div className="sm:col-span-2">
               <button className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900">

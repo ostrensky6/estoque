@@ -67,7 +67,7 @@ function SidebarContent({
         >
           <Search className="h-3.5 w-3.5" />
           <span className="min-w-0 flex-1 truncate text-left">Buscar ou executar</span>
-          <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500">
+          <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
             Ctrl K
           </kbd>
         </Button>

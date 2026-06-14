@@ -101,11 +101,15 @@ export function ParametrosEconomicosForm({
               key={campo.chave}
               className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
             >
-              <label className="block text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+              <label
+                htmlFor={campo.chave}
+                className="block text-sm font-semibold text-zinc-800 dark:text-zinc-100"
+              >
                 {campo.label}
               </label>
               <div className="mt-1 flex items-center gap-2">
                 <input
+                  id={campo.chave}
                   name={campo.chave}
                   type="number"
                   step={campo.step}

@@ -22,7 +22,8 @@
   --secondary: #f1f5f9;
   --secondary-foreground: #0f172a;
   --muted: #f1f5f9;
-  --muted-foreground: #64748b;
+  /* slate-600: garante contraste AA (>=4.5:1) sobre o fundo --muted (slate-100). */
+  --muted-foreground: #475569;
   --accent: #f1f5f9;
   --accent-foreground: #0f172a;
   --destructive: #dc2626;

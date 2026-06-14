@@ -124,7 +124,7 @@ export default async function ComprasPage() {
         <form action={criarPedido} className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div>
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Fornecedor</label>
-            <select name="fornecedor_id" className={`${inp} mt-1`} defaultValue="">
+            <select aria-label="Fornecedor" name="fornecedor_id" className={`${inp} mt-1`} defaultValue="">
               <option value="">—</option>
               {(fornecedores ?? []).map((f) => (
                 <option key={f.id} value={f.id}>{f.nome}</option>
@@ -133,7 +133,7 @@ export default async function ComprasPage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Projeto</label>
-            <select name="projeto_id" className={`${inp} mt-1`} defaultValue="">
+            <select aria-label="Projeto" name="projeto_id" className={`${inp} mt-1`} defaultValue="">
               <option value="">—</option>
               {(projetos ?? []).map((p) => (
                 <option key={p.id} value={p.id}>{p.nome}</option>
@@ -142,7 +142,7 @@ export default async function ComprasPage() {
           </div>
           <div className="flex-1 min-w-40">
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Campanha (texto livre)</label>
-            <input name="projeto" className={`${inp} mt-1 w-full`} />
+            <input aria-label="Campanha (texto livre)" name="projeto" className={`${inp} mt-1 w-full`} />
           </div>
           <button className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
             + Nova solicitação

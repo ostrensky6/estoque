@@ -159,7 +159,7 @@ export default async function OrcamentosPage() {
         >
           <div>
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Tipo</label>
-            <select name="tipo" defaultValue="analises_projeto" className={`${inp} mt-1 w-full`}>
+            <select aria-label="Tipo" name="tipo" defaultValue="analises_projeto" className={`${inp} mt-1 w-full`}>
               <option value="analises">Só análises</option>
               <option value="projeto">Só projeto</option>
               <option value="analises_projeto">Análises + projeto</option>
@@ -167,11 +167,11 @@ export default async function OrcamentosPage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Cliente</label>
-            <input name="cliente_nome" placeholder="Ex.: Embrapa Suínos e Aves" className={`${inp} mt-1 w-full`} />
+            <input aria-label="Cliente" name="cliente_nome" placeholder="Ex.: Embrapa Suínos e Aves" className={`${inp} mt-1 w-full`} />
           </div>
           <div>
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Projeto vinculado</label>
-            <select name="projeto_id" defaultValue="" className={`${inp} mt-1 w-full`}>
+            <select aria-label="Projeto vinculado" name="projeto_id" defaultValue="" className={`${inp} mt-1 w-full`}>
               <option value="">—</option>
               {(projetos ?? []).map((p) => (
                 <option key={p.id} value={p.id}>{p.nome}</option>
