@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClientUntyped } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
 import { PrintButton } from "@/components/orcamento/PrintButton";
+import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import {
   salvarCabecalho,
   adicionarItemOrcamento,
@@ -162,7 +163,7 @@ export default async function OrcamentoDetalhe({
               <thead className="bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/60">
                 <tr>
                   <th className="px-3 py-2 text-left">Análise</th>
-                  <th className="px-3 py-2">Custo/amostra</th>
+                  <th className="px-3 py-2 no-print">Custo/amostra</th>
                   <th className="px-3 py-2">Preço/amostra</th>
                   <th className="px-3 py-2">Amostras</th>
                   <th className="px-3 py-2">Subtotal</th>
@@ -175,7 +176,7 @@ export default async function OrcamentoDetalhe({
                     <td className="px-3 py-2 text-left font-medium">
                       {it.codigo_analise}
                     </td>
-                    <td className="px-3 py-2 tabular-nums text-zinc-500">
+                    <td className="px-3 py-2 tabular-nums text-zinc-500 no-print">
                       {brl(Number(it.custo_unitario))}
                     </td>
                     <td className="px-3 py-2 tabular-nums">
@@ -208,7 +209,7 @@ export default async function OrcamentoDetalhe({
                 <tfoot className="border-t border-zinc-200 bg-transparent dark:border-zinc-800 dark:bg-zinc-900/60">
                   <tr>
                     <td className="px-3 py-2.5 text-left font-medium">Total</td>
-                    <td className="px-3 py-2.5 tabular-nums text-zinc-500">
+                    <td className="px-3 py-2.5 tabular-nums text-zinc-500 no-print">
                       {brl(totalCusto)}
                     </td>
                     <td></td>
@@ -356,12 +357,17 @@ export default async function OrcamentoDetalhe({
           </form>
         </section>
 
-        <form action={excluirOrcamento} className="no-print mt-6">
-          <input type="hidden" name="orcamento_id" value={orcId} />
-          <button className="text-xs text-zinc-400 hover:text-red-600">
-            Excluir orçamento
-          </button>
-        </form>
+        <div className="no-print mt-6">
+          <ConfirmActionButton
+            action={excluirOrcamento}
+            fields={[{ name: "orcamento_id", value: orcId }]}
+            trigger="Excluir orçamento"
+            triggerClassName="text-xs text-zinc-400 hover:text-red-600"
+            title="Excluir orçamento?"
+            body="Remove o orçamento e todas as análises incluídas. Esta ação não pode ser desfeita."
+            confirmLabel="Excluir orçamento"
+          />
+        </div>
       </main>
     </div>
   );
