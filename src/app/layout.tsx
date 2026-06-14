@@ -5,6 +5,9 @@ import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import { sair } from "@/lib/actions/auth";
 import { SideNav, type NavGroup } from "@/components/layout/SideNav";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -77,6 +80,7 @@ export default async function RootLayout({
       links: [
         { href: "/cadastros", label: "Cadastros", desc: "equipamentos, insumos, técnicos…" },
         { href: "/insumos", label: "Consumo por análise", desc: "grupos e modo de cobrança" },
+        { href: "/parametros", label: "Parâmetros", desc: "fatores de preço e constantes" },
         ...(ehGestor ? [{ href: "/auditoria", label: "Auditoria" }] : []),
         ...(ehAdmin ? [{ href: "/usuarios", label: "Usuários" }] : []),
       ],
@@ -86,9 +90,16 @@ export default async function RootLayout({
   return (
     <html
       lang="pt-BR"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="app-canvas min-h-dvh text-slate-900 dark:bg-zinc-950 dark:text-slate-100">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
         {user ? (
           <div className="flex min-h-dvh flex-col md:flex-row">
             <aside className="flex shrink-0 flex-col border-b border-slate-200/80 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950 md:sticky md:top-0 md:h-dvh md:w-64 md:border-b-0 md:border-r md:shadow-[1px_0_0_0_rgba(15,23,42,0.04),4px_0_24px_-12px_rgba(15,23,42,0.12)]">
@@ -119,11 +130,14 @@ export default async function RootLayout({
                       {PAPEL_LABEL[perfil.papel] ?? perfil.papel}
                     </span>
                   )}
-                  <form action={sair}>
-                    <button className="rounded px-2 py-1 text-xs font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-zinc-800">
-                      Sair
-                    </button>
-                  </form>
+                  <div className="flex items-center gap-1">
+                    <ThemeToggle />
+                    <form action={sair}>
+                      <button className="rounded px-2 py-1 text-xs font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-zinc-800">
+                        Sair
+                      </button>
+                    </form>
+                  </div>
                 </div>
               </div>
             </aside>
@@ -132,6 +146,8 @@ export default async function RootLayout({
         ) : (
           children
         )}
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

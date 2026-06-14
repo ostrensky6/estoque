@@ -4,6 +4,7 @@ import { createAdminClientUntyped } from "@/lib/supabase/admin";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
 import { adicionarItem, removerItem, excluirPlano } from "@/lib/actions/planejamento";
 import { PlanoAcoes } from "@/components/planejamento/PlanoAcoes";
+import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 
 export const dynamic = "force-dynamic";
 
@@ -166,10 +167,16 @@ export default async function PlanoDetalhe({
         {/* ações */}
         <section className="mt-8">
           <PlanoAcoes planId={planId} />
-          <form action={excluirPlano} className="mt-6">
-            <input type="hidden" name="planejamento_id" value={planId} />
-            <button className="text-xs text-zinc-400 hover:text-red-600">Excluir plano</button>
-          </form>
+          <div className="mt-6">
+            <ConfirmActionButton
+              action={excluirPlano}
+              fields={{ planejamento_id: planId }}
+              trigger="Excluir plano"
+              titulo="Excluir plano"
+              mensagem={`Excluir o plano “${plano.nome}”? Esta ação não pode ser desfeita.`}
+              confirmLabel="Excluir plano"
+            />
+          </div>
         </section>
       </main>
     </div>
