@@ -14,6 +14,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
+import { APP_NAME, APP_VERSION, APP_YEAR } from "@/config/app";
 
 const PAPEL_LABEL: Record<string, string> = {
   tecnico: "Técnico",
@@ -58,30 +59,6 @@ function SidebarContent({
         />
       </Link>
 
-      <div className="flex flex-col items-center gap-1.5 border-b border-slate-100 px-4 py-3 dark:border-zinc-900">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-zinc-400">
-          Uma parceria
-        </span>
-        <div className="flex items-center justify-center gap-4">
-          <Image
-            src="/logos/gia.svg"
-            alt="Instituto GIA"
-            width={1767}
-            height={1434}
-            className="h-7 w-auto object-contain dark:brightness-0 dark:invert"
-            unoptimized
-          />
-          <Image
-            src="/logos/atgc.svg"
-            alt="ATGC"
-            width={250}
-            height={250}
-            className="h-9 w-auto object-contain"
-            unoptimized
-          />
-        </div>
-      </div>
-
       <div className="border-b border-slate-100 px-3 py-2.5 dark:border-zinc-900">
         <Button
           type="button"
@@ -119,6 +96,37 @@ function SidebarContent({
           </div>
         </div>
       </div>
+
+      <footer className="border-t border-slate-100 px-4 py-3 dark:border-zinc-900">
+        <div className="flex items-center justify-center gap-3">
+          <Image
+            src="/logos/gia.svg"
+            alt="Instituto GIA"
+            width={1767}
+            height={1434}
+            className="h-5 w-auto object-contain opacity-80 dark:opacity-100 dark:brightness-0 dark:invert"
+            unoptimized
+          />
+          <span className="h-5 w-px bg-slate-200 dark:bg-zinc-800" aria-hidden="true" />
+          <Image
+            src="/logos/atgc.svg"
+            alt="ATGC"
+            width={250}
+            height={250}
+            className="h-6 w-auto object-contain opacity-90"
+            unoptimized
+          />
+        </div>
+        <p className="mt-2 text-center text-[11px] font-medium leading-tight text-slate-600 dark:text-zinc-300">
+          {APP_NAME}
+        </p>
+        <p className="text-center text-[10px] leading-tight text-slate-500 dark:text-zinc-400">
+          Uma parceria Instituto GIA &amp; ATGC
+        </p>
+        <p className="mt-0.5 text-center text-[10px] leading-tight text-slate-500 dark:text-zinc-400">
+          Versão {APP_VERSION} · {APP_YEAR}
+        </p>
+      </footer>
     </>
   );
 }
