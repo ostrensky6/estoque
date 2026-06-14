@@ -1,0 +1,142 @@
+import Link from "next/link";
+import { createClientUntyped } from "@/lib/supabase/server";
+import { criarDemanda } from "@/lib/actions/demandas";
+
+export const dynamic = "force-dynamic";
+
+const MODALIDADES: Record<string, string> = {
+  analises: "Apenas análises",
+  projeto: "Apenas projeto",
+  analises_projeto: "Análises dentro de projeto",
+  projeto_analises_custos: "Projeto com análises e custos próprios",
+};
+
+const STATUS: Record<string, { label: string; cls: string }> = {
+  nova: { label: "Nova", cls: "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300" },
+  em_analise: { label: "Em análise", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
+  orcada: { label: "Orçada", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" },
+  aprovada: { label: "Aprovada", cls: "bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300" },
+  recusada: { label: "Recusada", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
+  cancelada: { label: "Cancelada", cls: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
+};
+
+export default async function DemandasPage() {
+  const supabase = await createClientUntyped();
+  const [{ data: demandas }, { data: clientes }, { data: projetos }] = await Promise.all([
+    supabase
+      .from("demandas_propostas")
+      .select("id, titulo, cliente_nome, modalidade, status, prioridade, data_solicitacao, prazo_esperado, projeto_id, criado_em")
+      .order("criado_em", { ascending: false }),
+    supabase.from("clientes").select("id, nome").eq("ativo", true).order("nome"),
+    supabase.from("projetos").select("id, nome").order("nome"),
+  ]);
+  const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
+  const inp =
+    "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+
+  return (
+    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      <main className="mx-auto max-w-6xl px-6 py-10">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+            Entrada comercial
+          </p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Demandas/Propostas</h1>
+          <p className="mt-1 max-w-3xl text-sm text-zinc-500">
+            Registre a demanda antes do orçamento formal. A partir daqui o fluxo segue para orçamento
+            de análises, orçamento de projeto ou composição híbrida.
+          </p>
+        </div>
+
+        <form
+          action={criarDemanda}
+          className="mt-6 grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm md:grid-cols-4 md:items-end dark:border-zinc-800 dark:bg-zinc-900"
+        >
+          <div className="md:col-span-2">
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Título da demanda</label>
+            <input name="titulo" placeholder="Ex.: Sequenciamento de amostras ambientais" className={`${inp} mt-1 w-full`} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Cliente</label>
+            <select name="cliente_id" defaultValue="" className={`${inp} mt-1 w-full`}>
+              <option value="">Cliente livre</option>
+              {(clientes ?? []).map((c) => (
+                <option key={c.id} value={c.id}>{c.nome}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Modalidade</label>
+            <select name="modalidade" defaultValue="analises" className={`${inp} mt-1 w-full`}>
+              {Object.entries(MODALIDADES).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Cliente livre</label>
+            <input name="cliente_nome" placeholder="Nome do cliente/instituição se não estiver cadastrado" className={`${inp} mt-1 w-full`} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Projeto</label>
+            <select name="projeto_id" defaultValue="" className={`${inp} mt-1 w-full`}>
+              <option value="">Sem projeto</option>
+              {(projetos ?? []).map((p) => (
+                <option key={p.id} value={p.id}>{p.nome}</option>
+              ))}
+            </select>
+          </div>
+          <button className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+            Nova demanda
+          </button>
+        </form>
+
+        <div className="mt-6 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <table className="w-full text-sm">
+            <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
+              <tr>
+                <th className="px-4 py-3 text-left">Demanda</th>
+                <th className="px-4 py-3 text-left">Cliente</th>
+                <th className="px-4 py-3 text-left">Modalidade</th>
+                <th className="px-4 py-3 text-left">Projeto</th>
+                <th className="px-4 py-3 text-left">Prazo</th>
+                <th className="px-4 py-3 text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {(demandas ?? []).map((d) => {
+                const st = STATUS[d.status] ?? { label: d.status, cls: "bg-zinc-100" };
+                return (
+                  <tr key={d.id} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/40">
+                    <td className="px-4 py-2.5">
+                      <Link href={`/orcamento/demandas/${d.id}`} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+                        {d.titulo}
+                      </Link>
+                      <span className="block text-xs text-zinc-400">
+                        Solicitada em {d.data_solicitacao ?? "—"} · prioridade {d.prioridade}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-zinc-500">{d.cliente_nome ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-zinc-500">{MODALIDADES[d.modalidade] ?? d.modalidade}</td>
+                    <td className="px-4 py-2.5 text-zinc-500">{d.projeto_id ? projetoNome.get(d.projeto_id) ?? "—" : "—"}</td>
+                    <td className="px-4 py-2.5 text-zinc-500">{d.prazo_esperado ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-center">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {(demandas ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center text-zinc-400">
+                    Nenhuma demanda registrada.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  );
+}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export type Accent = "emerald" | "blue" | "slate";
+export type Accent = "emerald" | "blue" | "amber" | "violet" | "slate";
 export type NavLink = { href: string; label: string; desc?: string };
 export type NavGroup = { title: string; accent: Accent; links: NavLink[] };
 
@@ -18,6 +18,22 @@ const ACCENT: Record<
     activeText: "text-emerald-900 dark:text-emerald-200",
     bar: "bg-emerald-500",
     hover: "hover:bg-emerald-50/70 dark:hover:bg-emerald-950/30",
+  },
+  amber: {
+    dot: "bg-amber-500",
+    header: "text-amber-700 dark:text-amber-400",
+    activeBg: "bg-amber-50 dark:bg-amber-950/40",
+    activeText: "text-amber-900 dark:text-amber-200",
+    bar: "bg-amber-500",
+    hover: "hover:bg-amber-50/70 dark:hover:bg-amber-950/30",
+  },
+  violet: {
+    dot: "bg-violet-500",
+    header: "text-violet-700 dark:text-violet-400",
+    activeBg: "bg-violet-50 dark:bg-violet-950/40",
+    activeText: "text-violet-900 dark:text-violet-200",
+    bar: "bg-violet-500",
+    hover: "hover:bg-violet-50/70 dark:hover:bg-violet-950/30",
   },
   blue: {
     dot: "bg-blue-500",
@@ -41,13 +57,19 @@ export function SideNav({ groups }: { groups: NavGroup[] }) {
   const pathname = usePathname();
 
   return (
-    <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+    <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-4">
       {groups.map((g) => {
         const c = ACCENT[g.accent];
+        const destacarTitulo = ["Análises", "Estoque", "Orçamento"].includes(g.title);
         return (
-          <div key={g.title}>
+          <section
+            key={g.title}
+            className="rounded-lg border border-slate-200/80 bg-white/50 p-2 shadow-[0_1px_0_rgba(15,23,42,0.03)] dark:border-zinc-800/90 dark:bg-zinc-950/40"
+          >
             <h3
-              className={`flex items-center gap-2 px-2 text-[11px] font-bold uppercase tracking-wider ${c.header}`}
+              className={`flex items-center gap-2 px-2 py-1 text-[13px] ${
+                destacarTitulo ? "font-extrabold" : "font-bold"
+              } uppercase tracking-wide ${c.header}`}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
               {g.title}
@@ -57,7 +79,7 @@ export function SideNav({ groups }: { groups: NavGroup[] }) {
                 const ativo =
                   pathname === l.href || pathname.startsWith(l.href + "/");
                 return (
-                  <li key={l.href}>
+                  <li key={`${l.href}:${l.label}`}>
                     <Link
                       href={l.href}
                       className={`relative block rounded-md py-1.5 pl-3.5 pr-2 text-sm transition-colors ${
@@ -82,7 +104,7 @@ export function SideNav({ groups }: { groups: NavGroup[] }) {
                 );
               })}
             </ul>
-          </div>
+          </section>
         );
       })}
     </nav>

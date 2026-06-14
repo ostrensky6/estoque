@@ -313,6 +313,46 @@ export const CADASTROS: Record<string, CadastroConfig> = {
     ],
   },
 
+  locais: {
+    slug: "locais",
+    tabela: "locais",
+    titulo: "Locais",
+    singular: "local",
+    subtitulo:
+      "Locais físicos de armazenamento, como prédio, sala, freezer, geladeira, gaveta, caixa, rack ou posição.",
+    rotulo: "nome",
+    colunas: [
+      { key: "nome", label: "Local" },
+      { key: "tipo", label: "Tipo" },
+      { key: "condicao_armazenamento", label: "Condição" },
+    ],
+    campos: [
+      { name: "nome", label: "Nome do local", tipo: "text", obrigatorio: true, colSpan: 2, grupo: "Identificação" },
+      {
+        name: "tipo",
+        label: "Tipo",
+        tipo: "select",
+        opcoes: [
+          { value: "predio", label: "Prédio" },
+          { value: "sala", label: "Sala" },
+          { value: "freezer", label: "Freezer" },
+          { value: "geladeira", label: "Geladeira" },
+          { value: "armario", label: "Armário" },
+          { value: "gaveta", label: "Gaveta" },
+          { value: "caixa", label: "Caixa" },
+          { value: "rack", label: "Rack" },
+          { value: "posicao", label: "Posição" },
+        ],
+      },
+      {
+        name: "condicao_armazenamento",
+        label: "Condição de armazenamento",
+        tipo: "text",
+        placeholder: "-20 °C, 2-8 °C, ambiente...",
+      },
+    ],
+  },
+
   overhead: {
     slug: "overhead",
     tabela: "overhead",
