@@ -47,7 +47,7 @@ function StatusBadge({ status, label }: { status: string; label: string }) {
         : status === "enviado"
           ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300"
           : status === "recebido"
-            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+            ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
             : "bg-secondary text-secondary-foreground";
 
   return <Badge className={variantClass}>{label}</Badge>;

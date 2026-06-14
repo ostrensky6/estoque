@@ -6,7 +6,7 @@ import { formatCompactCurrency, formatNumber } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
-type Tom = "emerald" | "blue" | "amber" | "red" | "slate";
+type Tom = "brand" | "blue" | "amber" | "red" | "slate";
 
 type EstoqueSaldo = {
   insumo_id: number;
@@ -69,13 +69,13 @@ const TONS: Record<
     link: string;
   }
 > = {
-  emerald: {
-    dot: "bg-emerald-500",
-    panel: "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/20",
-    badge: "bg-emerald-100 dark:bg-emerald-950/50",
-    badgeText: "text-emerald-800 dark:text-emerald-300",
-    border: "border-emerald-300",
-    link: "text-emerald-700 hover:text-emerald-800 dark:text-emerald-300",
+  brand: {
+    dot: "bg-brand-500",
+    panel: "border-brand-200 bg-brand-50/60 dark:border-brand-900/50 dark:bg-brand-950/20",
+    badge: "bg-brand-100 dark:bg-brand-950/50",
+    badgeText: "text-brand-800 dark:text-brand-300",
+    border: "border-brand-300",
+    link: "text-brand-700 hover:text-brand-800 dark:text-brand-300",
   },
   blue: {
     dot: "bg-blue-500",
@@ -337,7 +337,7 @@ export default async function Home() {
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Badge tom={prioridadeTom}>{statusGeral}</Badge>
-            <Badge tom="emerald">{nAnalises ?? 0} análises ativas</Badge>
+            <Badge tom="brand">{nAnalises ?? 0} análises ativas</Badge>
             <Badge tom="blue">{nPlanos ?? 0} planejamentos</Badge>
             <Badge tom="slate">{saldo.length} insumos monitorados</Badge>
           </div>
@@ -360,9 +360,9 @@ export default async function Home() {
       </section>
 
       <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Kpi label="Comprar agora" valor={criticosParaComprar.length} detalhe="itens abaixo do ponto de reposição" tom={criticosParaComprar.length ? "amber" : "emerald"} />
-        <Kpi label="Vencendo" valor={alertasVencimento.length} detalhe="lotes dentro da janela de vencimento" tom={alertasVencimento.length ? "amber" : "emerald"} />
-        <Kpi label="Quarentena" valor={emQuarentena.length} detalhe="insumos com saldo aguardando aceite" tom={emQuarentena.length ? "blue" : "emerald"} />
+        <Kpi label="Comprar agora" valor={criticosParaComprar.length} detalhe="itens abaixo do ponto de reposição" tom={criticosParaComprar.length ? "amber" : "brand"} />
+        <Kpi label="Vencendo" valor={alertasVencimento.length} detalhe="lotes dentro da janela de vencimento" tom={alertasVencimento.length ? "amber" : "brand"} />
+        <Kpi label="Quarentena" valor={emQuarentena.length} detalhe="insumos com saldo aguardando aceite" tom={emQuarentena.length ? "blue" : "brand"} />
         <Kpi label="Cobertura" valor={pct(Math.max(0, saldo.length - semDisponivel.length), saldo.length)} detalhe="insumos com saldo disponível positivo" tom="slate" />
       </section>
 
@@ -377,8 +377,8 @@ export default async function Home() {
           <Badge tom="blue">{notificacoes.length} notificações in-app</Badge>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Kpi label="Estoque ativo" valor={formatCompactCurrency(dashboard?.valor_estoque_ativo)} detalhe="saldo aceito/em uso valorizado" tom="emerald" />
-          <Kpi label="Vencendo" valor={formatCompactCurrency(dashboard?.valor_vencendo_horizonte)} detalhe={`${dashboard?.lotes_vencendo_horizonte ?? 0} lotes no horizonte`} tom={(dashboard?.lotes_vencendo_horizonte ?? 0) > 0 ? "amber" : "emerald"} />
+          <Kpi label="Estoque ativo" valor={formatCompactCurrency(dashboard?.valor_estoque_ativo)} detalhe="saldo aceito/em uso valorizado" tom="brand" />
+          <Kpi label="Vencendo" valor={formatCompactCurrency(dashboard?.valor_vencendo_horizonte)} detalhe={`${dashboard?.lotes_vencendo_horizonte ?? 0} lotes no horizonte`} tom={(dashboard?.lotes_vencendo_horizonte ?? 0) > 0 ? "amber" : "brand"} />
           <Kpi label="Compras abertas" valor={formatCompactCurrency(dashboard?.compras_abertas_valor)} detalhe="valor estimado em pedidos abertos" tom="blue" />
           <Kpi label="Margem média" valor={`${formatNumber(dashboard?.margem_media_pct)}%`} detalhe="orçamentos com snapshot de preço" tom="slate" />
         </div>
@@ -389,7 +389,7 @@ export default async function Home() {
 
       <section className="mt-8 grid gap-6 lg:grid-cols-2">
         <JornadaCard
-          tom="emerald"
+          tom="brand"
           titulo="Orçamento"
           subtitulo="Da solicitação do cliente ao preço final, com análises, custos diretos, overhead e fatores comerciais documentados."
           badge={`${nAnalises ?? 0} análises ativas`}

@@ -10,7 +10,7 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   solicitado: { label: "Solicitado", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
   aprovado: { label: "Aprovado", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
   enviado: { label: "Enviado", cls: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300" },
-  recebido: { label: "Recebido", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" },
+  recebido: { label: "Recebido", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
   cancelado: { label: "Cancelado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
 };
 
@@ -144,7 +144,7 @@ export default async function ComprasPage() {
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Campanha (texto livre)</label>
             <input aria-label="Campanha (texto livre)" name="projeto" className={`${inp} mt-1 w-full`} />
           </div>
-          <button className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+          <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
             + Nova solicitação
           </button>
         </form>

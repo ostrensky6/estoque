@@ -58,6 +58,30 @@ function SidebarContent({
         />
       </Link>
 
+      <div className="flex flex-col items-center gap-1.5 border-b border-slate-100 px-4 py-3 dark:border-zinc-900">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-zinc-400">
+          Uma parceria
+        </span>
+        <div className="flex items-center justify-center gap-4">
+          <Image
+            src="/logos/gia.svg"
+            alt="Instituto GIA"
+            width={1767}
+            height={1434}
+            className="h-7 w-auto object-contain dark:brightness-0 dark:invert"
+            unoptimized
+          />
+          <Image
+            src="/logos/atgc.svg"
+            alt="ATGC"
+            width={250}
+            height={250}
+            className="h-9 w-auto object-contain"
+            unoptimized
+          />
+        </div>
+      </div>
+
       <div className="border-b border-slate-100 px-3 py-2.5 dark:border-zinc-900">
         <Button
           type="button"

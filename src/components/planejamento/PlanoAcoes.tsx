@@ -71,7 +71,7 @@ function Botao({
                 <button
                   type="submit"
                   onClick={() => setOpen(false)}
-                  className="rounded-md bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-500"
+                  className="rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-500"
                 >
                   Confirmar
                 </button>
@@ -82,7 +82,7 @@ function Botao({
       </form>
       {state.message && (
         <p
-          className={`text-xs ${state.ok ? "text-emerald-700 dark:text-emerald-400" : "text-red-600"}`}
+          className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-400" : "text-red-600"}`}
         >
           {state.message}
         </p>
@@ -104,7 +104,7 @@ export function PlanoAcoes({ planId }: { planId: number }) {
         planId={planId}
         action={iniciarPlano}
         label="Iniciar (baixa definitiva)"
-        cls="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+        cls="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500 disabled:opacity-50"
         confirmar="Iniciar a análise dá baixa definitiva no estoque (FEFO). Confirmar?"
       />
       <Botao

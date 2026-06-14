@@ -109,7 +109,7 @@ export default async function ParametrosEconomicosPage() {
             <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
               Fator econômico total
             </p>
-            <p className="mt-2 text-2xl font-semibold text-emerald-700 dark:text-emerald-400">
+            <p className="mt-2 text-2xl font-semibold text-brand-700 dark:text-brand-400">
               {pct(fatorTotal)}
             </p>
           </div>
@@ -188,7 +188,7 @@ export default async function ParametrosEconomicosPage() {
                   <td className="px-4 py-2.5 tabular-nums text-zinc-500">
                     {pct(b.fatores * 100)}
                   </td>
-                  <td className="px-4 py-2.5 font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                  <td className="px-4 py-2.5 font-semibold tabular-nums text-brand-700 dark:text-brand-400">
                     {brl(b.preco)}
                   </td>
                 </tr>

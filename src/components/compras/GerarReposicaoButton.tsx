@@ -18,7 +18,7 @@ export function GerarReposicaoButton() {
         Gerar rascunhos
       </Button>
       {state.message && (
-        <span className={`text-xs ${state.ok ? "text-emerald-700 dark:text-emerald-300" : "text-red-600"}`}>
+        <span className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-red-600"}`}>
           {state.message}
         </span>
       )}

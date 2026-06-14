@@ -12,12 +12,12 @@
   /* Texto base mais escuro = mais contraste e legibilidade */
   --foreground: #0f172a;
 
-  /* Tokens shadcn/ui — base slate, ação esmeralda (identidade do app) */
+  /* Tokens shadcn/ui — base slate, ação azul institucional (GIA #01489d) */
   --card: #ffffff;
   --card-foreground: #0f172a;
   --popover: #ffffff;
   --popover-foreground: #0f172a;
-  --primary: #059669;
+  --primary: #01489d;
   --primary-foreground: #ffffff;
   --secondary: #f1f5f9;
   --secondary-foreground: #0f172a;
@@ -30,7 +30,7 @@
   --destructive-foreground: #ffffff;
   --border: #e2e8f0;
   --input: #e2e8f0;
-  --ring: #10b981;
+  --ring: #1b5aac;
 }
 
 .dark {
@@ -41,7 +41,7 @@
   --card-foreground: #ededed;
   --popover: #18181b;
   --popover-foreground: #ededed;
-  --primary: #059669;
+  --primary: #2f7fd1;
   --primary-foreground: #ffffff;
   --secondary: #27272a;
   --secondary-foreground: #ededed;
@@ -53,7 +53,7 @@
   --destructive-foreground: #ffffff;
   --border: #27272a;
   --input: #27272a;
-  --ring: #10b981;
+  --ring: #2f7fd1;
 }
 
 @theme inline {
@@ -76,6 +76,43 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /* Paleta institucional — brand = azul GIA (#01489d), acentos ATGC */
+  --color-brand-50: #eaf1fb;
+  --color-brand-100: #cdddf4;
+  --color-brand-200: #a3c2e8;
+  --color-brand-300: #6f9fda;
+  --color-brand-400: #3d79c4;
+  --color-brand-500: #1b5aac;
+  --color-brand-600: #01489d;
+  --color-brand-700: #013a80;
+  --color-brand-800: #082f5f;
+  --color-brand-900: #07223f;
+  --color-brand-950: #03142a;
+
+  /* leaf = verde ATGC (#00ba00) */
+  --color-leaf-50: #e6f7e6;
+  --color-leaf-100: #c2ebc0;
+  --color-leaf-200: #8fda8c;
+  --color-leaf-300: #54c451;
+  --color-leaf-400: #1fae1c;
+  --color-leaf-500: #069c04;
+  --color-leaf-600: #008a00;
+  --color-leaf-700: #0a6b0a;
+  --color-leaf-800: #0a560a;
+  --color-leaf-900: #0a3d0a;
+
+  /* aqua = teal ATGC (#008e9c) */
+  --color-aqua-50: #e0f5f7;
+  --color-aqua-100: #b4e6ea;
+  --color-aqua-200: #7fd3da;
+  --color-aqua-300: #44bbc5;
+  --color-aqua-400: #12a3af;
+  --color-aqua-500: #0a909c;
+  --color-aqua-600: #008e9c;
+  --color-aqua-700: #0a727d;
+  --color-aqua-800: #0c5b64;
+  --color-aqua-900: #0b3f45;
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -122,8 +159,8 @@ body {
 /* Degradê suave no fundo da área de trabalho — claro, com toque de azul/verde */
 .app-canvas {
   background:
-    radial-gradient(60rem 60rem at 110% -10%, rgba(16, 185, 129, 0.06), transparent 60%),
-    radial-gradient(60rem 60rem at -10% 0%, rgba(37, 99, 235, 0.07), transparent 55%),
+    radial-gradient(60rem 60rem at 110% -10%, rgba(0, 142, 156, 0.06), transparent 60%),
+    radial-gradient(60rem 60rem at -10% 0%, rgba(1, 72, 157, 0.08), transparent 55%),
     linear-gradient(180deg, #f4f7fb 0%, #eef2f8 100%);
 }
 

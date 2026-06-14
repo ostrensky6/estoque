@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 const STATUS_PROJETO: Record<string, { label: string; cls: string }> = {
   proposto: { label: "Proposto", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
-  ativo: { label: "Ativo", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" },
+  ativo: { label: "Ativo", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
   concluido: { label: "Concluído", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
   cancelado: { label: "Cancelado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
 };
@@ -38,7 +38,7 @@ export default async function ProjetosPage() {
           </div>
           <Link
             href="/cadastros/projetos"
-            className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+            className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400"
           >
             Cadastrar / editar projetos
           </Link>
@@ -48,7 +48,7 @@ export default async function ProjetosPage() {
           {(projetos ?? []).length === 0 ? (
             <p className="px-3 py-8 text-center text-sm text-slate-400 dark:text-zinc-500">
               Nenhum projeto cadastrado.{" "}
-              <Link href="/cadastros/projetos" className="text-emerald-700 hover:underline dark:text-emerald-400">
+              <Link href="/cadastros/projetos" className="text-brand-700 hover:underline dark:text-brand-400">
                 Cadastrar o primeiro
               </Link>
               .
@@ -71,7 +71,7 @@ export default async function ProjetosPage() {
                     className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/40"
                   >
                     <td className={tdCls}>
-                      <Link href={`/projetos/${p.id}`} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+                      <Link href={`/projetos/${p.id}`} className="font-medium text-brand-700 hover:underline dark:text-brand-400">
                         {p.nome}
                       </Link>
                     </td>

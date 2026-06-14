@@ -35,7 +35,7 @@ export function BackupAplicativoButton() {
         <p
           className={`text-sm ${
             state.ok
-              ? "text-emerald-700 dark:text-emerald-300"
+              ? "text-brand-700 dark:text-brand-300"
               : "text-red-700 dark:text-red-300"
           }`}
         >

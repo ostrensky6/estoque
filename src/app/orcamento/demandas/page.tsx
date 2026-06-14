@@ -14,7 +14,7 @@ const MODALIDADES: Record<string, string> = {
 const STATUS: Record<string, { label: string; cls: string }> = {
   nova: { label: "Nova", cls: "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300" },
   em_analise: { label: "Em análise", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
-  orcada: { label: "Orçada", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" },
+  orcada: { label: "Orçada", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
   aprovada: { label: "Aprovada", cls: "bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300" },
   recusada: { label: "Recusada", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
   cancelada: { label: "Cancelada", cls: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
@@ -54,7 +54,7 @@ export default async function DemandasPage() {
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
             Entrada comercial
           </p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">Demandas/Propostas</h1>
@@ -102,7 +102,7 @@ export default async function DemandasPage() {
               ))}
             </select>
           </div>
-          <button className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+          <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
             Nova demanda
           </button>
         </form>

@@ -55,7 +55,7 @@ export function ConfirmActionButton({
                 ))}
                 <button
                   className={`rounded-md px-4 py-1.5 text-sm font-medium text-white ${
-                    destrutivo ? "bg-red-600 hover:bg-red-500" : "bg-emerald-600 hover:bg-emerald-500"
+                    destrutivo ? "bg-red-600 hover:bg-red-500" : "bg-brand-600 hover:bg-brand-500"
                   }`}
                 >
                   {confirmLabel}

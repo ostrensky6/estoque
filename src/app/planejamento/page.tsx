@@ -68,7 +68,7 @@ export default async function PlanejamentoPage() {
               ))}
             </select>
           </div>
-          <button className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+          <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
             + Novo plano
           </button>
         </form>

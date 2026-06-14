@@ -25,7 +25,8 @@ type FunnelRow = {
   total: number;
 };
 
-const COLORS = ["#059669", "#2563eb", "#d97706", "#dc2626"];
+// Paleta institucional: azul GIA, teal e verde ATGC, âmbar para perdidos.
+const COLORS = ["#01489d", "#008e9c", "#008a00", "#d97706"];
 
 export function ExecutiveCharts({
   gastos,
@@ -54,7 +55,7 @@ export function ExecutiveCharts({
               <XAxis dataKey="mes" fontSize={12} tickLine={false} axisLine={false} />
               <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => formatCompactCurrency(Number(value))} width={78} />
               <Tooltip formatter={(value) => formatCompactCurrency(Number(value))} cursor={{ fill: "rgba(148, 163, 184, 0.12)" }} />
-              <Bar dataKey="gasto" radius={[4, 4, 0, 0]} fill="#059669" />
+              <Bar dataKey="gasto" radius={[4, 4, 0, 0]} fill="#01489d" />
             </BarChart>
           </ResponsiveContainer>
         </div>

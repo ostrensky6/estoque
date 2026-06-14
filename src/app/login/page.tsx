@@ -64,7 +64,7 @@ export default function LoginPage() {
 
           <button
             disabled={pending}
-            className="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+            className="w-full rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500 disabled:opacity-50"
           >
             {pending ? "Entrando…" : "Entrar"}
           </button>
@@ -90,7 +90,7 @@ export default function LoginPage() {
             </button>
           </div>
           {resetState.message && (
-            <p className={`mt-2 text-xs ${resetState.ok ? "text-emerald-700 dark:text-emerald-300" : "text-red-600"}`}>
+            <p className={`mt-2 text-xs ${resetState.ok ? "text-brand-700 dark:text-brand-300" : "text-red-600"}`}>
               {resetState.message}
             </p>
           )}

@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type Accent = "emerald" | "blue" | "amber" | "violet" | "slate";
+export type Accent = "brand" | "blue" | "amber" | "violet" | "slate";
 const ICONS = {
   Activity,
   ArchiveRestore,
@@ -131,7 +131,7 @@ export function SideNav({
                 className={cn(
                   "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border",
                   temLinkAtivo
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-300"
+                    ? "border-brand-200 bg-brand-50 text-brand-700 dark:border-brand-900/70 dark:bg-brand-950/30 dark:text-brand-300"
                     : "border-slate-200 bg-white text-slate-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-500",
                 )}
               >
@@ -165,13 +165,13 @@ export function SideNav({
                         className={cn(
                           "relative flex min-h-9 items-start gap-2 rounded-md py-1.5 pl-2.5 pr-2 transition-colors",
                           ativo
-                            ? "bg-emerald-50 font-semibold text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-100"
+                            ? "bg-brand-50 font-semibold text-brand-950 dark:bg-brand-950/30 dark:text-brand-100"
                             : "font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-zinc-100",
                         )}
                       >
                         {ativo && (
                           <span
-                            className="absolute -left-[13px] top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-emerald-500"
+                            className="absolute -left-[13px] top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-brand-500"
                           />
                         )}
                         {LinkIcone && (

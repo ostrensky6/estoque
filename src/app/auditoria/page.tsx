@@ -14,7 +14,7 @@ const LABEL: Record<string, string> = {
   pedidos_compra: "Pedidos",
 };
 const ACAO: Record<string, { label: string; cls: string }> = {
-  insert: { label: "Criou", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" },
+  insert: { label: "Criou", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
   update: { label: "Alterou", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
   delete: { label: "Removeu", cls: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300" },
 };

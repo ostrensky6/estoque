@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const STATUS: Record<string, { label: string; cls: string }> = {
   rascunho: { label: "Rascunho", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
   enviado: { label: "Enviado", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
-  aprovado: { label: "Aprovado", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" },
+  aprovado: { label: "Aprovado", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
   recusado: { label: "Recusado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
 };
 
@@ -148,7 +148,7 @@ export default async function OrcamentosPage() {
               Documento comercial único. O escopo define se o orçamento inclui só análises, só projeto ou análises + projeto.
             </p>
           </div>
-          <Link href="/orcamento/parametros" className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+          <Link href="/orcamento/parametros" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400">
             Parâmetros econômicos
           </Link>
         </div>
@@ -179,7 +179,7 @@ export default async function OrcamentosPage() {
             </select>
             <input type="hidden" name="titulo" value="" />
           </div>
-          <button className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+          <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
             Novo orçamento
           </button>
         </form>

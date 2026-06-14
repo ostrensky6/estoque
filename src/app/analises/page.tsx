@@ -62,7 +62,7 @@ export default async function AnalisesPage() {
             <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Nome</label>
             <input name="nome" placeholder="Ex.: Metagenômica 16S" className="mt-1 w-64 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
           </div>
-          <button className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+          <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
             Nova análise
           </button>
         </form>

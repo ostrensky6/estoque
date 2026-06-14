@@ -43,7 +43,7 @@ function SaldoStatusBadge({ status, label }: { status: SaldoRow["status"]; label
       ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
       : status === "sem_estoque"
         ? "bg-secondary text-secondary-foreground"
-        : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300";
+        : "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300";
 
   return <Badge className={className}>{label}</Badge>;
 }
@@ -53,7 +53,7 @@ function LoteStatusBadge({ status, label }: { status: string; label: string }) {
     status === "quarentena"
       ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
       : status === "aceito"
-        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+        ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
         : status === "em_uso"
           ? "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
           : status === "bloqueado"
@@ -162,7 +162,7 @@ const lotesColumns = (
     cell: ({ row }) => (
       <Link
         href={`/estoque/lotes/${row.original.id}`}
-        className="font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+        className="font-medium text-brand-700 hover:underline dark:text-brand-400"
       >
         {row.original.codigoLote}
       </Link>

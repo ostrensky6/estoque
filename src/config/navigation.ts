@@ -45,7 +45,7 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
   const groups: NavGroup[] = [
     {
       title: "Operação",
-      accent: "emerald",
+      accent: "brand",
       icon: "Activity",
       links: [
         {

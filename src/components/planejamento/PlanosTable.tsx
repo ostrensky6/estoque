@@ -45,7 +45,7 @@ const columns: ColumnDef<PlanoRow, unknown>[] = [
 function StatusBadge({ status, label }: { status: string; label: string }) {
   const variantClass =
     status === "iniciado"
-      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+      ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
       : status === "reservado"
         ? "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
         : status === "liberado"

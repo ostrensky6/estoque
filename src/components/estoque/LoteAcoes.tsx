@@ -47,7 +47,7 @@ export function LoteAcoes({
   return (
     <span className="inline-flex flex-wrap gap-1">
       {status === "quarentena" && podeAceitar && (
-        <button disabled={pending} onClick={() => run(aceitarLote)} className={`${btn} text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30`}>
+        <button disabled={pending} onClick={() => run(aceitarLote)} className={`${btn} text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/30`}>
           Aceitar
         </button>
       )}

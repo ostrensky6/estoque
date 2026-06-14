@@ -228,7 +228,7 @@ export default async function OrcamentoDetalhe({
                     </td>
                     <td></td>
                     <td className="px-3 py-2.5 tabular-nums">{totalAmostras}</td>
-                    <td className="px-3 py-2.5 text-base font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                    <td className="px-3 py-2.5 text-base font-semibold tabular-nums text-brand-700 dark:text-brand-400">
                       {brl(totalPreco)}
                     </td>
                     <td className="no-print"></td>
@@ -294,7 +294,7 @@ export default async function OrcamentoDetalhe({
                 className={`${inp} w-28`}
               />
             </div>
-            <button className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+            <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
               Adicionar
             </button>
           </form>

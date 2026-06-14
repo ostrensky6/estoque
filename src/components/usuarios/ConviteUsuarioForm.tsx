@@ -40,7 +40,7 @@ export function ConviteUsuarioForm() {
         O envio real do convite por e-mail depende da configuração transacional. Por enquanto o app registra a pendência in-app para o administrador.
       </p>
       {state.message && (
-        <p className={`mt-2 text-xs ${state.ok ? "text-emerald-700 dark:text-emerald-300" : "text-red-600"}`}>
+        <p className={`mt-2 text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-red-600"}`}>
           {state.message}
         </p>
       )}

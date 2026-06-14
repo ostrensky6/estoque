@@ -96,7 +96,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                       <td className="px-4 py-2.5 text-right tabular-nums">{brl(it.custo_unitario_estimado)}</td>
                       <td className="px-4 py-2.5 text-center">
                         {it.lote_id ? (
-                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">✓ lote {it.lote_id}</span>
+                          <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs text-brand-800 dark:bg-brand-950/50 dark:text-brand-300">✓ lote {it.lote_id}</span>
                         ) : (
                           <span className="text-xs text-zinc-400">—</span>
                         )}
@@ -116,7 +116,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                               <input type="hidden" name="pedido_id" value={pedidoId} />
                               <input name="validade" type="date" className={inp} title="Validade do lote" />
                               <input name="codigo" placeholder="lote" className={`${inp} w-20`} />
-                              <button className="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-500">Receber</button>
+                              <button className="rounded bg-brand-600 px-2 py-1 text-xs font-medium text-white hover:bg-brand-500">Receber</button>
                             </form>
                           )}
                         </td>

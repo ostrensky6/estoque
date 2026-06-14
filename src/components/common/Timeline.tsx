@@ -31,7 +31,7 @@ export function Timeline({ eventos }: { eventos: Evento[] }) {
     <ol className="space-y-3">
       {eventos.map((e) => (
         <li key={e.id} className="flex gap-3">
-          <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+          <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-500" />
           <div className="min-w-0">
             <p className="text-sm">
               {rotulo(e.de_status) && (

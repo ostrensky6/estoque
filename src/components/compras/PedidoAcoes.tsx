@@ -22,7 +22,7 @@ function Botao({ pedidoId, action, label, cls }: { pedidoId: number; action: Act
         </button>
       </form>
       {state.message && (
-        <p className={`text-xs ${state.ok ? "text-emerald-700 dark:text-emerald-400" : "text-red-600"}`}>
+        <p className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-400" : "text-red-600"}`}>
           {state.message}
         </p>
       )}

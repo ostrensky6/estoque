@@ -53,7 +53,7 @@ export function CusteioSimulator({
         </div>
         <div className="text-right">
           <div className="text-xs uppercase text-slate-500">Preço simulado</div>
-          <div className="text-2xl font-semibold text-emerald-700 dark:text-emerald-300">{formatCurrency(resultado.preco)}</div>
+          <div className="text-2xl font-semibold text-brand-700 dark:text-brand-300">{formatCurrency(resultado.preco)}</div>
         </div>
       </div>
 
@@ -90,7 +90,7 @@ export function CusteioSimulator({
             step={1}
             value={lote}
             onChange={(event) => setLote(Number(event.target.value))}
-            className="mt-3 w-full accent-emerald-600"
+            className="mt-3 w-full accent-brand-600"
           />
         </label>
 

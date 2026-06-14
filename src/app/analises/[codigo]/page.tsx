@@ -80,7 +80,7 @@ export default async function AnaliseDetalhe({
         <section className="mt-2 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-semibold tracking-tight">{analise.codigo}</h1>
-            <span className={`rounded-full px-3 py-1 text-xs font-medium ${analise.ativo ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800"}`}>
+            <span className={`rounded-full px-3 py-1 text-xs font-medium ${analise.ativo ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800"}`}>
               {analise.ativo ? "Ativa" : "Inativa"}
             </span>
           </div>
@@ -145,7 +145,7 @@ export default async function AnaliseDetalhe({
           <div><label className={lbl}>Am/exec</label><input name="amostras_por_execucao" type="number" step="any" className={`${inp} mt-1 w-20`} /></div>
           <div><label className={lbl}>T.máq</label><input name="tempo_maquina_h" type="number" step="any" className={`${inp} mt-1 w-20`} /></div>
           <div><label className={lbl}>T.banc</label><input name="tempo_bancada_h" type="number" step="any" className={`${inp} mt-1 w-20`} /></div>
-          <button className="rounded-md bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-500">+ Etapa</button>
+          <button className="rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-500">+ Etapa</button>
         </form>
 
         {/* Equipamentos */}
@@ -168,7 +168,7 @@ export default async function AnaliseDetalhe({
           <input type="hidden" name="codigo_analise" value={codigo} />
           <div><label className={lbl}>Equipamento</label><div className="w-64"><Combobox name="equipamento_id" placeholder="Selecione…" searchPlaceholder="Buscar…" emptyText="Nenhum." options={equipOptions} /></div></div>
           <div><label className={lbl}>Peso</label><input name="peso_alocacao" type="number" step="any" defaultValue="1" className={`${inp} mt-1 w-24`} /></div>
-          <button className="rounded-md bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-500">+ Equipamento</button>
+          <button className="rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-500">+ Equipamento</button>
         </form>
 
         {/* Materiais */}
@@ -222,7 +222,7 @@ export default async function AnaliseDetalhe({
               <option value="por_execucao">Por execução</option>
             </select>
           </div>
-          <button className="rounded-md bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-500">+ Material</button>
+          <button className="rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-500">+ Material</button>
         </form>
 
         <p className="mt-3 text-xs text-zinc-400">

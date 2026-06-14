@@ -43,7 +43,7 @@ const columns: ColumnDef<AuditoriaRow, unknown>[] = [
 function AcaoBadge({ acao, label }: { acao: string; label: string }) {
   const className =
     acao === "insert"
-      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+      ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
       : acao === "update"
         ? "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
         : acao === "delete"

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const STATUS_PROJETO: Record<string, { label: string; cls: string }> = {
   proposto: { label: "Proposto", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
-  ativo: { label: "Ativo", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" },
+  ativo: { label: "Ativo", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
   concluido: { label: "Concluído", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
   cancelado: { label: "Cancelado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
 };
@@ -16,7 +16,7 @@ const STATUS_PROJETO: Record<string, { label: string; cls: string }> = {
 const STATUS_ORC: Record<string, { label: string; cls: string }> = {
   rascunho: { label: "Rascunho", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
   enviado: { label: "Enviado", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
-  aprovado: { label: "Aprovado", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" },
+  aprovado: { label: "Aprovado", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
   recusado: { label: "Recusado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
 };
 
@@ -25,7 +25,7 @@ const STATUS_COMPRA: Record<string, { label: string; cls: string }> = {
   aprovado: { label: "Aprovado", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
   enviado: { label: "Enviado", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
   em_transito: { label: "Em trânsito", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
-  recebido: { label: "Recebido", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" },
+  recebido: { label: "Recebido", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
   cancelado: { label: "Cancelado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
 };
 
@@ -230,7 +230,7 @@ export default async function ProjetoHubPage({
           </div>
           <Link
             href="/cadastros/projetos"
-            className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+            className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400"
           >
             Editar cadastro
           </Link>
@@ -248,7 +248,7 @@ export default async function ProjetoHubPage({
         <section className="mt-8">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight">Orçamentos</h2>
-            <Link href="/orcamento" className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400">Ver todos</Link>
+            <Link href="/orcamento" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400">Ver todos</Link>
           </div>
           <div className={`${cardCls} overflow-x-auto`}>
             {orcLinhas.length === 0 ? (
@@ -267,7 +267,7 @@ export default async function ProjetoHubPage({
                 <tbody>
                   {orcLinhas.map((o) => (
                     <tr key={o.key} className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/40">
-                      <td className={tdCls}><Link href={o.href} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">{o.titulo}</Link></td>
+                      <td className={tdCls}><Link href={o.href} className="font-medium text-brand-700 hover:underline dark:text-brand-400">{o.titulo}</Link></td>
                       <td className={tdCls}>{o.tipo}</td>
                       <td className={tdCls}>{fmtData(o.data)}</td>
                       <td className={tdCls}><Badge map={STATUS_ORC} status={o.status} /></td>
@@ -284,7 +284,7 @@ export default async function ProjetoHubPage({
         <section className="mt-8">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight">Planejamentos</h2>
-            <Link href="/planejamento" className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400">Ver todos</Link>
+            <Link href="/planejamento" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400">Ver todos</Link>
           </div>
           <div className={`${cardCls} overflow-x-auto`}>
             {planosLinhas.length === 0 ? (
@@ -302,7 +302,7 @@ export default async function ProjetoHubPage({
                 <tbody>
                   {planosLinhas.map((p) => (
                     <tr key={p.id} className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/40">
-                      <td className={tdCls}><Link href={`/planejamento/${p.id}`} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">{p.nome}</Link></td>
+                      <td className={tdCls}><Link href={`/planejamento/${p.id}`} className="font-medium text-brand-700 hover:underline dark:text-brand-400">{p.nome}</Link></td>
                       <td className={tdCls}>{fmtData(p.dataAlvo)}</td>
                       <td className={`${tdCls} text-right tabular-nums`}>{p.itens}</td>
                       <td className={`${tdCls} text-right tabular-nums`}>{p.amostras}</td>
@@ -318,7 +318,7 @@ export default async function ProjetoHubPage({
         <section className="mt-8">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight">Compras</h2>
-            <Link href="/compras" className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400">Ver todas</Link>
+            <Link href="/compras" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400">Ver todas</Link>
           </div>
           <div className={`${cardCls} overflow-x-auto`}>
             {comprasLinhas.length === 0 ? (
@@ -338,7 +338,7 @@ export default async function ProjetoHubPage({
                 <tbody>
                   {comprasLinhas.map((c) => (
                     <tr key={c.id} className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/40">
-                      <td className={tdCls}><Link href={`/compras/${c.id}`} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">Pedido {c.id}</Link></td>
+                      <td className={tdCls}><Link href={`/compras/${c.id}`} className="font-medium text-brand-700 hover:underline dark:text-brand-400">Pedido {c.id}</Link></td>
                       <td className={tdCls}>{c.fornecedor}</td>
                       <td className={tdCls}>{fmtData(c.data)}</td>
                       <td className={tdCls}><Badge map={STATUS_COMPRA} status={c.status} /></td>
@@ -368,7 +368,7 @@ export default async function ProjetoHubPage({
                 <tbody>
                   {(demandas ?? []).map((d) => (
                     <tr key={d.id} className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/40">
-                      <td className={tdCls}><Link href={`/orcamento/demandas/${d.id}`} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">{d.titulo}</Link></td>
+                      <td className={tdCls}><Link href={`/orcamento/demandas/${d.id}`} className="font-medium text-brand-700 hover:underline dark:text-brand-400">{d.titulo}</Link></td>
                       <td className={tdCls}>{fmtData(d.data_solicitacao)}</td>
                       <td className={tdCls}>{d.status}</td>
                     </tr>

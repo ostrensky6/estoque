@@ -57,7 +57,7 @@ const columns: ColumnDef<AnaliseRow, unknown>[] = [
     filterFn: "equalsString",
     meta: { align: "center" },
     cell: ({ row }) => (
-      <Badge className={row.original.status === "ativa" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" : "bg-secondary text-secondary-foreground"}>
+      <Badge className={row.original.status === "ativa" ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-secondary text-secondary-foreground"}>
         {row.original.statusLabel}
       </Badge>
     ),

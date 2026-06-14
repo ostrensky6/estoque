@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const LOTE_STATUS: Record<string, { label: string; cls: string }> = {
   quarentena: { label: "Quarentena", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
-  aceito: { label: "Aceito", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" },
+  aceito: { label: "Aceito", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
   em_uso: { label: "Em uso", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
   consumido: { label: "Consumido", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
   bloqueado: { label: "Bloqueado", cls: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300" },
@@ -16,7 +16,7 @@ const LOTE_STATUS: Record<string, { label: string; cls: string }> = {
 };
 
 const TIPO_MOV: Record<string, { label: string; cls: string }> = {
-  entrada: { label: "Entrada", cls: "text-emerald-700 dark:text-emerald-400" },
+  entrada: { label: "Entrada", cls: "text-brand-700 dark:text-brand-400" },
   saida: { label: "Saída", cls: "text-red-700 dark:text-red-400" },
   ajuste: { label: "Ajuste", cls: "text-amber-700 dark:text-amber-400" },
 };
@@ -142,7 +142,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
                 <Link
                   key={p}
                   href={`/planejamento/${p}`}
-                  className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 hover:underline dark:bg-emerald-950/30 dark:text-emerald-300"
+                  className="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 hover:underline dark:bg-brand-950/30 dark:text-brand-300"
                 >
                   Plano {p}
                 </Link>

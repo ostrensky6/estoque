@@ -89,7 +89,7 @@ export function ParametrosEconomicosForm({
   >(salvarParametrosEconomicos, { ok: false });
 
   const inputBase =
-    "mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm tabular-nums dark:bg-zinc-950 focus:outline-none focus:ring-1 focus:ring-emerald-500";
+    "mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm tabular-nums dark:bg-zinc-950 focus:outline-none focus:ring-1 focus:ring-brand-500";
 
   return (
     <form action={action} className="space-y-6">
@@ -119,7 +119,7 @@ export function ParametrosEconomicosForm({
                   className={`${inputBase} ${
                     erro
                       ? "border-red-400 focus:border-red-500"
-                      : "border-zinc-300 focus:border-emerald-500 dark:border-zinc-700"
+                      : "border-zinc-300 focus:border-brand-500 dark:border-zinc-700"
                   }`}
                 />
                 <span className="min-w-10 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-2 text-center text-xs font-medium text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950">
@@ -142,7 +142,7 @@ export function ParametrosEconomicosForm({
         <p
           className={`rounded-md px-3 py-2 text-sm ${
             state.ok
-              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+              ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300"
               : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
           }`}
         >
@@ -153,7 +153,7 @@ export function ParametrosEconomicosForm({
       <div className="flex justify-end">
         <button
           disabled={pending}
-          className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-500 disabled:opacity-50"
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-500 disabled:opacity-50"
         >
           {pending ? "Salvando..." : "Salvar parâmetros"}
         </button>

@@ -48,7 +48,7 @@ const num = (v: number, casas = 2) =>
   });
 
 const inp =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm tabular-nums focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-950";
+  "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm tabular-nums focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-zinc-700 dark:bg-zinc-950";
 const lbl = "block text-xs font-medium text-zinc-600 dark:text-zinc-300";
 const sec = "text-sm font-semibold uppercase tracking-wide text-zinc-500";
 
@@ -140,7 +140,7 @@ export function ParametrosForm({ params }: { params: Param[] }) {
           className={`mt-4 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border px-4 py-3 text-sm ${
             somaFatores === 0
               ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
-              : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300"
+              : "border-brand-200 bg-brand-50 text-brand-800 dark:border-brand-900/40 dark:bg-brand-950/20 dark:text-brand-300"
           }`}
         >
           <span>
@@ -174,7 +174,7 @@ export function ParametrosForm({ params }: { params: Param[] }) {
         <p
           className={`rounded-md px-3 py-2 text-sm ${
             state.ok
-              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+              ? "bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
               : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
           }`}
         >
@@ -185,7 +185,7 @@ export function ParametrosForm({ params }: { params: Param[] }) {
       <div>
         <button
           disabled={pending}
-          className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500 disabled:opacity-50"
         >
           {pending ? "Salvando..." : "Salvar parâmetros"}
         </button>
