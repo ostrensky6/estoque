@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { DataTable, numericSort } from "@/components/common/DataTable";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency as brl } from "@/lib/formatters";
 
 export type ProjetoOrcamentoRow = {
   id: number;
@@ -18,9 +19,6 @@ export type ProjetoOrcamentoRow = {
   status: string;
   statusLabel: string;
 };
-
-const brl = (value: number) =>
-  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const columns: ColumnDef<ProjetoOrcamentoRow, unknown>[] = [
   {

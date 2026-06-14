@@ -7,6 +7,7 @@ import { DataTable, numericSort } from "@/components/common/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { LoteAcoes } from "@/components/estoque/LoteAcoes";
 import { AjusteInventarioButton } from "@/components/estoque/ReceberLote";
+import { formatNumber as fmt } from "@/lib/formatters";
 
 export type SaldoRow = {
   insumoId: number;
@@ -35,8 +36,6 @@ export type LoteRow = {
   statusLabel: string;
   vencido: boolean;
 };
-
-const fmt = (value: number) => value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
 function SaldoStatusBadge({ status, label }: { status: SaldoRow["status"]; label: string }) {
   const className =

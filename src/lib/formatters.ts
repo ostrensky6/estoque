@@ -33,6 +33,12 @@ export const dateFormatter = new Intl.DateTimeFormat(APP_LOCALE, {
   year: "numeric",
 });
 
+export const dateTimeFormatter = new Intl.DateTimeFormat(APP_LOCALE, {
+  timeZone: APP_TIME_ZONE,
+  dateStyle: "short",
+  timeStyle: "short",
+});
+
 export function formatNumber(value: number | null | undefined) {
   return numberFormatter.format(value ?? 0);
 }
@@ -58,4 +64,11 @@ export function formatDate(value: string | Date | null | undefined) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return dateFormatter.format(date);
+}
+
+export function formatDateTime(value: string | Date | null | undefined) {
+  if (!value) return "—";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return dateTimeFormatter.format(date);
 }

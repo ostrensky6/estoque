@@ -7,10 +7,9 @@ import { comprarFaltasDoPlano } from "@/lib/actions/compras";
 import { PlanoAcoes } from "@/components/planejamento/PlanoAcoes";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Combobox } from "@/components/ui/combobox";
+import { formatNumber as fmt } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
-
-const fmt = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
 export default async function PlanoDetalhe({
   params,

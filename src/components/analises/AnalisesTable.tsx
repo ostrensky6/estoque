@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { DataTable, numericSort } from "@/components/common/DataTable";
 import { Badge } from "@/components/ui/badge";
+import { formatNumber as num } from "@/lib/formatters";
 
 export type AnaliseRow = {
   codigo: string;
@@ -17,8 +18,6 @@ export type AnaliseRow = {
   status: string;
   statusLabel: string;
 };
-
-const num = (value: number) => value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
 const columns: ColumnDef<AnaliseRow, unknown>[] = [
   {

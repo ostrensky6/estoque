@@ -1,6 +1,7 @@
 import { Clock, DatabaseBackup, FolderArchive, ShieldCheck } from "lucide-react";
 import { obterResumoBackups } from "@/lib/actions/backups";
 import { BackupAplicativoButton } from "@/components/governanca/BackupAplicativoButton";
+import { APP_LOCALE, formatDateTime } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -8,16 +9,13 @@ function formatBytes(bytes: number) {
   if (bytes <= 0) return "0 B";
   const units = ["B", "KB", "MB", "GB"];
   const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  return `${(bytes / 1024 ** index).toLocaleString("pt-BR", {
+  return `${(bytes / 1024 ** index).toLocaleString(APP_LOCALE, {
     maximumFractionDigits: 1,
   })} ${units[index]}`;
 }
 
 function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
+  return formatDateTime(date);
 }
 
 function EmptyRow({ children }: { children: React.ReactNode }) {

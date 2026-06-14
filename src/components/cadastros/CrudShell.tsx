@@ -68,24 +68,19 @@ import {
   type FormState,
 } from "@/lib/actions/cadastros";
 import { cn } from "@/lib/utils";
+import { formatCurrency, formatNumber, formatPercent } from "@/lib/formatters";
 
 type Registro = Record<string, unknown>;
-
-const brl = (v: unknown) =>
-  Number(v ?? 0).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
 
 function fmt(value: unknown, tipo?: Coluna["tipo"]) {
   if (value == null || value === "") return "—";
   switch (tipo) {
     case "currency":
-      return brl(value);
+      return formatCurrency(Number(value));
     case "percent":
-      return `${Number(value).toLocaleString("pt-BR")}%`;
+      return formatPercent(Number(value));
     case "number":
-      return Number(value).toLocaleString("pt-BR");
+      return formatNumber(Number(value));
     case "checkbox":
       return value ? "Sim" : "Não";
     default:

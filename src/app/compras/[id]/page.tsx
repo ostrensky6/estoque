@@ -10,12 +10,9 @@ import {
 import { PedidoAcoes } from "@/components/compras/PedidoAcoes";
 import { listarEventos } from "@/lib/actions/eventos";
 import { Timeline } from "@/components/common/Timeline";
+import { formatNumber as fmt, formatCurrency as brl } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
-
-const fmt = (v: number | null) => (v ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
-const brl = (v: number | null) =>
-  (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const STATUS: Record<string, string> = {
   solicitado: "Solicitado",

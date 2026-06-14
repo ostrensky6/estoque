@@ -7,6 +7,7 @@ import { DataTable, numericSort } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
 import { Combobox, type ComboOption } from "@/components/ui/combobox";
 import { Select } from "@/components/ui/select";
+import { formatCurrency as brl } from "@/lib/formatters";
 
 export type InsumoAnaliseRow = {
   id: number;
@@ -21,9 +22,6 @@ export type InsumoAnaliseRow = {
   modoCobranca: string;
   modoCobrancaLabel: string;
 };
-
-const brl = (value: number) =>
-  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export function InsumosAnaliseTable({
   rows,

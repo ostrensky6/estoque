@@ -1,11 +1,9 @@
 import { calcularTodas, carregarSimuladorCusteio } from "@/lib/costing/loader";
 import { CusteioTable, type CusteioRow } from "@/components/custeio/CusteioTable";
 import { CusteioSimulator } from "@/components/custeio/CusteioSimulator";
+import { formatCurrency as brl } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
-
-const brl = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default async function CusteioPage() {
   const { breakdowns, params, valorHoraPessoal, custoHoraOverhead } =

@@ -15,11 +15,9 @@ import {
 import { gerarPlanejamentoDeOrcamento } from "@/lib/actions/planejamento";
 import { listarEventos } from "@/lib/actions/eventos";
 import { Timeline } from "@/components/common/Timeline";
+import { formatCurrency as brl, formatDate } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
-
-const brl = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 type Item = {
   id: number;
@@ -85,10 +83,12 @@ export default async function OrcamentoDetalhe({
 
   const validade =
     orc.data_orcamento && orc.validade_dias
-      ? new Date(
-          new Date(orc.data_orcamento).getTime() +
-            orc.validade_dias * 86400000,
-        ).toLocaleDateString("pt-BR")
+      ? formatDate(
+          new Date(
+            new Date(orc.data_orcamento).getTime() +
+              orc.validade_dias * 86400000,
+          ),
+        )
       : null;
 
   const inp =

@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { salvarParametros } from "@/lib/actions/parametros";
 import type { FormState } from "@/lib/actions/cadastros";
+import { formatCurrency as brl, APP_LOCALE } from "@/lib/formatters";
 
 export type Param = {
   chave: string;
@@ -40,11 +41,8 @@ const ORDEM = [
   "janela_vencimento_dias",
 ];
 
-const brl = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
 const num = (v: number, casas = 2) =>
-  v.toLocaleString("pt-BR", {
+  v.toLocaleString(APP_LOCALE, {
     minimumFractionDigits: 0,
     maximumFractionDigits: casas,
   });

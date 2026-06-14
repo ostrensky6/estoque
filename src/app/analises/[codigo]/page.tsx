@@ -17,11 +17,9 @@ import {
   atualizarMaterial,
   removerMaterial,
 } from "@/lib/actions/receita";
+import { formatNumber as num } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
-
-const num = (v: number | null) =>
-  (v ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
 const inp =
   "rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950";

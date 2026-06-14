@@ -2,17 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { calcularOrcamentoProjetoLegacy } from "@/lib/project-budget/legacy";
+import { formatCurrency as moeda, formatDate as fmtData } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
-
-const moeda = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-function fmtData(v: string | null | undefined) {
-  if (!v) return "—";
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString("pt-BR");
-}
 
 const STATUS_PROJETO: Record<string, { label: string; cls: string }> = {
   proposto: { label: "Proposto", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },

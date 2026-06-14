@@ -2,10 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { criarPedido } from "@/lib/actions/compras";
 import { ComprasTable, type CompraRow } from "@/components/compras/ComprasTable";
 import { GerarReposicaoButton } from "@/components/compras/GerarReposicaoButton";
+import { formatNumber as fmt } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
-
-const fmt = (v: number | null) => (v ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   solicitado: { label: "Solicitado", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },

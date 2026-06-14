@@ -1,3 +1,5 @@
+import { formatDateTime as quando } from "@/lib/formatters";
+
 type Evento = {
   id: number;
   de_status: string | null;
@@ -19,13 +21,6 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const rotulo = (s: string | null) => (s ? STATUS_LABEL[s] ?? s : null);
-
-function quando(v: string) {
-  const d = new Date(v);
-  return Number.isNaN(d.getTime())
-    ? v
-    : d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-}
 
 /** Linha do tempo de transições de status (Fase 3.4). */
 export function Timeline({ eventos }: { eventos: Evento[] }) {

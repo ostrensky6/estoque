@@ -18,11 +18,9 @@ import {
   RUBRICAS_PROJETO,
 } from "@/lib/project-budget/legacy";
 import { gerarPlanejamentoDeOrcamentoProjeto } from "@/lib/actions/planejamento";
+import { formatCurrency as brl } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
-
-const brl = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const CATEGORIAS: Record<string, string> = {
   mao_obra: "Mão de obra",

@@ -2,14 +2,17 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
 import { ParametrosEconomicosForm } from "@/components/orcamento/ParametrosEconomicosForm";
+import {
+  formatCurrency as brl,
+  formatNumber,
+  formatDateTime,
+  APP_LOCALE,
+} from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
-const brl = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
 const pct = (v: number) =>
-  `${v.toLocaleString("pt-BR", {
+  `${v.toLocaleString(APP_LOCALE, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   })}%`;
@@ -115,7 +118,7 @@ export default async function ParametrosEconomicosPage() {
               Dias úteis/ano
             </p>
             <p className="mt-2 text-2xl font-semibold tabular-nums">
-              {params.dias_uteis_ano.toLocaleString("pt-BR")}
+              {formatNumber(params.dias_uteis_ano)}
             </p>
           </div>
           <div className={card}>
@@ -139,7 +142,7 @@ export default async function ParametrosEconomicosPage() {
         {ultimaAtualizacao && (
           <p className="mt-3 text-xs text-zinc-400">
             Última atualização:{" "}
-            {new Date(ultimaAtualizacao).toLocaleString("pt-BR")}
+            {formatDateTime(ultimaAtualizacao)}
           </p>
         )}
 

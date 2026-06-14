@@ -2,15 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Barcode39 } from "@/components/common/Barcode39";
+import { formatNumber as fmt, formatDate as fdata, formatCurrency } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
-
-const fmt = (v: number | null) => (v ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
-const fdata = (v: string | null) => {
-  if (!v) return "—";
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString("pt-BR");
-};
 
 const LOTE_STATUS: Record<string, { label: string; cls: string }> = {
   quarentena: { label: "Quarentena", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
@@ -127,7 +121,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
           <Campo rotulo="Local" valor={local?.nome ?? "—"} />
           <Campo rotulo="Qtd. inicial" valor={`${fmt(lote.quantidade_inicial)} ${unidade}`} />
           <Campo rotulo="Saldo atual" valor={`${fmt(lote.quantidade_atual)} ${unidade}`} />
-          <Campo rotulo="Custo unitário" valor={lote.custo_unitario != null ? (lote.custo_unitario).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—"} />
+          <Campo rotulo="Custo unitário" valor={lote.custo_unitario != null ? formatCurrency(lote.custo_unitario) : "—"} />
           <Campo rotulo="Resp. recebimento" valor={lote.responsavel_recebimento ?? "—"} />
           <Campo rotulo="Resp. liberação" valor={lote.responsavel_liberacao ?? "—"} />
           {lote.criterio_aceitacao && <Campo rotulo="Critério de aceitação" valor={lote.criterio_aceitacao} />}

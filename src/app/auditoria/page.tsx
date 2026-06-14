@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
 import { AuditoriaTable, type AuditoriaRow } from "@/components/auditoria/AuditoriaTable";
+import { formatDateTime } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +68,7 @@ export default async function AuditoriaPage({
     const a = ACAO[r.acao] ?? { label: r.acao, cls: "" };
     return {
       id: r.id as number,
-      quando: new Date(r.criado_em).toLocaleString("pt-BR"),
+      quando: formatDateTime(r.criado_em as string),
       usuario: r.usuario ?? "—",
       tabela: r.tabela,
       tabelaLabel: LABEL[r.tabela] ?? r.tabela,
