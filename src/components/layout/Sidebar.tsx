@@ -98,22 +98,22 @@ function SidebarContent({
       </div>
 
       <footer className="border-t border-slate-100 px-4 py-3 dark:border-zinc-900">
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center justify-center gap-4">
           <Image
             src="/logos/gia.svg"
             alt="Instituto GIA"
             width={1767}
             height={1434}
-            className="h-5 w-auto object-contain opacity-80 dark:opacity-100 dark:brightness-0 dark:invert"
+            className="h-8 w-auto object-contain opacity-80 dark:opacity-100 dark:brightness-0 dark:invert"
             unoptimized
           />
-          <span className="h-5 w-px bg-slate-200 dark:bg-zinc-800" aria-hidden="true" />
+          <span className="h-8 w-px bg-slate-200 dark:bg-zinc-800" aria-hidden="true" />
           <Image
             src="/logos/atgc.svg"
             alt="ATGC"
             width={250}
             height={250}
-            className="h-6 w-auto object-contain opacity-90"
+            className="h-10 w-auto object-contain opacity-90"
             unoptimized
           />
         </div>
