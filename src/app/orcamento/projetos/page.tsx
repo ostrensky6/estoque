@@ -84,11 +84,11 @@ export default async function OrcamentoProjetosPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <Link href="/orcamento" className="text-xs text-zinc-500 hover:underline">
-              Orçamentos de análises
+              Análises/Lab.
             </Link>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight">Orçamentos de projetos</h1>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight">Projetos</h1>
             <p className="mt-1 max-w-3xl text-sm text-zinc-500">
-              Propostas completas por projeto, combinando análises do laboratório com custos de mão de obra,
+              Custos completos por projeto, combinando análises do laboratório com custos de mão de obra,
               deslocamento, equipamentos, terceiros, materiais e cronograma.
             </p>
           </div>
@@ -97,8 +97,8 @@ export default async function OrcamentoProjetosPage() {
         <section className="mt-6 grid gap-3 md:grid-cols-3">
           {[
             ["Estoque", "materiais, entradas/saídas, lotes, fornecedores, unidades e custo real"],
-            ["Orçamento de laboratório", "análises que usam estoque e snapshots do custo por amostra"],
-            ["Orçamento de projetos", "escopo completo com custos laboratoriais e custos próprios do projeto"],
+            ["Análises/Lab.", "análises que usam estoque e snapshots do custo por amostra"],
+            ["Projetos", "escopo completo com custos laboratoriais e custos próprios do projeto"],
           ].map(([titulo, desc]) => (
             <div key={titulo} className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
               <h2 className="text-sm font-semibold">{titulo}</h2>
@@ -125,7 +125,7 @@ export default async function OrcamentoProjetosPage() {
             </select>
           </div>
           <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
-            Novo orçamento
+            Novo custo de projeto
           </button>
         </form>
 

@@ -124,7 +124,7 @@ export default async function OrcamentoProjetoDetalhe({
       <main className="print-area mx-auto max-w-6xl px-6 py-10">
         <div className="no-print flex flex-wrap items-center justify-between gap-3">
           <Link href="/orcamento/projetos" className="text-xs text-zinc-500 hover:underline">
-            ← Orçamentos de projetos
+            ← Projetos
           </Link>
           <div className="flex items-center gap-2">
             {orc.status === "aprovado" && analisesProjeto.length > 0 && (
@@ -143,7 +143,7 @@ export default async function OrcamentoProjetoDetalhe({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
-                Orçamento de projeto
+                Custos de projeto
               </p>
               <h1 className="mt-1 text-2xl font-semibold tracking-tight">{orc.titulo}</h1>
               <p className="mt-1 text-sm text-zinc-500">

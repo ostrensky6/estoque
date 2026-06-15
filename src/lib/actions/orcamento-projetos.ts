@@ -55,7 +55,7 @@ async function carregarCliente(clienteId: number | null) {
 export async function criarOrcamentoProjeto(formData: FormData) {
   const supabase = await createClient();
   const projetoId = formData.get("projeto_id") ? Number(formData.get("projeto_id")) : null;
-  const titulo = texto(formData, "titulo") || "Novo orçamento de projeto";
+  const titulo = texto(formData, "titulo") || "Novo custo de projeto";
 
   let projeto: { nome: string; cliente_id: number | null } | null = null;
   if (projetoId) {
@@ -75,7 +75,7 @@ export async function criarOrcamentoProjeto(formData: FormData) {
     .insert({
       projeto_id: projetoId,
       cliente_id: clienteId,
-      titulo: titulo === "Novo orçamento de projeto" && projeto?.nome ? projeto.nome : titulo,
+      titulo: titulo === "Novo custo de projeto" && projeto?.nome ? projeto.nome : titulo,
       cliente_nome: cliente?.nome ?? null,
       cliente_cnpj: cliente?.cnpj ?? null,
       cliente_contato: cliente?.contato || cliente?.email || cliente?.telefone || null,
@@ -100,7 +100,7 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
   const patch = {
     projeto_id: projetoId,
     cliente_id: clienteId,
-    titulo: texto(formData, "titulo") || "Orçamento de projeto",
+    titulo: texto(formData, "titulo") || "Custos de projeto",
     cliente_nome: cliente?.nome ?? texto(formData, "cliente_nome"),
     cliente_cnpj: cliente?.cnpj ?? texto(formData, "cliente_cnpj"),
     cliente_contato: cliente?.contato || cliente?.email || cliente?.telefone || texto(formData, "cliente_contato"),

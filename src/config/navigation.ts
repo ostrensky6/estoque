@@ -95,25 +95,13 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
           desc: "solicitações, pedidos e recebimento",
           icon: "ShoppingCart",
         },
-        {
-          href: "/cadastros/insumos",
-          label: "Cadastro de insumos",
-          desc: "materiais e políticas de reposição",
-          icon: "ClipboardList",
-        },
       ],
     },
     {
-      title: "Comercial",
+      title: "Orçamentos",
       accent: "amber",
       icon: "FileText",
       links: [
-        {
-          href: "/projetos",
-          label: "Projetos",
-          desc: "visão 360° por projeto",
-          icon: "LayoutDashboard",
-        },
         {
           href: "/orcamento/demandas",
           label: "Demandas/Propostas",
@@ -122,16 +110,16 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
         },
         {
           href: "/orcamento",
-          label: "Orçamentos",
+          label: "Análises/Lab.",
           desc: "propostas com análises e projetos",
-          icon: "ReceiptText",
+          icon: "DollarSign",
           shortcut: "O",
         },
         {
           href: "/orcamento/projetos",
-          label: "Orçamentos de projetos",
+          label: "Projetos",
           desc: "custos, rubricas e cronograma",
-          icon: "FolderKanban",
+          icon: "DollarSign",
         },
         {
           href: "/orcamento/parametros",
@@ -146,10 +134,16 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
       accent: "violet",
       icon: "Database",
       links: [
-        { href: "/cadastros/clientes", label: "Clientes", icon: "Building2" },
         { href: "/cadastros/projetos", label: "Projetos", icon: "FolderOpen" },
-        { href: "/cadastros/fornecedores", label: "Fornecedores", icon: "Truck" },
+        { href: "/cadastros/clientes", label: "Clientes", icon: "Building2" },
+        {
+          href: "/cadastros/insumos",
+          label: "Insumos",
+          desc: "materiais e políticas de reposição",
+          icon: "ClipboardList",
+        },
         { href: "/cadastros/equipamentos", label: "Equipamentos", icon: "Microscope" },
+        { href: "/cadastros/fornecedores", label: "Fornecedores", icon: "Truck" },
         { href: "/cadastros/tecnicos", label: "Técnicos", icon: "UsersRound" },
         { href: "/cadastros/locais", label: "Locais", icon: "MapPin" },
         { href: "/cadastros/overhead", label: "Overhead", icon: "Percent" },

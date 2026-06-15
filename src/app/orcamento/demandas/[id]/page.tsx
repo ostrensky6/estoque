@@ -85,28 +85,28 @@ export default async function DemandaDetalhe({
 
         <section className="mt-6 grid gap-4 lg:grid-cols-3">
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 className="text-sm font-semibold">Gerar orçamento</h2>
+            <h2 className="text-sm font-semibold">Gerar custo</h2>
             <p className="mt-1 text-xs leading-5 text-zinc-500">
-              A demanda continua existindo como registro de entrada. O orçamento gerado recebe os dados comuns.
+              A demanda continua existindo como registro de entrada. O custo gerado recebe os dados comuns.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <form action={gerarOrcamentoAnalisesDaDemanda}>
                 <input type="hidden" name="demanda_id" value={demandaId} />
                 <button className="rounded-md bg-brand-600 px-3 py-2 text-xs font-medium text-white hover:bg-brand-500">
-                  Orçamento de análises
+                  Análises/Lab.
                 </button>
               </form>
               <form action={gerarOrcamentoProjetoDaDemanda}>
                 <input type="hidden" name="demanda_id" value={demandaId} />
                 <button className="rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
-                  Orçamento de projeto
+                  Custos de projeto
                 </button>
               </form>
             </div>
           </div>
 
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 className="text-sm font-semibold">Orçamentos vinculados</h2>
+            <h2 className="text-sm font-semibold">Custos vinculados</h2>
             <div className="mt-3 space-y-2 text-sm">
               {(orcamentos ?? []).map((o) => (
                 <Link key={o.id} href={`/orcamento/${o.id}`} className="block rounded-md bg-zinc-50 px-3 py-2 hover:bg-zinc-100 dark:bg-zinc-950/50 dark:hover:bg-zinc-800">
@@ -119,7 +119,7 @@ export default async function DemandaDetalhe({
                 </Link>
               ))}
               {(orcamentos ?? []).length === 0 && (orcProjetos ?? []).length === 0 && (
-                <p className="text-xs text-zinc-400">Nenhum orçamento gerado a partir desta demanda.</p>
+                <p className="text-xs text-zinc-400">Nenhum custo gerado a partir desta demanda.</p>
               )}
             </div>
           </div>
@@ -129,7 +129,7 @@ export default async function DemandaDetalhe({
             <ol className="mt-3 space-y-2 text-xs leading-5 text-zinc-500">
               <li>1. Registrar demanda.</li>
               <li>2. Confirmar modalidade e projeto.</li>
-              <li>3. Gerar orçamento correto.</li>
+              <li>3. Gerar o custo correto.</li>
               <li>4. Planejar demanda e reservar estoque quando aprovado.</li>
             </ol>
           </div>

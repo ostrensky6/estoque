@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { CADASTROS, type Campo } from "@/lib/cadastros/config";
+import {
+  CADASTROS,
+  getCadastrosOrdenados,
+  type Campo,
+} from "@/lib/cadastros/config";
 import { CrudShell } from "@/components/cadastros/CrudShell";
 import { Button } from "@/components/ui/button";
 import { equipCustoDia } from "@/lib/costing/engine";
@@ -64,6 +68,7 @@ export default async function CadastroPage({
   const { slug } = await params;
   const cfg = CADASTROS[slug];
   if (!cfg) notFound();
+  const cadastros = getCadastrosOrdenados();
 
   const supabase = await createClient();
   type Tabela = "equipamentos" | "insumos" | "tecnicos" | "overhead";
@@ -106,7 +111,7 @@ export default async function CadastroPage({
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="mx-auto max-w-6xl px-6 py-10">
         <nav className="flex flex-wrap gap-2 text-xs">
-          {Object.values(CADASTROS).map((c) => (
+          {cadastros.map((c) => (
             <Button
               key={c.slug}
               asChild

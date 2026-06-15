@@ -11,11 +11,11 @@ test("fluxo orcamento -> documento imprimivel/PDF", async ({ page }) => {
   await page.goto("/orcamento");
   await page.locator('select[name="tipo"]').selectOption("analises");
   await page.locator('input[name="cliente_nome"]').fill("Cliente Playwright");
-  await expect(page.getByRole("button", { name: "Novo orçamento" })).toBeEnabled();
-  await page.getByRole("button", { name: "Novo orçamento" }).click();
+  await expect(page.getByRole("button", { name: "Novo custo de análise" })).toBeEnabled();
+  await page.getByRole("button", { name: "Novo custo de análise" }).click();
 
   await expect(page).toHaveURL(/\/orcamento\/\d+$/, { timeout: 30_000 });
-  await expect(page.getByRole("heading", { name: "Orçamento de análises" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Análises/Lab." })).toBeVisible();
   await expect(page.getByText("Cliente Playwright")).toBeVisible();
 
   await page.getByRole("button", { name: "Imprimir / PDF" }).click();

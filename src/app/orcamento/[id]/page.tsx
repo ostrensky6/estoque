@@ -100,7 +100,7 @@ export default async function OrcamentoDetalhe({
       <main className="print-area mx-auto max-w-4xl px-6 py-10">
         <div className="no-print flex items-center justify-between">
           <Link href="/orcamento" className="text-xs text-zinc-500 hover:underline">
-            ← Orçamentos
+            ← Análises/Lab.
           </Link>
           <div className="flex items-center gap-2">
             <PrintButton />
@@ -126,7 +126,7 @@ export default async function OrcamentoDetalhe({
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-xl font-semibold tracking-tight">
-                Orçamento de análises
+                Análises/Lab.
               </h1>
               <p className="text-sm text-zinc-500">
                 Laboratório ATGC — Biologia Molecular

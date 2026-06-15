@@ -395,8 +395,8 @@ export default async function Home() {
           badge={`${nAnalises ?? 0} análises ativas`}
           passos={[
             { href: "/orcamento/demandas", titulo: "Demandas/Propostas", desc: "Registre a entrada comercial antes do orçamento formal." },
-            { href: "/orcamento", titulo: "Orçamentos", desc: "Monte demandas, vincule análises e gere o documento comercial." },
-            { href: "/orcamento/projetos", titulo: "Detalhes de projetos", desc: "Inclua rubricas, custos próprios e cronograma do projeto." },
+            { href: "/orcamento", titulo: "Análises/Lab.", desc: "Monte demandas, vincule análises e calcule custos e preços." },
+            { href: "/orcamento/projetos", titulo: "Projetos", desc: "Inclua rubricas, custos próprios e cronograma do projeto." },
             { href: "/analises", titulo: "Análises", desc: "Revise capacidade, tempos, equipamentos e materiais por protocolo." },
             { href: "/orcamento/parametros", titulo: "Parâmetros econômicos", desc: "Ajuste margens, impostos, fundos e bases de rateio." },
           ]}

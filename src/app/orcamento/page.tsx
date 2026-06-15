@@ -143,9 +143,9 @@ export default async function OrcamentosPage() {
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Orçamentos</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Análises/Lab.</h1>
             <p className="mt-1 max-w-3xl text-sm text-zinc-500">
-              Documento comercial único. O escopo define se o orçamento inclui só análises, só projeto ou análises + projeto.
+              Cálculo de custos e preços para análises. O escopo define se o registro inclui só análises, só projeto ou análises + projeto.
             </p>
           </div>
           <Link href="/orcamento/parametros" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400">
@@ -180,7 +180,7 @@ export default async function OrcamentosPage() {
             <input type="hidden" name="titulo" value="" />
           </div>
           <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
-            Novo orçamento
+            Novo custo de análise
           </button>
         </form>
 

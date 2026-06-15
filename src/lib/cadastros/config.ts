@@ -376,3 +376,26 @@ export const CADASTROS: Record<string, CadastroConfig> = {
     ],
   },
 };
+
+export const ORDEM_CADASTROS = [
+  "projetos",
+  "clientes",
+  "insumos",
+  "equipamentos",
+  "fornecedores",
+  "tecnicos",
+  "locais",
+  "overhead",
+] as const;
+
+export function getCadastrosOrdenados(): CadastroConfig[] {
+  const slugsOrdenados = new Set<string>(ORDEM_CADASTROS);
+  const cadastrosOrdenados = ORDEM_CADASTROS.map((slug) => CADASTROS[slug]).filter(
+    Boolean,
+  );
+  const cadastrosRestantes = Object.values(CADASTROS).filter(
+    (cadastro) => !slugsOrdenados.has(cadastro.slug),
+  );
+
+  return [...cadastrosOrdenados, ...cadastrosRestantes];
+}
