@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { criarOrcamentoProjeto } from "@/lib/actions/orcamento-projetos";
+import {
+  criarOrcamentoProjeto,
+  criarProjetoDeTemplate,
+  excluirTemplate,
+} from "@/lib/actions/orcamento-projetos";
 import {
   ProjetoOrcamentosTable,
   type ProjetoOrcamentoRow,
@@ -37,6 +41,11 @@ export default async function OrcamentoProjetosPage() {
       .order("criado_em", { ascending: false }),
     supabase.from("projetos").select("id, nome").order("nome"),
   ]);
+
+  const { data: templates } = await supabase
+    .from("orcamento_projeto_templates")
+    .select("id, nome, descricao, criado_em")
+    .order("criado_em", { ascending: false });
 
   const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
   const linhas: ProjetoOrcamentoRow[] = (orcamentos ?? []).map((o) => {
@@ -128,6 +137,48 @@ export default async function OrcamentoProjetosPage() {
             Novo custo de projeto
           </button>
         </form>
+
+        {(templates ?? []).length > 0 && (
+          <section className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <h2 className="text-sm font-semibold">Modelos</h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Crie um novo orçamento de projeto a partir de um template (parâmetros e rubricas pré-preenchidos).
+            </p>
+            <div className="mt-3 grid gap-2">
+              {(templates ?? []).map((t) => (
+                <div
+                  key={t.id}
+                  className="flex flex-wrap items-end justify-between gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800"
+                >
+                  <div className="min-w-48">
+                    <p className="text-sm font-medium">{t.nome}</p>
+                    {t.descricao && <p className="text-xs text-zinc-500">{t.descricao}</p>}
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <form action={criarProjetoDeTemplate} className="flex items-end gap-2">
+                      <input type="hidden" name="template_id" value={t.id} />
+                      <select name="projeto_id" defaultValue="" className={inp}>
+                        <option value="">Sem vínculo</option>
+                        {(projetos ?? []).map((p) => (
+                          <option key={p.id} value={p.id}>{p.nome}</option>
+                        ))}
+                      </select>
+                      <button className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
+                        Criar a partir deste
+                      </button>
+                    </form>
+                    <form action={excluirTemplate}>
+                      <input type="hidden" name="template_id" value={t.id} />
+                      <button className="rounded-md border border-zinc-300 px-3 py-2 text-xs text-zinc-500 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                        Excluir
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <div className="mt-6">
           <ProjetoOrcamentosTable rows={linhas} />

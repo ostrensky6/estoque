@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/lib/supabase/database.types";
 import { calcularTodas } from "@/lib/costing/loader";
 import {
   calcularQuantidadeViagem,
@@ -324,6 +325,151 @@ export async function aprovarOrcamentoPublico(formData: FormData) {
   if (error) throw new Error(error.message);
   if (data === false) throw new Error("Link inválido, expirado ou já aprovado.");
   revalidatePath(`/aprovar/${token}`);
+}
+
+type CustoTemplate = {
+  categoria: string;
+  rubrica: string | null;
+  descricao: string;
+  quantidade: number;
+  unidade: string | null;
+  custo_unitario: number;
+  preco_unitario: number;
+  meses_selecionados: number[] | null;
+};
+
+type ParametrosTemplate = {
+  project_months?: number;
+  impostos_legacy?: number;
+  incubacao?: number;
+  reserva?: number;
+  investimentos?: number;
+  lucro?: number;
+  travel_inputs?: unknown;
+};
+
+/** Salva o orçamento atual como template reutilizável (parâmetros + rubricas).
+ *  Análises de laboratório não entram (são específicas de cada cotação).
+ *  Usa o schema existente (0012): parâmetros e itens em colunas jsonb. */
+export async function salvarComoTemplate(formData: FormData) {
+  const id = numero(formData, "orcamento_projeto_id");
+  const nome = texto(formData, "nome");
+  if (!id || !nome) return;
+
+  const supabase = await createClient();
+
+  const { data: orc } = await supabase
+    .from("orcamento_projetos")
+    .select(
+      "project_months, impostos_legacy, incubacao, reserva, investimentos, lucro, margem_lucro, impostos, travel_inputs",
+    )
+    .eq("id", id)
+    .single();
+  if (!orc) return;
+
+  const { data: custos } = await supabase
+    .from("orcamento_projeto_custos")
+    .select("categoria, rubrica, descricao, quantidade, unidade, custo_unitario, preco_unitario, meses_selecionados")
+    .eq("orcamento_projeto_id", id);
+
+  const parametros: ParametrosTemplate = {
+    project_months: Number(orc.project_months ?? 12),
+    impostos_legacy: Number(orc.impostos_legacy ?? orc.impostos ?? 0),
+    incubacao: Number(orc.incubacao ?? 0),
+    reserva: Number(orc.reserva ?? 0),
+    investimentos: Number(orc.investimentos ?? 0),
+    lucro: Number(orc.lucro ?? orc.margem_lucro ?? 0),
+    travel_inputs: orc.travel_inputs ?? {},
+  };
+
+  const { error } = await supabase.from("orcamento_projeto_templates").insert({
+    nome,
+    descricao: texto(formData, "descricao"),
+    origem: "kontrol",
+    itens: (custos ?? []) as unknown as Json,
+    parametros: parametros as unknown as Json,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath(`${pathLista}/${id}`);
+  revalidatePath(pathLista);
+}
+
+/** Cria um novo orçamento de projeto a partir de um template. */
+export async function criarProjetoDeTemplate(formData: FormData) {
+  const templateId = numero(formData, "template_id");
+  if (!templateId) return;
+
+  const supabase = await createClient();
+  const { data: tpl } = await supabase
+    .from("orcamento_projeto_templates")
+    .select("*")
+    .eq("id", templateId)
+    .single();
+  if (!tpl) return;
+
+  const params = (tpl.parametros ?? {}) as ParametrosTemplate;
+
+  const projetoId = formData.get("projeto_id") ? Number(formData.get("projeto_id")) : null;
+  let projeto: { nome: string; cliente_id: number | null } | null = null;
+  if (projetoId) {
+    const { data } = await supabase
+      .from("projetos")
+      .select("nome, cliente_id")
+      .eq("id", projetoId)
+      .single();
+    projeto = data;
+  }
+  const cliente = await carregarCliente(projeto?.cliente_id ?? null);
+
+  const { data: novo, error } = await supabase
+    .from("orcamento_projetos")
+    .insert({
+      projeto_id: projetoId,
+      cliente_id: projeto?.cliente_id ?? null,
+      titulo: projeto?.nome ?? `Projeto de ${tpl.nome}`,
+      cliente_nome: cliente?.nome ?? null,
+      cliente_cnpj: cliente?.cnpj ?? null,
+      cliente_contato: cliente?.contato || cliente?.email || cliente?.telefone || null,
+      project_months: Number(params.project_months ?? 12),
+      impostos_legacy: Number(params.impostos_legacy ?? 0),
+      incubacao: Number(params.incubacao ?? 0),
+      reserva: Number(params.reserva ?? 0),
+      investimentos: Number(params.investimentos ?? 0),
+      lucro: Number(params.lucro ?? 0),
+      travel_inputs: (params.travel_inputs ?? {}) as Json,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  const itens = ((tpl.itens ?? []) as unknown as CustoTemplate[]) ?? [];
+  if (itens.length > 0) {
+    const linhas = itens.map((it) => ({
+      orcamento_projeto_id: novo.id,
+      categoria: it.categoria || categoriaPorRubrica(it.rubrica || "OU"),
+      rubrica: it.rubrica || "OU",
+      descricao: it.descricao,
+      quantidade: Number(it.quantidade) || 1,
+      unidade: it.unidade,
+      custo_unitario: Number(it.custo_unitario) || 0,
+      preco_unitario: Number(it.preco_unitario) || 0,
+      meses_selecionados: it.meses_selecionados ?? [],
+      origem: "template",
+    }));
+    const { error: itemError } = await supabase.from("orcamento_projeto_custos").insert(linhas);
+    if (itemError) throw new Error(itemError.message);
+  }
+
+  revalidatePath(pathLista);
+  redirect(`${pathLista}/${novo.id}`);
+}
+
+export async function excluirTemplate(formData: FormData) {
+  const templateId = numero(formData, "template_id");
+  if (!templateId) return;
+  const supabase = await createClient();
+  await supabase.from("orcamento_projeto_templates").delete().eq("id", templateId);
+  revalidatePath(pathLista);
 }
 
 export async function excluirOrcamentoProjeto(formData: FormData) {

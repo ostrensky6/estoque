@@ -14,6 +14,7 @@ import {
   removerAnaliseProjeto,
   removerCustoProjeto,
   revogarLinkPublico,
+  salvarComoTemplate,
   salvarOrcamentoProjeto,
   salvarViagensProjeto,
 } from "@/lib/actions/orcamento-projetos";
@@ -374,6 +375,29 @@ export default async function OrcamentoProjetoDetalhe({
                 ))}
               </div>
             </div>
+          </form>
+        </section>
+
+        <section className="no-print mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="text-sm font-semibold">Salvar como template</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Guarda os parâmetros econômicos, os parâmetros de viagem e as linhas
+            de rubrica como modelo reutilizável. As análises de laboratório não
+            entram no template.
+          </p>
+          <form action={salvarComoTemplate} className="mt-3 flex flex-wrap items-end gap-2">
+            <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+            <div className="flex-1 min-w-48">
+              <label className={lbl}>Nome do template</label>
+              <input name="nome" placeholder="Ex.: Projeto de campo padrão" className={`${inp} mt-1 w-full`} />
+            </div>
+            <div className="flex-1 min-w-48">
+              <label className={lbl}>Descrição (opcional)</label>
+              <input name="descricao" className={`${inp} mt-1 w-full`} />
+            </div>
+            <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
+              Salvar template
+            </button>
           </form>
         </section>
 
