@@ -472,6 +472,61 @@ export async function excluirTemplate(formData: FormData) {
   revalidatePath(pathLista);
 }
 
+const BUCKET_ANEXOS = "orcamento-anexos";
+
+/** Faz upload de um anexo do orçamento de projeto para o bucket privado. */
+export async function adicionarAnexoProjeto(formData: FormData) {
+  const id = numero(formData, "orcamento_projeto_id");
+  const arquivo = formData.get("arquivo");
+  if (!id || !(arquivo instanceof File) || arquivo.size === 0) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const seguro = arquivo.name.replace(/[^\w.\-]+/g, "_").slice(-80) || "arquivo";
+  const path = `${id}/${randomBytes(8).toString("hex")}-${seguro}`;
+
+  const { error: upErr } = await supabase.storage
+    .from(BUCKET_ANEXOS)
+    .upload(path, arquivo, { contentType: arquivo.type || undefined, upsert: false });
+  if (upErr) throw new Error(upErr.message);
+
+  const { error } = await supabase.from("orcamento_projeto_anexos").insert({
+    orcamento_projeto_id: id,
+    path,
+    nome_arquivo: arquivo.name,
+    content_type: arquivo.type || null,
+    tamanho: arquivo.size,
+    criado_por: user?.id ?? null,
+  });
+  if (error) {
+    // rollback do objeto se o metadado falhar
+    await supabase.storage.from(BUCKET_ANEXOS).remove([path]);
+    throw new Error(error.message);
+  }
+  revalidatePath(`${pathLista}/${id}`);
+}
+
+export async function removerAnexoProjeto(formData: FormData) {
+  const id = numero(formData, "orcamento_projeto_id");
+  const anexoId = numero(formData, "anexo_id");
+  if (!id || !anexoId) return;
+
+  const supabase = await createClient();
+  const { data: anexo } = await supabase
+    .from("orcamento_projeto_anexos")
+    .select("path")
+    .eq("id", anexoId)
+    .single();
+  if (anexo?.path) {
+    await supabase.storage.from(BUCKET_ANEXOS).remove([anexo.path]);
+  }
+  await supabase.from("orcamento_projeto_anexos").delete().eq("id", anexoId);
+  revalidatePath(`${pathLista}/${id}`);
+}
+
 export async function excluirOrcamentoProjeto(formData: FormData) {
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;

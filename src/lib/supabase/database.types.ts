@@ -984,6 +984,47 @@ export type Database = {
           },
         ]
       }
+      orcamento_projeto_anexos: {
+        Row: {
+          content_type: string | null
+          criado_em: string
+          criado_por: string | null
+          id: number
+          nome_arquivo: string
+          orcamento_projeto_id: number
+          path: string
+          tamanho: number | null
+        }
+        Insert: {
+          content_type?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          id?: never
+          nome_arquivo: string
+          orcamento_projeto_id: number
+          path: string
+          tamanho?: number | null
+        }
+        Update: {
+          content_type?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          id?: never
+          nome_arquivo?: string
+          orcamento_projeto_id?: number
+          path?: string
+          tamanho?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_projeto_anexos_orcamento_projeto_id_fkey"
+            columns: ["orcamento_projeto_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orcamento_projeto_catalogo: {
         Row: {
           ativo: boolean
