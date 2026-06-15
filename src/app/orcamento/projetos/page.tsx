@@ -18,7 +18,7 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   recusado: { label: "Recusado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
 };
 
-type Analise = { n_amostras: number; preco_unitario: number };
+type Analise = { n_amostras: number; custo_unitario: number };
 type Custo = {
   rubrica: string | null;
   quantidade: number;
@@ -32,7 +32,7 @@ export default async function OrcamentoProjetosPage() {
     supabase
       .from("orcamento_projetos")
       .select(
-        "id, titulo, cliente_nome, data_orcamento, status, projeto_id, margem_lucro, impostos, impostos_legacy, incubacao, reserva, investimentos, lucro, criado_em, orcamento_projeto_analises(n_amostras, preco_unitario), orcamento_projeto_custos(rubrica, quantidade, preco_unitario, meses_selecionados)",
+        "id, titulo, cliente_nome, data_orcamento, status, projeto_id, margem_lucro, impostos, impostos_legacy, incubacao, reserva, investimentos, lucro, criado_em, orcamento_projeto_analises(n_amostras, custo_unitario), orcamento_projeto_custos(rubrica, quantidade, preco_unitario, meses_selecionados)",
       )
       .order("criado_em", { ascending: false }),
     supabase.from("projetos").select("id, nome").order("nome"),
@@ -42,14 +42,14 @@ export default async function OrcamentoProjetosPage() {
   const linhas: ProjetoOrcamentoRow[] = (orcamentos ?? []).map((o) => {
     const analises = (o.orcamento_projeto_analises as Analise[]) ?? [];
     const custos = (o.orcamento_projeto_custos as Custo[]) ?? [];
-    const totalLab = analises.reduce((a, it) => a + Number(it.n_amostras) * Number(it.preco_unitario), 0);
+    const totalLab = analises.reduce((a, it) => a + Number(it.n_amostras) * Number(it.custo_unitario), 0);
     const totalCustos = custos.reduce((a, it) => a + itemProjetoTotal(it), 0);
     const calculo = calcularOrcamentoProjetoLegacy(
       [
         ...analises.map((it) => ({
           rubrica: "MC",
           quantidade: Number(it.n_amostras),
-          preco_unitario: Number(it.preco_unitario),
+          preco_unitario: Number(it.custo_unitario),
         })),
         ...custos,
       ],

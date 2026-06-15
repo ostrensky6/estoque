@@ -97,14 +97,17 @@ export default async function OrcamentoProjetoDetalhe({
 
   const analisesProjeto = (analisesItens ?? []) as Analise[];
   const custosProjeto = (custosItens ?? []) as Custo[];
-  const totalLabPreco = analisesProjeto.reduce((a, it) => a + Number(it.preco_unitario) * Number(it.n_amostras), 0);
+  // As análises entram no orçamento de projeto pelo CUSTO (sem markup): o
+  // gross-up dos Parâmetros Econômicos aplica o markup uma única vez sobre todo
+  // o subtotal. Usar o preço do custeio aqui causaria markup duplo.
+  const totalLabCusto = analisesProjeto.reduce((a, it) => a + Number(it.custo_unitario) * Number(it.n_amostras), 0);
   const totalExtraPreco = custosProjeto.reduce((a, it) => a + itemProjetoTotal(it), 0);
   const itensLegacy = [
     ...custosProjeto,
     ...analisesProjeto.map((it) => ({
       rubrica: "MC",
       quantidade: Number(it.n_amostras),
-      preco_unitario: Number(it.preco_unitario),
+      preco_unitario: Number(it.custo_unitario),
       meses_selecionados: [],
     })),
   ];
@@ -135,9 +138,9 @@ export default async function OrcamentoProjetoDetalhe({
       descricao: it.codigo_analise,
       unidade: "amostra",
       quantidade: Number(it.n_amostras),
-      preco_unitario: Number(it.preco_unitario),
+      preco_unitario: Number(it.custo_unitario),
       meses_selecionados: [],
-      total: Number(it.preco_unitario) * Number(it.n_amostras),
+      total: Number(it.custo_unitario) * Number(it.n_amostras),
     })),
   ];
   const exportInfo = {
@@ -220,7 +223,7 @@ export default async function OrcamentoProjetoDetalhe({
           </dl>
 
           <div className="mt-6 grid gap-3 md:grid-cols-4">
-            <Resumo titulo="Laboratório" valor={totalLabPreco} subtitulo="análises e amostras" />
+            <Resumo titulo="Laboratório" valor={totalLabCusto} subtitulo="custo das análises (sem markup)" />
             <Resumo titulo="Custos do projeto" valor={totalExtraPreco} subtitulo="rubricas PE, MC, MP, ST, VD e OU" />
             <Resumo titulo="Gross-up" valor={totalFinal - calculoProjeto.subtotal} subtitulo={`${calculoProjeto.markupRate.toLocaleString("pt-BR")}% · fator ${calculoProjeto.grossUpFactor.toFixed(4).replace(".", ",")}x`} />
             <Resumo titulo="Total final" valor={totalFinal} subtitulo={`subtotal base ${brl(calculoProjeto.subtotal)}`} destaque />
@@ -541,10 +544,9 @@ function TabelaAnalises({ itens, orcId }: { itens: Analise[]; orcId: number }) {
         <thead className="text-xs uppercase tracking-wide text-zinc-500">
           <tr>
             <th className="px-3 py-2 text-left">Análise</th>
-            <th className="no-print px-3 py-2">Custo/amostra</th>
-            <th className="px-3 py-2">Preço/amostra</th>
+            <th className="px-3 py-2">Custo/amostra</th>
             <th className="px-3 py-2">Amostras</th>
-            <th className="px-3 py-2">Subtotal</th>
+            <th className="px-3 py-2">Subtotal (custo)</th>
             <th className="no-print px-3 py-2"></th>
           </tr>
         </thead>
@@ -552,10 +554,9 @@ function TabelaAnalises({ itens, orcId }: { itens: Analise[]; orcId: number }) {
           {itens.map((it) => (
             <tr key={it.id}>
               <td className="px-3 py-2 text-left font-medium">{it.codigo_analise}</td>
-              <td className="no-print px-3 py-2 tabular-nums text-zinc-500">{brl(Number(it.custo_unitario))}</td>
-              <td className="px-3 py-2 tabular-nums">{brl(Number(it.preco_unitario))}</td>
+              <td className="px-3 py-2 tabular-nums">{brl(Number(it.custo_unitario))}</td>
               <td className="px-3 py-2 tabular-nums">{Number(it.n_amostras)}</td>
-              <td className="px-3 py-2 font-semibold tabular-nums">{brl(Number(it.preco_unitario) * Number(it.n_amostras))}</td>
+              <td className="px-3 py-2 font-semibold tabular-nums">{brl(Number(it.custo_unitario) * Number(it.n_amostras))}</td>
               <td className="no-print px-3 py-2">
                 <form action={removerAnaliseProjeto}>
                   <input type="hidden" name="orcamento_projeto_id" value={orcId} />
@@ -567,7 +568,7 @@ function TabelaAnalises({ itens, orcId }: { itens: Analise[]; orcId: number }) {
           ))}
           {itens.length === 0 && (
             <tr>
-              <td colSpan={6} className="px-3 py-8 text-center text-zinc-400">
+              <td colSpan={5} className="px-3 py-8 text-center text-zinc-400">
                 Nenhuma análise vinculada.
               </td>
             </tr>
