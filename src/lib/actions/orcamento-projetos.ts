@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -274,6 +275,55 @@ export async function removerCustoProjeto(formData: FormData) {
   const supabase = await createClient();
   await supabase.from("orcamento_projeto_custos").delete().eq("id", itemId);
   revalidatePath(`${pathLista}/${id}`);
+}
+
+const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
+
+/** Gera um link público read-only de aprovação. O token bruto é mostrado uma
+ *  única vez (via query param); o banco guarda só o hash SHA-256. */
+export async function criarLinkPublico(formData: FormData) {
+  const id = numero(formData, "orcamento_projeto_id");
+  if (!id) return;
+
+  const token = randomBytes(24).toString("base64url");
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { error } = await supabase.from("orcamento_projeto_links").insert({
+    orcamento_projeto_id: id,
+    token_hash: hashToken(token),
+    criado_por: user?.id ?? null,
+  });
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`${pathLista}/${id}`);
+  redirect(`${pathLista}/${id}?novo_link=${token}`);
+}
+
+export async function revogarLinkPublico(formData: FormData) {
+  const id = numero(formData, "orcamento_projeto_id");
+  const linkId = numero(formData, "link_id");
+  if (!id || !linkId) return;
+  const supabase = await createClient();
+  await supabase.from("orcamento_projeto_links").update({ revogado: true }).eq("id", linkId);
+  revalidatePath(`${pathLista}/${id}`);
+}
+
+/** Aprovação pública (sem login) via RPC SECURITY DEFINER validando o token. */
+export async function aprovarOrcamentoPublico(formData: FormData) {
+  const token = texto(formData, "token");
+  const nome = texto(formData, "nome");
+  if (!token) return;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("aprovar_orcamento_publico", {
+    p_token: token,
+    p_nome: nome ?? "",
+  });
+  if (error) throw new Error(error.message);
+  if (data === false) throw new Error("Link inválido, expirado ou já aprovado.");
+  revalidatePath(`/aprovar/${token}`);
 }
 
 export async function excluirOrcamentoProjeto(formData: FormData) {

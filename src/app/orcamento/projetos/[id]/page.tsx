@@ -9,12 +9,15 @@ import {
   adicionarAnaliseProjeto,
   adicionarCustoCatalogoProjeto,
   adicionarCustoProjeto,
+  criarLinkPublico,
   excluirOrcamentoProjeto,
   removerAnaliseProjeto,
   removerCustoProjeto,
+  revogarLinkPublico,
   salvarOrcamentoProjeto,
   salvarViagensProjeto,
 } from "@/lib/actions/orcamento-projetos";
+import { headers } from "next/headers";
 import { normalizarViagemInputs, type ViagemInputs } from "@/lib/project-budget/travel";
 import {
   calcularOrcamentoProjetoLegacy,
@@ -58,10 +61,13 @@ type Custo = {
 
 export default async function OrcamentoProjetoDetalhe({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ novo_link?: string }>;
 }) {
   const { id } = await params;
+  const { novo_link: novoLink } = await searchParams;
   const orcId = Number(id);
   const supabase = await createClient();
 
@@ -165,6 +171,17 @@ export default async function OrcamentoProjetoDetalhe({
   const viagem: ViagemInputs = normalizarViagemInputs(
     (orc.travel_inputs ?? null) as Partial<ViagemInputs> | null,
   );
+
+  const { data: links } = await supabase
+    .from("orcamento_projeto_links")
+    .select("id, criado_em, expira_em, revogado, aprovado_em, aprovado_por")
+    .eq("orcamento_projeto_id", orcId)
+    .order("criado_em", { ascending: false });
+
+  const h = await headers();
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  const host = h.get("host") ?? "localhost:3000";
+  const linkNovoUrl = novoLink ? `${proto}://${host}/aprovar/${novoLink}` : null;
 
   const inp =
     "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
@@ -358,6 +375,72 @@ export default async function OrcamentoProjetoDetalhe({
               </div>
             </div>
           </form>
+        </section>
+
+        <section className="no-print mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="text-sm font-semibold">Aprovação do cliente (link público)</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Gere um link read-only para o cliente revisar e aprovar sem login.
+            O link só é exibido uma vez na criação — copie e guarde.
+          </p>
+
+          {linkNovoUrl && (
+            <div className="mt-3 rounded-md border border-brand-200 bg-brand-50 p-3 text-sm dark:border-brand-900 dark:bg-brand-950/30">
+              <p className="text-xs font-medium text-brand-800 dark:text-brand-200">
+                Novo link gerado (copie agora):
+              </p>
+              <code className="mt-1 block break-all rounded bg-white px-2 py-1 text-xs dark:bg-zinc-950">
+                {linkNovoUrl}
+              </code>
+            </div>
+          )}
+
+          <form action={criarLinkPublico} className="mt-3">
+            <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+            <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
+              Gerar link de aprovação
+            </button>
+          </form>
+
+          {(links ?? []).length > 0 && (
+            <div className="mt-4 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+              <table className="w-full text-left text-sm">
+                <thead className="text-xs uppercase tracking-wide text-zinc-500">
+                  <tr>
+                    <th className="px-3 py-2">Criado em</th>
+                    <th className="px-3 py-2">Situação</th>
+                    <th className="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  {(links ?? []).map((l) => {
+                    const situacao = l.revogado
+                      ? "Revogado"
+                      : l.aprovado_em
+                        ? `Aprovado${l.aprovado_por ? ` por ${l.aprovado_por}` : ""}`
+                        : "Ativo";
+                    return (
+                      <tr key={l.id}>
+                        <td className="px-3 py-2 tabular-nums text-zinc-500">
+                          {l.criado_em ? new Date(l.criado_em).toLocaleString("pt-BR") : "—"}
+                        </td>
+                        <td className="px-3 py-2">{situacao}</td>
+                        <td className="px-3 py-2 text-right">
+                          {!l.revogado && !l.aprovado_em && (
+                            <form action={revogarLinkPublico}>
+                              <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+                              <input type="hidden" name="link_id" value={l.id} />
+                              <button className="text-xs text-red-600 hover:underline">Revogar</button>
+                            </form>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         <section className="no-print mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

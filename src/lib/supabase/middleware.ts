@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLICAS = ["/login", "/auth"];
+const PUBLICAS = ["/login", "/auth", "/aprovar"];
 
 /** Atualiza a sessão e protege rotas (redireciona não autenticados ao /login). */
 export async function updateSession(request: NextRequest) {

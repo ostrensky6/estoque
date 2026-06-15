@@ -1086,6 +1086,50 @@ export type Database = {
           },
         ]
       }
+      orcamento_projeto_links: {
+        Row: {
+          aprovado_em: string | null
+          aprovado_por: string | null
+          criado_em: string
+          criado_por: string | null
+          expira_em: string | null
+          id: number
+          orcamento_projeto_id: number
+          revogado: boolean
+          token_hash: string
+        }
+        Insert: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          expira_em?: string | null
+          id?: never
+          orcamento_projeto_id: number
+          revogado?: boolean
+          token_hash: string
+        }
+        Update: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          expira_em?: string | null
+          id?: never
+          orcamento_projeto_id?: number
+          revogado?: boolean
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_projeto_links_orcamento_projeto_id_fkey"
+            columns: ["orcamento_projeto_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orcamento_projeto_templates: {
         Row: {
           criado_em: string
@@ -1849,6 +1893,10 @@ export type Database = {
         Args: { p_criterio?: string; p_lote_id: number; p_responsavel?: string }
         Returns: undefined
       }
+      aprovar_orcamento_publico: {
+        Args: { p_nome: string; p_token: string }
+        Returns: boolean
+      }
       bloquear_lote: {
         Args: { p_lote_id: number; p_motivo: string }
         Returns: undefined
@@ -1874,6 +1922,7 @@ export type Database = {
       }
       fn_exige_papel: { Args: { p_min: string }; Returns: undefined }
       gerar_reposicao_automatica: { Args: never; Returns: Json }
+      ler_orcamento_publico: { Args: { p_token: string }; Returns: Json }
       liberar_plano: { Args: { p_planejamento_id: number }; Returns: undefined }
       papel_minimo: { Args: { p_min: string }; Returns: boolean }
       receber_lote: {
