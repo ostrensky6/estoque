@@ -13,7 +13,9 @@ import {
   removerAnaliseProjeto,
   removerCustoProjeto,
   salvarOrcamentoProjeto,
+  salvarViagensProjeto,
 } from "@/lib/actions/orcamento-projetos";
+import { normalizarViagemInputs, type ViagemInputs } from "@/lib/project-budget/travel";
 import {
   calcularOrcamentoProjetoLegacy,
   itemProjetoTotal,
@@ -159,6 +161,10 @@ export default async function OrcamentoProjetoDetalhe({
     cronograma: orc.cronograma ?? null,
     observacoes: orc.observacoes ?? null,
   };
+
+  const viagem: ViagemInputs = normalizarViagemInputs(
+    (orc.travel_inputs ?? null) as Partial<ViagemInputs> | null,
+  );
 
   const inp =
     "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
@@ -350,6 +356,64 @@ export default async function OrcamentoProjetoDetalhe({
                   </label>
                 ))}
               </div>
+            </div>
+          </form>
+        </section>
+
+        <section className="no-print mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="text-sm font-semibold">Viagens e diárias (rubrica VD)</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Defina os parâmetros da viagem e salve: as linhas de VD são
+            recalculadas automaticamente conforme a descrição (diárias,
+            hospedagem, combustível, pedágios, passagens, locação de veículo).
+            O fator de risco soma dias extras a campo e hospedagem.
+          </p>
+          <form action={salvarViagensProjeto} className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+            <div>
+              <label className={lbl}>Pessoas</label>
+              <input name="pessoas" type="number" min="0" step="1" defaultValue={viagem.pessoas} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Dias de campo</label>
+              <input name="dias_campo" type="number" min="0" step="1" defaultValue={viagem.dias_campo} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Fator de risco (dias)</label>
+              <input name="fator_risco_dias" type="number" min="0" step="1" defaultValue={viagem.fator_risco_dias} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Diárias de hospedagem</label>
+              <input name="diarias_hospedagem" type="number" min="0" step="1" defaultValue={viagem.diarias_hospedagem} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Quartos</label>
+              <input name="quartos" type="number" min="0" step="1" defaultValue={viagem.quartos} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Veículos</label>
+              <input name="veiculos" type="number" min="0" step="1" defaultValue={viagem.veiculos} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Distância (km)</label>
+              <input name="distancia_km" type="number" min="0" step="0.1" defaultValue={viagem.distancia_km} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Consumo (km/L)</label>
+              <input name="consumo_km_l" type="number" min="0" step="0.1" defaultValue={viagem.consumo_km_l} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Pedágios</label>
+              <input name="pedagios" type="number" min="0" step="1" defaultValue={viagem.pedagios} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Passagens aéreas</label>
+              <input name="passagens_aereas" type="number" min="0" step="1" defaultValue={viagem.passagens_aereas} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div className="col-span-2 sm:col-span-3 lg:col-span-5">
+              <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
+                Salvar e recalcular VD
+              </button>
             </div>
           </form>
         </section>

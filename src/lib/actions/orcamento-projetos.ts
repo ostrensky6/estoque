@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
+import {
+  calcularQuantidadeViagem,
+  classificarDespesaViagem,
+  normalizarViagemInputs,
+  type ViagemInputs,
+} from "@/lib/project-budget/travel";
 
 const pathLista = "/orcamento/projetos";
 
@@ -210,6 +216,45 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
     origem: "catalogo",
   });
   if (error) throw new Error(error.message);
+  revalidatePath(`${pathLista}/${id}`);
+}
+
+export async function salvarViagensProjeto(formData: FormData) {
+  const id = numero(formData, "orcamento_projeto_id");
+  if (!id) return;
+
+  const inputs: ViagemInputs = normalizarViagemInputs({
+    pessoas: numero(formData, "pessoas"),
+    dias_campo: numero(formData, "dias_campo"),
+    fator_risco_dias: numero(formData, "fator_risco_dias"),
+    diarias_hospedagem: numero(formData, "diarias_hospedagem"),
+    quartos: numero(formData, "quartos"),
+    veiculos: numero(formData, "veiculos"),
+    distancia_km: numero(formData, "distancia_km"),
+    consumo_km_l: numero(formData, "consumo_km_l", 10),
+    pedagios: numero(formData, "pedagios"),
+    passagens_aereas: numero(formData, "passagens_aereas"),
+  });
+
+  const supabase = await createClient();
+  await supabase.from("orcamento_projetos").update({ travel_inputs: inputs }).eq("id", id);
+
+  // Recalcula a quantidade das linhas VD automatizáveis a partir dos parâmetros.
+  const { data: vdItens } = await supabase
+    .from("orcamento_projeto_custos")
+    .select("id, descricao, categoria")
+    .eq("orcamento_projeto_id", id)
+    .eq("rubrica", "VD");
+  for (const item of vdItens ?? []) {
+    const despesa = classificarDespesaViagem(item.descricao, item.categoria);
+    const quantidade = calcularQuantidadeViagem(despesa, inputs);
+    if (quantidade != null && quantidade > 0) {
+      await supabase
+        .from("orcamento_projeto_custos")
+        .update({ quantidade })
+        .eq("id", item.id);
+    }
+  }
   revalidatePath(`${pathLista}/${id}`);
 }
 

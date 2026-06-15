@@ -1148,6 +1148,7 @@ export type Database = {
           responsavel: string | null
           status: string
           titulo: string
+          travel_inputs: Json
           validade_dias: number
         }
         Insert: {
@@ -1181,6 +1182,7 @@ export type Database = {
           responsavel?: string | null
           status?: string
           titulo: string
+          travel_inputs?: Json
           validade_dias?: number
         }
         Update: {
@@ -1214,6 +1216,7 @@ export type Database = {
           responsavel?: string | null
           status?: string
           titulo?: string
+          travel_inputs?: Json
           validade_dias?: number
         }
         Relationships: [
