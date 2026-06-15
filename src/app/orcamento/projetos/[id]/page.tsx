@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { PrintButton } from "@/components/orcamento/PrintButton";
+import { ExportProjetoButtons } from "@/components/orcamento/ExportProjetoButtons";
+import type { ProjetoExportItem } from "@/lib/project-budget/exporters";
 import {
   adicionarAnaliseProjeto,
   adicionarCustoCatalogoProjeto,
@@ -115,6 +117,46 @@ export default async function OrcamentoProjetoDetalhe({
   });
   const totalFinal = calculoProjeto.grossTotal;
 
+  // Itens consolidados para export (mesma base mostrada na tela).
+  const exportItens: ProjetoExportItem[] = [
+    ...custosProjeto.map((it) => ({
+      rubrica: it.rubrica ?? "OU",
+      categoria: CATEGORIAS[it.categoria] ?? it.categoria,
+      descricao: it.descricao,
+      unidade: it.unidade,
+      quantidade: Number(it.quantidade),
+      preco_unitario: Number(it.preco_unitario),
+      meses_selecionados: it.meses_selecionados ?? [],
+      total: itemProjetoTotal(it),
+    })),
+    ...analisesProjeto.map((it) => ({
+      rubrica: "MC",
+      categoria: "Análises laboratoriais",
+      descricao: it.codigo_analise,
+      unidade: "amostra",
+      quantidade: Number(it.n_amostras),
+      preco_unitario: Number(it.preco_unitario),
+      meses_selecionados: [],
+      total: Number(it.preco_unitario) * Number(it.n_amostras),
+    })),
+  ];
+  const exportInfo = {
+    numero: orc.numero ?? null,
+    titulo: orc.titulo ?? "",
+    cliente_nome: orc.cliente_nome ?? null,
+    cliente_cnpj: orc.cliente_cnpj ?? null,
+    cliente_contato: orc.cliente_contato ?? null,
+    coordenador: orc.coordenador ?? null,
+    proprietario: orc.proprietario ?? null,
+    responsavel: orc.responsavel ?? null,
+    data_orcamento: orc.data_orcamento ?? null,
+    status: orc.status ?? null,
+    project_months: Number(orc.project_months ?? 12),
+    escopo: orc.escopo ?? null,
+    cronograma: orc.cronograma ?? null,
+    observacoes: orc.observacoes ?? null,
+  };
+
   const inp =
     "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
   const lbl = "block text-xs font-medium text-zinc-600 dark:text-zinc-300";
@@ -135,6 +177,7 @@ export default async function OrcamentoProjetoDetalhe({
                 </button>
               </form>
             )}
+            <ExportProjetoButtons info={exportInfo} itens={exportItens} calculo={calculoProjeto} />
             <PrintButton />
           </div>
         </div>
