@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { gargalo, horasBancadaPorAmostra, type Etapa } from "@/lib/costing/engine";
 import { AnalisesTable, type AnaliseRow } from "@/components/analises/AnalisesTable";
+import { CatalogoAnalisesTable, type CatalogoAnaliseRow } from "@/components/analises/CatalogoAnalisesTable";
 import { criarAnalise } from "@/lib/actions/receita";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export default async function AnalisesPage() {
     { data: insumoAnalise },
     { data: equipAnalise },
   ] = await Promise.all([
-    supabase.from("analises").select("codigo, nome, descricao, ativo").order("codigo"),
+    supabase.from("analises").select("codigo, nome, nome_simplificado, descricao, status, ativo").order("codigo"),
     supabase.from("etapas").select("*"),
     supabase.from("insumo_analise").select("codigo_analise"),
     supabase.from("equipamento_analise").select("codigo_analise"),
@@ -29,7 +30,7 @@ export default async function AnalisesPage() {
     const g = gargalo(etapasA);
     return {
       codigo: a.codigo,
-      nome: a.nome ?? "",
+      nome: a.nome_simplificado ?? a.nome ?? "",
       nEtapas: etapasA.length,
       amostrasDia: g.amostrasDia,
       execucoesDia: g.execucoesDia,
@@ -40,6 +41,13 @@ export default async function AnalisesPage() {
       statusLabel: a.ativo ? "Ativa" : "Inativa",
     };
   });
+
+  const catalogo: CatalogoAnaliseRow[] = (analises ?? []).map((a) => ({
+    codigo: a.codigo,
+    nomeSimplificado: a.nome_simplificado ?? "",
+    descricao: a.descricao ?? "",
+    status: a.status ?? "",
+  }));
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -67,9 +75,26 @@ export default async function AnalisesPage() {
           </button>
         </form>
 
-        <div className="mt-6">
-          <AnalisesTable rows={linhas} />
-        </div>
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            Catálogo simplificado
+          </h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Visão geral editável: nome simplificado, variável (código), descrição e situação de cada análise.
+          </p>
+          <div className="mt-3">
+            <CatalogoAnalisesTable rows={catalogo} />
+          </div>
+        </section>
+
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            Catálogo técnico
+          </h2>
+          <div className="mt-3">
+            <AnalisesTable rows={linhas} />
+          </div>
+        </section>
       </main>
     </div>
   );

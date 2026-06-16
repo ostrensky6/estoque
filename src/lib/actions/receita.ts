@@ -60,6 +60,23 @@ export async function atualizarAnalise(formData: FormData) {
   revalidarReceita(codigo);
 }
 
+/** Atualiza só os campos do catálogo simplificado (módulo Análises): nome simplificado, descrição e status. Não toca em `nome` nem `ativo`. */
+export async function atualizarCatalogoAnalise(formData: FormData) {
+  const codigo = txtReq(formData, "codigo");
+  if (!codigo) return;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("analises")
+    .update({
+      nome_simplificado: txt(formData, "nome_simplificado"),
+      descricao: txt(formData, "descricao"),
+      status: txt(formData, "status"),
+    })
+    .eq("codigo", codigo);
+  if (error) throw new Error(error.message);
+  revalidatePath("/analises");
+}
+
 export async function excluirAnalise(formData: FormData) {
   const codigo = txtReq(formData, "codigo");
   if (!codigo) return;

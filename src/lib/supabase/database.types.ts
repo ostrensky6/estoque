@@ -40,18 +40,24 @@ export type Database = {
           codigo: string
           descricao: string | null
           nome: string | null
+          nome_simplificado: string | null
+          status: string | null
         }
         Insert: {
           ativo?: boolean
           codigo: string
           descricao?: string | null
           nome?: string | null
+          nome_simplificado?: string | null
+          status?: string | null
         }
         Update: {
           ativo?: boolean
           codigo?: string
           descricao?: string | null
           nome?: string | null
+          nome_simplificado?: string | null
+          status?: string | null
         }
         Relationships: []
       }
