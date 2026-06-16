@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { usuarioAtual } from "@/lib/auth/roles";
 
-export type Entidade = "orcamento" | "orcamento_projeto" | "pedido_compra";
+export type Entidade = "orcamento" | "orcamento_projeto" | "pedido_compra" | "pedido_interno";
 
 /** Registra uma transição de status na linha do tempo (quem/quando). */
 export async function registrarEvento(

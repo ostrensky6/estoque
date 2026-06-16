@@ -18,6 +18,16 @@ const STATUS_LABEL: Record<string, string> = {
   em_transito: "Em trânsito",
   recebido: "Recebido",
   cancelado: "Cancelado",
+  em_validacao: "Em validação",
+  ajuste_solicitante: "Ajuste solicitante",
+  validado: "Validado",
+  formalizado: "Formalizado",
+  analise_administrativa: "Análise adm.",
+  ajuste_compras: "Ajuste compras",
+  aprovado_compra: "Aprovado para orçamento",
+  orcamentos: "Orçamentos",
+  compra_fechada: "Compra fechada",
+  encaminhado_instituicao: "Encaminhado",
 };
 
 const rotulo = (s: string | null) => (s ? STATUS_LABEL[s] ?? s : null);

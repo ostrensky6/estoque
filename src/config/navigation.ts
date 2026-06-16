@@ -90,6 +90,12 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
           shortcut: "P",
         },
         {
+          href: "/pedido",
+          label: "Pedido",
+          desc: "demandas internas para compra",
+          icon: "ClipboardList",
+        },
+        {
           href: "/compras",
           label: "Compras",
           desc: "solicitações, pedidos e recebimento",

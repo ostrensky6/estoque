@@ -1575,6 +1575,183 @@ export type Database = {
           },
         ]
       }
+      pedidos_internos: {
+        Row: {
+          analisado_em: string | null
+          atualizado_em: string
+          conformidade_admin: string | null
+          criado_em: string
+          data_necessidade: string | null
+          encaminhado_em: string | null
+          enviado_validacao_em: string | null
+          fechado_em: string | null
+          fonte_recurso: string | null
+          formalizado_em: string | null
+          id: number
+          justificativa: string | null
+          observacao_compras: string | null
+          orcamento_previo_total: number | null
+          orcamentos_em: string | null
+          pedido_compra_id: number | null
+          planejamento_id: number | null
+          projeto_id: number | null
+          rubrica: string | null
+          solicitante: string | null
+          status: string
+          titulo: string
+          validado_em: string | null
+        }
+        Insert: {
+          analisado_em?: string | null
+          atualizado_em?: string
+          conformidade_admin?: string | null
+          criado_em?: string
+          data_necessidade?: string | null
+          encaminhado_em?: string | null
+          enviado_validacao_em?: string | null
+          fechado_em?: string | null
+          fonte_recurso?: string | null
+          formalizado_em?: string | null
+          id?: never
+          justificativa?: string | null
+          observacao_compras?: string | null
+          orcamento_previo_total?: number | null
+          orcamentos_em?: string | null
+          pedido_compra_id?: number | null
+          planejamento_id?: number | null
+          projeto_id?: number | null
+          rubrica?: string | null
+          solicitante?: string | null
+          status?: string
+          titulo: string
+          validado_em?: string | null
+        }
+        Update: {
+          analisado_em?: string | null
+          atualizado_em?: string
+          conformidade_admin?: string | null
+          criado_em?: string
+          data_necessidade?: string | null
+          encaminhado_em?: string | null
+          enviado_validacao_em?: string | null
+          fechado_em?: string | null
+          fonte_recurso?: string | null
+          formalizado_em?: string | null
+          id?: never
+          justificativa?: string | null
+          observacao_compras?: string | null
+          orcamento_previo_total?: number | null
+          orcamentos_em?: string | null
+          pedido_compra_id?: number | null
+          planejamento_id?: number | null
+          projeto_id?: number | null
+          rubrica?: string | null
+          solicitante?: string | null
+          status?: string
+          titulo?: string
+          validado_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_internos_pedido_compra_id_fkey"
+            columns: ["pedido_compra_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_compra"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_planejamento_id_fkey"
+            columns: ["planejamento_id"]
+            isOneToOne: false
+            referencedRelation: "planejamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedidos_internos_itens: {
+        Row: {
+          criado_em: string
+          especificacao: string
+          fornecedor_sugerido: string | null
+          id: number
+          insumo_id: number | null
+          modelo: string | null
+          observacao: string | null
+          orcamento_previo: number | null
+          pedido_interno_id: number
+          quantidade: number
+          tipo: string
+          unidade: string | null
+          volume: string | null
+        }
+        Insert: {
+          criado_em?: string
+          especificacao: string
+          fornecedor_sugerido?: string | null
+          id?: never
+          insumo_id?: number | null
+          modelo?: string | null
+          observacao?: string | null
+          orcamento_previo?: number | null
+          pedido_interno_id: number
+          quantidade?: number
+          tipo?: string
+          unidade?: string | null
+          volume?: string | null
+        }
+        Update: {
+          criado_em?: string
+          especificacao?: string
+          fornecedor_sugerido?: string | null
+          id?: never
+          insumo_id?: number | null
+          modelo?: string | null
+          observacao?: string | null
+          orcamento_previo?: number | null
+          pedido_interno_id?: number
+          quantidade?: number
+          tipo?: string
+          unidade?: string | null
+          volume?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_internos_itens_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_itens_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_estoque_saldo"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_itens_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_previsao_suprimentos"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_itens_pedido_interno_id_fkey"
+            columns: ["pedido_interno_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_internos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       perfis: {
         Row: {
           criado_em: string
