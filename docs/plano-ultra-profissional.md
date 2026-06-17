@@ -78,9 +78,9 @@ Sem isto, cada melhoria seguinte custa o dobro. É investimento de plataforma.
 - **RLS uniforme por papel** no Postgres — parar de usar o cliente *service-role* para escritas comuns (hoje planejamento/cadastros/insumos contornam o RLS). Política por tabela: técnico lê/registra, coordenador aprova/aceita, gestor bloqueia/descarta, admin tudo.
 - **Tipos ponta a ponta:** abandonar os clientes "untyped" onde possível; usar os tipos gerados do banco.
 - **Testes:** unitários na **engine de custeio** (é o coração — qualquer erro vira dinheiro errado); e2e com **Playwright** nos fluxos críticos (criar orçamento, reservar plano, receber lote).
-- **CI/CD:** GitHub Actions (lint + typecheck + test + e2e + build) por PR. Deploy/preview é do **Netlify** (não Vercel — ver decisão de host): push em `main` → produção; PRs ganham Deploy Preview automático.
+- **CI/CD:** GitHub Actions (lint + typecheck + test + e2e + build) por PR. Deploy de produção é do **Vercel**, projeto `kontrol`: push em `main` deve alimentar a produção quando o projeto estiver conectado ao repositório.
 - **Observabilidade:** Sentry (erros) + PostHog (analytics de uso) + logs estruturados.
-- **Segredos:** confirmar rotação da senha de produção (foi exposta em chat); segredos só em `.env`/Vercel.
+- **Segredos:** confirmar rotação da senha de produção (foi exposta em chat); segredos só em `.env` local, Supabase/Vercel e gerenciador de senhas.
 - **Pronto quando:** um técnico logado não consegue (testado) editar parâmetros nem aprovar compra; pipeline verde bloqueia merge quebrado.
 
 **Status em 2026-06-14:**
@@ -114,8 +114,7 @@ Sub-fase que executa a lista "Pendente para a sequência" acima.
 - ⏳ **Observabilidade:** pendente das chaves Sentry/PostHog do usuário.
 - ⏳ **Segredos:** senha do Postgres de produção foi exposta em chat (de novo) → **rotacionar**;
   tratar `service_role` como comprometida.
-- ⏳ **Deploy-as-code (`netlify.toml`):** não criado — mexe no build de produção (push em `main`
-  = deploy) e não dá para reverter pelo host daqui; aguardando OK do usuário.
+- ⏳ **Deploy-as-code (`vercel.json`):** nao criado; o projeto usa a deteccao padrao Next.js da Vercel.
 
 ---
 

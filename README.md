@@ -1,9 +1,13 @@
-# Lab Custos & Estoque
+# Kontrol
 
 App de **controle de estoque** e **custeio/orçamento de análises** para laboratório
 de biologia molecular. Substitui a planilha `Laboratorio1.xlsm`.
 
 Stack: **Next.js 16** (App Router, TS) · **Supabase** (Postgres + Auth) · deploy na **Vercel**.
+
+Produção: https://kontrol-gia.vercel.app
+
+Dados operacionais de produção: [docs/operacao-producao.md](docs/operacao-producao.md).
 
 ## Pré-requisitos
 - Node 20+, Docker Desktop em execução
