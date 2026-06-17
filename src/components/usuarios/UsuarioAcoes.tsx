@@ -47,7 +47,7 @@ function EditarDialog({ row }: { row: UsuarioRow }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs">
           Editar
         </Button>
       </DialogTrigger>
@@ -90,8 +90,8 @@ function ResetarDialog({ row }: { row: UsuarioRow }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          Resetar senha
+        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs">
+          Resetar
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -127,7 +127,7 @@ function ExcluirDialog({ row }: { row: UsuarioRow }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button size="sm" variant="destructive">
+        <Button size="sm" variant="destructive" className="h-7 px-2.5 text-xs">
           Excluir
         </Button>
       </DialogTrigger>
@@ -156,13 +156,17 @@ function ExcluirDialog({ row }: { row: UsuarioRow }) {
 
 export function UsuarioAcoes({ row }: { row: UsuarioRow }) {
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex flex-nowrap items-center justify-end gap-1.5">
       <EditarDialog row={row} />
       <ResetarDialog row={row} />
       <form action={alternarSuspensao}>
         <input type="hidden" name="id" value={row.id} />
         <input type="hidden" name="suspender" value={row.suspenso ? "0" : "1"} />
-        <Button size="sm" variant={row.suspenso ? "secondary" : "outline"}>
+        <Button
+          size="sm"
+          variant={row.suspenso ? "secondary" : "outline"}
+          className="h-7 px-2.5 text-xs"
+        >
           {row.suspenso ? "Reativar" : "Suspender"}
         </Button>
       </form>
