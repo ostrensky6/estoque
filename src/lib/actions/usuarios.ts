@@ -130,3 +130,26 @@ export async function resetarSenha(_prev: FormState, formData: FormData): Promis
     message: `Senha de ${email || "usuário"} redefinida. Senha provisória: ${SENHA_PROVISORIA} — ele definirá uma nova no próximo acesso.`,
   };
 }
+
+/**
+ * Exclui um usuário definitivamente (Auth + perfil por cascade). Ação
+ * irreversível — a auditoria das ações que ele registrou permanece.
+ */
+export async function excluirUsuario(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!(await temPapel("admin"))) {
+    return { ok: false, message: "Sem permissão para excluir usuários." };
+  }
+  const id = String(formData.get("id") ?? "");
+  const email = String(formData.get("email") ?? "");
+  if (!id) return { ok: false, message: "Usuário inválido." };
+
+  // um admin não pode excluir a si mesmo
+  const eu = await usuarioAtual();
+  if (eu?.id === id) return { ok: false, message: "Você não pode excluir o seu próprio usuário." };
+
+  const { error } = await createAdminClient().auth.admin.deleteUser(id);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/usuarios");
+  return { ok: true, message: `Usuário ${email || ""} excluído.` };
+}

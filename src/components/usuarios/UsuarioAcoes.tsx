@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 
-import { alternarSuspensao, editarUsuario, resetarSenha } from "@/lib/actions/usuarios";
+import { alternarSuspensao, editarUsuario, excluirUsuario, resetarSenha } from "@/lib/actions/usuarios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -121,6 +121,39 @@ function ResetarDialog({ row }: { row: UsuarioRow }) {
   );
 }
 
+function ExcluirDialog({ row }: { row: UsuarioRow }) {
+  const [state, action, pending] = useActionState(excluirUsuario, initial);
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="destructive">
+          Excluir
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Excluir usuário</DialogTitle>
+          <DialogDescription>
+            Esta ação é irreversível. {row.email} perderá o acesso e o cadastro será removido. O
+            histórico de auditoria das ações dele é preservado.
+          </DialogDescription>
+        </DialogHeader>
+        <form action={action} className="space-y-4">
+          <input type="hidden" name="id" value={row.id} />
+          <input type="hidden" name="email" value={row.email} />
+          {state.message && !state.ok && <p className="text-xs text-red-600">{state.message}</p>}
+          <DialogFooter>
+            <Button type="submit" variant="destructive" disabled={pending}>
+              {pending ? "Excluindo…" : "Excluir definitivamente"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function UsuarioAcoes({ row }: { row: UsuarioRow }) {
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -133,6 +166,7 @@ export function UsuarioAcoes({ row }: { row: UsuarioRow }) {
           {row.suspenso ? "Reativar" : "Suspender"}
         </Button>
       </form>
+      <ExcluirDialog row={row} />
     </div>
   );
 }

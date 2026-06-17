@@ -136,10 +136,15 @@ export function DataTable<TData>({
         <div className="relative min-w-56">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            type="search"
             value={globalFilter}
             onChange={(event) => setGlobalFilter(event.target.value)}
             placeholder={searchPlaceholder}
             className="pl-8"
+            autoComplete="off"
+            data-lpignore="true"
+            data-1p-ignore=""
+            data-form-type="other"
           />
         </div>
 
