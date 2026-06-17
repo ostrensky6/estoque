@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { temPapel } from "@/lib/auth/roles";
 import { criarPedidoInterno } from "@/lib/actions/pedidos-internos";
 import { PedidosInternosTable, type PedidoInternoRow } from "@/components/pedido/PedidosInternosTable";
 import type { PedidoItemView } from "@/components/pedido/PedidoItensQuickView";
@@ -9,12 +10,13 @@ export const dynamic = "force-dynamic";
 
 export default async function PedidoPage() {
   const supabase = await createClient();
-  const [{ data: pedidos }, { data: projetos }] = await Promise.all([
+  const [{ data: pedidos }, { data: projetos }, podeExcluir] = await Promise.all([
     supabase
       .from("pedidos_internos")
       .select("id, titulo, status, solicitante, data_necessidade, urgencia, criado_em, projetos(nome), pedidos_internos_itens(id, tipo, especificacao, modelo, volume, quantidade, unidade, orcamento_previo, fornecedor_sugerido)")
       .order("criado_em", { ascending: false }),
     supabase.from("projetos").select("id, nome").order("nome"),
+    temPapel("coordenador"),
   ]);
 
   const rows: PedidoInternoRow[] = (pedidos ?? []).map((pedido) => {
@@ -112,7 +114,7 @@ export default async function PedidoPage() {
         </form>
 
         <div className="mt-6">
-          <PedidosInternosTable rows={rows} />
+          <PedidosInternosTable rows={rows} podeExcluir={podeExcluir} />
         </div>
       </main>
     </div>

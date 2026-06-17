@@ -12,13 +12,16 @@ import {
 } from "@/lib/actions/pedidos-internos";
 import { PedidoInternoAcoes } from "@/components/pedido/PedidoInternoAcoes";
 import { PedidoInternoCabecalhoAcoes } from "@/components/pedido/PedidoInternoCabecalhoAcoes";
+import { ItemRecebimentoCell } from "@/components/pedido/ItemRecebimentoCell";
 import { PedidoItemEditar } from "@/components/pedido/PedidoItemEditar";
 import { Timeline } from "@/components/common/Timeline";
 import { listarEventos } from "@/lib/actions/eventos";
 import {
+  PEDIDO_INTERNO_ETAPA_RECEBIDA,
   PEDIDO_INTERNO_FLUXO,
   pedidoInternoNumero,
   pedidoInternoStatus,
+  podeMarcarRecebida,
   type PedidoInternoStatus,
 } from "@/lib/pedido/status";
 import { formatCurrency as brl, formatDate, formatDateTime, formatNumber as fmt } from "@/lib/formatters";
@@ -37,6 +40,9 @@ type PedidoInternoItem = {
   fornecedor_sugerido: string | null;
   observacao: string | null;
   insumo_id: number | null;
+  recebido_em: string | null;
+  recebido_por: string | null;
+  lote_id: number | null;
   insumos: { especificacao: string | null; unidade: string | null } | null;
 };
 
@@ -104,7 +110,7 @@ export default async function PedidoInternoDetalhe({
   ] = await Promise.all([
     supabase
       .from("pedidos_internos_itens")
-      .select("id, tipo, especificacao, modelo, volume, quantidade, unidade, orcamento_previo, fornecedor_sugerido, observacao, insumo_id, insumos(especificacao, unidade)")
+      .select("id, tipo, especificacao, modelo, volume, quantidade, unidade, orcamento_previo, fornecedor_sugerido, observacao, insumo_id, recebido_em, recebido_por, lote_id, insumos(especificacao, unidade)")
       .eq("pedido_interno_id", pedidoId)
       .order("id"),
     supabase.from("insumos").select("id, especificacao, unidade").order("especificacao"),
@@ -146,7 +152,31 @@ export default async function PedidoInternoDetalhe({
   // etapa não terminal por coordenador+.
   const podeEditarItens = !itensTerminal && (editavel || podeGerir);
   const inputCls = "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
-  const etapaAtual = Math.max(0, PEDIDO_INTERNO_FLUXO.indexOf(pedidoStatus));
+
+  // Etapas: verde = superada, amarelo = em andamento, branco = futura.
+  // Etapa 11 (recebimento) é derivada: o pedido está recebido quando tem itens e
+  // todos foram recebidos individualmente.
+  const recebido = linhas.length > 0 && linhas.every((item) => item.recebido_em);
+  const aguardandoChegada = podeMarcarRecebida(pedidoStatus);
+  // O fluxo de 10 etapas está concluído quando a compra avançou além da aprovação ou já foi recebida.
+  const fluxoCompleto =
+    recebido ||
+    ["compra_fechada", "encaminhado_instituicao", "aguardando_pagamento_nf", "compra_concluida"].includes(pedidoStatus);
+  // Etapa em andamento dentro do fluxo de 10 etapas (status de ajuste retornam à etapa equivalente).
+  let etapaAtiva = PEDIDO_INTERNO_FLUXO.indexOf(pedidoStatus);
+  if (etapaAtiva < 0 && pedidoStatus === "ajuste_solicitante") etapaAtiva = PEDIDO_INTERNO_FLUXO.indexOf("em_validacao");
+  if (etapaAtiva < 0 && pedidoStatus === "ajuste_compras") etapaAtiva = PEDIDO_INTERNO_FLUXO.indexOf("analise_administrativa");
+  const classeEtapa = (estado: "concluido" | "ativo" | "futuro") =>
+    estado === "concluido"
+      ? "border-leaf-300 bg-leaf-50 dark:border-leaf-900 dark:bg-leaf-950/30"
+      : estado === "ativo"
+        ? "border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30"
+        : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900";
+  const estadoRecebida: "concluido" | "ativo" | "futuro" = recebido
+    ? "concluido"
+    : aguardandoChegada
+      ? "ativo"
+      : "futuro";
   const pendencias = [
     { label: "Projeto vinculado", ok: Boolean(pedido.projeto_id) },
     { label: "Justificativa preenchida", ok: Boolean(pedido.justificativa) },
@@ -202,25 +232,27 @@ export default async function PedidoInternoDetalhe({
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {PEDIDO_INTERNO_FLUXO.map((status, index) => {
               const meta = pedidoInternoStatus(status);
-              const ativo = status === pedidoStatus;
-              const concluido = index < etapaAtual || ["compra_fechada", "encaminhado_instituicao"].includes(pedidoStatus);
+              const estado: "concluido" | "ativo" | "futuro" =
+                fluxoCompleto || (etapaAtiva >= 0 && index < etapaAtiva)
+                  ? "concluido"
+                  : etapaAtiva === index
+                    ? "ativo"
+                    : "futuro";
               return (
-                <div
-                  key={status}
-                  className={`min-h-20 rounded-lg border p-3 ${
-                    ativo
-                      ? "border-brand-300 bg-brand-50 dark:border-brand-900 dark:bg-brand-950/30"
-                      : concluido
-                        ? "border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950"
-                        : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
-                  }`}
-                >
+                <div key={status} className={`min-h-20 rounded-lg border p-3 ${classeEtapa(estado)}`}>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Etapa {index + 1}</p>
                   <p className="mt-1 text-sm font-medium">{meta.label}</p>
                   <p className="mt-1 text-xs leading-4 text-zinc-500">{meta.etapa}</p>
                 </div>
               );
             })}
+            <div className={`min-h-20 rounded-lg border p-3 ${classeEtapa(estadoRecebida)}`}>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+                Etapa {PEDIDO_INTERNO_FLUXO.length + 1}
+              </p>
+              <p className="mt-1 text-sm font-medium">{PEDIDO_INTERNO_ETAPA_RECEBIDA.label}</p>
+              <p className="mt-1 text-xs leading-4 text-zinc-500">{PEDIDO_INTERNO_ETAPA_RECEBIDA.etapa}</p>
+            </div>
           </div>
           {pedido.status === "ajuste_solicitante" && (
             <p className="mt-3 text-sm text-orange-700 dark:text-orange-300">
@@ -264,6 +296,7 @@ export default async function PedidoInternoDetalhe({
                   <th className="px-4 py-3 text-right">Qtd</th>
                   <th className="px-4 py-3 text-right">Prévio un.</th>
                   <th className="px-4 py-3 text-left">Fornecedor</th>
+                  <th className="px-4 py-3 text-left">Recebimento</th>
                   {podeEditarItens && <th className="px-4 py-3 text-right">Ação</th>}
                 </tr>
               </thead>
@@ -285,6 +318,24 @@ export default async function PedidoInternoDetalhe({
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{brl(item.orcamento_previo)}</td>
                     <td className="px-4 py-2.5 text-zinc-500">{item.fornecedor_sugerido ?? "—"}</td>
+                    <td className="px-4 py-2.5">
+                      <ItemRecebimentoCell
+                        item={{
+                          id: item.id,
+                          pedidoId,
+                          especificacao: item.especificacao,
+                          quantidade: Number(item.quantidade),
+                          unidade: item.unidade ?? item.insumos?.unidade ?? null,
+                          insumoId: item.insumo_id,
+                          fornecedorSugerido: item.fornecedor_sugerido,
+                          orcamentoPrevio: item.orcamento_previo,
+                        }}
+                        insumos={insumos ?? []}
+                        podeReceber={aguardandoChegada}
+                        recebidoEm={item.recebido_em}
+                        recebidoPor={item.recebido_por}
+                      />
+                    </td>
                     {podeEditarItens && (
                       <td className="px-4 py-2.5 text-right">
                         <div className="flex items-center justify-end gap-3">
@@ -301,7 +352,7 @@ export default async function PedidoInternoDetalhe({
                 ))}
                 {linhas.length === 0 && (
                   <tr>
-                    <td colSpan={podeEditarItens ? 6 : 5} className="px-4 py-8 text-center text-zinc-400">
+                    <td colSpan={podeEditarItens ? 7 : 6} className="px-4 py-8 text-center text-zinc-400">
                       Nenhum material ou serviço informado.
                     </td>
                   </tr>
@@ -517,6 +568,19 @@ export default async function PedidoInternoDetalhe({
                 <p className="text-sm text-zinc-400">Esta etapa exige papel coordenador ou superior.</p>
               )}
             </div>
+
+            {aguardandoChegada && (
+              <div className="mt-5 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                <h3 className="text-sm font-semibold">Recebimento (Etapa {PEDIDO_INTERNO_FLUXO.length + 1})</h3>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Receba cada item na tabela acima ou no módulo{" "}
+                  <Link href="/recebimento" className="text-primary hover:underline">
+                    Recebimento
+                  </Link>
+                  . A Etapa 11 fica verde quando todos os itens forem recebidos.
+                </p>
+              </div>
+            )}
 
             {pedido.status === "formalizado" && podeGerir && (
               <form action={registrarAnaliseAdministrativa} className="mt-5 grid gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 md:grid-cols-2">

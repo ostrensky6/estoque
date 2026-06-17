@@ -108,6 +108,12 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
           desc: "solicitações, pedidos e recebimento",
           icon: "ShoppingCart",
         },
+        {
+          href: "/recebimento",
+          label: "Recebimento",
+          desc: "itens de pedidos por estágio até a chegada",
+          icon: "PackageCheck",
+        },
       ],
     },
     {

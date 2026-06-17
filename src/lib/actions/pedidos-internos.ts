@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { temPapel, usuarioAtual } from "@/lib/auth/roles";
 import { registrarEvento } from "./eventos";
+import {
+  PEDIDO_INTERNO_AGUARDANDO_CHEGADA,
+  type PedidoInternoStatus,
+} from "@/lib/pedido/status";
 import type { FormState } from "./cadastros";
 
 const SEM_PERMISSAO: FormState = {
@@ -559,6 +563,168 @@ export async function concluirCompra(_prev: FormState, formData: FormData): Prom
     decisao: "aprovado",
     extras: { concluido_em: new Date().toISOString() },
   });
+}
+
+/**
+ * Sincroniza o cache de recebimento do pedido (Etapa 11). O pedido é
+ * considerado recebido quando tem itens e todos estão recebidos.
+ */
+async function sincronizarRecebimentoPedido(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  pedidoId: number,
+  responsavel: string | null,
+) {
+  const { data: itens } = await supabase
+    .from("pedidos_internos_itens")
+    .select("recebido_em")
+    .eq("pedido_interno_id", pedidoId);
+  const lista = itens ?? [];
+  const tudoRecebido = lista.length > 0 && lista.every((item) => item.recebido_em);
+  await supabase
+    .from("pedidos_internos")
+    .update({
+      recebido_em: tudoRecebido ? new Date().toISOString() : null,
+      recebido_por: tudoRecebido ? responsavel : null,
+    })
+    .eq("id", pedidoId);
+}
+
+/**
+ * Recebimento por item: lança o item em estoque (lote para o insumo
+ * correspondente) e marca o item como recebido. Exige um insumo cadastrado —
+ * usa o vinculado, um escolhido no recebimento, ou cria um novo pela
+ * especificação. Só é permitido após a compra ser aprovada.
+ */
+export async function receberItemPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
+  const itemId = numero(formData, "item_id");
+  const pedidoId = numero(formData, "pedido_interno_id");
+  if (!itemId || !pedidoId) return { ok: false, message: "Item inválido." };
+  const supabase = await createClient();
+  const u = await usuarioAtual();
+
+  const { data: item } = await supabase
+    .from("pedidos_internos_itens")
+    .select("id, insumo_id, quantidade, unidade, especificacao, fornecedor_sugerido, orcamento_previo, recebido_em, pedidos_internos(status, projetos(nome))")
+    .eq("id", itemId)
+    .eq("pedido_interno_id", pedidoId)
+    .single();
+  if (!item) return { ok: false, message: "Item não encontrado." };
+  if (item.recebido_em) return { ok: true, message: "Item já recebido." };
+
+  const pedido = item.pedidos_internos as unknown as {
+    status: string;
+    projetos: { nome: string | null } | null;
+  } | null;
+  if (!pedido || !PEDIDO_INTERNO_AGUARDANDO_CHEGADA.includes(pedido.status as PedidoInternoStatus)) {
+    return { ok: false, message: "Só é possível receber itens após a compra ser aprovada." };
+  }
+
+  // Resolve o insumo: existente escolhido > novo pela especificação > já vinculado.
+  let insumoId = numero(formData, "insumo_id") ?? item.insumo_id;
+  const novoInsumo = texto(formData, "novo_insumo");
+  if (!insumoId && novoInsumo) {
+    const { data: criado, error: insErr } = await supabase
+      .from("insumos")
+      .insert({ especificacao: novoInsumo, unidade: texto(formData, "unidade") ?? item.unidade })
+      .select("id")
+      .single();
+    if (insErr) return { ok: false, message: `Falha ao criar insumo: ${insErr.message}` };
+    insumoId = criado.id;
+  }
+  if (!insumoId) {
+    return { ok: false, message: "Vincule o item a um insumo (ou crie um) para lançar em estoque." };
+  }
+
+  const quantidade = numero(formData, "quantidade") ?? Number(item.quantidade);
+  if (!(quantidade > 0)) return { ok: false, message: "Quantidade recebida deve ser maior que zero." };
+  const custo = numero(formData, "custo") ?? item.orcamento_previo;
+  const fornecedor = texto(formData, "fornecedor") ?? item.fornecedor_sugerido;
+
+  const { data: loteId, error: loteErr } = await supabase.rpc("receber_lote", {
+    p_insumo_id: insumoId,
+    p_quantidade: quantidade,
+    p_validade: texto(formData, "validade") ?? undefined,
+    p_custo: custo ?? undefined,
+    p_codigo: texto(formData, "codigo") ?? undefined,
+    p_fornecedor: fornecedor ?? undefined,
+    p_projeto: pedido.projetos?.nome ?? undefined,
+  });
+  if (loteErr) return { ok: false, message: loteErr.message };
+
+  const responsavel = u?.nome ?? u?.email ?? null;
+  const { error } = await supabase
+    .from("pedidos_internos_itens")
+    .update({
+      insumo_id: insumoId,
+      lote_id: loteId as number,
+      recebido_em: new Date().toISOString(),
+      recebido_por: responsavel,
+    })
+    .eq("id", itemId);
+  if (error) return { ok: false, message: error.message };
+
+  await sincronizarRecebimentoPedido(supabase, pedidoId, responsavel);
+  await registrarEvento(
+    "pedido_interno",
+    pedidoId,
+    pedido.status,
+    pedido.status,
+    `Item recebido e lançado em estoque: ${item.especificacao}.`,
+  );
+  revalidatePath("/recebimento");
+  revalidatePath("/estoque");
+  revalidatePath("/pedido");
+  revalidatePath(`/pedido/${pedidoId}`);
+  return { ok: true, message: "Item recebido e lançado em estoque." };
+}
+
+/**
+ * Estorna o recebimento de um item: remove o lote gerado (se ainda intacto) e
+ * desmarca o item. Bloqueia se o lote já teve consumo, para não corromper o saldo.
+ */
+export async function estornarRecebimentoItem(_prev: FormState, formData: FormData): Promise<FormState> {
+  const itemId = numero(formData, "item_id");
+  const pedidoId = numero(formData, "pedido_interno_id");
+  if (!itemId || !pedidoId) return { ok: false, message: "Item inválido." };
+  const supabase = await createClient();
+  const u = await usuarioAtual();
+
+  const { data: item } = await supabase
+    .from("pedidos_internos_itens")
+    .select("id, lote_id, recebido_em, especificacao, pedidos_internos(status)")
+    .eq("id", itemId)
+    .eq("pedido_interno_id", pedidoId)
+    .single();
+  if (!item) return { ok: false, message: "Item não encontrado." };
+  if (!item.recebido_em) return { ok: true, message: "Item não estava recebido." };
+  const statusAtual = (item.pedidos_internos as unknown as { status: string } | null)?.status ?? "aprovado_para_compra";
+
+  if (item.lote_id) {
+    const { data: lote } = await supabase
+      .from("lotes_estoque")
+      .select("quantidade_inicial, quantidade_atual")
+      .eq("id", item.lote_id)
+      .single();
+    if (lote && Number(lote.quantidade_atual) < Number(lote.quantidade_inicial)) {
+      return { ok: false, message: "O lote já teve consumo em estoque; não é possível estornar." };
+    }
+    await supabase.from("estoque_movimentacoes").delete().eq("lote_id", item.lote_id);
+    await supabase.from("lotes_estoque").delete().eq("id", item.lote_id);
+  }
+
+  const { error } = await supabase
+    .from("pedidos_internos_itens")
+    .update({ lote_id: null, recebido_em: null, recebido_por: null })
+    .eq("id", itemId);
+  if (error) return { ok: false, message: error.message };
+
+  await sincronizarRecebimentoPedido(supabase, pedidoId, u?.nome ?? u?.email ?? null);
+  await registrarEvento("pedido_interno", pedidoId, statusAtual, statusAtual, `Recebimento estornado: ${item.especificacao}.`);
+  revalidatePath("/recebimento");
+  revalidatePath("/estoque");
+  revalidatePath("/pedido");
+  revalidatePath(`/pedido/${pedidoId}`);
+  return { ok: true, message: "Recebimento estornado." };
 }
 
 export async function adicionarAnexoPedidoInterno(formData: FormData) {

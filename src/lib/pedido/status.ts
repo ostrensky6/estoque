@@ -88,6 +88,33 @@ export const PEDIDO_INTERNO_STATUS = {
 
 export type PedidoInternoStatus = keyof typeof PEDIDO_INTERNO_STATUS;
 
+/**
+ * Etapa 11 — "Compra recebida". É uma marca paralela (coluna `recebido_em`),
+ * não um status do fluxo: pode ser registrada a qualquer momento após a
+ * aprovação da compra, sem interferir no andamento de pagamento/NF.
+ */
+export const PEDIDO_INTERNO_ETAPA_RECEBIDA = {
+  label: "Compra recebida",
+  etapa: "Produto ou serviço entregue",
+} as const;
+
+/**
+ * Status em que a compra já foi aprovada e o pedido aguarda a chegada do
+ * produto/serviço — base da subaba de síntese e do gatilho da etapa 11.
+ */
+export const PEDIDO_INTERNO_AGUARDANDO_CHEGADA: PedidoInternoStatus[] = [
+  "aprovado_para_compra",
+  "compra_fechada",
+  "encaminhado_instituicao",
+  "aguardando_pagamento_nf",
+  "compra_concluida",
+];
+
+/** Pode-se marcar/desmarcar "Compra recebida" a partir da aprovação da compra. */
+export function podeMarcarRecebida(status: string) {
+  return PEDIDO_INTERNO_AGUARDANDO_CHEGADA.includes(status as PedidoInternoStatus);
+}
+
 export const PEDIDO_INTERNO_FLUXO: PedidoInternoStatus[] = [
   "rascunho",
   "em_validacao",

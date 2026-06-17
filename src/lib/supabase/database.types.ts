@@ -1605,6 +1605,8 @@ export type Database = {
           pedido_compra_id: number | null
           planejamento_id: number | null
           projeto_id: number | null
+          recebido_em: string | null
+          recebido_por: string | null
           rubrica: string | null
           solicitante: string | null
           status: string
@@ -1635,6 +1637,8 @@ export type Database = {
           pedido_compra_id?: number | null
           planejamento_id?: number | null
           projeto_id?: number | null
+          recebido_em?: string | null
+          recebido_por?: string | null
           rubrica?: string | null
           solicitante?: string | null
           status?: string
@@ -1665,6 +1669,8 @@ export type Database = {
           pedido_compra_id?: number | null
           planejamento_id?: number | null
           projeto_id?: number | null
+          recebido_em?: string | null
+          recebido_por?: string | null
           rubrica?: string | null
           solicitante?: string | null
           status?: string
@@ -1844,11 +1850,14 @@ export type Database = {
           fornecedor_sugerido: string | null
           id: number
           insumo_id: number | null
+          lote_id: number | null
           modelo: string | null
           observacao: string | null
           orcamento_previo: number | null
           pedido_interno_id: number
           quantidade: number
+          recebido_em: string | null
+          recebido_por: string | null
           tipo: string
           unidade: string | null
           volume: string | null
@@ -1859,11 +1868,14 @@ export type Database = {
           fornecedor_sugerido?: string | null
           id?: never
           insumo_id?: number | null
+          lote_id?: number | null
           modelo?: string | null
           observacao?: string | null
           orcamento_previo?: number | null
           pedido_interno_id: number
           quantidade?: number
+          recebido_em?: string | null
+          recebido_por?: string | null
           tipo?: string
           unidade?: string | null
           volume?: string | null
@@ -1874,11 +1886,14 @@ export type Database = {
           fornecedor_sugerido?: string | null
           id?: never
           insumo_id?: number | null
+          lote_id?: number | null
           modelo?: string | null
           observacao?: string | null
           orcamento_previo?: number | null
           pedido_interno_id?: number
           quantidade?: number
+          recebido_em?: string | null
+          recebido_por?: string | null
           tipo?: string
           unidade?: string | null
           volume?: string | null
