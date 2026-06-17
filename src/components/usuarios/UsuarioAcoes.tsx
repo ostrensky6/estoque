@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import { MoreHorizontal } from "lucide-react";
 
 import { alternarSuspensao, editarUsuario, excluirUsuario, resetarSenha } from "@/lib/actions/usuarios";
 import { Button } from "@/components/ui/button";
@@ -13,8 +14,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { FormState } from "@/lib/actions/cadastros";
 import type { UsuarioRow } from "./UsuariosTable";
 
@@ -27,8 +34,17 @@ const PAPEIS = [
 
 const initial: FormState = { ok: false, message: "" };
 
-function EditarDialog({ row }: { row: UsuarioRow }) {
-  const [open, setOpen] = useState(false);
+type DialogAberto = "editar" | "resetar" | "excluir" | null;
+
+function EditarDialog({
+  row,
+  open,
+  onOpenChange,
+}: {
+  row: UsuarioRow;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
   const [erro, setErro] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -37,7 +53,7 @@ function EditarDialog({ row }: { row: UsuarioRow }) {
       const res = await editarUsuario(initial, formData);
       if (res.ok) {
         setErro("");
-        setOpen(false);
+        onOpenChange(false);
       } else {
         setErro(res.message ?? "Não foi possível salvar.");
       }
@@ -45,12 +61,7 @@ function EditarDialog({ row }: { row: UsuarioRow }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs">
-          Editar
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Editar usuário</DialogTitle>
@@ -84,16 +95,19 @@ function EditarDialog({ row }: { row: UsuarioRow }) {
   );
 }
 
-function ResetarDialog({ row }: { row: UsuarioRow }) {
+function ResetarDialog({
+  row,
+  open,
+  onOpenChange,
+}: {
+  row: UsuarioRow;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
   const [state, action, pending] = useActionState(resetarSenha, initial);
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs">
-          Resetar
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Resetar senha</DialogTitle>
@@ -121,16 +135,19 @@ function ResetarDialog({ row }: { row: UsuarioRow }) {
   );
 }
 
-function ExcluirDialog({ row }: { row: UsuarioRow }) {
+function ExcluirDialog({
+  row,
+  open,
+  onOpenChange,
+}: {
+  row: UsuarioRow;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
   const [state, action, pending] = useActionState(excluirUsuario, initial);
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="destructive" className="h-7 px-2.5 text-xs">
-          Excluir
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Excluir usuário</DialogTitle>
@@ -155,22 +172,43 @@ function ExcluirDialog({ row }: { row: UsuarioRow }) {
 }
 
 export function UsuarioAcoes({ row }: { row: UsuarioRow }) {
+  const [dialog, setDialog] = useState<DialogAberto>(null);
+  const [, startTransition] = useTransition();
+
+  function suspender() {
+    const fd = new FormData();
+    fd.set("id", row.id);
+    fd.set("suspender", row.suspenso ? "0" : "1");
+    startTransition(() => alternarSuspensao(fd));
+  }
+
   return (
-    <div className="flex flex-nowrap items-center justify-end gap-1.5">
-      <EditarDialog row={row} />
-      <ResetarDialog row={row} />
-      <form action={alternarSuspensao}>
-        <input type="hidden" name="id" value={row.id} />
-        <input type="hidden" name="suspender" value={row.suspenso ? "0" : "1"} />
-        <Button
-          size="sm"
-          variant={row.suspenso ? "secondary" : "outline"}
-          className="h-7 px-2.5 text-xs"
-        >
-          {row.suspenso ? "Reativar" : "Suspender"}
-        </Button>
-      </form>
-      <ExcluirDialog row={row} />
+    <div className="flex justify-end">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Ações do usuário">
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => setDialog("editar")}>Editar</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setDialog("resetar")}>Resetar senha</DropdownMenuItem>
+          <DropdownMenuItem onSelect={suspender}>
+            {row.suspenso ? "Reativar" : "Suspender"}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => setDialog("excluir")}
+            className="text-red-600 focus:text-red-600"
+          >
+            Excluir
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <EditarDialog row={row} open={dialog === "editar"} onOpenChange={(v) => setDialog(v ? "editar" : null)} />
+      <ResetarDialog row={row} open={dialog === "resetar"} onOpenChange={(v) => setDialog(v ? "resetar" : null)} />
+      <ExcluirDialog row={row} open={dialog === "excluir"} onOpenChange={(v) => setDialog(v ? "excluir" : null)} />
     </div>
   );
 }
