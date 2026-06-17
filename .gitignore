@@ -49,8 +49,5 @@ __pycache__/
 
 .vercel
 
-# Local Netlify folder
-.netlify
-
 # Local Playwright MCP artifacts
 .playwright-mcp/
