@@ -48,5 +48,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Usuário com senha provisória: bloqueia tudo até definir a senha
+  // definitiva (exceto a própria página de troca).
+  if (user && user.user_metadata?.senha_provisoria === true && !path.startsWith("/trocar-senha")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/trocar-senha";
+    return NextResponse.redirect(url);
+  }
+  // Já trocou a senha mas ainda tenta acessar a página de troca → home.
+  if (user && user.user_metadata?.senha_provisoria !== true && path.startsWith("/trocar-senha")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
+
   return response;
 }

@@ -2,10 +2,9 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 
-import { atualizarPapel } from "@/lib/actions/usuarios";
 import { DataTable } from "@/components/common/DataTable";
-import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { UsuarioAcoes } from "./UsuarioAcoes";
 
 const PAPEIS = [
   { value: "tecnico", label: "Técnico" },
@@ -20,28 +19,34 @@ export type UsuarioRow = {
   email: string;
   papel: string;
   papelLabel: string;
+  suspenso: boolean;
+  senhaProvisoria: boolean;
 };
+
+function statusTexto(row: UsuarioRow) {
+  if (row.suspenso) return "Suspenso";
+  if (row.senhaProvisoria) return "Senha provisória";
+  return "Ativo";
+}
 
 const columns: ColumnDef<UsuarioRow, unknown>[] = [
   { accessorKey: "nome", header: "Usuário" },
   { accessorKey: "email", header: "E-mail" },
+  { accessorKey: "papelLabel", header: "Papel", filterFn: "equalsString" },
   {
-    accessorKey: "papelLabel",
-    header: "Papel",
-    filterFn: "equalsString",
-    cell: ({ row }) => (
-      <form action={atualizarPapel} className="flex items-center gap-2">
-        <input type="hidden" name="id" value={row.original.id} />
-        <Select name="papel" defaultValue={row.original.papel} className="h-8 w-auto text-xs">
-          {PAPEIS.map((papel) => (
-            <option key={papel.value} value={papel.value}>
-              {papel.label}
-            </option>
-          ))}
-        </Select>
-        <Button size="sm">Salvar</Button>
-      </form>
-    ),
+    id: "status",
+    header: "Status",
+    cell: ({ row }) => {
+      const r = row.original;
+      if (r.suspenso) return <Badge variant="secondary">Suspenso</Badge>;
+      if (r.senhaProvisoria) return <Badge variant="muted">Senha provisória</Badge>;
+      return <Badge variant="outline">Ativo</Badge>;
+    },
+  },
+  {
+    id: "acoes",
+    header: () => <span className="sr-only">Ações</span>,
+    cell: ({ row }) => <UsuarioAcoes row={row.original} />,
   },
 ];
 
@@ -60,7 +65,7 @@ export function UsuariosTable({ rows }: { rows: UsuarioRow[] }) {
         },
       ]}
       getMobileTitle={(row) => row.nome}
-      getMobileDescription={(row) => `${row.email} · ${row.papelLabel}`}
+      getMobileDescription={(row) => `${row.email} · ${row.papelLabel} · ${statusTexto(row)}`}
     />
   );
 }

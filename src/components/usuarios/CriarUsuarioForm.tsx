@@ -2,18 +2,22 @@
 
 import { useActionState } from "react";
 
-import { prepararConviteUsuario } from "@/lib/actions/usuarios";
+import { criarUsuario } from "@/lib/actions/usuarios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import type { FormState } from "@/lib/actions/cadastros";
 
-const initialState = { ok: false, message: "" };
+const initialState: FormState = { ok: false, message: "" };
 
-export function ConviteUsuarioForm() {
-  const [state, action, pending] = useActionState(prepararConviteUsuario, initialState);
+export function CriarUsuarioForm() {
+  const [state, action, pending] = useActionState(criarUsuario, initialState);
 
   return (
-    <form action={action} className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
+    <form
+      action={action}
+      className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/40 dark:bg-blue-950/20"
+    >
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-52 flex-1">
           <label className="block text-xs font-medium text-blue-900 dark:text-blue-200">Nome</label>
@@ -33,11 +37,12 @@ export function ConviteUsuarioForm() {
           </Select>
         </div>
         <Button type="submit" disabled={pending}>
-          {pending ? "Preparando" : "Preparar convite"}
+          {pending ? "Cadastrando…" : "Cadastrar usuário"}
         </Button>
       </div>
       <p className="mt-2 text-xs leading-5 text-blue-900/80 dark:text-blue-200/80">
-        O envio real do convite por e-mail depende da configuração transacional. Por enquanto o app registra a pendência in-app para o administrador.
+        O usuário é criado já com acesso, usando uma senha provisória. No primeiro acesso ele é
+        obrigado a definir uma senha definitiva.
       </p>
       {state.message && (
         <p className={`mt-2 text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-red-600"}`}>

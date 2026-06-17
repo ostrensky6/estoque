@@ -1921,6 +1921,8 @@ export type Database = {
           id: string
           nome: string | null
           papel: string
+          senha_provisoria: boolean
+          suspenso: boolean
         }
         Insert: {
           criado_em?: string
@@ -1928,6 +1930,8 @@ export type Database = {
           id: string
           nome?: string | null
           papel?: string
+          senha_provisoria?: boolean
+          suspenso?: boolean
         }
         Update: {
           criado_em?: string
@@ -1935,6 +1939,8 @@ export type Database = {
           id?: string
           nome?: string | null
           papel?: string
+          senha_provisoria?: boolean
+          suspenso?: boolean
         }
         Relationships: []
       }
