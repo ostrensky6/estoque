@@ -48,3 +48,9 @@ __pycache__/
 .gitignore.bak
 
 .vercel
+
+# Local Netlify folder
+.netlify
+
+# Local Playwright MCP artifacts
+.playwright-mcp/

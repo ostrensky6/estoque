@@ -1584,7 +1584,10 @@ export type Database = {
       pedidos_internos: {
         Row: {
           analisado_em: string | null
+          aprovacao_final_em: string | null
           atualizado_em: string
+          comprador_responsavel: string | null
+          concluido_em: string | null
           conformidade_admin: string | null
           criado_em: string
           data_necessidade: string | null
@@ -1598,6 +1601,7 @@ export type Database = {
           observacao_compras: string | null
           orcamento_previo_total: number | null
           orcamentos_em: string | null
+          pagamento_nf_em: string | null
           pedido_compra_id: number | null
           planejamento_id: number | null
           projeto_id: number | null
@@ -1605,11 +1609,15 @@ export type Database = {
           solicitante: string | null
           status: string
           titulo: string
+          urgencia: string
           validado_em: string | null
         }
         Insert: {
           analisado_em?: string | null
+          aprovacao_final_em?: string | null
           atualizado_em?: string
+          comprador_responsavel?: string | null
+          concluido_em?: string | null
           conformidade_admin?: string | null
           criado_em?: string
           data_necessidade?: string | null
@@ -1623,6 +1631,7 @@ export type Database = {
           observacao_compras?: string | null
           orcamento_previo_total?: number | null
           orcamentos_em?: string | null
+          pagamento_nf_em?: string | null
           pedido_compra_id?: number | null
           planejamento_id?: number | null
           projeto_id?: number | null
@@ -1630,11 +1639,15 @@ export type Database = {
           solicitante?: string | null
           status?: string
           titulo: string
+          urgencia?: string
           validado_em?: string | null
         }
         Update: {
           analisado_em?: string | null
+          aprovacao_final_em?: string | null
           atualizado_em?: string
+          comprador_responsavel?: string | null
+          concluido_em?: string | null
           conformidade_admin?: string | null
           criado_em?: string
           data_necessidade?: string | null
@@ -1648,6 +1661,7 @@ export type Database = {
           observacao_compras?: string | null
           orcamento_previo_total?: number | null
           orcamentos_em?: string | null
+          pagamento_nf_em?: string | null
           pedido_compra_id?: number | null
           planejamento_id?: number | null
           projeto_id?: number | null
@@ -1655,6 +1669,7 @@ export type Database = {
           solicitante?: string | null
           status?: string
           titulo?: string
+          urgencia?: string
           validado_em?: string | null
         }
         Relationships: [
@@ -1677,6 +1692,147 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedidos_internos_anexos: {
+        Row: {
+          criado_em: string
+          etapa: string | null
+          id: number
+          observacao: string | null
+          pedido_interno_id: number
+          tipo: string
+          titulo: string
+          url: string | null
+          usuario: string | null
+        }
+        Insert: {
+          criado_em?: string
+          etapa?: string | null
+          id?: never
+          observacao?: string | null
+          pedido_interno_id: number
+          tipo?: string
+          titulo: string
+          url?: string | null
+          usuario?: string | null
+        }
+        Update: {
+          criado_em?: string
+          etapa?: string | null
+          id?: never
+          observacao?: string | null
+          pedido_interno_id?: number
+          tipo?: string
+          titulo?: string
+          url?: string | null
+          usuario?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_internos_anexos_pedido_interno_id_fkey"
+            columns: ["pedido_interno_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_internos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedidos_internos_aprovacoes: {
+        Row: {
+          comentario: string | null
+          criado_em: string
+          decisao: string
+          etapa: string
+          id: number
+          papel: string | null
+          pedido_interno_id: number
+          responsavel: string | null
+          status_destino: string | null
+          status_origem: string | null
+        }
+        Insert: {
+          comentario?: string | null
+          criado_em?: string
+          decisao: string
+          etapa: string
+          id?: never
+          papel?: string | null
+          pedido_interno_id: number
+          responsavel?: string | null
+          status_destino?: string | null
+          status_origem?: string | null
+        }
+        Update: {
+          comentario?: string | null
+          criado_em?: string
+          decisao?: string
+          etapa?: string
+          id?: never
+          papel?: string | null
+          pedido_interno_id?: number
+          responsavel?: string | null
+          status_destino?: string | null
+          status_origem?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_internos_aprovacoes_pedido_interno_id_fkey"
+            columns: ["pedido_interno_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_internos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedidos_internos_comunicacoes: {
+        Row: {
+          assunto: string | null
+          criado_em: string
+          destinatarios: string | null
+          etapa: string | null
+          id: number
+          observacao: string | null
+          pedido_interno_id: number
+          referencia: string | null
+          remetente: string | null
+          tipo: string
+          usuario: string | null
+        }
+        Insert: {
+          assunto?: string | null
+          criado_em?: string
+          destinatarios?: string | null
+          etapa?: string | null
+          id?: never
+          observacao?: string | null
+          pedido_interno_id: number
+          referencia?: string | null
+          remetente?: string | null
+          tipo?: string
+          usuario?: string | null
+        }
+        Update: {
+          assunto?: string | null
+          criado_em?: string
+          destinatarios?: string | null
+          etapa?: string | null
+          id?: never
+          observacao?: string | null
+          pedido_interno_id?: number
+          referencia?: string | null
+          remetente?: string | null
+          tipo?: string
+          usuario?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_internos_comunicacoes_pedido_interno_id_fkey"
+            columns: ["pedido_interno_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_internos"
             referencedColumns: ["id"]
           },
         ]

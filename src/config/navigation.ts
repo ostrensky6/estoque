@@ -14,7 +14,14 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
   const nivel = nivelDoPapel(perfil?.papel);
   const ehGestor = nivel >= ORDEM_PAPEIS.indexOf("gestor");
   const ehAdmin = perfil?.papel === "admin";
-  const linksGovernanca: NavLink[] = [];
+  const linksGovernanca: NavLink[] = [
+    {
+      href: "/ajuda",
+      label: "Ajuda",
+      desc: "orientações de todos os módulos do app",
+      icon: "LifeBuoy",
+    },
+  ];
 
   if (ehGestor) {
     linksGovernanca.push({

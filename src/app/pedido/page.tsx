@@ -1,29 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
 import { criarPedidoInterno } from "@/lib/actions/pedidos-internos";
 import { PedidosInternosTable, type PedidoInternoRow } from "@/components/pedido/PedidosInternosTable";
-import { pedidoInternoStatus } from "@/lib/pedido/status";
+import type { PedidoItemView } from "@/components/pedido/PedidoItensQuickView";
+import { pedidoInternoNumero, pedidoInternoStatus } from "@/lib/pedido/status";
 import { formatCurrency as brl, formatDate } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
-type PedidoItemResumo = {
-  quantidade: number | null;
-  orcamento_previo: number | null;
-};
-
 export default async function PedidoPage() {
   const supabase = await createClient();
-  const [{ data: pedidos }, { data: projetos }, { data: planos }] = await Promise.all([
+  const [{ data: pedidos }, { data: projetos }] = await Promise.all([
     supabase
       .from("pedidos_internos")
-      .select("id, titulo, status, solicitante, data_necessidade, criado_em, projetos(nome), pedidos_internos_itens(quantidade, orcamento_previo)")
+      .select("id, titulo, status, solicitante, data_necessidade, urgencia, criado_em, projetos(nome), pedidos_internos_itens(id, tipo, especificacao, modelo, volume, quantidade, unidade, orcamento_previo, fornecedor_sugerido)")
       .order("criado_em", { ascending: false }),
     supabase.from("projetos").select("id, nome").order("nome"),
-    supabase.from("planejamento").select("id, nome, data_alvo").order("criado_em", { ascending: false }).limit(50),
   ]);
 
   const rows: PedidoInternoRow[] = (pedidos ?? []).map((pedido) => {
-    const itens = ((pedido.pedidos_internos_itens ?? []) as PedidoItemResumo[]) ?? [];
+    const itens = ((pedido.pedidos_internos_itens ?? []) as PedidoItemView[]) ?? [];
     const total = itens.reduce(
       (acc, item) => acc + Number(item.quantidade ?? 0) * Number(item.orcamento_previo ?? 0),
       0,
@@ -32,11 +27,14 @@ export default async function PedidoPage() {
     const projeto = (pedido.projetos as { nome: string | null } | null)?.nome ?? "—";
     return {
       id: pedido.id,
+      numero: pedidoInternoNumero(pedido.id),
       titulo: pedido.titulo,
       projeto,
       solicitante: pedido.solicitante ?? "—",
       necessidade: formatDate(pedido.data_necessidade),
+      urgencia: pedido.urgencia ?? "normal",
       itens: itens.length,
+      itensDetalhe: itens,
       total: brl(total),
       status: pedido.status,
       statusLabel: status.label,
@@ -59,7 +57,7 @@ export default async function PedidoPage() {
             <div className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
               <p className="text-zinc-500">Abertos</p>
               <p className="mt-1 text-xl font-semibold tabular-nums">
-                {rows.filter((row) => !["cancelado", "compra_fechada", "encaminhado_instituicao"].includes(row.status)).length}
+                {rows.filter((row) => !["cancelado", "compra_concluida"].includes(row.status)).length}
               </p>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
@@ -90,17 +88,19 @@ export default async function PedidoPage() {
             <input name="data_necessidade" type="date" className={inputCls} />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Planejamento</label>
-            <select name="planejamento_id" defaultValue="" className={inputCls}>
-              <option value="">—</option>
-              {(planos ?? []).map((plano) => (
-                <option key={plano.id} value={plano.id}>
-                  #{plano.id} · {plano.nome ?? "Plano sem nome"}
-                </option>
-              ))}
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Urgência</label>
+            <select name="urgencia" defaultValue="normal" className={inputCls}>
+              <option value="baixa">Baixa</option>
+              <option value="normal">Normal</option>
+              <option value="alta">Alta</option>
+              <option value="critica">Crítica</option>
             </select>
           </div>
-          <div className="md:col-span-10">
+          <div className="md:col-span-4">
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Fonte provável</label>
+            <input name="fonte_recurso" placeholder="Projeto, convênio, recurso interno..." className={inputCls} />
+          </div>
+          <div className="md:col-span-4">
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Justificativa</label>
             <input name="justificativa" placeholder="Experimentos, análises ou problema que originou a compra" className={inputCls} />
           </div>

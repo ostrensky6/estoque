@@ -6,20 +6,33 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/common/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { pedidoInternoStatus } from "@/lib/pedido/status";
+import { PedidoItensQuickView, type PedidoItemView } from "./PedidoItensQuickView";
 
 export type PedidoInternoRow = {
   id: number;
+  numero: string;
   titulo: string;
   projeto: string;
   solicitante: string;
   necessidade: string;
+  urgencia: string;
   itens: number;
+  itensDetalhe: PedidoItemView[];
   total: string;
   status: string;
   statusLabel: string;
 };
 
 const columns: ColumnDef<PedidoInternoRow, unknown>[] = [
+  {
+    accessorKey: "numero",
+    header: "Nº",
+    cell: ({ row }) => (
+      <Link href={`/pedido/${row.original.id}`} className="font-mono text-xs text-zinc-500 hover:underline">
+        {row.original.numero}
+      </Link>
+    ),
+  },
   {
     accessorKey: "titulo",
     header: "Pedido",
@@ -32,7 +45,19 @@ const columns: ColumnDef<PedidoInternoRow, unknown>[] = [
   { accessorKey: "projeto", header: "Projeto" },
   { accessorKey: "solicitante", header: "Solicitante" },
   { accessorKey: "necessidade", header: "Necessidade" },
-  { accessorKey: "itens", header: "Itens", meta: { align: "right" } },
+  { accessorKey: "urgencia", header: "Urgência" },
+  {
+    accessorKey: "itens",
+    header: "Itens",
+    meta: { align: "center" },
+    cell: ({ row }) => (
+      <PedidoItensQuickView
+        numero={row.original.numero}
+        titulo={row.original.titulo}
+        itens={row.original.itensDetalhe}
+      />
+    ),
+  },
   { accessorKey: "total", header: "Prévio", meta: { align: "right" } },
   {
     accessorKey: "statusLabel",
@@ -75,11 +100,16 @@ export function PedidosInternosTable({ rows }: { rows: PedidoInternoRow[] }) {
       ]}
       getMobileTitle={(row) => (
         <Link href={`/pedido/${row.id}`} className="text-primary hover:underline">
-          {row.titulo}
+          <span className="font-mono text-xs text-zinc-400">{row.numero}</span> · {row.titulo}
         </Link>
       )}
-      getMobileDescription={(row) => `${row.projeto} · ${row.solicitante} · ${row.itens} item(ns)`}
-      getMobileMeta={(row) => <StatusBadge status={row.status} />}
+      getMobileDescription={(row) => `${row.projeto} · ${row.solicitante} · ${row.urgencia}`}
+      getMobileMeta={(row) => (
+        <div className="flex flex-col items-end gap-1.5">
+          <StatusBadge status={row.status} />
+          <PedidoItensQuickView numero={row.numero} titulo={row.titulo} itens={row.itensDetalhe} />
+        </div>
+      )}
     />
   );
 }

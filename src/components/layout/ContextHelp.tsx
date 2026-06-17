@@ -1,6 +1,7 @@
 "use client";
 
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, LifeBuoy } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -91,6 +92,13 @@ export function ContextHelp() {
             </li>
           ))}
         </ul>
+        <Link
+          href="/ajuda"
+          className="inline-flex items-center gap-1.5 rounded-md border border-brand-200 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-900/50 dark:text-brand-300 dark:hover:bg-brand-950/30"
+        >
+          <LifeBuoy className="h-4 w-4" />
+          Abrir Central de Ajuda
+        </Link>
       </DialogContent>
     </Dialog>
   );

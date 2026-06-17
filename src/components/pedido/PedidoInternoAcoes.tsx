@@ -4,13 +4,18 @@ import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   aprovarAnaliseAdministrativa,
+  aprovarCompraFinal,
   cancelarPedidoInterno,
+  concluirCompra,
   devolverParaCompras,
   devolverParaSolicitante,
   encaminharInstituicao,
   enviarParaValidacao,
+  enviarAprovacaoFinal,
   fecharComFornecedor,
   formalizarPedidoInterno,
+  marcarAguardandoPagamentoNf,
+  marcarOrcamentosRecebidos,
   registrarLevantamentoOrcamentos,
   validarInformacoes,
 } from "@/lib/actions/pedidos-internos";
@@ -24,12 +29,14 @@ function Botao({
   label,
   variant = "primary",
   observacao,
+  comentarioPlaceholder,
 }: {
   pedidoId: number;
   action: Action;
   label: string;
   variant?: "primary" | "outline" | "danger";
   observacao?: string;
+  comentarioPlaceholder?: string;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, { ok: false });
@@ -49,6 +56,13 @@ function Botao({
       <form action={formAction}>
         <input type="hidden" name="pedido_interno_id" value={pedidoId} />
         {observacao && <input type="hidden" name="observacao" value={observacao} />}
+        {comentarioPlaceholder && (
+          <input
+            name="observacao"
+            placeholder={comentarioPlaceholder}
+            className="mb-2 h-9 w-64 rounded-md border border-zinc-300 bg-white px-3 text-xs dark:border-zinc-700 dark:bg-zinc-950"
+          />
+        )}
         <button disabled={pending} className={cls}>
           {pending ? "..." : label}
         </button>
@@ -71,7 +85,7 @@ export function PedidoInternoAcoes({
   status: string;
   podeGerir: boolean;
 }) {
-  if (status === "cancelado" || status === "compra_fechada" || status === "encaminhado_instituicao") {
+  if (status === "cancelado" || status === "compra_concluida") {
     return null;
   }
 
@@ -84,7 +98,13 @@ export function PedidoInternoAcoes({
       {status === "em_validacao" && podeGerir && (
         <>
           <Botao pedidoId={pedidoId} action={validarInformacoes} label="Validar informações" />
-          <Botao pedidoId={pedidoId} action={devolverParaSolicitante} label="Devolver ao solicitante" variant="outline" />
+          <Botao
+            pedidoId={pedidoId}
+            action={devolverParaSolicitante}
+            label="Devolver ao solicitante"
+            variant="outline"
+            comentarioPlaceholder="Motivo obrigatório"
+          />
         </>
       )}
 
@@ -95,7 +115,13 @@ export function PedidoInternoAcoes({
       {status === "analise_administrativa" && podeGerir && (
         <>
           <Botao pedidoId={pedidoId} action={aprovarAnaliseAdministrativa} label="Aprovar compra" />
-          <Botao pedidoId={pedidoId} action={devolverParaCompras} label="Devolver para ajuste" variant="outline" />
+          <Botao
+            pedidoId={pedidoId}
+            action={devolverParaCompras}
+            label="Devolver para ajuste"
+            variant="outline"
+            comentarioPlaceholder="Motivo obrigatório"
+          />
         </>
       )}
 
@@ -105,13 +131,43 @@ export function PedidoInternoAcoes({
 
       {status === "orcamentos" && podeGerir && (
         <>
+          <Botao pedidoId={pedidoId} action={marcarOrcamentosRecebidos} label="Marcar orçamentos recebidos" />
+        </>
+      )}
+
+      {status === "orcamentos_recebidos" && podeGerir && (
+        <Botao pedidoId={pedidoId} action={enviarAprovacaoFinal} label="Enviar para aprovação final" />
+      )}
+
+      {status === "aguardando_aprovacao_final" && podeGerir && (
+        <Botao pedidoId={pedidoId} action={aprovarCompraFinal} label="Aprovar compra final" />
+      )}
+
+      {status === "aprovado_para_compra" && podeGerir && (
+        <>
           <Botao pedidoId={pedidoId} action={fecharComFornecedor} label="Fechar com fornecedor" />
           <Botao pedidoId={pedidoId} action={encaminharInstituicao} label="Encaminhar à instituição" variant="outline" />
         </>
       )}
 
+      {["compra_fechada", "encaminhado_instituicao"].includes(status) && podeGerir && (
+        <Botao pedidoId={pedidoId} action={marcarAguardandoPagamentoNf} label="Aguardar pagamento/NF" />
+      )}
+
+      {status === "aguardando_pagamento_nf" && podeGerir && (
+        <>
+          <Botao pedidoId={pedidoId} action={concluirCompra} label="Concluir compra" />
+        </>
+      )}
+
       {podeGerir && (
-        <Botao pedidoId={pedidoId} action={cancelarPedidoInterno} label="Cancelar" variant="danger" />
+        <Botao
+          pedidoId={pedidoId}
+          action={cancelarPedidoInterno}
+          label="Cancelar"
+          variant="danger"
+          comentarioPlaceholder="Motivo obrigatório"
+        />
       )}
     </div>
   );

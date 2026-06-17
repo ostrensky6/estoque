@@ -40,9 +40,24 @@ export const PEDIDO_INTERNO_STATUS = {
     className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
   },
   orcamentos: {
-    label: "Orçamentos",
+    label: "Em cotação",
     etapa: "Levantamento de cotações",
     className: "bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300",
+  },
+  orcamentos_recebidos: {
+    label: "Orçamentos recebidos",
+    etapa: "Propostas anexadas",
+    className: "bg-teal-100 text-teal-800 dark:bg-teal-950/50 dark:text-teal-300",
+  },
+  aguardando_aprovacao_final: {
+    label: "Aguardando aprovação final",
+    etapa: "Escolha do caminho de compra",
+    className: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300",
+  },
+  aprovado_para_compra: {
+    label: "Aprovado para compra",
+    etapa: "Fornecedor ou instituição definido",
+    className: "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300",
   },
   compra_fechada: {
     label: "Compra fechada",
@@ -53,6 +68,16 @@ export const PEDIDO_INTERNO_STATUS = {
     label: "Encaminhado",
     etapa: "Instituição compradora",
     className: "bg-violet-100 text-violet-800 dark:bg-violet-950/50 dark:text-violet-300",
+  },
+  aguardando_pagamento_nf: {
+    label: "Aguardando pagamento/NF",
+    etapa: "Boleto, nota ou comprovante",
+    className: "bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300",
+  },
+  compra_concluida: {
+    label: "Compra concluída",
+    etapa: "Documentos finais registrados",
+    className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
   },
   cancelado: {
     label: "Cancelado",
@@ -71,8 +96,16 @@ export const PEDIDO_INTERNO_FLUXO: PedidoInternoStatus[] = [
   "analise_administrativa",
   "aprovado_compra",
   "orcamentos",
+  "orcamentos_recebidos",
+  "aguardando_aprovacao_final",
+  "aprovado_para_compra",
 ];
 
 export function pedidoInternoStatus(status: string | null | undefined) {
   return PEDIDO_INTERNO_STATUS[(status ?? "rascunho") as PedidoInternoStatus] ?? PEDIDO_INTERNO_STATUS.rascunho;
+}
+
+/** Número sequencial e único do pedido (derivado do id) — ex.: "Nº 0007". */
+export function pedidoInternoNumero(id: number) {
+  return `Nº ${String(id).padStart(4, "0")}`;
 }

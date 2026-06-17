@@ -52,7 +52,10 @@ export default async function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="app-canvas min-h-dvh text-slate-900 dark:bg-zinc-950 dark:text-slate-100">
+      <body
+        suppressHydrationWarning
+        className="app-canvas min-h-dvh text-slate-900 dark:bg-zinc-950 dark:text-slate-100"
+      >
         <a href="#conteudo-principal" className="skip-link">
           Ir para o conteúdo principal
         </a>
