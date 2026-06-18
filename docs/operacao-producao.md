@@ -3,7 +3,7 @@
 ## App em producao
 
 - App: Kontrol
-- URL primaria: https://kontrol-gia.vercel.app
+- URL primaria: https://kontrol-lac.vercel.app
 - Login administrador: `ostrensky@ufpr.br`
 - Papel: `admin`
 - Senha do usuario admin: armazenada no Supabase Auth / gerenciador de senhas, nao versionar.
@@ -13,30 +13,30 @@
 - Repositorio: https://github.com/ostrensky6/estoque
 - Conta GitHub: `ostrensky6`
 - Branch de producao: `main`
-- Fluxo atual: deploy MANUAL via Vercel CLI (`vercel --prod`). A conexao Vercel<->GitHub NAO esta configurada (no dashboard aparece "Connect Git Repository"), entao push em `main` NAO dispara deploy automatico ainda.
+- Fluxo atual: Vercel conectado ao GitHub. Push em `main` deve disparar deploy de producao no projeto novo.
 
 ## Hospedagem - Vercel
 
-- Conta/time: `Ostrensky's projects` (plano Hobby) - conta de acesso `ostrensky5@gmail.com`
-- Escopo CLI/API (slug): `ostrensky-s-projects`
-- Org/Team ID: `team_HYxJGUZ1QLz2P0H2U4l9Ayn8`
-- Projeto: `kontrol-gia` (Project ID `prj_EnHPskP6CjuCv8UCzC6iXjQpcwQi`)
-- Dashboard: https://vercel.com/ostrensky-s-projects/kontrol-gia
+- Conta/time: `Gia` (plano Hobby) - conta de acesso `planktonsma@gmail.com`
+- Projeto: `kontrol`
+- Dashboard: projeto `kontrol` no time `Gia`
 - Framework preset: Next.js (Turbopack, Next 16)
 - Build command: padrao Next.js (`npm run build`)
 - Output directory: padrao Next.js
-- Production URL: https://kontrol-gia.vercel.app (alias ativo; dominio default do projeto = `kontrol-gia-nine.vercel.app`)
-- Deploy: `vercel --prod --yes --token <TOKEN> --scope ostrensky-s-projects`, com `NODE_EXTRA_CA_CERTS` apontando para o PEM dos root CAs do Windows (proxy/cert local quebra o TLS do Node 20). Login interativo trava no shell -> usar `--token`.
+- Production URL: https://kontrol-lac.vercel.app
+- Deploy: automatico por push em `main`, ou redeploy manual pelo painel da Vercel.
 - Variaveis de ambiente configuradas em producao (Production scope):
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   - `SUPABASE_SERVICE_ROLE_KEY`
+  - `NEXT_PUBLIC_SITE_URL`
 
 ### Pendencias Vercel
 
-- ⚠️ "Vercel Authentication" (Deployment Protection) esta LIGADA -> a URL publica retorna HTTP 401 (pagina "Authentication Required"). Precisa ser desligada em Project -> Settings -> Deployment Protection para o app ficar acessivel ao publico (a auth propria do Kontrol assume o controle de acesso).
-- Conectar o repo GitHub `ostrensky6/estoque` ao projeto para habilitar auto-deploy em `main`.
-- ⚠️ Historico: em 2026-06-17 a producao foi migrada de uma conta Vercel antiga (`ostrensky2`, que tinha o projeto `kontrol` no time `team_3VzNcrJwgnFwqLL9JzMmcFs8`). Essa conta/projeto foi APAGADA pelo usuario, liberando o dominio `kontrol-gia.vercel.app`. Nao confundir o `kontrol` antigo (extinto) com o `kontrol-gia` atual.
+- Configurar as variaveis de ambiente no projeto novo antes de promover/redeployar.
+- Aplicar as migrations de producao antes de validar as telas de pedido/recebimento.
+- Ajustar Supabase Auth para aceitar a nova URL de producao.
+- Historico: a producao anterior usava `https://kontrol-gia.vercel.app` no projeto `kontrol-gia` do time `Ostrensky's projects` (`ostrensky5@gmail.com`). Nao usar esse projeto para novos deploys.
 
 ## Banco de dados - Supabase producao
 
@@ -53,6 +53,18 @@
 - Chave anon/public: configurar como `NEXT_PUBLIC_SUPABASE_ANON_KEY` no host. Usa o novo formato de chave do Supabase: `sb_publishable_...` (Settings -> API Keys -> Publishable key).
 - Chave service role: configurar como `SUPABASE_SERVICE_ROLE_KEY` no host. Usa o novo formato `sb_secret_...` (Settings -> API Keys -> Secret keys). Nunca versionar; rotacionar se exposta.
 - Senha Postgres: armazenada no gerenciador de senhas. Nunca versionar.
+
+## Checklist de migracao para Vercel nova
+
+1. No Supabase producao (`hhxwdcwphitfxywbgtju`), aplicar as migrations pendentes em `supabase/migrations`.
+2. No projeto Vercel novo (`Gia` -> `kontrol`), configurar:
+   - `NEXT_PUBLIC_SUPABASE_URL=https://hhxwdcwphitfxywbgtju.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable key do Supabase>`
+   - `SUPABASE_SERVICE_ROLE_KEY=<secret/service role key do Supabase>`
+   - `NEXT_PUBLIC_SITE_URL=https://kontrol-lac.vercel.app`
+3. No Supabase Auth, configurar Site URL/Redirect URLs para `https://kontrol-lac.vercel.app`.
+4. Fazer redeploy da branch `main` na Vercel.
+5. Validar login, `/pedido`, detalhe de pedido com Etapa 11 e `/recebimento`.
 
 ## Observacoes de seguranca
 

@@ -5,7 +5,7 @@ de biologia molecular. Substitui a planilha `Laboratorio1.xlsm`.
 
 Stack: **Next.js 16** (App Router, TS) · **Supabase** (Postgres + Auth) · deploy na **Vercel**.
 
-Produção: https://kontrol-gia.vercel.app
+Produção: https://kontrol-lac.vercel.app
 
 Dados operacionais de produção: [docs/operacao-producao.md](docs/operacao-producao.md).
 
