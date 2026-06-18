@@ -30,6 +30,7 @@
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   - `SUPABASE_SERVICE_ROLE_KEY`
+  - `SUPABASE_AUTH_ADMIN_KEY`
   - `NEXT_PUBLIC_SITE_URL`
 
 ### Estado Vercel
@@ -51,8 +52,9 @@
   - Porta: `5432`
   - User: `postgres.hhxwdcwphitfxywbgtju`
   - Database: `postgres`
-- Chave anon/public: configurar como `NEXT_PUBLIC_SUPABASE_ANON_KEY` no host. Usa o novo formato de chave do Supabase: `sb_publishable_...` (Settings -> API Keys -> Publishable key).
-- Chave service role: configurar como `SUPABASE_SERVICE_ROLE_KEY` no host. Usa o novo formato `sb_secret_...` (Settings -> API Keys -> Secret keys). Nunca versionar; rotacionar se exposta.
+- Chave anon/public: configurar como `NEXT_PUBLIC_SUPABASE_ANON_KEY` no host. Pode usar o formato novo `sb_publishable_...` (Settings -> API Keys -> Publishable key) ou o legacy anon JWT.
+- Chave service/secret: configurar como `SUPABASE_SERVICE_ROLE_KEY` no host. Pode usar o formato novo `sb_secret_...` (Settings -> API Keys -> Secret keys) ou o legacy service_role JWT.
+- Chave Auth Admin: configurar `SUPABASE_AUTH_ADMIN_KEY` com a chave legacy `service_role` JWT (Legacy API Keys). As operacoes de criar, suspender, excluir e resetar senha de usuarios usam Supabase Auth Admin e ainda precisam de JWT nesse fluxo.
 - Senha Postgres: armazenada no gerenciador de senhas. Nunca versionar.
 
 ## Checklist operacional
@@ -62,6 +64,7 @@
    - `NEXT_PUBLIC_SUPABASE_URL=https://hhxwdcwphitfxywbgtju.supabase.co`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable key do Supabase>`
    - `SUPABASE_SERVICE_ROLE_KEY=<secret/service role key do Supabase>`
+   - `SUPABASE_AUTH_ADMIN_KEY=<legacy service_role JWT do Supabase>`
    - `NEXT_PUBLIC_SITE_URL=https://kontrol-lac.vercel.app`
 3. No Supabase Auth, manter Site URL/Redirect URLs para `https://kontrol-lac.vercel.app`.
 4. Para publicar, fazer push na branch `main` ou redeploy manual na Vercel.

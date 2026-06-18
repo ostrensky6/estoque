@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient, mensagemErroAdminSupabase } from "@/lib/supabase/admin";
 import { temPapel, usuarioAtual } from "@/lib/auth/roles";
 import { SENHA_PROVISORIA } from "@/lib/auth/senha-provisoria";
 import type { FormState } from "./cadastros";
@@ -40,7 +40,7 @@ export async function criarUsuario(_prev: FormState, formData: FormData): Promis
     const jaExiste = error?.message?.toLowerCase().includes("already");
     return {
       ok: false,
-      message: jaExiste ? "Já existe um usuário com este e-mail." : (error?.message ?? "Não foi possível criar o usuário."),
+      message: jaExiste ? "Já existe um usuário com este e-mail." : mensagemErroAdminSupabase(error),
     };
   }
 
@@ -76,9 +76,10 @@ export async function editarUsuario(_prev: FormState, formData: FormData): Promi
     .eq("id", id);
 
   // mantém o nome também no Auth (user_metadata)
-  await createAdminClient().auth.admin.updateUserById(id, { user_metadata: { nome } });
+  const { error: authError } = await createAdminClient().auth.admin.updateUserById(id, { user_metadata: { nome } });
 
   if (error) return { ok: false, message: error.message };
+  if (authError) return { ok: false, message: mensagemErroAdminSupabase(authError) };
   revalidatePath("/usuarios");
   return { ok: true, message: "Usuário atualizado." };
 }
@@ -94,9 +95,10 @@ export async function alternarSuspensao(formData: FormData) {
   const eu = await usuarioAtual();
   if (suspender && eu?.id === id) return;
 
-  await createAdminClient().auth.admin.updateUserById(id, {
+  const { error: authError } = await createAdminClient().auth.admin.updateUserById(id, {
     ban_duration: suspender ? BAN_SUSPENSO : "none",
   });
+  if (authError) return;
 
   const supabase = await createClient();
   await supabase.from("perfis").update({ suspenso: suspender }).eq("id", id);
@@ -119,7 +121,7 @@ export async function resetarSenha(_prev: FormState, formData: FormData): Promis
     password: SENHA_PROVISORIA,
     user_metadata: { senha_provisoria: true },
   });
-  if (error) return { ok: false, message: error.message };
+  if (error) return { ok: false, message: mensagemErroAdminSupabase(error) };
 
   const supabase = await createClient();
   await supabase.from("perfis").update({ senha_provisoria: true }).eq("id", id);
@@ -148,7 +150,7 @@ export async function excluirUsuario(_prev: FormState, formData: FormData): Prom
   if (eu?.id === id) return { ok: false, message: "Você não pode excluir o seu próprio usuário." };
 
   const { error } = await createAdminClient().auth.admin.deleteUser(id);
-  if (error) return { ok: false, message: error.message };
+  if (error) return { ok: false, message: mensagemErroAdminSupabase(error) };
 
   revalidatePath("/usuarios");
   return { ok: true, message: `Usuário ${email || ""} excluído.` };

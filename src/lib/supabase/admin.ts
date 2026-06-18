@@ -2,6 +2,25 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 
+function adminKey() {
+  return process.env.SUPABASE_AUTH_ADMIN_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY!;
+}
+
+export function mensagemErroAdminSupabase(error: { message?: string; code?: string } | null | undefined) {
+  const message = error?.message ?? "";
+  const key = adminKey();
+  const pareceChaveNova = key.startsWith("sb_secret_");
+  const pareceErroChave =
+    error?.code === "bad_jwt" ||
+    /invalid api key|bad jwt|jwt/i.test(message);
+
+  if (pareceChaveNova || pareceErroChave) {
+    return "Configuração do Supabase Auth Admin inválida. No Vercel, use a chave legacy service_role JWT em SUPABASE_AUTH_ADMIN_KEY.";
+  }
+
+  return message || "Não foi possível concluir a operação administrativa no Supabase.";
+}
+
 /**
  * Cliente Supabase com service_role — SOMENTE no servidor (server actions).
  * Ignora RLS. Usado para mutações administrativas internas enquanto a
@@ -13,7 +32,7 @@ import type { Database } from "./database.types";
 export function createAdminClient() {
   return createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    adminKey(),
     { auth: { persistSession: false } },
   );
 }
@@ -25,7 +44,7 @@ export function createAdminClient() {
 export function createAdminClientUntyped(): SupabaseClient {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    adminKey(),
     { auth: { persistSession: false } },
   );
 }
