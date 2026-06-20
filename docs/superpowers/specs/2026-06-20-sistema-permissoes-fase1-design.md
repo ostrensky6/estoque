@@ -53,19 +53,16 @@ granularidade fina por papel para a camada de RLS no banco.
    renderizada marcada e desabilitada; um server action persiste; efeito
    imediato.
 
-## 4. Decisões a confirmar (preenchi com um padrão; corrija na revisão)
+## 4. Decisões complementares (confirmadas na revisão)
 
-Estes dois pontos não estavam no resumo. Adotei um padrão explícito para o spec
-ficar completo — **confirme ou ajuste**:
+Dois pontos não estavam no resumo inicial; foram confirmados pelo usuário:
 
 - **D1 — Posição hierárquica de `administrativo`** (usado só pela navegação via
-  `temPapel`). Padrão adotado:
-  `usuário < coordenador < administrativo < gerente < administrador`.
+  `temPapel`): `usuário < coordenador < administrativo < gerente < administrador`.
 - **D2 — Seed inicial de `administrativo`** (papel novo, sem "comportamento de
-  hoje"). Padrão adotado: mesmas capacidades de **leitura** que `usuário`
-  (vê os módulos operacionais/orçamento) **sem** capacidades de aprovação,
-  gestão de lote, auditoria ou administração. Ou seja, entra "só leitura"
-  até a matriz ser editada.
+  hoje"): mesmas capacidades de **leitura** que `usuário` (vê os módulos
+  operacionais/orçamento) **sem** capacidades de aprovação, gestão de lote,
+  auditoria ou administração. Entra "só leitura" até a matriz ser editada.
 
 ## 5. Arquitetura
 
