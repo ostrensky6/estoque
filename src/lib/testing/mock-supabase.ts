@@ -101,7 +101,22 @@ const baseStore = (): Store => ({
   movimentacoes_estoque: [],
   lotes_estoque: [],
   perfis: [{ id: "user-e2e", nome: "Gestor E2E", email: "gestor@example.com", papel: "gestor" }],
-  notificacoes: [],
+  notificacoes: [
+    {
+      id: 1,
+      tipo: "falta_plano",
+      titulo: "Falta de estoque no planejamento",
+      corpo: "Mix PCR: falta 10 uL no planejamento #1.",
+      entidade_tipo: "planejamento",
+      entidade_id: 1,
+      papel_destino: "coordenador",
+      status: "nao_lida",
+      canal: "in_app",
+      dedupe_key: "e2e:falta-plano",
+      criado_em: "2026-06-20T10:00:00.000Z",
+      lida_em: null,
+    },
+  ],
   v_dashboard_executivo: [
     {
       valor_estoque_ativo: 0,
@@ -152,6 +167,7 @@ class MockQuery {
   private filters: { column: string; value: unknown }[] = [];
   private inFilters: { column: string; values: unknown[] }[] = [];
   private notFilters: { column: string; values: string[] }[] = [];
+  private isFilters: { column: string; value: null }[] = [];
   private mutation: null | { type: "insert" | "update" | "delete" | "upsert"; payload?: Row | Row[] } = null;
 
   constructor(private table: string) {}
@@ -171,6 +187,12 @@ class MockQuery {
 
   in(column: string, values: unknown[]) {
     this.inFilters.push({ column, values });
+    return this;
+  }
+
+  is(column: string, value: null) {
+    // Suporta apenas `.is(coluna, null)`, o unico uso no app.
+    this.isFilters.push({ column, value });
     return this;
   }
 
@@ -276,7 +298,8 @@ class MockQuery {
     return (
       this.filters.every((filter) => row[filter.column] === filter.value) &&
       this.inFilters.every((filter) => filter.values.includes(row[filter.column])) &&
-      this.notFilters.every((filter) => !filter.values.includes(String(row[filter.column])))
+      this.notFilters.every((filter) => !filter.values.includes(String(row[filter.column]))) &&
+      this.isFilters.every((filter) => (row[filter.column] ?? null) === filter.value)
     );
   }
 }
@@ -303,6 +326,22 @@ function setLotStatus(loteId: number, status: string) {
   if (lote) lote.status = status;
 }
 
+function baixarManualLote(args: Row) {
+  const lote = store.lotes_estoque.find((row) => row.id === args.p_lote_id);
+  if (!lote) return;
+  const quantidade = Number(args.p_quantidade);
+  const atual = Number(lote.quantidade_atual ?? 0);
+  lote.quantidade_atual = Math.max(0, atual - quantidade);
+  lote.status = Number(lote.quantidade_atual) <= 0 ? "consumido" : "em_uso";
+}
+
+function ajustarSaldoLote(args: Row) {
+  const lote = store.lotes_estoque.find((row) => row.id === args.p_lote_id);
+  if (!lote) return;
+  lote.quantidade_atual = Number(args.p_quantidade_nova);
+  if (Number(lote.quantidade_atual) <= 0) lote.status = "consumido";
+}
+
 export function createMockSupabaseClient() {
   return {
     auth: {
@@ -310,11 +349,13 @@ export function createMockSupabaseClient() {
     },
     from: (table: string) => new MockQuery(table),
     rpc: async (fn: string, args: Row) => {
-      if (fn === "receber_lote") receiveLot(args);
+      if (fn === "receber_lote" || fn === "entrada_inventario") receiveLot(args);
       if (fn === "aceitar_lote") setLotStatus(Number(args.p_lote_id), "aceito");
       if (fn === "bloquear_lote") setLotStatus(Number(args.p_lote_id), "bloqueado");
       if (fn === "desbloquear_lote") setLotStatus(Number(args.p_lote_id), "aceito");
       if (fn === "descartar_lote") setLotStatus(Number(args.p_lote_id), "descartado");
+      if (fn === "baixa_manual_lote") baixarManualLote(args);
+      if (fn === "ajustar_saldo_lote") ajustarSaldoLote(args);
       return { data: null, error: null };
     },
   };
