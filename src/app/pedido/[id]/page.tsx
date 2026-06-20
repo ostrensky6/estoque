@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { temPermissao } from "@/lib/auth/permissoes";
 import {
   adicionarAnexoPedidoInterno,
   adicionarItemPedidoInterno,
@@ -131,7 +131,7 @@ export default async function PedidoInternoDetalhe({
       .eq("pedido_interno_id", pedidoId)
       .order("criado_em", { ascending: false }),
     listarEventos("pedido_interno", pedidoId),
-    temPapel("coordenador"),
+    temPermissao("pedido.aprovar"),
   ]);
 
   const pedidoStatus = pedido.status as PedidoInternoStatus;

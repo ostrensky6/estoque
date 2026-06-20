@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { temPermissao } from "@/lib/auth/permissoes";
 import {
   adicionarItemPedido,
   removerItemPedido,
@@ -41,7 +41,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
       .eq("pedido_id", pedidoId)
       .order("id"),
     supabase.from("insumos").select("id, especificacao").order("especificacao"),
-    temPapel("coordenador"),
+    temPermissao("compras.aprovar"),
   ]);
 
   const eventos = await listarEventos("pedido_compra", pedidoId);

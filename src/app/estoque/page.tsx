@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { temPermissao } from "@/lib/auth/permissoes";
 import {
   LotesTable,
   SaldoTable,
@@ -46,8 +46,8 @@ export default async function EstoquePage() {
     supabase.from("v_previsao_suprimentos").select("*"),
   ]);
   const [podeAceitar, podeGerir] = await Promise.all([
-    temPapel("coordenador"),
-    temPapel("gestor"),
+    temPermissao("estoque.lote.aceitar"),
+    temPermissao("estoque.lote.gerir"),
   ]);
 
   const al = (alertas ?? []) as Alerta[];

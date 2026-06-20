@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { temPermissao } from "@/lib/auth/permissoes";
 import { AuditoriaTable, type AuditoriaRow } from "@/components/auditoria/AuditoriaTable";
 import { formatDateTime } from "@/lib/formatters";
 
@@ -45,7 +45,7 @@ export default async function AuditoriaPage({
 }: {
   searchParams: Promise<{ tabela?: string }>;
 }) {
-  if (!(await temPapel("gestor"))) {
+  if (!(await temPermissao("auditoria.ver"))) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-16 text-center font-sans">
         <p className="text-zinc-500">

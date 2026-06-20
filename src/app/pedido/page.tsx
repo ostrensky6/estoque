@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { temPermissao } from "@/lib/auth/permissoes";
 import { criarPedidoInterno } from "@/lib/actions/pedidos-internos";
 import { PedidosInternosTable, type PedidoInternoRow } from "@/components/pedido/PedidosInternosTable";
 import type { PedidoItemView } from "@/components/pedido/PedidoItensQuickView";
@@ -16,7 +16,7 @@ export default async function PedidoPage() {
       .select("id, titulo, status, solicitante, data_necessidade, urgencia, criado_em, projetos(nome), pedidos_internos_itens(id, tipo, especificacao, modelo, volume, quantidade, unidade, orcamento_previo, fornecedor_sugerido)")
       .order("criado_em", { ascending: false }),
     supabase.from("projetos").select("id, nome").order("nome"),
-    temPapel("coordenador"),
+    temPermissao("pedido.aprovar"),
   ]);
 
   const rows: PedidoInternoRow[] = (pedidos ?? []).map((pedido) => {

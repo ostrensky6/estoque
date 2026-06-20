@@ -5,7 +5,7 @@ import { access, mkdir, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { revalidatePath } from "next/cache";
-import { temPapel } from "@/lib/auth/roles";
+import { temPermissao } from "@/lib/auth/permissoes";
 
 const execFileAsync = promisify(execFile);
 
@@ -51,7 +51,7 @@ async function listarBackups(dir: string, prefix: string): Promise<BackupFile[]>
 }
 
 export async function obterResumoBackups() {
-  if (!(await temPapel("admin"))) {
+  if (!(await temPermissao("backups.gerir"))) {
     return null;
   }
 
@@ -73,7 +73,7 @@ export async function executarBackupAplicativo(
 ): Promise<BackupActionState> {
   void prevState;
 
-  if (!(await temPapel("admin"))) {
+  if (!(await temPermissao("backups.gerir"))) {
     return { ok: false, message: "Acesso restrito ao administrador." };
   }
 

@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, mensagemErroAdminSupabase } from "@/lib/supabase/admin";
-import { temPapel, usuarioAtual } from "@/lib/auth/roles";
+import { usuarioAtual } from "@/lib/auth/roles";
+import { temPermissao } from "@/lib/auth/permissoes";
 import { SENHA_PROVISORIA } from "@/lib/auth/senha-provisoria";
 import type { FormState } from "./cadastros";
 
@@ -18,7 +19,7 @@ const BAN_SUSPENSO = "876000h"; // ~100 anos
  * próprio usuário define a senha definitiva no primeiro acesso.
  */
 export async function criarUsuario(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("admin"))) {
+  if (!(await temPermissao("usuarios.gerir"))) {
     return { ok: false, message: "Sem permissão para cadastrar usuários." };
   }
 
@@ -60,7 +61,7 @@ export async function criarUsuario(_prev: FormState, formData: FormData): Promis
 
 /** Edita nome e papel de um usuário existente. */
 export async function editarUsuario(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("admin"))) {
+  if (!(await temPermissao("usuarios.gerir"))) {
     return { ok: false, message: "Sem permissão para editar usuários." };
   }
   const id = String(formData.get("id") ?? "");
@@ -86,7 +87,7 @@ export async function editarUsuario(_prev: FormState, formData: FormData): Promi
 
 /** Suspende (bloqueia login) ou reativa um usuário. */
 export async function alternarSuspensao(formData: FormData) {
-  if (!(await temPapel("admin"))) return;
+  if (!(await temPermissao("usuarios.gerir"))) return;
   const id = String(formData.get("id") ?? "");
   const suspender = String(formData.get("suspender") ?? "") === "1";
   if (!id) return;
@@ -110,7 +111,7 @@ export async function alternarSuspensao(formData: FormData) {
  * próximo acesso (senha_provisoria=true).
  */
 export async function resetarSenha(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("admin"))) {
+  if (!(await temPermissao("usuarios.gerir"))) {
     return { ok: false, message: "Sem permissão para resetar senhas." };
   }
   const id = String(formData.get("id") ?? "");
@@ -138,7 +139,7 @@ export async function resetarSenha(_prev: FormState, formData: FormData): Promis
  * irreversível — a auditoria das ações que ele registrou permanece.
  */
 export async function excluirUsuario(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("admin"))) {
+  if (!(await temPermissao("usuarios.gerir"))) {
     return { ok: false, message: "Sem permissão para excluir usuários." };
   }
   const id = String(formData.get("id") ?? "");
