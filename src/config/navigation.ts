@@ -1,6 +1,6 @@
 import type { NavGroup, NavLink } from "@/components/layout/SideNav";
 
-const ORDEM_PAPEIS = ["tecnico", "coordenador", "gestor", "admin"];
+const ORDEM_PAPEIS = ["usuário", "coordenador", "administrativo", "gerente", "administrador"];
 
 export type NavigationProfile = {
   papel?: string | null;
@@ -12,8 +12,8 @@ function nivelDoPapel(papel?: string | null) {
 
 export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
   const nivel = nivelDoPapel(perfil?.papel);
-  const ehGestor = nivel >= ORDEM_PAPEIS.indexOf("gestor");
-  const ehAdmin = perfil?.papel === "admin";
+  const ehGerente = nivel >= ORDEM_PAPEIS.indexOf("gerente");
+  const ehAdmin = perfil?.papel === "administrador";
   const linksGovernanca: NavLink[] = [
     {
       href: "/ajuda",
@@ -23,7 +23,7 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
     },
   ];
 
-  if (ehGestor) {
+  if (ehGerente) {
     linksGovernanca.push({
       href: "/auditoria",
       label: "Auditoria",
@@ -41,9 +41,15 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
         icon: "Settings",
       },
       {
+        href: "/governanca/privilegios",
+        label: "Privilégios",
+        desc: "matriz de permissões por papel",
+        icon: "ShieldCheck",
+      },
+      {
         href: "/usuarios",
         label: "Usuários e permissões",
-        desc: "papéis técnico, coordenador, gestor e admin",
+        desc: "papéis e níveis de acesso",
         icon: "UserCog",
       },
     );

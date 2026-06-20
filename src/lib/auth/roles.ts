@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
-const ORDEM = ["tecnico", "coordenador", "gestor", "admin"] as const;
+const ORDEM = ["usuário", "coordenador", "administrativo", "gerente", "administrador"] as const;
 export type Papel = (typeof ORDEM)[number];
 
 export async function usuarioAtual() {
@@ -25,7 +25,7 @@ export async function usuarioAtual() {
 
 export async function papelAtual(): Promise<Papel> {
   const u = await usuarioAtual();
-  return (u?.papel as Papel) ?? "tecnico";
+  return (u?.papel as Papel) ?? "usuário";
 }
 
 /** true se o papel do usuário é >= mínimo exigido. */

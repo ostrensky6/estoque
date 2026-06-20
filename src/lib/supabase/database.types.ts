@@ -1959,6 +1959,24 @@ export type Database = {
         }
         Relationships: []
       }
+      permissoes_papel: {
+        Row: {
+          chave: string
+          papel: string
+          permitido: boolean
+        }
+        Insert: {
+          chave: string
+          papel: string
+          permitido?: boolean
+        }
+        Update: {
+          chave?: string
+          papel?: string
+          permitido?: boolean
+        }
+        Relationships: []
+      }
       planejamento: {
         Row: {
           criado_em: string
