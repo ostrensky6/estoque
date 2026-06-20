@@ -35,10 +35,10 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
   if (ehAdmin) {
     linksGovernanca.push(
       {
-        href: "/governanca/backups",
-        label: "Backups",
-        desc: "app local e banco em nuvem",
-        icon: "ArchiveRestore",
+        href: "/governanca/configuracoes",
+        label: "Configurações",
+        desc: "backups e parâmetros do sistema",
+        icon: "Settings",
       },
       {
         href: "/usuarios",

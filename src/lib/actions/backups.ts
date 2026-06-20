@@ -101,7 +101,7 @@ export async function executarBackupAplicativo(
       },
     );
 
-    revalidatePath("/governanca/backups");
+    revalidatePath("/governanca/configuracoes");
     return {
       ok: true,
       message: "Backup do aplicativo criado. A retenção manteve no máximo 5 versões.",

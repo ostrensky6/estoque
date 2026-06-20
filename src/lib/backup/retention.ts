@@ -12,14 +12,15 @@ export function selecionarBackupsAppParaRemover(
     .slice(maxVersoes);
 }
 
+// Retencao mensal: mantem tudo do mes corrente. Ao virar o mes, os backups do
+// mes anterior sao descartados, preservando para sempre apenas os dias 1 e 15.
 export function deveManterBackupBanco(
   createdAt: Date,
   agora = new Date(),
 ) {
-  const idadeMs = agora.getTime() - createdAt.getTime();
-  const trintaDiasMs = 30 * 24 * 60 * 60 * 1000;
+  const inicioMesAtual = new Date(agora.getFullYear(), agora.getMonth(), 1);
 
-  if (idadeMs <= trintaDiasMs) return true;
+  if (createdAt.getTime() >= inicioMesAtual.getTime()) return true;
 
   const dia = createdAt.getDate();
   return dia === 1 || dia === 15;

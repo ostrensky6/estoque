@@ -75,12 +75,15 @@ if ($LASTEXITCODE -ne 0) {
   throw "pg_dump falhou com codigo $LASTEXITCODE."
 }
 
-$cutoff = (Get-Date).AddDays(-30)
+# Retencao mensal: ao virar o mes, os backups do mes anterior sao apagados,
+# preservando para sempre apenas os dos dias 1 e 15. O mes corrente fica intacto.
+$now = Get-Date
+$currentMonthStart = Get-Date -Year $now.Year -Month $now.Month -Day 1 -Hour 0 -Minute 0 -Second 0
 Get-ChildItem -LiteralPath $DestinationPath -File -Filter "kontrol-db-cloud-*.dump" | ForEach-Object {
   $keepForever = $_.LastWriteTime.Day -eq 1 -or $_.LastWriteTime.Day -eq 15
-  $insideWindow = $_.LastWriteTime -ge $cutoff
+  $isPreviousMonth = $_.LastWriteTime -lt $currentMonthStart
 
-  if (!$insideWindow -and !$keepForever) {
+  if ($isPreviousMonth -and !$keepForever) {
     Remove-Item -LiteralPath $_.FullName -Force
   }
 }

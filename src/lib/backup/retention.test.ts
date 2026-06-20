@@ -17,13 +17,24 @@ describe("retencao de backups", () => {
     ]);
   });
 
-  it("mantem backups de banco por 30 dias", () => {
-    expect(
-      deveManterBackupBanco(new Date(2026, 4, 20), new Date(2026, 5, 14)),
-    ).toBe(true);
+  it("mantem todos os backups do mes corrente", () => {
+    const agora = new Date(2026, 5, 25);
+
+    expect(deveManterBackupBanco(new Date(2026, 5, 1), agora)).toBe(true);
+    expect(deveManterBackupBanco(new Date(2026, 5, 20), agora)).toBe(true);
+    expect(deveManterBackupBanco(new Date(2026, 5, 24), agora)).toBe(true);
   });
 
-  it("mantem dia 1 e dia 15 indefinidamente apos 30 dias", () => {
+  it("apaga backups do mes anterior, exceto dias 1 e 15", () => {
+    const agora = new Date(2026, 5, 1); // 1 de junho: mes anterior = maio
+
+    expect(deveManterBackupBanco(new Date(2026, 4, 1), agora)).toBe(true);
+    expect(deveManterBackupBanco(new Date(2026, 4, 15), agora)).toBe(true);
+    expect(deveManterBackupBanco(new Date(2026, 4, 2), agora)).toBe(false);
+    expect(deveManterBackupBanco(new Date(2026, 4, 20), agora)).toBe(false);
+  });
+
+  it("preserva dias 1 e 15 de meses bem antigos", () => {
     const agora = new Date(2026, 5, 14);
 
     expect(deveManterBackupBanco(new Date(2026, 0, 1), agora)).toBe(true);

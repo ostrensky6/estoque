@@ -488,13 +488,13 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
     termos: ["log", "trilha", "histórico", "evento", "alteração"],
   },
   {
-    id: "backups",
-    titulo: "Backups",
+    id: "configuracoes",
+    titulo: "Configurações",
     grupo: "Governança",
-    href: "/governanca/backups",
-    resumo: "Cópias do app local e do banco em nuvem (admin).",
+    href: "/governanca/configuracoes",
+    resumo: "Parâmetros do sistema e painel de backups (admin).",
     intro:
-      "O módulo de Backups concentra as cópias de segurança da aplicação e do banco. É a sua rede de proteção contra perdas: mantenha uma rotina de backup e, principalmente, gere uma cópia antes de qualquer mudança grande ou migração.",
+      "O módulo de Configurações reúne os parâmetros administrativos do sistema. O painel de Backups concentra as cópias de segurança da aplicação e do banco: é a sua rede de proteção contra perdas, então mantenha uma rotina de backup e, principalmente, gere uma cópia antes de qualquer mudança grande ou migração.",
     secoes: [
       {
         titulo: "Para que serve",

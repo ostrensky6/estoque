@@ -28,7 +28,7 @@ function EmptyRow({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default async function BackupsPage() {
+export default async function ConfiguracoesPage() {
   const resumo = await obterResumoBackups();
 
   if (!resumo) {
@@ -48,9 +48,10 @@ export default async function BackupsPage() {
     <main className="mx-auto max-w-6xl px-5 py-8 font-sans text-slate-900 dark:text-slate-100 sm:px-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Backups</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
           <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-600 dark:text-zinc-400">
-            Cópias locais administradas para aplicativo e banco de dados em nuvem.
+            Parâmetros administrativos do sistema. Comece pelo painel de backups
+            locais do aplicativo e do banco de dados em nuvem.
           </p>
         </div>
         <span className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
@@ -59,12 +60,19 @@ export default async function BackupsPage() {
         </span>
       </div>
 
-      <section className="mt-6 grid gap-4 md:grid-cols-2">
+      <div className="mt-8 flex items-center gap-2 border-b border-slate-200 pb-2 dark:border-zinc-800">
+        <FolderArchive className="h-4 w-4 text-slate-500" aria-hidden="true" />
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-zinc-300">
+          Backups
+        </h2>
+      </div>
+
+      <section className="mt-4 grid gap-4 md:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex items-start gap-3">
             <FolderArchive className="mt-0.5 h-5 w-5 text-slate-500" aria-hidden="true" />
             <div>
-              <h2 className="text-lg font-semibold">Aplicativo local</h2>
+              <h3 className="text-lg font-semibold">Aplicativo local</h3>
               <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-zinc-400">
                 Backup manual da versão atual em localhost, salvo em {resumo.appDir}.
               </p>
@@ -91,7 +99,7 @@ export default async function BackupsPage() {
           <div className="flex items-start gap-3">
             <DatabaseBackup className="mt-0.5 h-5 w-5 text-slate-500" aria-hidden="true" />
             <div>
-              <h2 className="text-lg font-semibold">Banco da nuvem</h2>
+              <h3 className="text-lg font-semibold">Banco da nuvem</h3>
               <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-zinc-400">
                 Dump automático da nuvem salvo em {resumo.dbDir}.
               </p>
@@ -110,7 +118,9 @@ export default async function BackupsPage() {
           <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
             <div className="rounded-md border border-slate-100 bg-slate-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
               <dt className="text-xs font-medium uppercase text-slate-500">Retenção</dt>
-              <dd className="mt-1 font-semibold">30 dias; dias 1 e 15 indefinidos</dd>
+              <dd className="mt-1 font-semibold">
+                Mês anterior apagado ao virar o mês; dias 1 e 15 preservados
+              </dd>
             </div>
             <div className="rounded-md border border-slate-100 bg-slate-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
               <dt className="text-xs font-medium uppercase text-slate-500">Último backup</dt>
