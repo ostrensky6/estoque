@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { UsuarioAcoes } from "./UsuarioAcoes";
 
 const PAPEIS = [
-  { value: "tecnico", label: "Técnico" },
+  { value: "usuário", label: "Usuário" },
   { value: "coordenador", label: "Coordenador" },
-  { value: "gestor", label: "Gestor" },
-  { value: "admin", label: "Admin" },
+  { value: "administrativo", label: "Administrativo" },
+  { value: "gerente", label: "Gerente" },
+  { value: "administrador", label: "Administrador" },
 ];
 
 export type UsuarioRow = {

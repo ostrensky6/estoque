@@ -29,11 +29,12 @@ export function CriarUsuarioForm() {
         </div>
         <div>
           <label className="block text-xs font-medium text-blue-900 dark:text-blue-200">Papel inicial</label>
-          <Select name="papel" defaultValue="tecnico" className="mt-1 h-9 bg-white dark:bg-zinc-950">
-            <option value="tecnico">Técnico</option>
+          <Select name="papel" defaultValue="usuário" className="mt-1 h-9 bg-white dark:bg-zinc-950">
+            <option value="usuário">Usuário</option>
             <option value="coordenador">Coordenador</option>
-            <option value="gestor">Gestor</option>
-            <option value="admin">Admin</option>
+            <option value="administrativo">Administrativo</option>
+            <option value="gerente">Gerente</option>
+            <option value="administrador">Administrador</option>
           </Select>
         </div>
         <Button type="submit" disabled={pending}>

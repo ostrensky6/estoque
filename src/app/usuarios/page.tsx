@@ -1,19 +1,21 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { temPermissao } from "@/lib/auth/permissoes";
 import { CriarUsuarioForm } from "@/components/usuarios/CriarUsuarioForm";
 import { UsuariosTable, type UsuarioRow } from "@/components/usuarios/UsuariosTable";
 
 export const dynamic = "force-dynamic";
 
 const PAPEIS = [
-  { value: "tecnico", label: "Técnico" },
+  { value: "usuário", label: "Usuário" },
   { value: "coordenador", label: "Coordenador" },
-  { value: "gestor", label: "Gestor" },
-  { value: "admin", label: "Admin" },
+  { value: "administrativo", label: "Administrativo" },
+  { value: "gerente", label: "Gerente" },
+  { value: "administrador", label: "Administrador" },
 ];
 
 export default async function UsuariosPage() {
-  if (!(await temPapel("admin"))) {
+  if (!(await temPermissao("usuarios.gerir"))) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-16 text-center font-sans">
         <p className="text-zinc-500">Acesso restrito — apenas administradores gerenciam papéis.</p>
@@ -40,10 +42,18 @@ export default async function UsuariosPage() {
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <h1 className="text-2xl font-semibold tracking-tight">Usuários e papéis</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight">Usuários e papéis</h1>
+          <Link
+            href="/governanca/privilegios"
+            className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300"
+          >
+            Privilégios por papel →
+          </Link>
+        </div>
         <p className="mt-1 text-sm text-zinc-500">
-          Cadastre, edite, suspenda usuários e redefina senhas. Técnico registra; coordenador aprova
-          compras e aceita lotes; gestor bloqueia/descarta lotes; admin gerencia tudo.
+          Cadastre, edite, suspenda usuários e redefina senhas. As permissões de cada
+          papel são definidas na matriz de Privilégios.
         </p>
 
         <CriarUsuarioForm />

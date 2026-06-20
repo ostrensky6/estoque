@@ -26,10 +26,11 @@ import type { FormState } from "@/lib/actions/cadastros";
 import type { UsuarioRow } from "./UsuariosTable";
 
 const PAPEIS = [
-  { value: "tecnico", label: "Técnico" },
+  { value: "usuário", label: "Usuário" },
   { value: "coordenador", label: "Coordenador" },
-  { value: "gestor", label: "Gestor" },
-  { value: "admin", label: "Admin" },
+  { value: "administrativo", label: "Administrativo" },
+  { value: "gerente", label: "Gerente" },
+  { value: "administrador", label: "Administrador" },
 ];
 
 const initial: FormState = { ok: false, message: "" };
