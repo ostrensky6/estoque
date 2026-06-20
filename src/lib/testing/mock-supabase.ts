@@ -100,7 +100,17 @@ const baseStore = (): Store => ({
   compras: [],
   movimentacoes_estoque: [],
   lotes_estoque: [],
-  perfis: [{ id: "user-e2e", nome: "Gestor E2E", email: "gestor@example.com", papel: "gestor" }],
+  perfis: [{ id: "user-e2e", nome: "Gestor E2E", email: "gestor@example.com", papel: "gerente" }],
+  permissoes_papel: [
+    { papel: "gerente", chave: "auditoria.ver", permitido: true },
+    { papel: "gerente", chave: "compras.aprovar", permitido: true },
+    { papel: "gerente", chave: "compras.receber", permitido: true },
+    { papel: "gerente", chave: "compras.cancelar", permitido: true },
+    { papel: "gerente", chave: "estoque.lote.aceitar", permitido: true },
+    { papel: "gerente", chave: "estoque.lote.gerir", permitido: true },
+    { papel: "gerente", chave: "pedido.aprovar", permitido: true },
+    { papel: "usuário", chave: "compras.aprovar", permitido: false },
+  ],
   notificacoes: [],
   v_dashboard_executivo: [
     {
