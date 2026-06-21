@@ -41,3 +41,11 @@ test("cockpit de parâmetros econômicos aplica §8.2 nos percentuais editáveis
   await expect(margem).toBeVisible();
   await page.screenshot({ path: "output/parametros-cockpit.png", fullPage: true });
 });
+
+test("simulador de custeio aplica §8.2 nos controles de entrada", async ({ page }) => {
+  await page.goto("/custeio");
+  await expect(page.getByRole("heading", { name: "Simulador de cenário" })).toBeVisible();
+  const simulador = page.locator("section", { hasText: "Simulador de cenário" }).first();
+  await simulador.scrollIntoViewIfNeeded();
+  await simulador.screenshot({ path: "output/custeio-simulador.png" });
+});

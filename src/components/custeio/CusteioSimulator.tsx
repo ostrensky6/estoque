@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { calcularAnalise, type Parametros } from "@/lib/costing/engine";
 import type { SimuladorAnalise } from "@/lib/costing/loader";
 import { formatCurrency } from "@/lib/formatters";
+import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
 
 export function CusteioSimulator({
   analises,
@@ -68,7 +69,7 @@ export function CusteioSimulator({
               setLote(next?.lotePadrao ?? 1);
               setEscolhasGrupo({});
             }}
-            className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+            className={`mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950 ${TOM_ENTRADA}`}
           >
             {analises.map((a) => (
               <option key={a.codigo} value={a.codigo}>
@@ -121,7 +122,7 @@ export function CusteioSimulator({
                 onChange={(event) =>
                   setEscolhasGrupo((atual) => ({ ...atual, [grupo.nome]: event.target.value }))
                 }
-                className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                className={`mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950 ${TOM_ENTRADA}`}
               >
                 <option value="">opção mais barata</option>
                 {grupo.opcoes.map((opcao) => (
