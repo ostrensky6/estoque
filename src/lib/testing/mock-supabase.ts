@@ -1,7 +1,8 @@
 type Row = Record<string, unknown>;
 type Store = Record<string, Row[]>;
 
-const baseStore = (): Store => ({
+const baseStore = (): Store => {
+  const seed: Store = {
   orcamentos: [
     {
       id: 1,
@@ -131,7 +132,79 @@ const baseStore = (): Store => ({
       gasto_por_projeto_mes: [],
     },
   ],
-});
+  };
+
+  // Fixtures exclusivas do modo e2e (dev server com PLAYWRIGHT_MOCK_SUPABASE=1).
+  // Unit tests NAO setam esse env, entao a store minima deles permanece intacta.
+  // Monta uma demanda MISTA (laboratorio + projeto) para renderizar a etapa de
+  // Parametros Economicos em /orcamento/demandas/1.
+  if (process.env.PLAYWRIGHT_MOCK_SUPABASE === "1") {
+    seed.demandas_propostas = [
+      {
+        id: 1,
+        titulo: "Demanda Demo — Projeto + Análises",
+        cliente_id: 1,
+        cliente_nome: "Cliente Demo",
+        modalidade: "projeto_analises_custos",
+        projeto_id: 1,
+        descricao: "Demanda de demonstração para a etapa de parâmetros.",
+        escopo_preliminar: "Escopo demonstrativo com laboratório e projeto.",
+        matriz_amostra: "Solo",
+        quantidade_amostras_estimada: 12,
+        prazo_tecnico_dias: 30,
+        criado_em: "2026-06-21T10:00:00.000Z",
+      },
+    ];
+    seed.orcamentos.push({
+      id: 2,
+      demanda_id: 1,
+      tipo: "analises",
+      cliente_nome: "Cliente Demo",
+      status: "rascunho",
+      data_orcamento: "2026-06-21",
+      criado_em: "2026-06-21T10:00:00.000Z",
+    });
+    seed.orcamento_itens.push({
+      id: 2,
+      orcamento_id: 2,
+      codigo_analise: "TESTE-16S",
+      n_amostras: 12,
+      custo_unitario: 45,
+      preco_unitario: 90,
+    });
+    seed.orcamento_projetos = [
+      {
+        id: 1,
+        demanda_id: 1,
+        titulo: "Projeto Demo",
+        status: "rascunho",
+        data_orcamento: "2026-06-21",
+        impostos: 0,
+        margem_lucro: 0,
+        impostos_legacy: 10,
+        incubacao: 5,
+        reserva: 5,
+        investimentos: 5,
+        lucro: 20,
+        projeto_sem_custo_justificativa: null,
+        criado_em: "2026-06-21T10:00:00.000Z",
+      },
+    ];
+    seed.orcamento_projeto_custos = [
+      {
+        id: 1,
+        orcamento_projeto_id: 1,
+        rubrica: "MC",
+        quantidade: 1,
+        custo_unitario: 500,
+        preco_unitario: 500,
+        meses_selecionados: [],
+      },
+    ];
+  }
+
+  return seed;
+};
 
 const store = (globalThis as typeof globalThis & { __kontrolMockStore?: Store }).__kontrolMockStore ?? baseStore();
 (globalThis as typeof globalThis & { __kontrolMockStore?: Store }).__kontrolMockStore = store;
