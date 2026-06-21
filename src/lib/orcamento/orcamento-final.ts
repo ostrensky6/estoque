@@ -1,4 +1,11 @@
-import { calcularOrcamentoProjetoLegacy, itemProjetoTotal, type ProjetoBudgetRates } from "@/lib/project-budget/legacy";
+import { calcularOrcamentoProjetoLegacy, type ProjetoBudgetRates } from "@/lib/project-budget/legacy";
+import {
+  adaptarOrcamentoParaEntradaParametros,
+  aplicarParametrosDoOrcamento,
+  totalLaboratorioCusto as calcularTotalLaboratorioCusto,
+  totalLaboratorioPreco as calcularTotalLaboratorioPreco,
+  totalProjetoCusto as calcularTotalProjetoCusto,
+} from "./parametros-adapter";
 
 export type ItemLaboratorioFinal = {
   n_amostras?: number | null;
@@ -36,14 +43,8 @@ export function consolidarOrcamentoFinal(args: {
     args.projetoExigido && !args.projetoRevisado ? "revisar custos de projeto" : null,
   ].filter(Boolean) as string[];
 
-  const totalLaboratorioCusto = args.itensLaboratorio.reduce(
-    (total, item) => total + Number(item.custo_unitario ?? 0) * Number(item.n_amostras ?? 0),
-    0,
-  );
-  const totalLaboratorioPreco = args.itensLaboratorio.reduce(
-    (total, item) => total + Number(item.preco_unitario ?? 0) * Number(item.n_amostras ?? 0),
-    0,
-  );
+  const totalLaboratorioCusto = calcularTotalLaboratorioCusto(args.itensLaboratorio);
+  const totalLaboratorioPreco = calcularTotalLaboratorioPreco(args.itensLaboratorio);
   const itensProjetoBase = args.itensProjeto.map((item) => ({
     rubrica: item.rubrica,
     quantidade: item.quantidade,
@@ -51,9 +52,13 @@ export function consolidarOrcamentoFinal(args: {
     meses_selecionados: item.meses_selecionados ?? [],
   }));
   const calculoProjeto = calcularOrcamentoProjetoLegacy(itensProjetoBase, args.parametrosProjeto);
-  const totalProjetoCusto = itensProjetoBase.reduce((total, item) => total + itemProjetoTotal(item), 0);
-  const totalProjetoFinal = calculoProjeto.grossTotal;
-  const totalFinal = totalLaboratorioPreco + totalProjetoFinal;
+  const entradaParametros = adaptarOrcamentoParaEntradaParametros(args);
+  const parametrosAplicados = calculoProjeto.validationError
+    ? null
+    : aplicarParametrosDoOrcamento(args);
+  const totalProjetoCusto = calcularTotalProjetoCusto(args.itensProjeto);
+  const totalProjetoFinal = parametrosAplicados?.projeto.total ?? calculoProjeto.grossTotal;
+  const totalFinal = parametrosAplicados?.totalFinal ?? totalLaboratorioPreco + totalProjetoFinal;
   const origens: OrigemValorFinal[] = [
     {
       campo: "totalLaboratorioCusto",
@@ -79,15 +84,15 @@ export function consolidarOrcamentoFinal(args: {
     {
       campo: "totalProjetoFinal",
       titulo: "Projeto final",
-      origem: "calcularOrcamentoProjetoLegacy sobre custos de projeto e parâmetros econômicos",
-      regra: "Aplica gross-up de impostos, incubação, reserva, investimentos e lucro sobre o subtotal de custos do projeto.",
+      origem: "aplicarParametrosEconomicos via adaptarOrcamentoParaEntradaParametros",
+      regra: "Aplica gross-up explícito sobre os custos próprios do projeto, sem reaplicar parâmetros sobre laboratório já precificado.",
       valor: totalProjetoFinal,
     },
     {
       campo: "totalFinal",
       titulo: "Total final",
-      origem: "totalLaboratorioPreco + totalProjetoFinal",
-      regra: "Soma do preço laboratorial preservado com o valor final do projeto após parâmetros econômicos.",
+      origem: "snapshot autoritativo de parametros aplicados",
+      regra: "Soma o laboratório como preço já formado com o projeto após parâmetros econômicos aplicados pela engine unificada.",
       valor: totalFinal,
     },
   ];
@@ -101,6 +106,8 @@ export function consolidarOrcamentoFinal(args: {
     totalProjetoFinal,
     totalFinal,
     parametrosProjeto: calculoProjeto.economicParameters,
+    entradaParametros,
+    parametrosAplicados,
     markupProjeto: calculoProjeto.markupRate,
     origens,
   };
