@@ -5,6 +5,13 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    // Os testes são rápidos isolados (<0,2s cada), mas o transform on-the-fly de
+    // TS para a suíte inteira satura o event loop e faz o wall-clock de testes
+    // async (actions + mock-supabase) ultrapassar o default de 5s, gerando
+    // timeouts intermitentes e poluição de mocks por async resolvido tarde.
+    // Headroom generoso remove a flakiness sem mascarar hang real.
+    testTimeout: 30000,
+    hookTimeout: 30000,
   },
   resolve: {
     alias: {
