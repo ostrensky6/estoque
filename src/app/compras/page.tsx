@@ -64,7 +64,7 @@ export default async function ComprasPage() {
     .slice(0, 8);
   const sugestoesRender = sugestoesHistoricas.length > 0 ? sugestoesHistoricas : sugestoes;
 
-  const inp = "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+  const inp = "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"; // §8.2: entrada em azul
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">

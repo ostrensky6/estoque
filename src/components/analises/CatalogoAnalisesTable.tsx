@@ -8,7 +8,7 @@ export type CatalogoAnaliseRow = {
 };
 
 const inp =
-  "w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+  "w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"; // §8.2: entrada em azul
 const lbl = "mb-1 block text-[10px] uppercase tracking-wide text-zinc-400 sm:hidden";
 
 export function CatalogoAnalisesTable({ rows }: { rows: CatalogoAnaliseRow[] }) {

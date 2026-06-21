@@ -48,7 +48,7 @@ const num = (v: number, casas = 2) =>
   });
 
 const inp =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm tabular-nums focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-zinc-700 dark:bg-zinc-950";
+  "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium tabular-nums text-brand-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"; // §8.2: entrada em azul
 const lbl = "block text-xs font-medium text-zinc-600 dark:text-zinc-300";
 const sec = "text-sm font-semibold uppercase tracking-wide text-zinc-500";
 

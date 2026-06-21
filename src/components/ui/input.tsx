@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
@@ -13,7 +14,9 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       data-1p-ignore=""
       data-form-type="other"
       className={cn(
-        "flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        // §8.2: o valor digitado pelo usuário é entrada -> azul institucional.
+        "flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-medium shadow-xs transition-colors placeholder:text-muted-foreground placeholder:font-normal focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        TOM_ENTRADA,
         className,
       )}
       {...props}

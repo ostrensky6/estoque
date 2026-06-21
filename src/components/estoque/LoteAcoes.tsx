@@ -139,7 +139,7 @@ export function LoteAcoes({
                   step="any"
                   min="0"
                   max={modal === "baixa" ? quantidadeAtual : undefined}
-                  className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                  className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"
                 />
                 {state.errors?.quantidade && <p className="mt-1 text-xs text-red-600">{state.errors.quantidade}</p>}
                 {state.errors?.quantidade_nova && <p className="mt-1 text-xs text-red-600">{state.errors.quantidade_nova}</p>}
@@ -150,7 +150,7 @@ export function LoteAcoes({
               onChange={(e) => setMotivo(e.target.value)}
               rows={3}
               placeholder={modal === "baixa" ? "Ex.: consumo extra, perda, quebra..." : "Motivo"}
-              className="mt-3 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+              className="mt-3 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"
             />
             {state.errors?.motivo && <p className="mt-1 text-xs text-red-600">{state.errors.motivo}</p>}
             {state.message && !state.ok && (
