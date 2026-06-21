@@ -1445,6 +1445,101 @@ export type Database = {
           },
         ]
       }
+      orcamento_parametros_aplicados: {
+        Row: {
+          alertas_snapshot: Json
+          criado_em: string
+          criado_por: string | null
+          demanda_id: number | null
+          formula_snapshot: Json
+          id: number
+          laboratorio_modo: string
+          metodo_calculo: string
+          orcamento_final_versao_id: number | null
+          orcamento_laboratorial_id: number | null
+          orcamento_projeto_id: number | null
+          origem: string
+          parametros_snapshot: Json
+          subtotal_custos: number
+          subtotal_laboratorio: number
+          subtotal_projeto: number
+          total_final: number
+          total_parametros: number
+          versao: number
+        }
+        Insert: {
+          alertas_snapshot?: Json
+          criado_em?: string
+          criado_por?: string | null
+          demanda_id?: number | null
+          formula_snapshot?: Json
+          id?: never
+          laboratorio_modo?: string
+          metodo_calculo: string
+          orcamento_final_versao_id?: number | null
+          orcamento_laboratorial_id?: number | null
+          orcamento_projeto_id?: number | null
+          origem?: string
+          parametros_snapshot?: Json
+          subtotal_custos?: number
+          subtotal_laboratorio?: number
+          subtotal_projeto?: number
+          total_final?: number
+          total_parametros?: number
+          versao?: number
+        }
+        Update: {
+          alertas_snapshot?: Json
+          criado_em?: string
+          criado_por?: string | null
+          demanda_id?: number | null
+          formula_snapshot?: Json
+          id?: never
+          laboratorio_modo?: string
+          metodo_calculo?: string
+          orcamento_final_versao_id?: number | null
+          orcamento_laboratorial_id?: number | null
+          orcamento_projeto_id?: number | null
+          origem?: string
+          parametros_snapshot?: Json
+          subtotal_custos?: number
+          subtotal_laboratorio?: number
+          subtotal_projeto?: number
+          total_final?: number
+          total_parametros?: number
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_parametros_aplicados_demanda_id_fkey"
+            columns: ["demanda_id"]
+            isOneToOne: false
+            referencedRelation: "demandas_propostas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_parametros_aplicados_orcamento_final_versao_id_fkey"
+            columns: ["orcamento_final_versao_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_final_versoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_parametros_aplicados_orcamento_laboratorial_id_fkey"
+            columns: ["orcamento_laboratorial_id"]
+            isOneToOne: false
+            referencedRelation: "orcamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_parametros_aplicados_orcamento_projeto_id_fkey"
+            columns: ["orcamento_projeto_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orcamentos: {
         Row: {
           cliente_cnpj: string | null

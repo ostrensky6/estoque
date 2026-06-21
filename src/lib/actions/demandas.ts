@@ -332,21 +332,52 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
     consolidado,
   } satisfies Json;
 
-  const { error } = await supabase.from("orcamento_final_versoes").insert({
-    demanda_id: id,
-    versao,
-    numero,
-    validade_dias: validadeDias,
-    valido_ate: validoAte,
-    total_laboratorio_custo: consolidado.totalLaboratorioCusto,
-    total_laboratorio_preco: consolidado.totalLaboratorioPreco,
-    total_projeto_custo: consolidado.totalProjetoCusto,
-    total_projeto_final: consolidado.totalProjetoFinal,
-    total_final: consolidado.totalFinal,
-    snapshot,
-    criado_por: user?.id ?? null,
-  });
+  const { data: versaoFinal, error } = await supabase
+    .from("orcamento_final_versoes")
+    .insert({
+      demanda_id: id,
+      versao,
+      numero,
+      validade_dias: validadeDias,
+      valido_ate: validoAte,
+      total_laboratorio_custo: consolidado.totalLaboratorioCusto,
+      total_laboratorio_preco: consolidado.totalLaboratorioPreco,
+      total_projeto_custo: consolidado.totalProjetoCusto,
+      total_projeto_final: consolidado.totalProjetoFinal,
+      total_final: consolidado.totalFinal,
+      snapshot,
+      criado_por: user?.id ?? null,
+    })
+    .select("id")
+    .single();
   if (error) throw new Error(error.message);
+
+  if (consolidado.parametrosAplicados) {
+    const { error: parametrosError } = await supabase
+      .from("orcamento_parametros_aplicados")
+      .insert({
+        demanda_id: id,
+        orcamento_laboratorial_id: orcamentos?.at(-1)?.id ?? null,
+        orcamento_projeto_id: projetoReferencia?.id ?? null,
+        orcamento_final_versao_id: versaoFinal.id,
+        versao,
+        metodo_calculo: consolidado.parametrosAplicados.metodo,
+        laboratorio_modo: consolidado.parametrosAplicados.laboratorio.modo,
+        subtotal_laboratorio: consolidado.parametrosAplicados.laboratorio.total,
+        subtotal_projeto: consolidado.parametrosAplicados.projeto.total,
+        subtotal_custos: consolidado.parametrosAplicados.subtotalCustos,
+        total_parametros: consolidado.parametrosAplicados.totalParametros,
+        total_final: consolidado.parametrosAplicados.totalFinal,
+        parametros_snapshot: consolidado.parametrosAplicados.parametros,
+        formula_snapshot: {
+          entrada: consolidado.entradaParametros,
+          origens: consolidado.origens,
+        } satisfies Json,
+        alertas_snapshot: consolidado.parametrosAplicados.alertas,
+        criado_por: user?.id ?? null,
+      });
+    if (parametrosError) throw new Error(parametrosError.message);
+  }
   await registrarEvento(
     "orcamento_final",
     id,
