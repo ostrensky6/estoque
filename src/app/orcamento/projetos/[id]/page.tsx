@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
+import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { PrintButton } from "@/components/orcamento/PrintButton";
 import { ExportProjetoButtons } from "@/components/orcamento/ExportProjetoButtons";
 import type { ProjetoExportItem } from "@/lib/project-budget/exporters";
@@ -10,6 +10,7 @@ import {
   adicionarCustoCatalogoProjeto,
   adicionarAnexoProjeto,
   adicionarCustoProjeto,
+  cancelarOrcamentoProjeto,
   criarLinkPublico,
   excluirOrcamentoProjeto,
   removerAnaliseProjeto,
@@ -17,6 +18,7 @@ import {
   removerCustoProjeto,
   revogarLinkPublico,
   salvarComoTemplate,
+  salvarParametrosEconomicosProjeto,
   salvarOrcamentoProjeto,
   salvarViagensProjeto,
 } from "@/lib/actions/orcamento-projetos";
@@ -54,6 +56,11 @@ type Custo = {
   categoria: string;
   rubrica: string | null;
   descricao: string;
+  etapa: string | null;
+  atividade: string | null;
+  entrega: string | null;
+  categoria_institucional: string | null;
+  nomenclatura_origem: string | null;
   quantidade: number;
   unidade: string | null;
   custo_unitario: number;
@@ -67,10 +74,10 @@ export default async function OrcamentoProjetoDetalhe({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ novo_link?: string }>;
+  searchParams: Promise<{ novo_link?: string; erro_parametros?: string; erro_exclusao?: string }>;
 }) {
   const { id } = await params;
-  const { novo_link: novoLink } = await searchParams;
+  const { novo_link: novoLink, erro_parametros: erroParametros, erro_exclusao: erroExclusao } = await searchParams;
   const orcId = Number(id);
   const supabase = await createClient();
 
@@ -90,8 +97,11 @@ export default async function OrcamentoProjetoDetalhe({
         .order("id"),
       supabase
         .from("orcamento_projeto_custos")
-        .select("id, categoria, rubrica, descricao, quantidade, unidade, custo_unitario, preco_unitario, meses_selecionados, catalogo_item_id")
+        .select("id, categoria, rubrica, descricao, etapa, atividade, entrega, categoria_institucional, nomenclatura_origem, quantidade, unidade, custo_unitario, preco_unitario, meses_selecionados, catalogo_item_id")
         .eq("orcamento_projeto_id", orcId)
+        .order("etapa")
+        .order("atividade")
+        .order("entrega")
         .order("rubrica")
         .order("categoria")
         .order("id"),
@@ -108,13 +118,17 @@ export default async function OrcamentoProjetoDetalhe({
 
   const analisesProjeto = (analisesItens ?? []) as Analise[];
   const custosProjeto = (custosItens ?? []) as Custo[];
+  const custosProjetoBase = custosProjeto.map((it) => ({
+    ...it,
+    preco_unitario: Number(it.custo_unitario),
+  }));
   // As análises entram no orçamento de projeto pelo CUSTO (sem markup): o
   // gross-up dos Parâmetros Econômicos aplica o markup uma única vez sobre todo
   // o subtotal. Usar o preço do custeio aqui causaria markup duplo.
   const totalLabCusto = analisesProjeto.reduce((a, it) => a + Number(it.custo_unitario) * Number(it.n_amostras), 0);
-  const totalExtraPreco = custosProjeto.reduce((a, it) => a + itemProjetoTotal(it), 0);
+  const totalExtraPreco = custosProjetoBase.reduce((a, it) => a + itemProjetoTotal(it), 0);
   const itensLegacy = [
-    ...custosProjeto,
+    ...custosProjetoBase,
     ...analisesProjeto.map((it) => ({
       rubrica: "MC",
       quantidade: Number(it.n_amostras),
@@ -130,18 +144,19 @@ export default async function OrcamentoProjetoDetalhe({
     lucro: Number(orc.lucro ?? orc.margem_lucro ?? 0),
   });
   const totalFinal = calculoProjeto.grossTotal;
+  const temCustosProjeto = analisesProjeto.length > 0 || custosProjeto.length > 0;
 
   // Itens consolidados para export (mesma base mostrada na tela).
   const exportItens: ProjetoExportItem[] = [
-    ...custosProjeto.map((it) => ({
+    ...custosProjetoBase.map((it) => ({
       rubrica: it.rubrica ?? "OU",
       categoria: CATEGORIAS[it.categoria] ?? it.categoria,
       descricao: it.descricao,
       unidade: it.unidade,
       quantidade: Number(it.quantidade),
-      preco_unitario: Number(it.preco_unitario),
+      preco_unitario: Number(it.custo_unitario),
       meses_selecionados: it.meses_selecionados ?? [],
-      total: itemProjetoTotal(it),
+      total: itemProjetoTotal({ ...it, preco_unitario: Number(it.custo_unitario) }),
     })),
     ...analisesProjeto.map((it) => ({
       rubrica: "MC",
@@ -209,9 +224,7 @@ export default async function OrcamentoProjetoDetalhe({
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="print-area mx-auto max-w-6xl px-6 py-10">
         <div className="no-print flex flex-wrap items-center justify-between gap-3">
-          <Link href="/orcamento/projetos" className="text-xs text-zinc-500 hover:underline">
-            ← Projetos
-          </Link>
+          <Breadcrumbs items={[{ label: "Projetos", href: "/orcamento/projetos" }, { label: orc.titulo }]} />
           <div className="flex items-center gap-2">
             {orc.status === "aprovado" && analisesProjeto.length > 0 && (
               <form action={gerarPlanejamentoDeOrcamentoProjeto}>
@@ -270,6 +283,20 @@ export default async function OrcamentoProjetoDetalhe({
             <Resumo titulo="Total final" valor={totalFinal} subtitulo={`subtotal base ${brl(calculoProjeto.subtotal)}`} destaque />
           </div>
 
+          <nav className="no-print mt-6 flex flex-wrap gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-300">
+            {[
+              ["#escopo-projeto", "Escopo"],
+              ["#rubricas-projeto", "Rubricas"],
+              ["#viagens-projeto", "Viagens"],
+              ["#anexos-projeto", "Anexos"],
+              ["#aprovacao-projeto", "Aprovação"],
+            ].map(([href, label]) => (
+              <a key={href} href={href} className="rounded-md border border-zinc-200 px-3 py-1.5 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                {label}
+              </a>
+            ))}
+          </nav>
+
           {calculoProjeto.validationError && (
             <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
               {calculoProjeto.validationError}
@@ -294,20 +321,27 @@ export default async function OrcamentoProjetoDetalhe({
             </div>
           </section>
 
-          {(orc.escopo || orc.cronograma || orc.observacoes) && (
+          {(orc.escopo || orc.cronograma || orc.observacoes || orc.projeto_sem_custo_justificativa) && (
             <div className="mt-6 grid gap-4 text-sm md:grid-cols-3">
               <TextoBloco titulo="Escopo" texto={orc.escopo} />
               <TextoBloco titulo="Cronograma" texto={orc.cronograma} />
               <TextoBloco titulo="Observações" texto={orc.observacoes} />
+              <TextoBloco titulo="Projeto sem custo" texto={orc.projeto_sem_custo_justificativa} />
             </div>
           )}
 
           <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500">Custos do laboratório</h2>
           <TabelaAnalises itens={analisesProjeto} orcId={orcId} />
 
-          <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500">Custos próprios do projeto</h2>
+          <h2 id="rubricas-projeto" className="mt-8 scroll-mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500">Custos próprios do projeto</h2>
           <TabelaCustos itens={custosProjeto} orcId={orcId} />
         </section>
+
+        {erroExclusao && (
+          <p className="no-print mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            {erroExclusao}
+          </p>
+        )}
 
         <section className="no-print mt-6 grid gap-6 lg:grid-cols-2">
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -337,6 +371,10 @@ export default async function OrcamentoProjetoDetalhe({
             <h2 className="text-sm font-semibold">Adicionar custo do projeto</h2>
             <form action={adicionarCustoProjeto} className="mt-3 grid grid-cols-2 gap-2">
               <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+              <input name="etapa" placeholder="Etapa" className={inp} />
+              <input name="atividade" placeholder="Atividade" className={inp} />
+              <input name="entrega" placeholder="Entrega" className={inp} />
+              <input name="categoria_institucional" placeholder="Categoria institucional" className={inp} />
               <select name="categoria" defaultValue="mao_obra" className={inp}>
                 {Object.entries(CATEGORIAS).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
@@ -351,7 +389,6 @@ export default async function OrcamentoProjetoDetalhe({
               <input name="unidade" placeholder="unidade" className={inp} />
               <input name="quantidade" type="number" min="0.01" step="0.01" defaultValue="1" className={inp} />
               <input name="custo_unitario" type="number" min="0" step="0.01" placeholder="Custo unit." className={inp} />
-              <input name="preco_unitario" type="number" min="0" step="0.01" placeholder="Preço unit." className={inp} />
               <button className="col-span-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
                 Adicionar custo
               </button>
@@ -359,10 +396,11 @@ export default async function OrcamentoProjetoDetalhe({
           </div>
         </section>
 
-        <section className="no-print mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="viagens-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-semibold">Adicionar item do catálogo antigo</h2>
           <form action={adicionarCustoCatalogoProjeto} className="mt-3 grid gap-3 md:grid-cols-[1fr_8rem_auto] md:items-end">
             <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+            <input type="hidden" name="entrega" value="Entrega principal" />
             <div>
               <label className={lbl}>Item de catálogo</label>
               <select name="catalogo_item_id" defaultValue="" className={`${inp} mt-1 w-full`}>
@@ -530,7 +568,54 @@ export default async function OrcamentoProjetoDetalhe({
           )}
         </section>
 
-        <section className="no-print mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="anexos-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="text-sm font-semibold">Parâmetros econômicos do projeto</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Aplicados somente depois do levantamento de custos. No gross-up, a soma de impostos,
+            incubação, reserva, investimentos e lucro precisa ficar abaixo de 100%.
+          </p>
+          {erroParametros && (
+            <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
+              {erroParametros}
+            </p>
+          )}
+          <form action={salvarParametrosEconomicosProjeto} className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+            <div>
+              <label className={lbl}>Meses do projeto</label>
+              <input name="project_months" type="number" min="1" step="1" defaultValue={orc.project_months ?? 12} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Impostos legacy (%)</label>
+              <input name="impostos_legacy" type="number" min="0" step="0.01" defaultValue={orc.impostos_legacy ?? 0} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Incubação (%)</label>
+              <input name="incubacao" type="number" min="0" step="0.01" defaultValue={orc.incubacao ?? 0} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Reserva (%)</label>
+              <input name="reserva" type="number" min="0" step="0.01" defaultValue={orc.reserva ?? 0} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Investimentos (%)</label>
+              <input name="investimentos" type="number" min="0" step="0.01" defaultValue={orc.investimentos ?? 0} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Lucro (%)</label>
+              <input name="lucro" type="number" min="0" step="0.01" defaultValue={orc.lucro ?? 0} className={`${inp} mt-1 w-full`} />
+            </div>
+            <input type="hidden" name="margem_lucro" value={orc.margem_lucro ?? 0} />
+            <input type="hidden" name="impostos" value={orc.impostos ?? 0} />
+            <div className="col-span-2 sm:col-span-3">
+              <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
+                Salvar parâmetros econômicos
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section id="escopo-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-semibold">Viagens e diárias (rubrica VD)</h2>
           <p className="mt-1 text-xs text-zinc-500">
             Defina os parâmetros da viagem e salve: as linhas de VD são
@@ -607,6 +692,7 @@ export default async function OrcamentoProjetoDetalhe({
                 <option value="enviado">Enviado</option>
                 <option value="aprovado">Aprovado</option>
                 <option value="recusado">Recusado</option>
+                <option value="cancelado">Cancelado</option>
               </select>
             </div>
             <div>
@@ -672,44 +758,26 @@ export default async function OrcamentoProjetoDetalhe({
               <input name="validade_dias" type="number" min="0" step="1" defaultValue={orc.validade_dias ?? 30} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
-              <label className={lbl}>Margem do projeto (%)</label>
-              <input name="margem_lucro" type="number" min="0" step="0.01" defaultValue={orc.margem_lucro ?? 0} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className={lbl}>Impostos do projeto (%)</label>
-              <input name="impostos" type="number" min="0" step="0.01" defaultValue={orc.impostos ?? 0} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className={lbl}>Meses do projeto</label>
-              <input name="project_months" type="number" min="1" step="1" defaultValue={orc.project_months ?? 12} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className={lbl}>Impostos legacy (%)</label>
-              <input name="impostos_legacy" type="number" min="0" step="0.01" defaultValue={orc.impostos_legacy ?? 0} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className={lbl}>Incubação (%)</label>
-              <input name="incubacao" type="number" min="0" step="0.01" defaultValue={orc.incubacao ?? 0} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className={lbl}>Reserva (%)</label>
-              <input name="reserva" type="number" min="0" step="0.01" defaultValue={orc.reserva ?? 0} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className={lbl}>Investimentos (%)</label>
-              <input name="investimentos" type="number" min="0" step="0.01" defaultValue={orc.investimentos ?? 0} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className={lbl}>Lucro (%)</label>
-              <input name="lucro" type="number" min="0" step="0.01" defaultValue={orc.lucro ?? 0} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
               <label className={lbl}>Escopo</label>
               <textarea name="escopo" rows={4} defaultValue={orc.escopo ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Cronograma</label>
               <textarea name="cronograma" rows={4} defaultValue={orc.cronograma ?? ""} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={lbl}>Justificativa formal para projeto sem custo</label>
+              <textarea
+                name="projeto_sem_custo_justificativa"
+                rows={3}
+                defaultValue={orc.projeto_sem_custo_justificativa ?? ""}
+                className={`${inp} mt-1 w-full`}
+              />
+              {!temCustosProjeto && (
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                  Sem custos ou análises vinculadas. Registre a justificativa antes de revisar esta etapa.
+                </p>
+              )}
             </div>
             <div className="sm:col-span-2">
               <label className={lbl}>Detalhes do cliente</label>
@@ -727,15 +795,28 @@ export default async function OrcamentoProjetoDetalhe({
           </form>
         </section>
 
-        <div className="no-print mt-6">
-          <ConfirmActionButton
-            action={excluirOrcamentoProjeto}
-            fields={{ orcamento_projeto_id: orcId }}
-            trigger="Excluir orçamento de projeto"
-            titulo="Excluir orçamento de projeto"
-            mensagem={`Excluir o orçamento de projeto “${orc.titulo}”? Esta ação não pode ser desfeita.`}
-            confirmLabel="Excluir orçamento de projeto"
-          />
+        <div id="aprovacao-projeto" className="no-print mt-6 flex scroll-mt-8 flex-wrap gap-3">
+          {["enviado", "aprovado"].includes(orc.status) ? (
+            <ConfirmActionButton
+              action={cancelarOrcamentoProjeto}
+              fields={{ orcamento_projeto_id: orcId, motivo: "Cancelamento operacional solicitado na tela do projeto." }}
+              trigger="Cancelar orçamento de projeto"
+              titulo="Cancelar orçamento de projeto"
+              mensagem={`Cancelar o orçamento de projeto “${orc.titulo}”? O histórico será preservado.`}
+              confirmLabel="Cancelar orçamento de projeto"
+              destrutivo={false}
+              triggerClassName="text-xs text-amber-700 hover:underline dark:text-amber-300"
+            />
+          ) : (
+            <ConfirmActionButton
+              action={excluirOrcamentoProjeto}
+              fields={{ orcamento_projeto_id: orcId }}
+              trigger="Excluir orçamento de projeto"
+              titulo="Excluir orçamento de projeto"
+              mensagem={`Excluir o orçamento de projeto “${orc.titulo}”? Esta ação não pode ser desfeita.`}
+              confirmLabel="Excluir orçamento de projeto"
+            />
+          )}
         </div>
       </main>
     </div>
@@ -821,17 +902,22 @@ function TabelaCustos({ itens, orcId }: { itens: Custo[]; orcId: number }) {
     }
     return `${Number(it.quantidade)} ${it.unidade ?? ""}`.trim();
   };
+  const origemLabel = (origem: string | null) => {
+    if (origem === "orcamento_projetos_antigo") return "app antigo";
+    if (origem === "catalogo_institucional") return "catálogo institucional";
+    return "kontrol";
+  };
 
   return (
     <div className="mt-2 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
       <table className="w-full text-right text-sm">
         <thead className="text-xs uppercase tracking-wide text-zinc-500">
           <tr>
+            <th className="px-3 py-2 text-left">Etapa</th>
             <th className="px-3 py-2 text-left">Categoria</th>
             <th className="px-3 py-2 text-left">Descrição</th>
             <th className="px-3 py-2">Qtd.</th>
-            <th className="no-print px-3 py-2">Custo unit.</th>
-            <th className="px-3 py-2">Preço unit.</th>
+            <th className="px-3 py-2">Custo unit.</th>
             <th className="px-3 py-2">Subtotal</th>
             <th className="no-print px-3 py-2"></th>
           </tr>
@@ -839,12 +925,19 @@ function TabelaCustos({ itens, orcId }: { itens: Custo[]; orcId: number }) {
         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
           {itens.map((it) => (
             <tr key={it.id}>
-              <td className="px-3 py-2 text-left">{CATEGORIAS[it.categoria] ?? it.categoria}</td>
+              <td className="px-3 py-2 text-left">
+                <p className="font-medium">{it.etapa ?? "Projeto"}</p>
+                <p className="text-xs text-zinc-500">{it.atividade ?? CATEGORIAS[it.categoria] ?? it.categoria}</p>
+                <p className="text-xs text-zinc-400">{it.entrega ?? "Entrega principal"}</p>
+              </td>
+              <td className="px-3 py-2 text-left">
+                <p>{it.rubrica ?? "OU"} · {it.categoria_institucional ?? CATEGORIAS[it.categoria] ?? it.categoria}</p>
+                <p className="text-xs text-zinc-400">{origemLabel(it.nomenclatura_origem)}</p>
+              </td>
               <td className="px-3 py-2 text-left font-medium">{it.descricao}</td>
               <td className="px-3 py-2 tabular-nums">{quantidadeLabel(it)}</td>
-              <td className="no-print px-3 py-2 tabular-nums text-zinc-500">{brl(Number(it.custo_unitario))}</td>
-              <td className="px-3 py-2 tabular-nums">{brl(Number(it.preco_unitario))}</td>
-              <td className="px-3 py-2 font-semibold tabular-nums">{brl(itemProjetoTotal(it))}</td>
+              <td className="px-3 py-2 tabular-nums">{brl(Number(it.custo_unitario))}</td>
+              <td className="px-3 py-2 font-semibold tabular-nums">{brl(itemProjetoTotal({ ...it, preco_unitario: Number(it.custo_unitario) }))}</td>
               <td className="no-print px-3 py-2">
                 <form action={removerCustoProjeto}>
                   <input type="hidden" name="orcamento_projeto_id" value={orcId} />

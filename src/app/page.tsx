@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowRight, Bell, ClipboardList, PackageSearch, ShoppingCart, TestTube2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ExecutiveCharts } from "@/components/dashboard/ExecutiveCharts";
 import { formatCompactCurrency, formatNumber } from "@/lib/formatters";
@@ -149,6 +150,37 @@ function Kpi({
   );
 }
 
+function AcaoRapida({
+  href,
+  titulo,
+  desc,
+  tom,
+  icon: Icon,
+}: {
+  href: string;
+  titulo: string;
+  desc: string;
+  tom: Tom;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  const t = TONS[tom];
+  return (
+    <Link
+      href={href}
+      className="group flex min-w-52 flex-1 items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800/80"
+    >
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${t.badge} ${t.badgeText}`}>
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold text-slate-950 dark:text-white">{titulo}</span>
+        <span className="block truncate text-xs text-slate-500 dark:text-zinc-400">{desc}</span>
+      </span>
+      <ArrowRight className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 dark:text-zinc-500" />
+    </Link>
+  );
+}
+
 function JornadaCard({
   tom,
   titulo,
@@ -285,6 +317,7 @@ export default async function Home() {
   const alertasReposicao = alertas.filter((a) => a.tipo === "reposicao");
   const alertasVencimento = alertas.filter((a) => a.tipo === "vencimento");
   const alertasVencidos = alertas.filter((a) => a.tipo === "vencido");
+  const alertasSemValidade = alertas.filter((a) => a.tipo === "sem_validade");
   const semDisponivel = saldo.filter((s) => (s.disponivel ?? 0) <= 0);
   const emQuarentena = saldo.filter((s) => (s.em_quarentena ?? 0) > 0);
   const criticosParaComprar = saldo
@@ -352,11 +385,49 @@ export default async function Home() {
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <Kpi label="Reposição" valor={alertasReposicao.length} detalhe="abaixo do ponto configurado" tom="amber" />
-            <Kpi label="Vencidos" valor={alertasVencidos.length} detalhe="lotes aceitos com validade vencida" tom="red" />
+            <Kpi label="Vencidos" valor={alertasVencidos.length + alertasSemValidade.length} detalhe="vencidos ou críticos sem validade" tom="red" />
             <Kpi label="Sem disponível" valor={semDisponivel.length} detalhe={`${pct(semDisponivel.length, saldo.length)} dos insumos`} tom="red" />
             <Kpi label="Pedidos" valor={pedidos.length} detalhe="solicitados, aprovados ou enviados" tom="blue" />
           </div>
         </div>
+      </section>
+
+      <section className="mt-6 flex flex-wrap gap-3" aria-label="Acoes rapidas">
+        <AcaoRapida
+          href="/orcamento"
+          titulo="Novo orçamento"
+          desc="Montar analises e preco"
+          tom="brand"
+          icon={TestTube2}
+        />
+        <AcaoRapida
+          href="/planejamento"
+          titulo="Planejar campanha"
+          desc="Reservas e consumo"
+          tom="blue"
+          icon={ClipboardList}
+        />
+        <AcaoRapida
+          href="/estoque"
+          titulo="Revisar estoque"
+          desc="Saldos, lotes e validade"
+          tom="amber"
+          icon={PackageSearch}
+        />
+        <AcaoRapida
+          href="/compras"
+          titulo="Abrir compras"
+          desc="Reposicao e recebimento"
+          tom="slate"
+          icon={ShoppingCart}
+        />
+        <AcaoRapida
+          href="/notificacoes"
+          titulo="Notificações"
+          desc="Pendencias in-app"
+          tom={notificacoes.length > 0 ? "red" : "slate"}
+          icon={Bell}
+        />
       </section>
 
       <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -425,11 +496,11 @@ export default async function Home() {
         <ListaProblemas
           titulo="Validade e uso"
           href="/estoque"
-          tom={alertasVencidos.length ? "red" : "amber"}
+          tom={alertasVencidos.length || alertasSemValidade.length ? "red" : "amber"}
           vazio="Nenhum lote vencido ou vencendo dentro da janela."
-          itens={[...alertasVencidos, ...alertasVencimento].slice(0, 5).map((a) => ({
+          itens={[...alertasVencidos, ...alertasSemValidade, ...alertasVencimento].slice(0, 5).map((a) => ({
             titulo: a.especificacao ?? `Insumo #${a.insumo_id}`,
-            meta: `${a.tipo === "vencido" ? "vencido" : "vence em breve"}${a.validade ? ` · ${a.validade}` : ""} · saldo ${formatNumber(a.valor)}`,
+            meta: `${a.tipo === "vencido" ? "vencido" : a.tipo === "sem_validade" ? "sem validade cadastrada" : "vence em breve"}${a.validade ? ` · ${a.validade}` : ""} · saldo ${formatNumber(a.valor)}`,
           }))}
         />
         <ListaProblemas

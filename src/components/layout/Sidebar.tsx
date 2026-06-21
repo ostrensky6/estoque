@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, Search } from "lucide-react";
+import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { SideNav, type NavGroup } from "@/components/layout/SideNav";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { sair } from "@/lib/actions/auth";
@@ -22,6 +22,7 @@ const PAPEL_LABEL: Record<string, string> = {
   gestor: "Gestor",
   admin: "Admin",
 };
+const SIDEBAR_COLLAPSED_STORAGE_KEY = "kontrol:sidebar:collapsed";
 
 type Perfil = { nome: string | null; email: string | null; papel: string } | null;
 
@@ -35,11 +36,13 @@ function SidebarContent({
   perfil,
   userEmail,
   onNavigate,
+  onCollapse,
 }: {
   groups: NavGroup[];
   perfil: Perfil;
   userEmail: string | null;
   onNavigate?: () => void;
+  onCollapse?: () => void;
 }) {
   return (
     <>
@@ -60,18 +63,33 @@ function SidebarContent({
       </Link>
 
       <div className="border-b border-slate-100 px-3 py-2.5 dark:border-zinc-900">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={abrirPaletaComandos}
-          className="h-8 w-full justify-start gap-2 border-slate-200 bg-white text-sm text-slate-500 shadow-none hover:text-slate-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-100"
-        >
-          <Search className="h-3.5 w-3.5" />
-          <span className="min-w-0 flex-1 truncate text-left">Buscar ou executar</span>
-          <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-            Ctrl K
-          </kbd>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={abrirPaletaComandos}
+            className="h-8 min-w-0 flex-1 justify-start gap-2 border-slate-200 bg-white text-sm text-slate-500 shadow-none hover:text-slate-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-100"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span className="min-w-0 flex-1 truncate text-left">Buscar ou executar</span>
+            <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+              Ctrl K
+            </kbd>
+          </Button>
+          {onCollapse && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onCollapse}
+              aria-label="Colapsar menu"
+              title="Colapsar menu"
+              className="hidden h-8 w-8 shrink-0 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 md:inline-flex"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <SideNav groups={groups} onNavigate={onNavigate} />
@@ -131,6 +149,76 @@ function SidebarContent({
   );
 }
 
+function CollapsedSidebar({
+  groups,
+  onExpand,
+}: {
+  groups: NavGroup[];
+  onExpand: () => void;
+}) {
+  return (
+    <aside className="hidden shrink-0 flex-col border-r border-slate-200/80 bg-white md:sticky md:top-0 md:flex md:h-dvh md:w-14 md:items-center md:shadow-[1px_0_0_0_rgba(15,23,42,0.04),4px_0_24px_-12px_rgba(15,23,42,0.12)] dark:border-zinc-800 dark:bg-zinc-950">
+      <Link
+        href="/"
+        className="flex h-14 w-full items-center justify-center border-b border-slate-100 dark:border-zinc-900"
+        title="Inicio"
+        aria-label="Inicio"
+      >
+        <Image
+          src="/logos/kontrol-app.png"
+          alt="Kontrol App"
+          width={1448}
+          height={1086}
+          className="h-9 w-9 object-contain"
+          priority
+          unoptimized
+        />
+      </Link>
+
+      <div className="flex w-full flex-col items-center gap-1 border-b border-slate-100 px-2 py-2 dark:border-zinc-900">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={onExpand}
+          aria-label="Expandir menu"
+          title="Expandir menu"
+          className="h-10 w-10 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          <PanelLeftOpen className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={abrirPaletaComandos}
+          aria-label="Buscar ou executar"
+          title="Buscar ou executar"
+          className="h-10 w-10 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          <Search className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <SideNav groups={groups} collapsed />
+
+      <div className="flex w-full flex-col items-center gap-1 border-t border-slate-100 px-2 py-3 dark:border-zinc-900">
+        <ThemeToggle />
+        <form action={sair}>
+          <button
+            type="submit"
+            aria-label="Sair"
+            title="Sair"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-red-300"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        </form>
+      </div>
+    </aside>
+  );
+}
+
 export function Sidebar({
   groups,
   perfil,
@@ -141,7 +229,26 @@ export function Sidebar({
   userEmail: string | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const fechar = () => setOpen(false);
+
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true");
+    } catch {
+      // Preferimos o estado inicial deterministico se a preferencia local falhar.
+    }
+  }, []);
+
+  function atualizarCollapsed(next: boolean) {
+    setCollapsed(next);
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(next));
+    } catch {
+      // Persistencia da preferencia visual e opcional.
+    }
+  }
 
   return (
     <>
@@ -184,9 +291,18 @@ export function Sidebar({
       </div>
 
       {/* Rail estática (desktop) */}
-      <aside className="hidden shrink-0 flex-col border-r border-slate-200/80 bg-white md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:shadow-[1px_0_0_0_rgba(15,23,42,0.04),4px_0_24px_-12px_rgba(15,23,42,0.12)] dark:border-zinc-800 dark:bg-zinc-950">
-        <SidebarContent groups={groups} perfil={perfil} userEmail={userEmail} />
-      </aside>
+      {collapsed ? (
+        <CollapsedSidebar groups={groups} onExpand={() => atualizarCollapsed(false)} />
+      ) : (
+        <aside className="hidden shrink-0 flex-col border-r border-slate-200/80 bg-white md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:shadow-[1px_0_0_0_rgba(15,23,42,0.04),4px_0_24px_-12px_rgba(15,23,42,0.12)] dark:border-zinc-800 dark:bg-zinc-950">
+          <SidebarContent
+            groups={groups}
+            perfil={perfil}
+            userEmail={userEmail}
+            onCollapse={() => atualizarCollapsed(true)}
+          />
+        </aside>
+      )}
 
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerContent

@@ -142,18 +142,23 @@ export type Database = {
           cliente_contato: string | null
           cliente_id: number | null
           cliente_nome: string | null
+          completude_atualizada_em: string | null
+          completude_snapshot: Json
           criado_em: string
           data_solicitacao: string
           descricao: string | null
           escopo_preliminar: string | null
           id: number
           instituicao: string | null
+          matriz_amostra: string | null
           modalidade: string
           observacoes: string | null
           origem: string | null
           prazo_esperado: string | null
+          prazo_tecnico_dias: number | null
           prioridade: string
           projeto_id: number | null
+          quantidade_amostras_estimada: number | null
           responsavel_interno: string | null
           status: string
           titulo: string
@@ -163,18 +168,23 @@ export type Database = {
           cliente_contato?: string | null
           cliente_id?: number | null
           cliente_nome?: string | null
+          completude_atualizada_em?: string | null
+          completude_snapshot?: Json
           criado_em?: string
           data_solicitacao?: string
           descricao?: string | null
           escopo_preliminar?: string | null
           id?: never
           instituicao?: string | null
+          matriz_amostra?: string | null
           modalidade?: string
           observacoes?: string | null
           origem?: string | null
           prazo_esperado?: string | null
+          prazo_tecnico_dias?: number | null
           prioridade?: string
           projeto_id?: number | null
+          quantidade_amostras_estimada?: number | null
           responsavel_interno?: string | null
           status?: string
           titulo: string
@@ -184,18 +194,23 @@ export type Database = {
           cliente_contato?: string | null
           cliente_id?: number | null
           cliente_nome?: string | null
+          completude_atualizada_em?: string | null
+          completude_snapshot?: Json
           criado_em?: string
           data_solicitacao?: string
           descricao?: string | null
           escopo_preliminar?: string | null
           id?: never
           instituicao?: string | null
+          matriz_amostra?: string | null
           modalidade?: string
           observacoes?: string | null
           origem?: string | null
           prazo_esperado?: string | null
+          prazo_tecnico_dias?: number | null
           prioridade?: string
           projeto_id?: number | null
+          quantidade_amostras_estimada?: number | null
           responsavel_interno?: string | null
           status?: string
           titulo?: string
@@ -1076,11 +1091,16 @@ export type Database = {
       orcamento_projeto_custos: {
         Row: {
           catalogo_item_id: string | null
+          atividade: string | null
           categoria: string
+          categoria_institucional: string | null
           custo_unitario: number
           descricao: string
+          entrega: string | null
+          etapa: string | null
           id: number
           meses_selecionados: number[]
+          nomenclatura_origem: string
           orcamento_projeto_id: number
           origem: string
           preco_unitario: number
@@ -1090,11 +1110,16 @@ export type Database = {
         }
         Insert: {
           catalogo_item_id?: string | null
+          atividade?: string | null
           categoria: string
+          categoria_institucional?: string | null
           custo_unitario?: number
           descricao: string
+          entrega?: string | null
+          etapa?: string | null
           id?: never
           meses_selecionados?: number[]
+          nomenclatura_origem?: string
           orcamento_projeto_id: number
           origem?: string
           preco_unitario?: number
@@ -1104,11 +1129,16 @@ export type Database = {
         }
         Update: {
           catalogo_item_id?: string | null
+          atividade?: string | null
           categoria?: string
+          categoria_institucional?: string | null
           custo_unitario?: number
           descricao?: string
+          entrega?: string | null
+          etapa?: string | null
           id?: never
           meses_selecionados?: number[]
+          nomenclatura_origem?: string
           orcamento_projeto_id?: number
           origem?: string
           preco_unitario?: number
@@ -1233,6 +1263,7 @@ export type Database = {
           numero: string | null
           observacoes: string | null
           project_months: number
+          projeto_sem_custo_justificativa: string | null
           projeto_id: number | null
           proprietario: string | null
           reserva: number
@@ -1267,6 +1298,7 @@ export type Database = {
           numero?: string | null
           observacoes?: string | null
           project_months?: number
+          projeto_sem_custo_justificativa?: string | null
           projeto_id?: number | null
           proprietario?: string | null
           reserva?: number
@@ -1301,6 +1333,7 @@ export type Database = {
           numero?: string | null
           observacoes?: string | null
           project_months?: number
+          projeto_sem_custo_justificativa?: string | null
           projeto_id?: number | null
           proprietario?: string | null
           reserva?: number
@@ -1334,6 +1367,84 @@ export type Database = {
           },
         ]
       }
+      orcamento_final_versoes: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          cancelado_em: string | null
+          cancelado_motivo: string | null
+          demanda_id: number
+          duplicada_de_id: number | null
+          id: number
+          numero: string
+          snapshot: Json
+          status: string
+          total_final: number
+          total_laboratorio_custo: number
+          total_laboratorio_preco: number
+          total_projeto_custo: number
+          total_projeto_final: number
+          validade_dias: number
+          valido_ate: string | null
+          versao: number
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          cancelado_em?: string | null
+          cancelado_motivo?: string | null
+          demanda_id: number
+          duplicada_de_id?: number | null
+          id?: never
+          numero: string
+          snapshot?: Json
+          status?: string
+          total_final?: number
+          total_laboratorio_custo?: number
+          total_laboratorio_preco?: number
+          total_projeto_custo?: number
+          total_projeto_final?: number
+          validade_dias?: number
+          valido_ate?: string | null
+          versao: number
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          cancelado_em?: string | null
+          cancelado_motivo?: string | null
+          demanda_id?: number
+          duplicada_de_id?: number | null
+          id?: never
+          numero?: string
+          snapshot?: Json
+          status?: string
+          total_final?: number
+          total_laboratorio_custo?: number
+          total_laboratorio_preco?: number
+          total_projeto_custo?: number
+          total_projeto_final?: number
+          validade_dias?: number
+          valido_ate?: string | null
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_final_versoes_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_final_versoes_demanda_id_fkey"
+            columns: ["demanda_id"]
+            isOneToOne: false
+            referencedRelation: "demandas_propostas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orcamentos: {
         Row: {
           cliente_cnpj: string | null
@@ -1349,6 +1460,9 @@ export type Database = {
           projeto_id: number | null
           responsavel: string | null
           status: string
+          status_operacional: string
+          status_operacional_atualizado_em: string | null
+          custo_snapshot: Json
           tipo: string
           validade_dias: number
         }
@@ -1366,6 +1480,9 @@ export type Database = {
           projeto_id?: number | null
           responsavel?: string | null
           status?: string
+          status_operacional?: string
+          status_operacional_atualizado_em?: string | null
+          custo_snapshot?: Json
           tipo?: string
           validade_dias?: number
         }
@@ -1383,6 +1500,9 @@ export type Database = {
           projeto_id?: number | null
           responsavel?: string | null
           status?: string
+          status_operacional?: string
+          status_operacional_atualizado_em?: string | null
+          custo_snapshot?: Json
           tipo?: string
           validade_dias?: number
         }
@@ -1458,6 +1578,54 @@ export type Database = {
         }
         Relationships: []
       }
+      parametros_economicos_versoes: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          escopo: string
+          id: number
+          orcamento_projeto_id: number | null
+          origem: string
+          parametros: Json
+          versao: number
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          escopo: string
+          id?: never
+          orcamento_projeto_id?: number | null
+          origem?: string
+          parametros: Json
+          versao: number
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          escopo?: string
+          id?: never
+          orcamento_projeto_id?: number | null
+          origem?: string
+          parametros?: Json
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parametros_economicos_versoes_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parametros_economicos_versoes_orcamento_projeto_id_fkey"
+            columns: ["orcamento_projeto_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedidos_compra: {
         Row: {
           aprovador: string | null
@@ -1521,27 +1689,33 @@ export type Database = {
       pedidos_compra_itens: {
         Row: {
           custo_unitario_estimado: number | null
+          divergencia_recebimento: string | null
           id: number
           insumo_id: number
           lote_id: number | null
           pedido_id: number
           quantidade: number
+          quantidade_recebida: number | null
         }
         Insert: {
           custo_unitario_estimado?: number | null
+          divergencia_recebimento?: string | null
           id?: never
           insumo_id: number
           lote_id?: number | null
           pedido_id: number
           quantidade: number
+          quantidade_recebida?: number | null
         }
         Update: {
           custo_unitario_estimado?: number | null
+          divergencia_recebimento?: string | null
           id?: never
           insumo_id?: number
           lote_id?: number | null
           pedido_id?: number
           quantidade?: number
+          quantidade_recebida?: number | null
         }
         Relationships: [
           {
@@ -1846,6 +2020,7 @@ export type Database = {
       pedidos_internos_itens: {
         Row: {
           criado_em: string
+          divergencia_recebimento: string | null
           especificacao: string
           fornecedor_sugerido: string | null
           id: number
@@ -1856,6 +2031,7 @@ export type Database = {
           orcamento_previo: number | null
           pedido_interno_id: number
           quantidade: number
+          quantidade_recebida: number | null
           recebido_em: string | null
           recebido_por: string | null
           tipo: string
@@ -1864,6 +2040,7 @@ export type Database = {
         }
         Insert: {
           criado_em?: string
+          divergencia_recebimento?: string | null
           especificacao: string
           fornecedor_sugerido?: string | null
           id?: never
@@ -1874,6 +2051,7 @@ export type Database = {
           orcamento_previo?: number | null
           pedido_interno_id: number
           quantidade?: number
+          quantidade_recebida?: number | null
           recebido_em?: string | null
           recebido_por?: string | null
           tipo?: string
@@ -1882,6 +2060,7 @@ export type Database = {
         }
         Update: {
           criado_em?: string
+          divergencia_recebimento?: string | null
           especificacao?: string
           fornecedor_sugerido?: string | null
           id?: never
@@ -1892,6 +2071,7 @@ export type Database = {
           orcamento_previo?: number | null
           pedido_interno_id?: number
           quantidade?: number
+          quantidade_recebida?: number | null
           recebido_em?: string | null
           recebido_por?: string | null
           tipo?: string
@@ -1961,34 +2141,46 @@ export type Database = {
       }
       planejamento: {
         Row: {
+          concluido_em: string | null
           criado_em: string
           data_alvo: string | null
           id: number
+          iniciado_em: string | null
           nome: string | null
           observacao: string | null
           projeto: string | null
           projeto_id: number | null
+          reservado_em: string | null
           responsavel: string | null
+          status_operacional: string
         }
         Insert: {
+          concluido_em?: string | null
           criado_em?: string
           data_alvo?: string | null
           id?: never
+          iniciado_em?: string | null
           nome?: string | null
           observacao?: string | null
           projeto?: string | null
           projeto_id?: number | null
+          reservado_em?: string | null
           responsavel?: string | null
+          status_operacional?: string
         }
         Update: {
+          concluido_em?: string | null
           criado_em?: string
           data_alvo?: string | null
           id?: never
+          iniciado_em?: string | null
           nome?: string | null
           observacao?: string | null
           projeto?: string | null
           projeto_id?: number | null
+          reservado_em?: string | null
           responsavel?: string | null
+          status_operacional?: string
         }
         Relationships: [
           {

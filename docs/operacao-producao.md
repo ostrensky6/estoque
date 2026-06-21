@@ -3,7 +3,7 @@
 ## App em producao
 
 - App: Kontrol
-- URL primaria: https://kontrol-lac.vercel.app
+- URL primaria: https://kontrol-gia.vercel.app
 - Login administrador: `ostrensky@ufpr.br`
 - Papel: `admin`
 - Senha do usuario admin: armazenada no Supabase Auth / gerenciador de senhas, nao versionar.
@@ -13,19 +13,22 @@
 - Repositorio: https://github.com/ostrensky6/estoque
 - Conta GitHub: `ostrensky6`
 - Branch de producao: `main`
-- Fluxo atual: Vercel conectado ao GitHub. Push em `main` dispara deploy de producao no projeto novo.
+- Fluxo atual: deploy manual pela Vercel CLI. O projeto ainda nao esta conectado ao GitHub para auto-deploy em `main`.
 
 ## Hospedagem - Vercel
 
-- Conta/time: `Gia` (plano Hobby) - conta de acesso `planktonsma@gmail.com`
-- Conta Vercel operacional: `planktonsma@gmail.com`
-- Projeto: `kontrol`
-- Dashboard: https://vercel.com/giaufpr/kontrol
+- Conta/time: `Ostrensky's projects` (plano Hobby) - slug `ostrensky-s-projects`
+- Org ID: `team_HYxJGUZ1QLz2P0H2U4l9Ayn8`
+- Conta Vercel operacional: `ostrensky5@gmail.com`
+- Projeto: `kontrol-gia`
+- Project ID: `prj_EnHPskP6CjuCv8UCzC6iXjQpcwQi`
+- Dashboard: https://vercel.com/ostrensky-s-projects/kontrol-gia
 - Framework preset: Next.js (Turbopack, Next 16)
 - Build command: padrao Next.js (`npm run build`)
 - Output directory: padrao Next.js
-- Production URL: https://kontrol-lac.vercel.app
-- Deploy: automatico por push em `main`, ou redeploy manual pelo painel da Vercel (`Gia` -> `kontrol` -> `Deployments`).
+- Production URL: https://kontrol-gia.vercel.app
+- Dominio default do projeto: https://kontrol-gia-nine.vercel.app
+- Deploy: manual via CLI com `vercel --prod --token <TOKEN> --scope ostrensky-s-projects`.
 - Variaveis de ambiente configuradas em producao (Production scope):
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -37,7 +40,8 @@
 
 - Variaveis de ambiente de producao configuradas no projeto novo.
 - Supabase Auth configurado para aceitar a nova URL de producao.
-- Producao validada em `https://kontrol-lac.vercel.app/login`.
+- Producao validada em `https://kontrol-gia.vercel.app/login`.
+- Acesso publico bloqueado enquanto a Vercel Authentication estiver ligada em Deployment Protection.
 - Nao usar projetos Vercel antigos para novos deploys.
 
 ## Banco de dados - Supabase producao
@@ -65,9 +69,9 @@
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable key do Supabase>`
    - `SUPABASE_SERVICE_ROLE_KEY=<secret/service role key do Supabase>`
    - `SUPABASE_AUTH_ADMIN_KEY=<legacy service_role JWT do Supabase>`
-   - `NEXT_PUBLIC_SITE_URL=https://kontrol-lac.vercel.app`
-3. No Supabase Auth, manter Site URL/Redirect URLs para `https://kontrol-lac.vercel.app`.
-4. Para publicar, fazer push na branch `main` ou redeploy manual na Vercel.
+   - `NEXT_PUBLIC_SITE_URL=https://kontrol-gia.vercel.app`
+3. No Supabase Auth, manter Site URL/Redirect URLs para `https://kontrol-gia.vercel.app`.
+4. Para publicar, usar deploy manual pela Vercel CLI no escopo `ostrensky-s-projects`.
 5. Validar login, `/pedido`, detalhe de pedido com Etapa 11 e `/recebimento`.
 
 ## Observacoes de seguranca

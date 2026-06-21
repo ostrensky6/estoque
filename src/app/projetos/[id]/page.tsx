@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { calcularOrcamentoProjetoLegacy } from "@/lib/project-budget/legacy";
 import { formatCurrency as moeda, formatDate as fmtData } from "@/lib/formatters";
 
@@ -203,12 +204,7 @@ export default async function ProjetoHubPage({
   return (
     <div className="min-h-dvh bg-transparent font-sans text-slate-900 dark:bg-zinc-950 dark:text-slate-100">
       <main className="mx-auto max-w-6xl px-6 py-10">
-        {/* Breadcrumb */}
-        <nav className="text-sm text-slate-500 dark:text-zinc-400">
-          <Link href="/projetos" className="hover:underline">Projetos</Link>
-          <span className="mx-1.5">/</span>
-          <span className="text-slate-700 dark:text-zinc-200">{projeto.nome}</span>
-        </nav>
+        <Breadcrumbs items={[{ label: "Projetos", href: "/projetos" }, { label: projeto.nome }]} />
 
         {/* Header */}
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">

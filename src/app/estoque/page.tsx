@@ -31,6 +31,8 @@ const ALERTA_META: Record<string, { label: string; cls: string }> = {
   reposicao: { label: "Repor", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
   vencimento: { label: "Vence em breve", cls: "bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300" },
   vencido: { label: "Vencido", cls: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300" },
+  sem_validade: { label: "Sem validade", cls: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300" },
+  quarentena: { label: "Quarentena", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
 };
 
 export default async function EstoquePage() {
@@ -40,7 +42,7 @@ export default async function EstoquePage() {
     supabase.from("v_alertas_estoque").select("*"),
     supabase
       .from("lotes_estoque")
-      .select("id, codigo_lote, validade, quantidade_atual, status, insumos(especificacao, unidade)")
+      .select("id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status, insumos(especificacao, unidade)")
       .not("status", "in", "(consumido,descartado)")
       .order("validade", { nullsFirst: false }),
     supabase.from("v_previsao_suprimentos").select("*"),
@@ -55,6 +57,8 @@ export default async function EstoquePage() {
     reposicao: al.filter((a) => a.tipo === "reposicao"),
     vencimento: al.filter((a) => a.tipo === "vencimento"),
     vencido: al.filter((a) => a.tipo === "vencido"),
+    sem_validade: al.filter((a) => a.tipo === "sem_validade"),
+    quarentena: al.filter((a) => a.tipo === "quarentena"),
   };
   const previsaoMap = new Map((previsao ?? []).map((p) => [p.insumo_id, p]));
   const saldoRows: SaldoRow[] = (saldo ?? []).map((s) => {
@@ -85,16 +89,22 @@ export default async function EstoquePage() {
   const hoje = new Date();
   const loteRows: LoteRow[] = (lotes ?? []).map((l) => {
     const ins = l.insumos as { especificacao: string | null; unidade: string | null } | null;
+    const validadeEfetiva =
+      l.validade && l.validade_apos_abertura
+        ? l.validade <= l.validade_apos_abertura
+          ? l.validade
+          : l.validade_apos_abertura
+        : l.validade ?? l.validade_apos_abertura;
     return {
       id: l.id as number,
       especificacao: ins?.especificacao ?? "—",
       unidade: ins?.unidade ?? "",
       codigoLote: l.codigo_lote ?? "—",
-      validade: l.validade ?? "—",
+      validade: validadeEfetiva ?? "—",
       quantidadeAtual: Number(l.quantidade_atual ?? 0),
       status: l.status,
       statusLabel: LOTE_STATUS[l.status] ?? l.status,
-      vencido: l.validade != null && new Date(l.validade) < hoje,
+      vencido: validadeEfetiva != null && new Date(validadeEfetiva) < hoje,
     };
   });
 
@@ -108,8 +118,8 @@ export default async function EstoquePage() {
         </p>
 
         {/* Alertas */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          {(["reposicao", "vencimento", "vencido"] as const).map((t) => (
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {(["reposicao", "vencimento", "vencido", "sem_validade", "quarentena"] as const).map((t) => (
             <div
               key={t}
               className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"

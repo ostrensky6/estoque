@@ -211,8 +211,9 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         label: "Categoria de compra",
         tipo: "select",
         opcoes: [
-          { value: "normal", label: "Normal" },
           { value: "critico", label: "Crítico" },
+          { value: "operacional", label: "Operacional" },
+          { value: "eventual", label: "Eventual" },
         ],
         ajuda: "Crítico recebe destaque nas sugestões de compra.",
       },

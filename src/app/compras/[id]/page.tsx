@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
@@ -8,6 +7,7 @@ import {
   receberItemPedido,
 } from "@/lib/actions/compras";
 import { PedidoAcoes } from "@/components/compras/PedidoAcoes";
+import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { listarEventos } from "@/lib/actions/eventos";
 import { Timeline } from "@/components/common/Timeline";
 import { formatNumber as fmt, formatCurrency as brl } from "@/lib/formatters";
@@ -20,6 +20,24 @@ const STATUS: Record<string, string> = {
   enviado: "Enviado",
   recebido: "Recebido",
   cancelado: "Cancelado",
+};
+
+type PedidoCompraItemRow = {
+  id: number;
+  quantidade: number;
+  quantidade_recebida: number | null;
+  divergencia_recebimento: string | null;
+  custo_unitario_estimado: number | null;
+  lote_id: number | null;
+  insumos: { especificacao: string | null; unidade: string | null } | null;
+};
+
+type PedidoCompraItensQuery = {
+  select: (columns: string) => {
+    eq: (column: string, value: number) => {
+      order: (column: string) => PromiseLike<{ data: PedidoCompraItemRow[] | null; error: unknown }>;
+    };
+  };
 };
 
 export default async function PedidoDetalhe({ params }: { params: Promise<{ id: string }> }) {
@@ -35,9 +53,8 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
   if (!pedido) notFound();
 
   const [{ data: itens }, { data: insumos }, podeGerir] = await Promise.all([
-    supabase
-      .from("pedidos_compra_itens")
-      .select("id, quantidade, custo_unitario_estimado, lote_id, insumos(especificacao, unidade)")
+    (supabase.from("pedidos_compra_itens") as unknown as PedidoCompraItensQuery)
+      .select("id, quantidade, quantidade_recebida, divergencia_recebimento, custo_unitario_estimado, lote_id, insumos(especificacao, unidade)")
       .eq("pedido_id", pedidoId)
       .order("id"),
     supabase.from("insumos").select("id, especificacao").order("especificacao"),
@@ -57,7 +74,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-4xl px-6 py-10">
-        <Link href="/compras" className="text-xs text-zinc-500 hover:underline">← Compras</Link>
+        <Breadcrumbs items={[{ label: "Compras", href: "/compras" }, { label: `Pedido #${pedido.id}` }]} />
         <div className="mt-2 flex items-center justify-between">
           <h1 className="text-2xl font-semibold tracking-tight">Pedido #{pedido.id}</h1>
           <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium dark:bg-zinc-800">
@@ -96,7 +113,14 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                       <td className="px-4 py-2.5 text-right tabular-nums">{brl(it.custo_unitario_estimado)}</td>
                       <td className="px-4 py-2.5 text-center">
                         {it.lote_id ? (
-                          <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs text-brand-800 dark:bg-brand-950/50 dark:text-brand-300">✓ lote {it.lote_id}</span>
+                          <span className="inline-flex flex-col items-center gap-0.5">
+                            <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs text-brand-800 dark:bg-brand-950/50 dark:text-brand-300">✓ lote {it.lote_id}</span>
+                            {it.divergencia_recebimento && (
+                              <span className="text-[10px] text-amber-700 dark:text-amber-300">
+                                {it.divergencia_recebimento}
+                              </span>
+                            )}
+                          </span>
                         ) : (
                           <span className="text-xs text-zinc-400">—</span>
                         )}
@@ -114,6 +138,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                             <form action={receberItemPedido} className="inline-flex items-center gap-1">
                               <input type="hidden" name="item_id" value={it.id} />
                               <input type="hidden" name="pedido_id" value={pedidoId} />
+                              <input name="quantidade_recebida" type="number" step="any" min="0" defaultValue={it.quantidade} className={`${inp} w-20`} title="Quantidade recebida" />
                               <input name="validade" type="date" className={inp} title="Validade do lote" />
                               <input name="codigo" placeholder="lote" className={`${inp} w-20`} />
                               <button className="rounded bg-brand-600 px-2 py-1 text-xs font-medium text-white hover:bg-brand-500">Receber</button>

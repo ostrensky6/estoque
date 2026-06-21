@@ -5,8 +5,26 @@ import { PlanosTable, type PlanoRow } from "@/components/planejamento/PlanosTabl
 export const dynamic = "force-dynamic";
 
 type Reserva = { status: string };
+type PlanejamentoListRow = {
+  id: number;
+  nome: string | null;
+  data_alvo: string | null;
+  projeto_id: number | null;
+  status_operacional?: string | null;
+  planejamento_itens: { count: number }[] | null;
+  reservas_estoque: Reserva[] | null;
+};
+type PlanejamentoQuery = {
+  select: (columns: string) => {
+    order: (column: string, options?: { ascending?: boolean }) => PromiseLike<{ data: PlanejamentoListRow[] | null; error: unknown }>;
+  };
+};
 
-function statusPlano(reservas: Reserva[]) {
+function statusPlano(reservas: Reserva[], statusOperacional?: string | null) {
+  if (statusOperacional === "concluido") return { status: "concluido", label: "Concluído" };
+  if (statusOperacional === "em_execucao") return { status: "iniciado", label: "Em execução" };
+  if (statusOperacional === "cancelado") return { status: "liberado", label: "Cancelado" };
+  if (statusOperacional === "reservado") return { status: "reservado", label: "Reservado" };
   if (reservas.some((r) => r.status === "consumido"))
     return { status: "iniciado", label: "Iniciado" };
   if (reservas.some((r) => r.status === "reservado"))
@@ -19,16 +37,18 @@ function statusPlano(reservas: Reserva[]) {
 export default async function PlanejamentoPage() {
   const supabase = await createClient();
   const [{ data: planos }, { data: projetos }] = await Promise.all([
-    supabase
-      .from("planejamento")
-      .select("id, nome, data_alvo, criado_em, projeto_id, planejamento_itens(count), reservas_estoque(status)")
+    (supabase.from("planejamento") as unknown as PlanejamentoQuery)
+      .select("id, nome, data_alvo, criado_em, projeto_id, status_operacional, planejamento_itens(count), reservas_estoque(status)")
       .order("criado_em", { ascending: false }),
     supabase.from("projetos").select("id, nome").order("nome"),
   ]);
   const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
   const linhas: PlanoRow[] = (planos ?? []).map((p) => {
     const itens = (p.planejamento_itens as { count: number }[])?.[0]?.count ?? 0;
-    const st = statusPlano((p.reservas_estoque as Reserva[]) ?? []);
+    const st = statusPlano(
+      (p.reservas_estoque as Reserva[]) ?? [],
+      (p as unknown as { status_operacional?: string | null }).status_operacional,
+    );
     return {
       id: p.id as number,
       nome: p.nome ?? "Plano sem nome",

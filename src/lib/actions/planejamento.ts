@@ -6,6 +6,55 @@ import { createClient } from "@/lib/supabase/server";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
 import type { FormState } from "./cadastros";
 
+type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
+type DemandaInsumo = Awaited<ReturnType<typeof computarDemandaPlano>>[number];
+type Shortfall = { insumo_id: number; falta: number };
+
+function parseShortfalls(value: unknown): Shortfall[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const row = item as Record<string, unknown>;
+      const insumoId = Number(row.insumo_id);
+      const falta = Number(row.falta);
+      return insumoId > 0 && falta > 0 ? { insumo_id: insumoId, falta } : null;
+    })
+    .filter((item): item is Shortfall => item !== null);
+}
+
+async function notificarFaltasPlano(
+  supabase: SupabaseClient,
+  planId: number,
+  faltas: Array<DemandaInsumo & { falta: number }>,
+  origem: "reserva" | "baixa",
+) {
+  if (faltas.length === 0) return;
+
+  const titulo =
+    origem === "reserva" ? "Falta de estoque no planejamento" : "Baixa com falta de estoque";
+  const rows = faltas.map((item) => ({
+    tipo: "falta_plano",
+    titulo,
+    corpo: `${item.especificacao}: falta ${item.falta} ${item.unidade ?? ""} no planejamento #${planId}.`,
+    entidade_tipo: "planejamento",
+    entidade_id: planId,
+    papel_destino: "coordenador",
+    dedupe_key: `falta_plano:${origem}:${planId}:${item.insumo_id}`,
+  }));
+  const keys = rows.map((row) => row.dedupe_key);
+  const { data: existentes } = await supabase
+    .from("notificacoes")
+    .select("dedupe_key")
+    .in("dedupe_key", keys);
+  const keysExistentes = new Set((existentes ?? []).map((row) => row.dedupe_key));
+  const novas = rows.filter((row) => !keysExistentes.has(row.dedupe_key));
+
+  if (novas.length === 0) return;
+  const { error } = await supabase.from("notificacoes").insert(novas as never);
+  if (error && error.code !== "23505") throw new Error(error.message);
+}
+
 export async function criarPlano(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim() || "Plano sem nome";
   const data_alvo = (formData.get("data_alvo") as string) || null;
@@ -150,15 +199,21 @@ export async function reservarPlano(
     p_itens: itens,
   });
   if (error) return { ok: false, message: error.message };
+  await supabase.rpc("marcar_planejamento_reservado" as never, {
+    p_planejamento_id: planId,
+  } as never);
 
-  const faltas = demanda.filter((d) => d.falta > 0).length;
+  const faltasPlano = demanda.filter((d) => d.falta > 0);
+  await notificarFaltasPlano(supabase, planId, faltasPlano, "reserva");
   revalidatePath(`/planejamento/${planId}`);
+  revalidatePath("/notificacoes");
+  revalidatePath("/");
   revalidatePath("/estoque");
   return {
     ok: true,
     message:
-      faltas > 0
-        ? `Reservado com ${faltas} insumo(s) em falta — veja a coluna Falta.`
+      faltasPlano.length > 0
+        ? `Reservado com ${faltasPlano.length} insumo(s) em falta — veja a coluna Falta.`
         : "Insumos reservados.",
   };
 }
@@ -169,13 +224,24 @@ export async function iniciarPlano(
 ): Promise<FormState> {
   const planId = Number(formData.get("planejamento_id"));
   const supabase = await createClient();
+  const demanda = await computarDemandaPlano(supabase, planId);
   const { data, error } = await supabase.rpc("dar_baixa_plano", {
     p_planejamento_id: planId,
   });
   if (error) return { ok: false, message: error.message };
+  await supabase.rpc("marcar_planejamento_em_execucao" as never, {
+    p_planejamento_id: planId,
+  } as never);
 
-  const shortfalls = (data as { shortfalls?: unknown[] } | null)?.shortfalls ?? [];
+  const shortfalls = parseShortfalls((data as { shortfalls?: unknown } | null)?.shortfalls);
+  const faltaPorInsumo = new Map(shortfalls.map((item) => [item.insumo_id, item.falta]));
+  const faltasPlano = demanda
+    .filter((item) => faltaPorInsumo.has(item.insumo_id))
+    .map((item) => ({ ...item, falta: faltaPorInsumo.get(item.insumo_id) ?? item.falta }));
+  await notificarFaltasPlano(supabase, planId, faltasPlano, "baixa");
   revalidatePath(`/planejamento/${planId}`);
+  revalidatePath("/notificacoes");
+  revalidatePath("/");
   revalidatePath("/estoque");
   return {
     ok: true,
@@ -194,9 +260,27 @@ export async function liberarPlano(
   const supabase = await createClient();
   const { error } = await supabase.rpc("liberar_plano", { p_planejamento_id: planId });
   if (error) return { ok: false, message: error.message };
+  await supabase.rpc("cancelar_planejamento_operacional" as never, {
+    p_planejamento_id: planId,
+  } as never);
   revalidatePath(`/planejamento/${planId}`);
   revalidatePath("/estoque");
   return { ok: true, message: "Reservas liberadas." };
+}
+
+export async function concluirPlano(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const planId = Number(formData.get("planejamento_id"));
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("concluir_planejamento" as never, {
+    p_planejamento_id: planId,
+  } as never);
+  if (error) return { ok: false, message: error.message };
+  revalidatePath(`/planejamento/${planId}`);
+  revalidatePath("/planejamento");
+  return { ok: true, message: "Planejamento concluído." };
 }
 
 export async function excluirPlano(formData: FormData) {

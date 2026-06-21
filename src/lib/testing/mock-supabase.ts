@@ -172,7 +172,8 @@ class MockQuery {
 
   constructor(private table: string) {}
 
-  select() {
+  select(_columns?: string) {
+    void _columns;
     return this;
   }
 

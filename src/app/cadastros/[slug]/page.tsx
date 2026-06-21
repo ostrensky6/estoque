@@ -6,6 +6,7 @@ import {
   getCadastrosOrdenados,
   type Campo,
 } from "@/lib/cadastros/config";
+import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { CrudShell } from "@/components/cadastros/CrudShell";
 import { Button } from "@/components/ui/button";
 import { equipCustoDia } from "@/lib/costing/engine";
@@ -110,6 +111,8 @@ export default async function CadastroPage({
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="mx-auto max-w-6xl px-6 py-10">
+        <Breadcrumbs items={[{ label: "Cadastros", href: "/cadastros" }, { label: cfg.titulo }]} />
+
         <nav className="flex flex-wrap gap-2 text-xs">
           {cadastros.map((c) => (
             <Button

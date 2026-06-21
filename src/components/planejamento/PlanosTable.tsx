@@ -46,6 +46,8 @@ function StatusBadge({ status, label }: { status: string; label: string }) {
   const variantClass =
     status === "iniciado"
       ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
+      : status === "concluido"
+        ? "bg-leaf-100 text-leaf-800 dark:bg-leaf-950/50 dark:text-leaf-300"
       : status === "reservado"
         ? "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
         : status === "liberado"
@@ -70,7 +72,10 @@ export function PlanosTable({ rows }: { rows: PlanoRow[] }) {
             { value: "Rascunho", label: "Rascunho" },
             { value: "Reservado", label: "Reservado" },
             { value: "Iniciado", label: "Iniciado" },
+            { value: "Em execução", label: "Em execução" },
+            { value: "Concluído", label: "Concluído" },
             { value: "Liberado", label: "Liberado" },
+            { value: "Cancelado", label: "Cancelado" },
           ],
         },
         {

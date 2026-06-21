@@ -5,6 +5,12 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
+import { registrarVersaoParametrosEconomicos } from "@/lib/orcamento/parametros-versionamento";
+import {
+  montarSnapshotLaboratorio,
+  statusOperacionalLaboratorio,
+  type ItemLaboratorioOperacional,
+} from "@/lib/orcamento/laboratorio-operacional";
 import { registrarEvento } from "./eventos";
 
 export type ParametrosEconomicosState = {
@@ -62,8 +68,38 @@ const PARAMETROS_META: Record<
   },
 };
 
+async function atualizarOperacionalLaboratorio(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  id: number,
+  statusDocumento?: string | null,
+) {
+  const [{ data: orc }, { data: itens }, { breakdowns }] = await Promise.all([
+    supabase.from("orcamentos").select("status").eq("id", id).single(),
+    supabase
+      .from("orcamento_itens")
+      .select("codigo_analise, n_amostras, custo_unitario, preco_unitario")
+      .eq("orcamento_id", id),
+    calcularTodas(),
+  ]);
+  const status = statusOperacionalLaboratorio({
+    statusDocumento: statusDocumento ?? orc?.status,
+    quantidadeItens: itens?.length ?? 0,
+  });
+  const snapshot = montarSnapshotLaboratorio((itens ?? []) as ItemLaboratorioOperacional[], breakdowns);
+  await supabase.from("orcamentos").update({
+    status_operacional: status,
+    status_operacional_atualizado_em: new Date().toISOString(),
+    custo_snapshot: snapshot,
+  }).eq("id", id);
+}
+
 /** Cria um orçamento em rascunho e abre a tela de edição. */
 export async function criarOrcamento(formData: FormData) {
+  const demandaId = formData.get("demanda_id") ? Number(formData.get("demanda_id")) : null;
+  if (!demandaId) {
+    redirect("/orcamento/demandas");
+  }
+
   const tipo = String(formData.get("tipo") ?? "analises");
   const cliente_nome =
     String(formData.get("cliente_nome") ?? "").trim() || "Cliente sem nome";
@@ -77,6 +113,7 @@ export async function criarOrcamento(formData: FormData) {
     const { data, error } = await supabase
       .from("orcamento_projetos")
       .insert({
+        demanda_id: demandaId,
         projeto_id,
         titulo,
         cliente_nome,
@@ -89,7 +126,7 @@ export async function criarOrcamento(formData: FormData) {
 
   const { data, error } = await supabase
     .from("orcamentos")
-    .insert({ cliente_nome, projeto_id, tipo: "analises" })
+    .insert({ demanda_id: demandaId, cliente_nome, projeto_id, tipo: "analises" })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
@@ -152,6 +189,7 @@ export async function salvarCabecalho(formData: FormData) {
   if (anterior && anterior.status !== novoStatus) {
     await registrarEvento("orcamento", id, anterior.status, novoStatus);
   }
+  await atualizarOperacionalLaboratorio(supabase, id, novoStatus);
   revalidatePath(`/orcamento/${id}`);
   revalidatePath("/orcamento");
 }
@@ -174,6 +212,7 @@ export async function adicionarItemOrcamento(formData: FormData) {
     custo_unitario: b?.custoTotal ?? 0,
     preco_unitario: b?.preco ?? 0,
   });
+  await atualizarOperacionalLaboratorio(supabase, id);
   revalidatePath(`/orcamento/${id}`);
 }
 
@@ -183,6 +222,7 @@ export async function removerItemOrcamento(formData: FormData) {
   if (!itemId) return;
   const supabase = await createClient();
   await supabase.from("orcamento_itens").delete().eq("id", itemId);
+  await atualizarOperacionalLaboratorio(supabase, id);
   revalidatePath(`/orcamento/${id}`);
 }
 
@@ -204,15 +244,47 @@ export async function recalcularOrcamento(formData: FormData) {
       .update({ custo_unitario: b.custoTotal, preco_unitario: b.preco })
       .eq("id", it.id);
   }
+  await atualizarOperacionalLaboratorio(supabase, id);
   revalidatePath(`/orcamento/${id}`);
 }
 
 export async function excluirOrcamento(formData: FormData) {
   const id = Number(formData.get("orcamento_id"));
   const supabase = await createClient();
+  const { data: atual } = await supabase
+    .from("orcamentos")
+    .select("status")
+    .eq("id", id)
+    .single();
+
+  if (atual && ["enviado", "aprovado"].includes(atual.status)) {
+    redirect(`/orcamento/${id}?erro_exclusao=${encodeURIComponent("Orçamento enviado ou aprovado não pode ser excluído. Use cancelamento/versionamento quando disponível.")}`);
+  }
+
   await supabase.from("orcamentos").delete().eq("id", id);
   revalidatePath("/orcamento");
   redirect("/orcamento");
+}
+
+export async function cancelarOrcamento(formData: FormData) {
+  const id = Number(formData.get("orcamento_id"));
+  if (!id) return;
+  const motivo = String(formData.get("motivo") ?? "").trim() || "Cancelamento operacional.";
+  const supabase = await createClient();
+  const { data: atual } = await supabase
+    .from("orcamentos")
+    .select("status")
+    .eq("id", id)
+    .single();
+  if (!atual || atual.status === "cancelado") return;
+
+  const { error } = await supabase.from("orcamentos").update({ status: "cancelado" }).eq("id", id);
+  if (error) throw new Error(error.message);
+  await atualizarOperacionalLaboratorio(supabase, id, "cancelado");
+  await registrarEvento("orcamento", id, atual.status, "cancelado", motivo);
+  revalidatePath(`/orcamento/${id}`);
+  revalidatePath("/orcamento");
+  redirect(`/orcamento/${id}`);
 }
 
 export async function salvarParametrosEconomicos(
@@ -251,6 +323,12 @@ export async function salvarParametrosEconomicos(
     onConflict: "chave",
   });
   if (error) return { ok: false, message: error.message };
+
+  await registrarVersaoParametrosEconomicos(supabase, {
+    escopo: "laboratorio_global",
+    parametros: parsed.data,
+    origem: "orcamento/parametros",
+  });
 
   revalidatePath("/orcamento/parametros");
   revalidatePath("/orcamento");

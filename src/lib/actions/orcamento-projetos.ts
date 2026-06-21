@@ -6,12 +6,15 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { calcularTodas } from "@/lib/costing/loader";
+import { registrarEvento } from "./eventos";
 import {
   calcularQuantidadeViagem,
   classificarDespesaViagem,
   normalizarViagemInputs,
   type ViagemInputs,
 } from "@/lib/project-budget/travel";
+import { validarParametrosProjetoGrossUp } from "@/lib/project-budget/legacy";
+import { registrarVersaoParametrosEconomicos } from "@/lib/orcamento/parametros-versionamento";
 
 const pathLista = "/orcamento/projetos";
 
@@ -49,6 +52,40 @@ function categoriaPorRubrica(rubrica: string) {
   }
 }
 
+function etapaPorRubrica(rubrica: string) {
+  switch (rubrica) {
+    case "PE":
+      return "Equipe";
+    case "VD":
+      return "Campo e logistica";
+    case "MC":
+      return "Materiais e consumo";
+    case "MP":
+      return "Equipamentos";
+    case "ST":
+      return "Terceiros";
+    default:
+      return "Projeto";
+  }
+}
+
+function categoriaInstitucionalPorRubrica(rubrica: string) {
+  switch (rubrica) {
+    case "PE":
+      return "Pessoal";
+    case "MC":
+      return "Material de consumo";
+    case "MP":
+      return "Material permanente";
+    case "ST":
+      return "Servicos de terceiros";
+    case "VD":
+      return "Viagens e diarias";
+    default:
+      return "Outros custos";
+  }
+}
+
 async function carregarCliente(clienteId: number | null) {
   if (!clienteId) return null;
   const supabase = await createClient();
@@ -61,6 +98,11 @@ async function carregarCliente(clienteId: number | null) {
 }
 
 export async function criarOrcamentoProjeto(formData: FormData) {
+  const demandaId = formData.get("demanda_id") ? Number(formData.get("demanda_id")) : null;
+  if (!demandaId) {
+    redirect("/orcamento/demandas");
+  }
+
   const supabase = await createClient();
   const projetoId = formData.get("projeto_id") ? Number(formData.get("projeto_id")) : null;
   const titulo = texto(formData, "titulo") || "Novo custo de projeto";
@@ -81,6 +123,7 @@ export async function criarOrcamentoProjeto(formData: FormData) {
   const { data, error } = await supabase
     .from("orcamento_projetos")
     .insert({
+      demanda_id: demandaId,
       projeto_id: projetoId,
       cliente_id: clienteId,
       titulo: titulo === "Novo custo de projeto" && projeto?.nome ? projeto.nome : titulo,
@@ -119,8 +162,6 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
     escopo: texto(formData, "escopo"),
     cronograma: texto(formData, "cronograma"),
     observacoes: texto(formData, "observacoes"),
-    margem_lucro: numero(formData, "margem_lucro"),
-    impostos: numero(formData, "impostos"),
     numero: texto(formData, "numero"),
     cliente_email: texto(formData, "cliente_email"),
     cliente_telefone: texto(formData, "cliente_telefone"),
@@ -128,6 +169,22 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
     cliente_detalhes: texto(formData, "cliente_detalhes"),
     coordenador: texto(formData, "coordenador"),
     proprietario: texto(formData, "proprietario"),
+    projeto_sem_custo_justificativa: texto(formData, "projeto_sem_custo_justificativa"),
+  };
+
+  const { error } = await supabase.from("orcamento_projetos").update(patch).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`${pathLista}/${id}`);
+  revalidatePath(pathLista);
+}
+
+export async function salvarParametrosEconomicosProjeto(formData: FormData) {
+  const id = numero(formData, "orcamento_projeto_id");
+  if (!id) return;
+
+  const patch = {
+    margem_lucro: numero(formData, "margem_lucro"),
+    impostos: numero(formData, "impostos"),
     project_months: numero(formData, "project_months", 12),
     impostos_legacy: numero(formData, "impostos_legacy"),
     incubacao: numero(formData, "incubacao"),
@@ -136,8 +193,20 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
     lucro: numero(formData, "lucro"),
   };
 
+  const validacao = validarParametrosProjetoGrossUp(patch);
+  if (!validacao.ok) {
+    redirect(`${pathLista}/${id}?erro_parametros=${encodeURIComponent(validacao.message)}`);
+  }
+
+  const supabase = await createClient();
   const { error } = await supabase.from("orcamento_projetos").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
+  await registrarVersaoParametrosEconomicos(supabase, {
+    escopo: "projeto",
+    orcamentoProjetoId: id,
+    parametros: patch,
+    origem: "orcamento/projetos",
+  });
   revalidatePath(`${pathLista}/${id}`);
   revalidatePath(pathLista);
 }
@@ -169,20 +238,26 @@ export async function adicionarCustoProjeto(formData: FormData) {
 
   const quantidade = numero(formData, "quantidade", 1);
   const custoUnitario = numero(formData, "custo_unitario");
-  const precoUnitario = numero(formData, "preco_unitario", custoUnitario);
+  const rubrica = texto(formData, "rubrica") || "OU";
+  const categoria = texto(formData, "categoria") || categoriaPorRubrica(rubrica);
 
   const supabase = await createClient();
   const { error } = await supabase.from("orcamento_projeto_custos").insert({
     orcamento_projeto_id: id,
-    categoria: texto(formData, "categoria") || categoriaPorRubrica(texto(formData, "rubrica") || "OU"),
-    rubrica: texto(formData, "rubrica") || "OU",
+    categoria,
+    rubrica,
     descricao,
     quantidade,
     unidade: texto(formData, "unidade"),
     custo_unitario: custoUnitario,
-    preco_unitario: precoUnitario,
+    preco_unitario: custoUnitario,
     meses_selecionados: inteiroArray(formData, "meses_selecionados"),
     origem: "manual",
+    etapa: texto(formData, "etapa") || etapaPorRubrica(rubrica),
+    atividade: texto(formData, "atividade") || categoria,
+    entrega: texto(formData, "entrega") || "Entrega principal",
+    categoria_institucional: texto(formData, "categoria_institucional") || categoriaInstitucionalPorRubrica(rubrica),
+    nomenclatura_origem: "kontrol",
   });
   if (error) throw new Error(error.message);
   revalidatePath(`${pathLista}/${id}`);
@@ -216,6 +291,11 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
     preco_unitario: Number(item.preco_unitario ?? 0),
     meses_selecionados: mesesSelecionados,
     origem: "catalogo",
+    etapa: texto(formData, "etapa") || etapaPorRubrica(item.rubrica),
+    atividade: texto(formData, "atividade") || item.categoria || categoriaPorRubrica(item.rubrica),
+    entrega: texto(formData, "entrega") || "Entrega principal",
+    categoria_institucional: texto(formData, "categoria_institucional") || categoriaInstitucionalPorRubrica(item.rubrica),
+    nomenclatura_origem: item.id.includes("-") ? "orcamento_projetos_antigo" : "catalogo_institucional",
   });
   if (error) throw new Error(error.message);
   revalidatePath(`${pathLista}/${id}`);
@@ -329,6 +409,11 @@ export async function aprovarOrcamentoPublico(formData: FormData) {
 
 type CustoTemplate = {
   categoria: string;
+  etapa?: string | null;
+  atividade?: string | null;
+  entrega?: string | null;
+  categoria_institucional?: string | null;
+  nomenclatura_origem?: string | null;
   rubrica: string | null;
   descricao: string;
   quantidade: number;
@@ -369,7 +454,7 @@ export async function salvarComoTemplate(formData: FormData) {
 
   const { data: custos } = await supabase
     .from("orcamento_projeto_custos")
-    .select("categoria, rubrica, descricao, quantidade, unidade, custo_unitario, preco_unitario, meses_selecionados")
+    .select("categoria, etapa, atividade, entrega, categoria_institucional, nomenclatura_origem, rubrica, descricao, quantidade, unidade, custo_unitario, preco_unitario, meses_selecionados")
     .eq("orcamento_projeto_id", id);
 
   const parametros: ParametrosTemplate = {
@@ -447,6 +532,11 @@ export async function criarProjetoDeTemplate(formData: FormData) {
     const linhas = itens.map((it) => ({
       orcamento_projeto_id: novo.id,
       categoria: it.categoria || categoriaPorRubrica(it.rubrica || "OU"),
+      etapa: it.etapa ?? etapaPorRubrica(it.rubrica || "OU"),
+      atividade: it.atividade ?? it.categoria,
+      entrega: it.entrega ?? "Entrega principal",
+      categoria_institucional: it.categoria_institucional ?? categoriaInstitucionalPorRubrica(it.rubrica || "OU"),
+      nomenclatura_origem: it.nomenclatura_origem ?? "kontrol",
       rubrica: it.rubrica || "OU",
       descricao: it.descricao,
       quantidade: Number(it.quantidade) || 1,
@@ -531,7 +621,37 @@ export async function excluirOrcamentoProjeto(formData: FormData) {
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
   const supabase = await createClient();
+  const { data: atual } = await supabase
+    .from("orcamento_projetos")
+    .select("status")
+    .eq("id", id)
+    .single();
+
+  if (atual && ["enviado", "aprovado"].includes(atual.status)) {
+    redirect(`${pathLista}/${id}?erro_exclusao=${encodeURIComponent("Orçamento enviado ou aprovado não pode ser excluído. Use cancelamento/versionamento quando disponível.")}`);
+  }
+
   await supabase.from("orcamento_projetos").delete().eq("id", id);
   revalidatePath(pathLista);
   redirect(pathLista);
+}
+
+export async function cancelarOrcamentoProjeto(formData: FormData) {
+  const id = numero(formData, "orcamento_projeto_id");
+  if (!id) return;
+  const motivo = texto(formData, "motivo") || "Cancelamento operacional.";
+  const supabase = await createClient();
+  const { data: atual } = await supabase
+    .from("orcamento_projetos")
+    .select("status")
+    .eq("id", id)
+    .single();
+  if (!atual || atual.status === "cancelado") return;
+
+  const { error } = await supabase.from("orcamento_projetos").update({ status: "cancelado" }).eq("id", id);
+  if (error) throw new Error(error.message);
+  await registrarEvento("orcamento_projeto", id, atual.status, "cancelado", motivo);
+  revalidatePath(`${pathLista}/${id}`);
+  revalidatePath(pathLista);
+  redirect(`${pathLista}/${id}`);
 }

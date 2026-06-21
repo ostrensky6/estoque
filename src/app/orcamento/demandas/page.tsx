@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { criarDemanda } from "@/lib/actions/demandas";
 import { DemandasTable, type DemandaRow } from "@/components/orcamento/DemandasTable";
+import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export default async function DemandasPage() {
   const [{ data: demandas }, { data: clientes }, { data: projetos }] = await Promise.all([
     supabase
       .from("demandas_propostas")
-      .select("id, titulo, cliente_nome, modalidade, status, prioridade, data_solicitacao, prazo_esperado, projeto_id, criado_em")
+      .select("id, titulo, cliente_id, cliente_nome, modalidade, status, prioridade, data_solicitacao, prazo_esperado, projeto_id, descricao, escopo_preliminar, matriz_amostra, quantidade_amostras_estimada, prazo_tecnico_dias, criado_em")
       .order("criado_em", { ascending: false }),
     supabase.from("clientes").select("id, nome").eq("ativo", true).order("nome"),
     supabase.from("projetos").select("id, nome").order("nome"),
@@ -33,6 +34,7 @@ export default async function DemandasPage() {
   const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
   const linhas: DemandaRow[] = (demandas ?? []).map((d) => {
     const st = STATUS[d.status] ?? { label: d.status, cls: "" };
+    const completude = avaliarCompletudeDemanda(d);
     return {
       id: d.id as number,
       titulo: d.titulo ?? "Demanda sem título",
@@ -45,6 +47,8 @@ export default async function DemandasPage() {
       dataSolicitacao: d.data_solicitacao ?? "—",
       status: d.status,
       statusLabel: st.label,
+      completudeLabel: completude.completa ? "Pronta" : `${completude.faltante}% faltante`,
+      completa: completude.completa,
     };
   });
   const inp =
@@ -92,6 +96,14 @@ export default async function DemandasPage() {
           <div className="md:col-span-2">
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Cliente livre</label>
             <input name="cliente_nome" placeholder="Nome do cliente/instituição se não estiver cadastrado" className={`${inp} mt-1 w-full`} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Matriz/amostra</label>
+            <input name="matriz_amostra" placeholder="Ex.: água, solo, tecido" className={`${inp} mt-1 w-full`} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Qtd. amostras</label>
+            <input name="quantidade_amostras_estimada" type="number" min="1" step="1" className={`${inp} mt-1 w-full`} />
           </div>
           <div>
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Projeto</label>

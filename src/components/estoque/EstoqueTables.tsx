@@ -202,6 +202,8 @@ const lotesColumns = (
       <LoteAcoes
         loteId={row.original.id}
         status={row.original.status}
+        quantidadeAtual={row.original.quantidadeAtual}
+        unidade={row.original.unidade}
         podeAceitar={podeAceitar}
         podeGerir={podeGerir}
       />

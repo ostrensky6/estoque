@@ -6,6 +6,7 @@ import {
   reservarPlano,
   iniciarPlano,
   liberarPlano,
+  concluirPlano,
 } from "@/lib/actions/planejamento";
 import type { FormState } from "@/lib/actions/cadastros";
 
@@ -112,6 +113,13 @@ export function PlanoAcoes({ planId }: { planId: number }) {
         action={liberarPlano}
         label="Liberar reservas"
         cls="rounded-md border border-zinc-300 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+      />
+      <Botao
+        planId={planId}
+        action={concluirPlano}
+        label="Concluir análise"
+        cls="rounded-md border border-brand-300 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-50 dark:border-brand-800 dark:text-brand-300 dark:hover:bg-brand-950/30"
+        confirmar="Marcar este planejamento como concluído? A baixa de estoque deve ter sido feita ao iniciar."
       />
     </div>
   );

@@ -24,6 +24,39 @@ const schema = z.object({
   motivo: z.preprocess((v) => (v === "" || v == null ? null : String(v)), z.string().nullable()),
 });
 
+const baixaManualSchema = z.object({
+  lote_id: z.preprocess((v) => Number(v), z.number().int().positive()),
+  quantidade: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : Number(v)),
+    z.number({ error: "Obrigatório" }).positive("Deve ser > 0"),
+  ),
+  motivo: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : String(v).trim()),
+    z.string({ error: "Obrigatório" }).min(3, "Informe o motivo"),
+  ),
+});
+
+const ajusteSaldoSchema = z.object({
+  lote_id: z.preprocess((v) => Number(v), z.number().int().positive()),
+  quantidade_nova: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : Number(v)),
+    z.number({ error: "Obrigatório" }).min(0, "Deve ser >= 0"),
+  ),
+  motivo: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : String(v).trim()),
+    z.string({ error: "Obrigatório" }).min(3, "Informe o motivo"),
+  ),
+});
+
+function formErrors(error: z.ZodError): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const i of error.issues) {
+    const p = String(i.path[0] ?? "");
+    if (p && !errors[p]) errors[p] = i.message;
+  }
+  return errors;
+}
+
 /**
  * 2.4 — Entrada de inventário / ajuste (porta avulsa, EXPLÍCITA). O recebimento
  * "normal" de compra acontece pelo item do pedido (receberItemPedido). Aqui é a
@@ -43,16 +76,23 @@ export async function entradaInventario(
     motivo: formData.get("motivo"),
   });
   if (!parsed.success) {
-    const errors: Record<string, string> = {};
-    for (const i of parsed.error.issues) {
-      const p = String(i.path[0] ?? "");
-      if (p && !errors[p]) errors[p] = i.message;
-    }
-    return { ok: false, message: "Verifique os campos.", errors };
+    return { ok: false, message: "Verifique os campos.", errors: formErrors(parsed.error) };
   }
 
   const d = parsed.data;
   const supabase = await createClient();
+  const { data: insumo } = await supabase
+    .from("insumos")
+    .select("categoria_compra")
+    .eq("id", d.insumo_id)
+    .single();
+  if (insumo?.categoria_compra === "critico" && !d.validade) {
+    return {
+      ok: false,
+      message: "Validade é obrigatória para insumo crítico.",
+      errors: { validade: "Obrigatório para crítico" },
+    };
+  }
   const { error } = await supabase.rpc("entrada_inventario", {
     p_insumo_id: d.insumo_id,
     p_quantidade: d.quantidade,
@@ -103,4 +143,56 @@ export async function descartarLote(formData: FormData): Promise<FormState> {
     p_lote_id: Number(formData.get("lote_id")),
     p_justificativa: (formData.get("justificativa") as string) || "—",
   });
+}
+
+export async function baixarManualLote(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = baixaManualSchema.safeParse({
+    lote_id: formData.get("lote_id"),
+    quantidade: formData.get("quantidade"),
+    motivo: formData.get("motivo"),
+  });
+  if (!parsed.success) {
+    return { ok: false, message: "Verifique os campos.", errors: formErrors(parsed.error) };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("baixa_manual_lote" as never, {
+    p_lote_id: parsed.data.lote_id,
+    p_quantidade: parsed.data.quantidade,
+    p_motivo: parsed.data.motivo,
+  } as never);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/estoque");
+  revalidatePath(`/estoque/lotes/${parsed.data.lote_id}`);
+  return { ok: true, message: "Baixa manual registrada." };
+}
+
+export async function ajustarSaldoLote(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = ajusteSaldoSchema.safeParse({
+    lote_id: formData.get("lote_id"),
+    quantidade_nova: formData.get("quantidade_nova"),
+    motivo: formData.get("motivo"),
+  });
+  if (!parsed.success) {
+    return { ok: false, message: "Verifique os campos.", errors: formErrors(parsed.error) };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("ajustar_saldo_lote" as never, {
+    p_lote_id: parsed.data.lote_id,
+    p_quantidade_nova: parsed.data.quantidade_nova,
+    p_motivo: parsed.data.motivo,
+  } as never);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/estoque");
+  revalidatePath(`/estoque/lotes/${parsed.data.lote_id}`);
+  return { ok: true, message: "Saldo do lote ajustado." };
 }

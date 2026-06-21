@@ -114,6 +114,12 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
           desc: "itens de pedidos por estágio até a chegada",
           icon: "PackageCheck",
         },
+        {
+          href: "/notificacoes",
+          label: "Notificações",
+          desc: "faltas, vencimentos e reposições",
+          icon: "Bell",
+        },
       ],
     },
     {
@@ -129,15 +135,15 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
         },
         {
           href: "/orcamento",
-          label: "Análises/Lab.",
-          desc: "propostas com análises e projetos",
+          label: "Orçamentos",
+          desc: "histórico e consolidação final",
           icon: "DollarSign",
           shortcut: "O",
         },
         {
           href: "/orcamento/projetos",
           label: "Projetos",
-          desc: "custos, rubricas e cronograma",
+          desc: "custos próprios por projeto",
           icon: "DollarSign",
         },
         {

@@ -18,6 +18,8 @@ export type DemandaRow = {
   dataSolicitacao: string;
   status: string;
   statusLabel: string;
+  completudeLabel: string;
+  completa: boolean;
 };
 
 const columns: ColumnDef<DemandaRow, unknown>[] = [
@@ -39,6 +41,23 @@ const columns: ColumnDef<DemandaRow, unknown>[] = [
   { accessorKey: "modalidadeLabel", header: "Modalidade", filterFn: "equalsString" },
   { accessorKey: "projeto", header: "Projeto", filterFn: "equalsString" },
   { accessorKey: "prazo", header: "Prazo" },
+  {
+    accessorKey: "completudeLabel",
+    header: "Completude",
+    filterFn: "equalsString",
+    meta: { align: "center" },
+    cell: ({ row }) => (
+      <Badge
+        className={
+          row.original.completa
+            ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
+            : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+        }
+      >
+        {row.original.completudeLabel}
+      </Badge>
+    ),
+  },
   {
     accessorKey: "statusLabel",
     header: "Status",
@@ -81,6 +100,11 @@ export function DemandasTable({ rows }: { rows: DemandaRow[] }) {
           options: [...new Set(rows.map((row) => row.modalidadeLabel))].map((value) => ({ value, label: value })),
         },
         {
+          columnId: "completudeLabel",
+          label: "Completude",
+          options: [...new Set(rows.map((row) => row.completudeLabel))].map((value) => ({ value, label: value })),
+        },
+        {
           columnId: "projeto",
           label: "Projeto",
           options: [...new Set(rows.map((row) => row.projeto).filter((value) => value !== "—"))].map((value) => ({
@@ -95,7 +119,20 @@ export function DemandasTable({ rows }: { rows: DemandaRow[] }) {
         </Link>
       )}
       getMobileDescription={(row) => `${row.cliente} · ${row.modalidadeLabel} · ${row.projeto}`}
-      getMobileMeta={(row) => <StatusBadge status={row.status} label={row.statusLabel} />}
+      getMobileMeta={(row) => (
+        <div className="flex flex-wrap gap-2">
+          <StatusBadge status={row.status} label={row.statusLabel} />
+          <Badge
+            className={
+              row.completa
+                ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
+                : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+            }
+          >
+            {row.completudeLabel}
+          </Badge>
+        </div>
+      )}
     />
   );
 }

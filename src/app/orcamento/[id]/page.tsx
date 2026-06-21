@@ -1,21 +1,23 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
 import { PrintButton } from "@/components/orcamento/PrintButton";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
+import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { Combobox } from "@/components/ui/combobox";
 import {
   salvarCabecalho,
   adicionarItemOrcamento,
   removerItemOrcamento,
   recalcularOrcamento,
+  cancelarOrcamento,
   excluirOrcamento,
 } from "@/lib/actions/orcamentos";
 import { gerarPlanejamentoDeOrcamento } from "@/lib/actions/planejamento";
 import { listarEventos } from "@/lib/actions/eventos";
 import { Timeline } from "@/components/common/Timeline";
 import { formatCurrency as brl, formatDate } from "@/lib/formatters";
+import { montarSnapshotLaboratorio } from "@/lib/orcamento/laboratorio-operacional";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +29,29 @@ type Item = {
   preco_unitario: number;
 };
 
+type SnapshotLaboratorio = {
+  totais?: {
+    reagentes?: number;
+    materiais?: number;
+    equipamentos?: number;
+    mao_obra?: number;
+    terceiros?: number;
+    overhead?: number;
+    custo?: number;
+    preco?: number;
+    amostras?: number;
+  };
+};
+
 export default async function OrcamentoDetalhe({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ erro_exclusao?: string }>;
 }) {
   const { id } = await params;
+  const { erro_exclusao: erroExclusao } = await searchParams;
   const orcId = Number(id);
   const supabase = await createClient();
 
@@ -71,6 +90,13 @@ export default async function OrcamentoDetalhe({
     (a, it) => a + Number(it.preco_unitario) * Number(it.n_amostras),
     0,
   );
+  const snapshotCalculado = montarSnapshotLaboratorio(itens, breakdowns) as SnapshotLaboratorio;
+  const snapshotPersistido = (orc.custo_snapshot ?? {}) as SnapshotLaboratorio;
+  const snapshotOperacional = snapshotPersistido.totais ? snapshotPersistido : snapshotCalculado;
+  const totaisOperacionais = snapshotOperacional.totais ?? {};
+  const statusOperacional = orc.status_operacional ?? (
+    orc.status === "cancelado" ? "cancelado" : ["enviado", "aprovado"].includes(orc.status) ? "revisado" : itens.length > 0 ? "preenchido" : "pendente"
+  );
 
   // detecta itens cujo preço atual difere do snapshot (parâmetros mudaram)
   const precoAtual = new Map(breakdowns.map((b) => [b.codigo, b.preco]));
@@ -99,9 +125,7 @@ export default async function OrcamentoDetalhe({
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="print-area mx-auto max-w-4xl px-6 py-10">
         <div className="no-print flex items-center justify-between">
-          <Link href="/orcamento" className="text-xs text-zinc-500 hover:underline">
-            ← Análises/Lab.
-          </Link>
+          <Breadcrumbs items={[{ label: "Análises/Lab.", href: "/orcamento" }, { label: `Orçamento #${orc.id}` }]} />
           <div className="flex items-center gap-2">
             <PrintButton />
             {orc.status === "aprovado" && itens.length > 0 && (
@@ -168,6 +192,33 @@ export default async function OrcamentoDetalhe({
             </div>
           </dl>
 
+          <section className="no-print mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold">Preenchimento interno</h2>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Base operacional por custo. O preço de saída fica preservado no documento e no orçamento final.
+                </p>
+              </div>
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-zinc-700">
+                {statusOperacional}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+              <ResumoOperacional titulo="Reagentes" valor={Number(totaisOperacionais.reagentes ?? 0)} />
+              <ResumoOperacional titulo="Materiais" valor={Number(totaisOperacionais.materiais ?? 0)} />
+              <ResumoOperacional titulo="Equipamentos" valor={Number(totaisOperacionais.equipamentos ?? 0)} />
+              <ResumoOperacional titulo="Mão de obra" valor={Number(totaisOperacionais.mao_obra ?? 0)} />
+              <ResumoOperacional titulo="Terceiros" valor={Number(totaisOperacionais.terceiros ?? 0)} />
+              <ResumoOperacional titulo="Overhead" valor={Number(totaisOperacionais.overhead ?? 0)} />
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <ResumoOperacional titulo="Subtotal custo" valor={Number(totaisOperacionais.custo ?? totalCusto)} destaque />
+              <ResumoOperacional titulo="Amostras" valor={Number(totaisOperacionais.amostras ?? totalAmostras)} numero />
+              <ResumoOperacional titulo="Preço preservado" valor={Number(totaisOperacionais.preco ?? totalPreco)} discreto />
+            </div>
+          </section>
+
           {/* Análises solicitadas */}
           <h2 className="mt-6 text-sm font-semibold uppercase tracking-wide text-zinc-500">
             Análises solicitadas
@@ -178,7 +229,7 @@ export default async function OrcamentoDetalhe({
                 <tr>
                   <th className="px-3 py-2 text-left">Análise</th>
                   <th className="px-3 py-2 no-print">Custo/amostra</th>
-                  <th className="px-3 py-2">Preço/amostra</th>
+                  <th className="px-3 py-2 print:hidden">Preço/amostra</th>
                   <th className="px-3 py-2">Amostras</th>
                   <th className="px-3 py-2">Subtotal</th>
                   <th className="px-3 py-2 no-print"></th>
@@ -193,12 +244,12 @@ export default async function OrcamentoDetalhe({
                     <td className="px-3 py-2 tabular-nums text-zinc-500 no-print">
                       {brl(Number(it.custo_unitario))}
                     </td>
-                    <td className="px-3 py-2 tabular-nums">
+                    <td className="px-3 py-2 tabular-nums print:hidden">
                       {brl(Number(it.preco_unitario))}
                     </td>
                     <td className="px-3 py-2 tabular-nums">{Number(it.n_amostras)}</td>
                     <td className="px-3 py-2 font-semibold tabular-nums">
-                      {brl(Number(it.preco_unitario) * Number(it.n_amostras))}
+                      {brl(Number(it.custo_unitario) * Number(it.n_amostras))}
                     </td>
                     <td className="px-3 py-2 no-print">
                       <form action={removerItemOrcamento}>
@@ -229,7 +280,7 @@ export default async function OrcamentoDetalhe({
                     <td></td>
                     <td className="px-3 py-2.5 tabular-nums">{totalAmostras}</td>
                     <td className="px-3 py-2.5 text-base font-semibold tabular-nums text-brand-700 dark:text-brand-400">
-                      {brl(totalPreco)}
+                      {brl(totalCusto)}
                     </td>
                     <td className="no-print"></td>
                   </tr>
@@ -254,6 +305,12 @@ export default async function OrcamentoDetalhe({
           <p className="no-print mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
             Os parâmetros de custo mudaram desde a emissão. Use “Recalcular
             preços” para atualizar os valores deste orçamento.
+          </p>
+        )}
+
+        {erroExclusao && (
+          <p className="no-print mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            {erroExclusao}
           </p>
         )}
 
@@ -361,6 +418,7 @@ export default async function OrcamentoDetalhe({
                 <option value="enviado">Enviado</option>
                 <option value="aprovado">Aprovado</option>
                 <option value="recusado">Recusado</option>
+                <option value="cancelado">Cancelado</option>
               </select>
             </div>
             <div className="sm:col-span-2">
@@ -383,17 +441,53 @@ export default async function OrcamentoDetalhe({
           <Timeline eventos={eventos} />
         </section>
 
-        <div className="no-print mt-6">
-          <ConfirmActionButton
-            action={excluirOrcamento}
-            fields={{ orcamento_id: orcId }}
-            trigger="Excluir orçamento"
-            titulo="Excluir orçamento"
-            mensagem={`Excluir o orçamento de “${orc.cliente_nome}”? Esta ação não pode ser desfeita.`}
-            confirmLabel="Excluir orçamento"
-          />
+        <div className="no-print mt-6 flex flex-wrap gap-3">
+          {["enviado", "aprovado"].includes(orc.status) ? (
+            <ConfirmActionButton
+              action={cancelarOrcamento}
+              fields={{ orcamento_id: orcId, motivo: "Cancelamento operacional solicitado na tela do orçamento." }}
+              trigger="Cancelar orçamento"
+              titulo="Cancelar orçamento"
+              mensagem={`Cancelar o orçamento de “${orc.cliente_nome}”? O histórico será preservado.`}
+              confirmLabel="Cancelar orçamento"
+              destrutivo={false}
+              triggerClassName="text-xs text-amber-700 hover:underline dark:text-amber-300"
+            />
+          ) : (
+            <ConfirmActionButton
+              action={excluirOrcamento}
+              fields={{ orcamento_id: orcId }}
+              trigger="Excluir orçamento"
+              titulo="Excluir orçamento"
+              mensagem={`Excluir o orçamento de “${orc.cliente_nome}”? Esta ação não pode ser desfeita.`}
+              confirmLabel="Excluir orçamento"
+            />
+          )}
         </div>
       </main>
+    </div>
+  );
+}
+
+function ResumoOperacional({
+  titulo,
+  valor,
+  destaque = false,
+  discreto = false,
+  numero = false,
+}: {
+  titulo: string;
+  valor: number;
+  destaque?: boolean;
+  discreto?: boolean;
+  numero?: boolean;
+}) {
+  return (
+    <div className={`rounded-lg border p-3 ${destaque ? "border-brand-200 bg-brand-50 dark:border-brand-900 dark:bg-brand-950/30" : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"} ${discreto ? "opacity-80" : ""}`}>
+      <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{titulo}</p>
+      <p className="mt-1 text-sm font-semibold tabular-nums">
+        {numero ? valor.toLocaleString("pt-BR") : brl(valor)}
+      </p>
     </div>
   );
 }

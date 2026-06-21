@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { gargalo, horasBancadaPorAmostra, type Etapa } from "@/lib/costing/engine";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
+import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { Combobox } from "@/components/ui/combobox";
 import {
   atualizarAnalise,
@@ -72,9 +73,7 @@ export default async function AnaliseDetalhe({
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <Link href="/analises" className="text-xs text-zinc-500 hover:underline">
-          ← Análises
-        </Link>
+        <Breadcrumbs items={[{ label: "Análises", href: "/analises" }, { label: codigo }]} />
 
         {/* Cabeçalho editável */}
         <section className="mt-2 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
-  criarOrcamentoProjeto,
   criarProjetoDeTemplate,
   excluirTemplate,
 } from "@/lib/actions/orcamento-projetos";
@@ -20,12 +19,14 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   enviado: { label: "Enviado", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
   aprovado: { label: "Aprovado", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
   recusado: { label: "Recusado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
+  cancelado: { label: "Cancelado", cls: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
 };
 
 type Analise = { n_amostras: number; custo_unitario: number };
 type Custo = {
   rubrica: string | null;
   quantidade: number;
+  custo_unitario: number;
   preco_unitario: number;
   meses_selecionados: number[] | null;
 };
@@ -36,7 +37,7 @@ export default async function OrcamentoProjetosPage() {
     supabase
       .from("orcamento_projetos")
       .select(
-        "id, titulo, cliente_nome, data_orcamento, status, projeto_id, margem_lucro, impostos, impostos_legacy, incubacao, reserva, investimentos, lucro, criado_em, orcamento_projeto_analises(n_amostras, custo_unitario), orcamento_projeto_custos(rubrica, quantidade, preco_unitario, meses_selecionados)",
+        "id, titulo, cliente_nome, data_orcamento, status, projeto_id, margem_lucro, impostos, impostos_legacy, incubacao, reserva, investimentos, lucro, criado_em, orcamento_projeto_analises(n_amostras, custo_unitario), orcamento_projeto_custos(rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados)",
       )
       .order("criado_em", { ascending: false }),
     supabase.from("projetos").select("id, nome").order("nome"),
@@ -50,7 +51,10 @@ export default async function OrcamentoProjetosPage() {
   const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
   const linhas: ProjetoOrcamentoRow[] = (orcamentos ?? []).map((o) => {
     const analises = (o.orcamento_projeto_analises as Analise[]) ?? [];
-    const custos = (o.orcamento_projeto_custos as Custo[]) ?? [];
+    const custos = ((o.orcamento_projeto_custos as Custo[]) ?? []).map((it) => ({
+      ...it,
+      preco_unitario: Number(it.custo_unitario ?? it.preco_unitario ?? 0),
+    }));
     const totalLab = analises.reduce((a, it) => a + Number(it.n_amostras) * Number(it.custo_unitario), 0);
     const totalCustos = custos.reduce((a, it) => a + itemProjetoTotal(it), 0);
     const calculo = calcularOrcamentoProjetoLegacy(
@@ -93,21 +97,23 @@ export default async function OrcamentoProjetosPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <Link href="/orcamento" className="text-xs text-zinc-500 hover:underline">
-              Análises/Lab.
+              Orçamentos
             </Link>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight">Projetos</h1>
             <p className="mt-1 max-w-3xl text-sm text-zinc-500">
-              Custos completos por projeto, combinando análises do laboratório com custos de mão de obra,
-              deslocamento, equipamentos, terceiros, materiais e cronograma.
+              Histórico de custos de projeto vinculados a demandas. A criação de novos registros começa em Demandas/Propostas.
             </p>
           </div>
+          <Link href="/orcamento/demandas" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
+            Nova demanda
+          </Link>
         </div>
 
         <section className="mt-6 grid gap-3 md:grid-cols-3">
           {[
-            ["Estoque", "materiais, entradas/saídas, lotes, fornecedores, unidades e custo real"],
-            ["Análises/Lab.", "análises que usam estoque e snapshots do custo por amostra"],
-            ["Projetos", "escopo completo com custos laboratoriais e custos próprios do projeto"],
+            ["1. Demanda", "0% faltante quando a modalidade e o cliente estao definidos"],
+            ["2. Custos de projeto", "100% faltante ate haver rubricas, etapas ou atividades cadastradas"],
+            ["3. Parametros e emissao", "aplicados somente depois do levantamento de custos"],
           ].map(([titulo, desc]) => (
             <div key={titulo} className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
               <h2 className="text-sm font-semibold">{titulo}</h2>
@@ -115,28 +121,6 @@ export default async function OrcamentoProjetosPage() {
             </div>
           ))}
         </section>
-
-        <form
-          action={criarOrcamentoProjeto}
-          className="mt-6 grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_1fr_auto] md:items-end dark:border-zinc-800 dark:bg-zinc-900"
-        >
-          <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Título</label>
-            <input name="titulo" placeholder="Ex.: Projeto de sequenciamento 2026" className={`${inp} mt-1 w-full`} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Projeto vinculado</label>
-            <select name="projeto_id" defaultValue="" className={`${inp} mt-1 w-full`}>
-              <option value="">Criar sem vínculo</option>
-              {(projetos ?? []).map((p) => (
-                <option key={p.id} value={p.id}>{p.nome}</option>
-              ))}
-            </select>
-          </div>
-          <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
-            Novo custo de projeto
-          </button>
-        </form>
 
         {(templates ?? []).length > 0 && (
           <section className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

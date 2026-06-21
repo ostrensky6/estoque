@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Barcode39 } from "@/components/common/Barcode39";
+import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { formatNumber as fmt, formatDate as fdata, formatCurrency } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -75,7 +76,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-4xl px-6 py-10">
-        <Link href="/estoque" className="no-print text-xs text-zinc-500 hover:underline">← Estoque</Link>
+        <Breadcrumbs items={[{ label: "Estoque", href: "/estoque" }, { label: `Lote ${codigoEtiqueta}` }]} />
 
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div>

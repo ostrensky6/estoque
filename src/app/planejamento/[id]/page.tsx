@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
@@ -6,6 +5,7 @@ import { adicionarItem, removerItem, excluirPlano } from "@/lib/actions/planejam
 import { comprarFaltasDoPlano } from "@/lib/actions/compras";
 import { PlanoAcoes } from "@/components/planejamento/PlanoAcoes";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
+import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { Combobox } from "@/components/ui/combobox";
 import { formatNumber as fmt } from "@/lib/formatters";
 
@@ -43,22 +43,37 @@ export default async function PlanoDetalhe({
       : rs.length > 0
         ? "Liberado"
         : "Rascunho";
+  const statusOperacional = (plano as unknown as { status_operacional?: string | null }).status_operacional;
+  const statusLabel =
+    statusOperacional === "concluido"
+      ? "Concluído"
+      : statusOperacional === "em_execucao"
+        ? "Em execução"
+        : statusOperacional === "cancelado"
+          ? "Cancelado"
+          : statusOperacional === "reservado"
+            ? "Reservado"
+            : status;
   const temFalta = demanda.some((d) => d.falta > 0);
+  const baixaPendente = statusLabel === "Reservado";
 
   const inp = "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <Link href="/planejamento" className="text-xs text-zinc-500 hover:underline">
-          ← Planejamento
-        </Link>
+        <Breadcrumbs items={[{ label: "Planejamento", href: "/planejamento" }, { label: plano.nome ?? `Plano #${planId}` }]} />
         <div className="mt-2 flex items-center justify-between">
           <h1 className="text-2xl font-semibold tracking-tight">{plano.nome}</h1>
           <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium dark:bg-zinc-800">
-            {status}
+            {statusLabel}
           </span>
         </div>
+        {baixaPendente && (
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
+            Insumos reservados, mas a baixa definitiva ainda não foi feita. Use Iniciar quando a análise entrar em execução.
+          </p>
+        )}
         {plano.data_alvo && (
           <p className="mt-1 text-sm text-zinc-500">Data alvo: {plano.data_alvo}</p>
         )}

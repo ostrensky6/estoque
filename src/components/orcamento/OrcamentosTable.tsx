@@ -39,7 +39,7 @@ const columns: ColumnDef<OrcamentoRow, unknown>[] = [
     ),
   },
   { accessorKey: "tipoLabel", header: "Tipo", filterFn: "equalsString" },
-  { accessorKey: "projeto", header: "Projeto", filterFn: "equalsString" },
+  { accessorKey: "projeto", header: "Projeto vinculado", filterFn: "equalsString" },
   {
     accessorKey: "analises",
     header: "Análises",
@@ -48,7 +48,7 @@ const columns: ColumnDef<OrcamentoRow, unknown>[] = [
   },
   {
     accessorKey: "custosProjeto",
-    header: "Projeto",
+    header: "Custos de projeto",
     sortingFn: numericSort,
     meta: { align: "right" },
     cell: ({ row }) => brl(row.original.custosProjeto),
@@ -77,7 +77,9 @@ function StatusBadge({ status, label }: { status: string; label: string }) {
         ? "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
         : status === "aprovado"
           ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
-          : "bg-secondary text-secondary-foreground";
+          : status === "cancelado"
+            ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+            : "bg-secondary text-secondary-foreground";
 
   return <Badge className={variantClass}>{label}</Badge>;
 }
@@ -88,7 +90,7 @@ export function OrcamentosTable({ rows }: { rows: OrcamentoRow[] }) {
       data={rows}
       columns={columns}
       searchPlaceholder="Buscar orçamento, cliente ou projeto..."
-      emptyText="Nenhum orçamento ainda. Crie o primeiro acima."
+      emptyText="Nenhum orçamento no histórico."
       filters={[
         {
           columnId: "statusLabel",
@@ -98,6 +100,7 @@ export function OrcamentosTable({ rows }: { rows: OrcamentoRow[] }) {
             { value: "Enviado", label: "Enviado" },
             { value: "Aprovado", label: "Aprovado" },
             { value: "Recusado", label: "Recusado" },
+            { value: "Cancelado", label: "Cancelado" },
           ],
         },
         {

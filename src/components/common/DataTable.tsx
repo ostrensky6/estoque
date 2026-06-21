@@ -13,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp, ChevronsUpDown, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronsUpDown, Rows3, Rows4, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,8 @@ type DataTableProps<TData> = {
   pageSize?: number;
 };
 
+const DENSITY_STORAGE_KEY = "kontrol:datatable:density";
+
 const fuzzyTextFilter: FilterFn<unknown> = (row, columnId, filterValue) =>
   String(row.getValue(columnId) ?? "")
     .toLowerCase()
@@ -93,6 +95,29 @@ export function DataTable<TData>({
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const [density, setDensity] = React.useState<"comfortable" | "compact">("comfortable");
+
+  React.useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(DENSITY_STORAGE_KEY);
+      if (saved === "compact" || saved === "comfortable") {
+        setDensity(saved);
+      }
+    } catch {
+      // Preferimos o estado inicial deterministico se a preferencia local falhar.
+    }
+  }, []);
+
+  function atualizarDensity(next: "comfortable" | "compact") {
+    setDensity(next);
+    try {
+      window.localStorage.setItem(DENSITY_STORAGE_KEY, next);
+    } catch {
+      // Preferencia visual opcional.
+    }
+  }
+
+  const compact = density === "compact";
 
   const globalFilterFn = React.useCallback<FilterFn<TData>>(
     (row, _columnId, filterValue) => {
@@ -172,10 +197,22 @@ export function DataTable<TData>({
         <Badge variant={temFiltro ? "secondary" : "muted"} className="ml-auto">
           {temFiltro ? `${totalFiltrado} de ${data.length}` : `${data.length} registro(s)`}
         </Badge>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => atualizarDensity(compact ? "comfortable" : "compact")}
+          aria-label={compact ? "Usar densidade confortavel" : "Usar densidade compacta"}
+          title={compact ? "Densidade confortavel" : "Densidade compacta"}
+          className="h-8 gap-1.5 px-2 text-xs"
+        >
+          {compact ? <Rows4 className="h-3.5 w-3.5" /> : <Rows3 className="h-3.5 w-3.5" />}
+          <span className="hidden sm:inline">{compact ? "Confortavel" : "Compacta"}</span>
+        </Button>
       </div>
 
       <div className="mt-4 hidden overflow-x-auto rounded-lg border border-border bg-card shadow-sm md:block">
-        <Table>
+        <Table className={cn(compact && "text-xs")}>
           <TableHeader className="bg-muted/60">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent">
@@ -188,6 +225,7 @@ export function DataTable<TData>({
                       key={header.id}
                       scope="col"
                       className={cn(
+                        compact && "h-8 px-3",
                         align === "right" && "text-right",
                         align === "center" && "text-center",
                         meta?.className,
@@ -231,6 +269,7 @@ export function DataTable<TData>({
                     <TableCell
                       key={cell.id}
                       className={cn(
+                        compact && "px-3 py-1.5",
                         meta?.align === "right" && "text-right tabular-nums",
                         meta?.align === "center" && "text-center",
                         meta?.className,
@@ -265,7 +304,10 @@ export function DataTable<TData>({
 
       <div className="mt-4 grid gap-3 md:hidden">
         {table.getRowModel().rows.map((row) => (
-          <div key={row.id} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+          <div
+            key={row.id}
+            className={cn("rounded-lg border border-border bg-card shadow-sm", compact ? "p-3 text-sm" : "p-4")}
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="font-medium">{getMobileTitle?.(row.original) ?? row.id}</div>

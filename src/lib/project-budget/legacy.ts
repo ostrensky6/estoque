@@ -24,6 +24,14 @@ export type ProjetoBudgetRates = {
   lucro?: number | null;
 };
 
+const PARAMETROS_ECONOMICOS_PROJETO = [
+  { key: "impostos_legacy", label: "Impostos" },
+  { key: "incubacao", label: "Incubação" },
+  { key: "reserva", label: "Reserva" },
+  { key: "investimentos", label: "Investimentos" },
+  { key: "lucro", label: "Lucro" },
+] as const;
+
 export function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
@@ -34,6 +42,36 @@ export function itemProjetoTotal(item: ProjetoBudgetItem) {
     return roundMoney(item.meses_selecionados.length * unitario);
   }
   return roundMoney(Number(item.quantidade ?? 0) * unitario);
+}
+
+export function validarParametrosProjetoGrossUp(rates: ProjetoBudgetRates) {
+  const invalidos = PARAMETROS_ECONOMICOS_PROJETO.filter((param) => Number(rates[param.key] ?? 0) < 0);
+  if (invalidos.length > 0) {
+    return {
+      ok: false,
+      soma: 0,
+      message: "Parâmetros econômicos não podem ser negativos.",
+    };
+  }
+
+  const soma = PARAMETROS_ECONOMICOS_PROJETO.reduce(
+    (acc, param) => acc + Math.max(0, Number(rates[param.key] ?? 0)),
+    0,
+  );
+
+  if (soma >= 100) {
+    return {
+      ok: false,
+      soma,
+      message: "A soma dos parâmetros econômicos deve ser menor que 100%.",
+    };
+  }
+
+  return {
+    ok: true,
+    soma,
+    message: "",
+  };
 }
 
 export function calcularOrcamentoProjetoLegacy(
@@ -51,13 +89,7 @@ export function calcularOrcamentoProjetoLegacy(
     };
   });
   const subtotal = roundMoney(summaries.reduce((acc, item) => acc + item.total, 0));
-  const economicParameters = [
-    { key: "impostos_legacy", label: "Impostos" },
-    { key: "incubacao", label: "Incubação" },
-    { key: "reserva", label: "Reserva" },
-    { key: "investimentos", label: "Investimentos" },
-    { key: "lucro", label: "Lucro" },
-  ] as const;
+  const economicParameters = PARAMETROS_ECONOMICOS_PROJETO;
   const rateSum =
     economicParameters.reduce((acc, param) => acc + Math.max(0, Number(rates[param.key] ?? 0)), 0) /
     100;

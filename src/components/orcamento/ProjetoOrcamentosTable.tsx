@@ -73,7 +73,9 @@ function StatusBadge({ status, label }: { status: string; label: string }) {
         ? "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
         : status === "aprovado"
           ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
-          : "bg-secondary text-secondary-foreground";
+          : status === "cancelado"
+            ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+            : "bg-secondary text-secondary-foreground";
   return <Badge className={className}>{label}</Badge>;
 }
 

@@ -1,0 +1,97 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+import { createClient } from "@/lib/supabase/server";
+
+const historicoPath = "/orcamento/historico";
+
+export async function atualizarOrcamentosFinaisVencidos() {
+  const supabase = await createClient();
+  await supabase
+    .from("orcamento_final_versoes")
+    .update({ status: "vencido" })
+    .eq("status", "emitido")
+    .lt("valido_ate", new Date().toISOString().slice(0, 10));
+}
+
+export async function cancelarVersaoFinal(formData: FormData) {
+  const id = Number(formData.get("versao_id"));
+  if (!id) return;
+  const motivo = String(formData.get("motivo") ?? "").trim() || "Cancelamento operacional pelo histórico.";
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("orcamento_final_versoes")
+    .update({
+      status: "cancelado",
+      cancelado_em: new Date().toISOString(),
+      cancelado_motivo: motivo,
+    })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath(historicoPath);
+  revalidatePath("/orcamento");
+}
+
+export async function duplicarVersaoFinal(formData: FormData) {
+  const id = Number(formData.get("versao_id"));
+  if (!id) return;
+  const validadeDias = Number(formData.get("validade_dias")) || 30;
+  const supabase = await createClient();
+  const { data: original, error: originalError } = await supabase
+    .from("orcamento_final_versoes")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (originalError) throw new Error(originalError.message);
+  if (!original) return;
+
+  const { data: ultima } = await supabase
+    .from("orcamento_final_versoes")
+    .select("versao")
+    .eq("demanda_id", original.demanda_id)
+    .order("versao", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const novaVersao = Number(ultima?.versao ?? 0) + 1;
+  const numeroBase = String(original.numero ?? `OF-${original.demanda_id}`);
+  const numero = `${numeroBase.replace(/-v\d+$/i, "")}-v${novaVersao}`;
+  const validoAte = new Date(Date.now() + validadeDias * 86400000).toISOString().slice(0, 10);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  await supabase
+    .from("orcamento_final_versoes")
+    .update({ status: "substituido" })
+    .eq("demanda_id", original.demanda_id)
+    .eq("status", "emitido");
+
+  const { data: nova, error } = await supabase
+    .from("orcamento_final_versoes")
+    .insert({
+      demanda_id: original.demanda_id,
+      versao: novaVersao,
+      numero,
+      validade_dias: validadeDias,
+      valido_ate: validoAte,
+      total_laboratorio_custo: original.total_laboratorio_custo,
+      total_laboratorio_preco: original.total_laboratorio_preco,
+      total_projeto_custo: original.total_projeto_custo,
+      total_projeto_final: original.total_projeto_final,
+      total_final: original.total_final,
+      snapshot: original.snapshot,
+      criado_por: user?.id ?? null,
+      duplicada_de_id: original.id,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  revalidatePath(historicoPath);
+  revalidatePath("/orcamento");
+  revalidatePath(`/orcamento/demandas/${original.demanda_id}`);
+  redirect(`/orcamento/final/${nova?.id ?? id}`);
+}

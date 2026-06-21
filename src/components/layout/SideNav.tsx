@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
   ArchiveRestore,
+  Bell,
   Boxes,
   Building2,
   Calculator,
@@ -41,6 +42,7 @@ export type Accent = "brand" | "blue" | "amber" | "violet" | "slate";
 const ICONS = {
   Activity,
   ArchiveRestore,
+  Bell,
   Boxes,
   Building2,
   Calculator,
@@ -79,19 +81,94 @@ export type NavLink = {
 };
 export type NavGroup = { title: string; accent: Accent; icon?: NavIcon; links: NavLink[] };
 
+const OPEN_GROUPS_STORAGE_KEY = "kontrol:sidenav:open-groups";
+
 export function SideNav({
   groups,
   onNavigate,
+  collapsed = false,
 }: {
   groups: NavGroup[];
   onNavigate?: () => void;
+  collapsed?: boolean;
 }) {
   const pathname = usePathname();
-  const [openGroup, setOpenGroup] = useState<string | null>(null);
-  const [collapsedActiveGroup, setCollapsedActiveGroup] = useState<string | null>(null);
 
   function estaAtivo(href: string) {
     return pathname === href || pathname.startsWith(href + "/");
+  }
+
+  const activeGroups = groups.filter((g) => g.links.some((l) => estaAtivo(l.href))).map((g) => g.title);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(activeGroups));
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(OPEN_GROUPS_STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (!Array.isArray(saved)) return;
+
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOpenGroups(new Set(saved.filter((title) => typeof title === "string")));
+    } catch {
+      // Preferimos o estado inicial deterministico se a preferencia local falhar.
+    }
+  }, []);
+
+  function alternarGrupo(title: string) {
+    setOpenGroups((current) => {
+      const next = new Set(current);
+      if (next.has(title)) {
+        next.delete(title);
+      } else {
+        next.add(title);
+      }
+      try {
+        window.localStorage.setItem(OPEN_GROUPS_STORAGE_KEY, JSON.stringify([...next]));
+      } catch {
+        // Persistencia da navegacao e um conforto, nao um requisito funcional.
+      }
+      return next;
+    });
+  }
+
+  if (collapsed) {
+    return (
+      <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Navegacao compacta">
+        <ul className="space-y-1">
+          {groups.flatMap((g) =>
+            g.links.map((l) => {
+              const ativo = estaAtivo(l.href);
+              const LinkIcone = l.icon ? ICONS[l.icon] : g.icon ? ICONS[g.icon] : Activity;
+              return (
+                <li key={`${g.title}:${l.href}:${l.label}`}>
+                  <Link
+                    href={l.href}
+                    onClick={onNavigate}
+                    title={l.label}
+                    aria-label={l.label}
+                    className={cn(
+                      "relative flex h-10 w-10 items-center justify-center rounded-md transition-colors",
+                      ativo
+                        ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-200"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100",
+                    )}
+                  >
+                    {ativo && (
+                      <span
+                        className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-brand-500"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <LinkIcone className="h-4 w-4" />
+                  </Link>
+                </li>
+              );
+            }),
+          )}
+        </ul>
+      </nav>
+    );
   }
 
   return (
@@ -99,9 +176,7 @@ export function SideNav({
       {groups.map((g) => {
         const GrupoIcone = g.icon ? ICONS[g.icon] : Activity;
         const temLinkAtivo = g.links.some((l) => estaAtivo(l.href));
-        const aberto =
-          openGroup === g.title ||
-          (openGroup === null && temLinkAtivo && collapsedActiveGroup !== g.title);
+        const aberto = openGroups.has(g.title) || temLinkAtivo;
         return (
           <section
             key={g.title}
@@ -109,16 +184,7 @@ export function SideNav({
           >
             <button
               type="button"
-              onClick={() => {
-                if (aberto) {
-                  setOpenGroup(null);
-                  setCollapsedActiveGroup(temLinkAtivo ? g.title : null);
-                  return;
-                }
-
-                setOpenGroup(g.title);
-                setCollapsedActiveGroup(null);
-              }}
+              onClick={() => alternarGrupo(g.title)}
               aria-expanded={aberto}
               className={cn(
                 "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-zinc-900",

@@ -39,8 +39,13 @@ const DEFAULTS: Record<ParamKey, number> = {
 
 export default async function ParametrosEconomicosPage() {
   const supabase = await createClient();
-  const [{ data: parametros }, { breakdowns, params }] = await Promise.all([
+  const [{ data: parametros }, { data: versoes }, { breakdowns, params }] = await Promise.all([
     supabase.from("parametros").select("chave, valor, atualizado_em"),
+    supabase
+      .from("parametros_economicos_versoes")
+      .select("id, escopo, orcamento_projeto_id, versao, origem, criado_em")
+      .order("criado_em", { ascending: false })
+      .limit(8),
     calcularTodas(),
   ]);
 
@@ -139,6 +144,31 @@ export default async function ParametrosEconomicosPage() {
           </div>
         </section>
 
+        <section className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className={card}>
+            <h2 className="text-sm font-semibold">Laboratório global</h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              Aplica dias úteis, margem, impostos, taxas e fundos ao preço das análises laboratoriais.
+              Cada salvamento cria uma versão de parâmetros para auditoria.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <InfoParametro label="Modelo" value="markup sobre custo" />
+              <InfoParametro label="Snapshot" value="parametros_economicos_versoes" />
+            </div>
+          </div>
+          <div className={card}>
+            <h2 className="text-sm font-semibold">Projeto</h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              Parâmetros de projeto ficam no orçamento de projeto e usam gross-up de impostos,
+              incubação, reserva, investimentos e lucro. A soma precisa ficar abaixo de 100%.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <InfoParametro label="Modelo" value="gross-up" />
+              <InfoParametro label="Origem visual" value="referência externa pendente" />
+            </div>
+          </div>
+        </section>
+
         {ultimaAtualizacao && (
           <p className="mt-3 text-xs text-zinc-400">
             Última atualização:{" "}
@@ -158,6 +188,33 @@ export default async function ParametrosEconomicosPage() {
             </p>
           </div>
           <ParametrosEconomicosForm valores={valores} />
+        </section>
+
+        <section className="mt-8 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+            <h2 className="text-sm font-semibold">Versões de parâmetros</h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Snapshots criados ao salvar parâmetros globais ou parâmetros econômicos de projeto.
+            </p>
+          </div>
+          <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            {(versoes ?? []).map((versao) => (
+              <div key={versao.id} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-5">
+                <span className="font-medium">
+                  {versao.escopo === "laboratorio_global" ? "Laboratório global" : "Projeto"}
+                </span>
+                <span>v{versao.versao}</span>
+                <span>{versao.orcamento_projeto_id ? `Projeto #${versao.orcamento_projeto_id}` : "Global"}</span>
+                <span>{versao.origem}</span>
+                <span className="text-zinc-500 md:text-right">{formatDateTime(versao.criado_em)}</span>
+              </div>
+            ))}
+            {(versoes ?? []).length === 0 && (
+              <p className="px-4 py-5 text-sm text-zinc-400">
+                Nenhuma versão registrada ainda. O próximo salvamento criará o primeiro snapshot.
+              </p>
+            )}
+          </div>
         </section>
 
         <section className="mt-8 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -197,6 +254,15 @@ export default async function ParametrosEconomicosPage() {
           </table>
         </section>
       </main>
+    </div>
+  );
+}
+
+function InfoParametro({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md bg-zinc-50 p-2 dark:bg-zinc-950/50">
+      <p className="text-zinc-400">{label}</p>
+      <p className="mt-1 font-medium text-zinc-700 dark:text-zinc-200">{value}</p>
     </div>
   );
 }

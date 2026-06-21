@@ -634,6 +634,15 @@ export async function receberItemPedidoInterno(_prev: FormState, formData: FormD
   if (!insumoId) {
     return { ok: false, message: "Vincule o item a um insumo (ou crie um) para lançar em estoque." };
   }
+  const { data: insumoRecebido } = await supabase
+    .from("insumos")
+    .select("categoria_compra")
+    .eq("id", insumoId)
+    .single();
+  const validade = texto(formData, "validade");
+  if (insumoRecebido?.categoria_compra === "critico" && !validade) {
+    return { ok: false, message: "Validade é obrigatória para receber insumo crítico." };
+  }
 
   const quantidade = numero(formData, "quantidade") ?? Number(item.quantidade);
   if (!(quantidade > 0)) return { ok: false, message: "Quantidade recebida deve ser maior que zero." };
@@ -643,7 +652,7 @@ export async function receberItemPedidoInterno(_prev: FormState, formData: FormD
   const { data: loteId, error: loteErr } = await supabase.rpc("receber_lote", {
     p_insumo_id: insumoId,
     p_quantidade: quantidade,
-    p_validade: texto(formData, "validade") ?? undefined,
+    p_validade: validade ?? undefined,
     p_custo: custo ?? undefined,
     p_codigo: texto(formData, "codigo") ?? undefined,
     p_fornecedor: fornecedor ?? undefined,
@@ -657,9 +666,14 @@ export async function receberItemPedidoInterno(_prev: FormState, formData: FormD
     .update({
       insumo_id: insumoId,
       lote_id: loteId as number,
+      quantidade_recebida: quantidade,
+      divergencia_recebimento:
+        quantidade !== Number(item.quantidade)
+          ? `Pedido: ${item.quantidade}; recebido: ${quantidade}`
+          : null,
       recebido_em: new Date().toISOString(),
       recebido_por: responsavel,
-    })
+    } as never)
     .eq("id", itemId);
   if (error) return { ok: false, message: error.message };
 

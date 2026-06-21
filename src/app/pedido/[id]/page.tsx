@@ -15,6 +15,7 @@ import { PedidoInternoCabecalhoAcoes } from "@/components/pedido/PedidoInternoCa
 import { ItemRecebimentoCell } from "@/components/pedido/ItemRecebimentoCell";
 import { PedidoItemEditar } from "@/components/pedido/PedidoItemEditar";
 import { Timeline } from "@/components/common/Timeline";
+import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { listarEventos } from "@/lib/actions/eventos";
 import {
   PEDIDO_INTERNO_ETAPA_RECEBIDA,
@@ -194,7 +195,7 @@ export default async function PedidoInternoDetalhe({
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-6xl px-6 py-10">
-        <Link href="/pedido" className="text-xs text-zinc-500 hover:underline">← Pedido</Link>
+        <Breadcrumbs items={[{ label: "Pedidos", href: "/pedido" }, { label: pedidoInternoNumero(pedido.id) }]} />
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="font-mono text-xs font-medium text-zinc-400">{pedidoInternoNumero(pedido.id)}</p>

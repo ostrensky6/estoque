@@ -37,12 +37,18 @@ export async function gerarRascunhosReposicao(_prev: FormState): Promise<FormSta
   const { data, error } = await supabase.rpc("gerar_reposicao_automatica");
   if (error) return { ok: false, message: error.message };
 
-  const resultado = data as { pedidos_criados?: number; itens_criados?: number } | null;
+  const resultado = data as {
+    pedidos_criados?: number;
+    itens_criados?: number;
+    notificacoes_criadas?: number;
+  } | null;
   revalidatePath("/compras");
   revalidatePath("/estoque");
+  revalidatePath("/notificacoes");
+  revalidatePath("/");
   return {
     ok: true,
-    message: `${resultado?.pedidos_criados ?? 0} rascunho(s), ${resultado?.itens_criados ?? 0} item(ns) de reposição gerados.`,
+    message: `${resultado?.pedidos_criados ?? 0} rascunho(s), ${resultado?.itens_criados ?? 0} item(ns) de reposição e ${resultado?.notificacoes_criadas ?? 0} notificação(ões) gerados.`,
   };
 }
 
@@ -213,14 +219,22 @@ export async function receberItemPedido(formData: FormData) {
   const item_id = Number(formData.get("item_id"));
   const validade = (formData.get("validade") as string) || null;
   const codigo = (formData.get("codigo") as string) || null;
+  const quantidadeRecebida = formData.get("quantidade_recebida")
+    ? Number(formData.get("quantidade_recebida"))
+    : null;
   const supabase = await createClient();
 
   const { data: item } = await supabase
     .from("pedidos_compra_itens")
-    .select("insumo_id, quantidade, custo_unitario_estimado, pedido_id, lote_id, pedidos_compra(projeto, fornecedores(nome))")
+    .select("insumo_id, quantidade, custo_unitario_estimado, pedido_id, lote_id, insumos(categoria_compra), pedidos_compra(projeto, fornecedores(nome))")
     .eq("id", item_id)
     .single();
   if (!item || item.lote_id) return;
+  const quantidade = quantidadeRecebida && quantidadeRecebida > 0 ? quantidadeRecebida : Number(item.quantidade);
+  const insumo = item.insumos as { categoria_compra: string | null } | null;
+  if (insumo?.categoria_compra === "critico" && !validade) {
+    throw new Error("Validade é obrigatória para receber insumo crítico.");
+  }
 
   const ped = item.pedidos_compra as unknown as {
     projeto: string | null;
@@ -231,7 +245,7 @@ export async function receberItemPedido(formData: FormData) {
 
   const { data: loteId, error } = await supabase.rpc("receber_lote", {
     p_insumo_id: item.insumo_id,
-    p_quantidade: item.quantidade,
+    p_quantidade: quantidade,
     p_validade: validade ?? undefined,
     p_custo: item.custo_unitario_estimado ?? undefined,
     p_codigo: codigo ?? undefined,
@@ -240,7 +254,17 @@ export async function receberItemPedido(formData: FormData) {
   });
   if (error) throw new Error(error.message);
 
-  await supabase.from("pedidos_compra_itens").update({ lote_id: loteId }).eq("id", item_id);
+  await supabase
+    .from("pedidos_compra_itens")
+    .update({
+      lote_id: loteId,
+      quantidade_recebida: quantidade,
+      divergencia_recebimento:
+        quantidade !== Number(item.quantidade)
+          ? `Pedido: ${item.quantidade}; recebido: ${quantidade}`
+          : null,
+    } as never)
+    .eq("id", item_id);
 
   // se todos os itens foram recebidos, marca o pedido como recebido
   const { data: pendentes } = await supabase
