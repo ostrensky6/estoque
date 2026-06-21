@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import {
@@ -165,13 +166,71 @@ export default async function DemandaDetalhe({
     moduloProjeto.status === "preenchido" ? "revisar custos de projeto" : null,
   ].filter(Boolean) as string[];
   const podeConsolidar = modulosPendentes.length === 0;
-  const etapas = [
-    etapa("1. Demanda", completudeDemanda.completa, completudeDemanda.pendencias),
-    etapaModulo("2. Custos laboratoriais", moduloAnalises),
-    etapaModulo("2. Custos de projeto", moduloProjeto),
-    etapa("3. Parametros economicos", podeConsolidar, modulosPendentes),
-    etapa("4. Orcamento final", orcamentoFinal.pronto, orcamentoFinal.pendencias.length > 0 ? orcamentoFinal.pendencias : ["pronto para emissão formal"]),
+  const tabs = [
+    { id: "demanda", label: "Demanda", status: completudeDemanda.completa ? "Completa" : `${completudeDemanda.faltante}% faltante`, aplicavel: true },
+    { id: "laboratorio", label: "Custos laboratoriais", status: moduloAnalises.label, aplicavel: exigeAnalises },
+    { id: "projeto", label: "Custos de projeto", status: moduloProjeto.label, aplicavel: exigeProjeto },
+    { id: "parametros", label: "Parametros economicos", status: podeConsolidar ? "Liberado" : "Bloqueado", aplicavel: exigeProjeto },
+    { id: "final", label: "Orcamento final", status: orcamentoFinal.pronto ? "Pronto" : "Bloqueado", aplicavel: true },
+    { id: "historico", label: "Historico e auditoria", status: `${versoesFinais?.length ?? 0} versao(oes)`, aplicavel: true },
   ];
+  const pendenciasTabela = [
+    {
+      etapa: "Demanda",
+      obrigatoria: true,
+      status: completudeDemanda.completa ? "Completo" : "Pendente",
+      pendencia: completudeDemanda.completa ? "concluida" : completudeDemanda.pendencias.join("; "),
+      acao: "#demanda",
+    },
+    {
+      etapa: "Laboratorio",
+      obrigatoria: exigeAnalises,
+      status: moduloAnalises.label,
+      pendencia: moduloAnalises.pendencias.join("; "),
+      acao: "#laboratorio",
+    },
+    {
+      etapa: "Projeto",
+      obrigatoria: exigeProjeto,
+      status: moduloProjeto.label,
+      pendencia: moduloProjeto.pendencias.join("; "),
+      acao: "#projeto",
+    },
+    {
+      etapa: "Parametros",
+      obrigatoria: exigeProjeto,
+      status: podeConsolidar ? "Liberado" : "Bloqueado",
+      pendencia: podeConsolidar ? "custos revisados" : modulosPendentes.join("; "),
+      acao: "#parametros",
+    },
+    {
+      etapa: "Final",
+      obrigatoria: true,
+      status: orcamentoFinal.pronto ? "Pronto" : "Bloqueado",
+      pendencia: orcamentoFinal.pendencias.length > 0 ? orcamentoFinal.pendencias.join("; ") : "pronto para emissao",
+      acao: "#final",
+    },
+  ];
+  const totalAnalisesCusto = orcamentosAnalises.reduce(
+    (total, orcamento) =>
+      total + (orcamento.orcamento_itens ?? []).reduce((subtotal, item) => subtotal + Number(item.custo_unitario ?? 0) * Number(item.n_amostras ?? 0), 0),
+    0,
+  );
+  const totalAnalisesPreco = orcamentosAnalises.reduce(
+    (total, orcamento) =>
+      total + (orcamento.orcamento_itens ?? []).reduce((subtotal, item) => subtotal + Number(item.preco_unitario ?? 0) * Number(item.n_amostras ?? 0), 0),
+    0,
+  );
+  const totalProjetoCustos = orcamentosProjeto.reduce(
+    (total, orcamento) =>
+      total + (orcamento.orcamento_projeto_custos ?? []).reduce((subtotal, item) => subtotal + Number(item.custo_unitario ?? 0) * Number(item.quantidade ?? 0), 0),
+    0,
+  );
+  const totalProjetoAnalises = orcamentosProjeto.reduce(
+    (total, orcamento) =>
+      total + (orcamento.orcamento_projeto_analises ?? []).reduce((subtotal, item) => subtotal + Number(item.custo_unitario ?? 0) * Number(item.n_amostras ?? 0), 0),
+    0,
+  );
 
   const inp =
     "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
@@ -226,7 +285,28 @@ export default async function DemandaDetalhe({
           </div>
         </section>
 
-        <section className="mt-6 grid gap-4 lg:grid-cols-3">
+        <nav className="sticky top-0 z-10 mt-4 overflow-x-auto border-y border-zinc-200 bg-white/95 py-2 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+          <div className="flex min-w-max gap-2 px-2">
+            {tabs.map((tab) => (
+              <a
+                key={tab.id}
+                href={`#${tab.id}`}
+                className={`rounded-md border px-3 py-2 text-left text-xs transition hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+                  tab.aplicavel
+                    ? "border-zinc-300 text-zinc-800 dark:border-zinc-700 dark:text-zinc-100"
+                    : "border-zinc-200 text-zinc-400 dark:border-zinc-800"
+                }`}
+              >
+                <span className="block font-semibold">{tab.label}</span>
+                <span className="mt-0.5 block text-[10px] uppercase tracking-wide">
+                  {tab.aplicavel ? tab.status : "Nao se aplica"}
+                </span>
+              </a>
+            ))}
+          </div>
+        </nav>
+
+        <section id="acoes" className="mt-6 scroll-mt-20 grid gap-4 lg:grid-cols-3">
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <h2 className="text-sm font-semibold">Próximos módulos</h2>
             <p className="mt-1 text-xs leading-5 text-zinc-500">
@@ -303,33 +383,168 @@ export default async function DemandaDetalhe({
           </div>
         </section>
 
-        <section className="mt-6 grid gap-4 md:grid-cols-2">
-          <ModuloCard titulo="Custos laboratoriais" modulo={moduloAnalises} itens={itensAnalises} />
-          <ModuloCard titulo="Custos de projeto" modulo={moduloProjeto} itens={itensProjeto} />
+        <section id="laboratorio" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Custos laboratoriais</h2>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                Tabela operacional dos orçamentos de análises gerados a partir desta demanda.
+              </p>
+            </div>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusClasse(moduloAnalises.status)}`}>
+              {exigeAnalises ? `${moduloAnalises.label} · ${moduloAnalises.faltante}% faltante` : "Nao se aplica"}
+            </span>
+          </div>
+
+          {!exigeAnalises ? (
+            <div className="mt-4 rounded-md bg-zinc-50 px-3 py-4 text-sm text-zinc-500 dark:bg-zinc-950/50">
+              Esta modalidade não exige orçamento laboratorial.
+            </div>
+          ) : (
+            <>
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <Info titulo="Orçamentos" texto={String(orcamentosAnalises.length)} />
+                <Info titulo="Itens laboratoriais" texto={String(itensAnalises)} />
+                <Info titulo="Custo recebido" texto={brl(totalAnalisesCusto)} />
+                <Info titulo="Preço recebido" texto={brl(totalAnalisesPreco)} />
+              </div>
+              <TabelaSimples
+                colunas={["Orçamento", "Status", "Data", "Itens", "Custo", "Preço", "Ação"]}
+                vazio="Nenhum orçamento laboratorial gerado."
+                linhas={orcamentosAnalises.map((orcamento) => {
+                  const custo = (orcamento.orcamento_itens ?? []).reduce(
+                    (total, item) => total + Number(item.custo_unitario ?? 0) * Number(item.n_amostras ?? 0),
+                    0,
+                  );
+                  const preco = (orcamento.orcamento_itens ?? []).reduce(
+                    (total, item) => total + Number(item.preco_unitario ?? 0) * Number(item.n_amostras ?? 0),
+                    0,
+                  );
+                  return [
+                    `#${orcamento.id}`,
+                    orcamento.status,
+                    orcamento.data_orcamento ?? "—",
+                    String(orcamento.orcamento_itens?.length ?? 0),
+                    brl(custo),
+                    brl(preco),
+                    <Link key={orcamento.id} href={`/orcamento/${orcamento.id}`} className="font-medium text-primary hover:underline">
+                      Abrir
+                    </Link>,
+                  ];
+                })}
+              />
+            </>
+          )}
+        </section>
+
+        <section id="projeto" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Custos de projeto</h2>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                Custos próprios, análises internas do projeto e justificativas de projeto sem custo.
+              </p>
+            </div>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusClasse(moduloProjeto.status)}`}>
+              {exigeProjeto ? `${moduloProjeto.label} · ${moduloProjeto.faltante}% faltante` : "Nao se aplica"}
+            </span>
+          </div>
+
+          {!exigeProjeto ? (
+            <div className="mt-4 rounded-md bg-zinc-50 px-3 py-4 text-sm text-zinc-500 dark:bg-zinc-950/50">
+              Esta modalidade não exige orçamento de projeto.
+            </div>
+          ) : (
+            <>
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <Info titulo="Orçamentos" texto={String(orcamentosProjeto.length)} />
+                <Info titulo="Itens/justificativas" texto={String(itensProjeto)} />
+                <Info titulo="Custos próprios" texto={brl(totalProjetoCustos)} />
+                <Info titulo="Análises no projeto" texto={brl(totalProjetoAnalises)} />
+              </div>
+              <TabelaSimples
+                colunas={["Projeto", "Status", "Data", "Custos", "Análises", "Justificativa", "Ação"]}
+                vazio="Nenhum orçamento de projeto gerado."
+                linhas={orcamentosProjeto.map((orcamento) => [
+                  orcamento.titulo || `#${orcamento.id}`,
+                  orcamento.status,
+                  orcamento.data_orcamento ?? "—",
+                  String(orcamento.orcamento_projeto_custos?.length ?? 0),
+                  String(orcamento.orcamento_projeto_analises?.length ?? 0),
+                  orcamento.projeto_sem_custo_justificativa ? "sim" : "não",
+                  <Link key={orcamento.id} href={`/orcamento/projetos/${orcamento.id}`} className="font-medium text-primary hover:underline">
+                    Abrir
+                  </Link>,
+                ])}
+              />
+            </>
+          )}
         </section>
 
         <section className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-semibold">Pendências por etapa</h2>
-          <div className="mt-3 grid gap-3 md:grid-cols-5">
-            {etapas.map((item) => (
-              <div key={item.titulo} className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold">{item.titulo}</p>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${item.inativa ? "bg-zinc-100 text-zinc-400 dark:bg-zinc-800" : item.faltante === 0 ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"}`}>
-                    {item.inativa ? "n/a" : `${item.faltante}% faltante`}
-                  </span>
-                </div>
-                <ul className="mt-2 space-y-1 text-xs leading-5 text-zinc-500">
-                  {item.pendencias.map((pendencia) => (
-                    <li key={pendencia}>{pendencia}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          <TabelaSimples
+            colunas={["Etapa", "Obrigatório?", "Status", "Pendência", "Ação"]}
+            vazio="Sem pendências operacionais."
+            linhas={pendenciasTabela.map((item) => [
+              item.etapa,
+              item.obrigatoria ? "Sim" : "Não",
+              item.status,
+              item.pendencia,
+              <a key={item.etapa} href={item.acao} className="font-medium text-primary hover:underline">
+                Ir para etapa
+              </a>,
+            ])}
+          />
         </section>
 
-        <section className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="parametros" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Parâmetros econômicos</h2>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                Leitura dos custos recebidos e dos percentuais usados na consolidação final.
+              </p>
+            </div>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${podeConsolidar ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"}`}>
+              {podeConsolidar ? "Liberado" : "Aguardando revisão"}
+            </span>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
+            <Info titulo="Custo laboratório" texto={brl(orcamentoFinal.totalLaboratorioCusto)} />
+            <Info titulo="Preço laboratório" texto={brl(orcamentoFinal.totalLaboratorioPreco)} />
+            <Info titulo="Custo projeto" texto={brl(orcamentoFinal.totalProjetoCusto)} />
+            <Info titulo="Markup projeto" texto={`${orcamentoFinal.markupProjeto.toLocaleString("pt-BR")}%`} />
+          </div>
+          {exigeProjeto ? (
+            <TabelaSimples
+              colunas={["Parâmetro", "Percentual", "Valor", "Origem"]}
+              vazio="Nenhum parâmetro aplicado."
+              linhas={orcamentoFinal.parametrosProjeto.map((parametro) => [
+                parametro.label,
+                `${parametro.nominalRate.toLocaleString("pt-BR")}%`,
+                brl(parametro.amount),
+                "Último orçamento de projeto vinculado",
+              ])}
+            />
+          ) : (
+            <div className="mt-4 rounded-md bg-zinc-50 px-3 py-4 text-sm text-zinc-500 dark:bg-zinc-950/50">
+              Parâmetros econômicos de projeto não se aplicam a esta modalidade.
+            </div>
+          )}
+          <TabelaSimples
+            colunas={["Campo", "Origem", "Regra", "Valor"]}
+            vazio="Sem fórmulas calculadas."
+            linhas={orcamentoFinal.origens.map((origem) => [
+              origem.titulo,
+              origem.origem,
+              origem.regra,
+              brl(origem.valor),
+            ])}
+          />
+        </section>
+
+        <section id="final" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Orçamento final</h2>
@@ -434,8 +649,18 @@ export default async function DemandaDetalhe({
           )}
         </section>
 
-        <section className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="text-sm font-semibold">Dados da demanda</h2>
+        <section id="demanda" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Dados da demanda</h2>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                Identificação, classificação e escopo inicial que liberam os módulos seguintes.
+              </p>
+            </div>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${completudeDemanda.completa ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"}`}>
+              {completudeDemanda.completa ? "Completa" : `${completudeDemanda.faltante}% faltante`}
+            </span>
+          </div>
           <form action={salvarDemanda} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input type="hidden" name="demanda_id" value={demandaId} />
             <div className="sm:col-span-2">
@@ -551,6 +776,55 @@ export default async function DemandaDetalhe({
             </div>
           </form>
         </section>
+
+        <section id="historico" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Histórico e auditoria</h2>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                Linha operacional com os registros preservados desta demanda e seus documentos derivados.
+              </p>
+            </div>
+            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+              {(versoesFinais?.length ?? 0) + orcamentosAnalises.length + orcamentosProjeto.length} registro(s)
+            </span>
+          </div>
+
+          <TabelaSimples
+            colunas={["Registro", "Tipo", "Status", "Quando", "Valor/Itens"]}
+            vazio="Nenhum registro operacional vinculado."
+            linhas={[
+              [
+                `Demanda #${demanda.id}`,
+                "Demanda",
+                demanda.status ?? "—",
+                formatDateTime(demanda.completude_atualizada_em),
+                completudeDemanda.completa ? "completa" : `${completudeDemanda.faltante}% faltante`,
+              ],
+              ...orcamentosAnalises.map((orcamento) => [
+                `Laboratório #${orcamento.id}`,
+                "Custos laboratoriais",
+                orcamento.status,
+                orcamento.data_orcamento ?? "—",
+                `${orcamento.orcamento_itens?.length ?? 0} item(ns)`,
+              ]),
+              ...orcamentosProjeto.map((orcamento) => [
+                orcamento.titulo || `Projeto #${orcamento.id}`,
+                "Custos de projeto",
+                orcamento.status,
+                orcamento.data_orcamento ?? "—",
+                `${(orcamento.orcamento_projeto_custos?.length ?? 0) + (orcamento.orcamento_projeto_analises?.length ?? 0)} item(ns)`,
+              ]),
+              ...(versoesFinais ?? []).map((versao) => [
+                versao.numero,
+                "Orçamento final",
+                versao.status,
+                formatDateTime(versao.criado_em),
+                brl(Number(versao.total_final ?? 0)),
+              ]),
+            ]}
+          />
+        </section>
       </main>
     </div>
   );
@@ -574,42 +848,6 @@ function Texto({ titulo, texto }: { titulo: string; texto: string | null }) {
   );
 }
 
-function ModuloCard({
-  titulo,
-  modulo,
-  itens,
-}: {
-  titulo: string;
-  modulo: ReturnType<typeof avaliarModuloOperacional>;
-  itens: number;
-}) {
-  const cls =
-    modulo.status === "revisado"
-      ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
-      : modulo.status === "preenchido"
-        ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
-        : modulo.status === "pendente"
-          ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
-          : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800";
-
-  return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold">{titulo}</h2>
-        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${cls}`}>
-          {modulo.label}
-        </span>
-      </div>
-      <p className="mt-2 text-xs text-zinc-500">{itens} item(ns) vinculados · {modulo.faltante}% faltante</p>
-      <ul className="mt-3 space-y-1 text-xs leading-5 text-zinc-500">
-        {modulo.pendencias.map((pendencia) => (
-          <li key={pendencia}>{pendencia}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 function ResumoFinal({ titulo, valor, destaque = false }: { titulo: string; valor: number; destaque?: boolean }) {
   return (
     <div className={`rounded-md border p-3 ${destaque ? "border-brand-200 bg-brand-50 dark:border-brand-900 dark:bg-brand-950/30" : "border-zinc-200 dark:border-zinc-800"}`}>
@@ -621,24 +859,60 @@ function ResumoFinal({ titulo, valor, destaque = false }: { titulo: string; valo
   );
 }
 
-function etapa(titulo: string, completa: boolean, pendencias: string[], inativa = false) {
-  return {
-    titulo,
-    faltante: inativa || completa ? 0 : 100,
-    inativa,
-    pendencias: inativa
-      ? ["não exigida para esta modalidade"]
-      : completa
-        ? ["concluída"]
-        : pendencias,
-  };
+function TabelaSimples({
+  colunas,
+  linhas,
+  vazio,
+}: {
+  colunas: string[];
+  linhas: ReactNode[][];
+  vazio: string;
+}) {
+  return (
+    <div className="mt-4 overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800">
+      <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
+        <thead className="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:bg-zinc-950/50">
+          <tr>
+            {colunas.map((coluna) => (
+              <th key={coluna} className="px-3 py-2">
+                {coluna}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          {linhas.length > 0 ? (
+            linhas.map((linha, index) => (
+              <tr key={index} className="align-top">
+                {linha.map((celula, celulaIndex) => (
+                  <td key={celulaIndex} className="max-w-sm px-3 py-2 text-zinc-700 dark:text-zinc-200">
+                    {celula}
+                  </td>
+                ))}
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={colunas.length} className="px-3 py-4 text-xs text-zinc-400">
+                {vazio}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
-function etapaModulo(titulo: string, modulo: ReturnType<typeof avaliarModuloOperacional>) {
-  return {
-    titulo,
-    faltante: modulo.faltante,
-    inativa: modulo.status === "nao_exigido",
-    pendencias: modulo.status === "revisado" ? ["concluída"] : modulo.pendencias,
-  };
+function statusClasse(status: ReturnType<typeof avaliarModuloOperacional>["status"]) {
+  if (status === "revisado") {
+    return "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300";
+  }
+  if (status === "preenchido") {
+    return "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300";
+  }
+  if (status === "pendente") {
+    return "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300";
+  }
+  return "bg-zinc-100 text-zinc-500 dark:bg-zinc-800";
 }

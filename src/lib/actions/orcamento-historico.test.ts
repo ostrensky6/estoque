@@ -11,9 +11,13 @@ const lt = vi.fn();
 const select = vi.fn();
 const single = vi.fn();
 const insert = vi.fn();
+const exigirPapelOrcamento = vi.fn();
+const registrarEvento = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect }));
+vi.mock("@/lib/orcamento/governanca", () => ({ exigirPapelOrcamento }));
+vi.mock("./eventos", () => ({ registrarEvento }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
     from,
@@ -34,6 +38,8 @@ describe("actions de historico de orcamentos", () => {
     select.mockReset();
     single.mockReset();
     insert.mockReset();
+    exigirPapelOrcamento.mockReset();
+    registrarEvento.mockReset();
     update.mockReturnValue({ eq });
     eq.mockReturnValue({ lt, eq, single });
     lt.mockResolvedValue({ error: null });

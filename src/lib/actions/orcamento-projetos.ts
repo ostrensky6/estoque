@@ -15,6 +15,7 @@ import {
 } from "@/lib/project-budget/travel";
 import { validarParametrosProjetoGrossUp } from "@/lib/project-budget/legacy";
 import { registrarVersaoParametrosEconomicos } from "@/lib/orcamento/parametros-versionamento";
+import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
 
 const pathLista = "/orcamento/projetos";
 
@@ -147,6 +148,11 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
   const projetoId = formData.get("projeto_id") ? Number(formData.get("projeto_id")) : null;
   const clienteId = formData.get("cliente_id") ? Number(formData.get("cliente_id")) : null;
   const cliente = await carregarCliente(clienteId);
+  const { data: anterior } = await supabase
+    .from("orcamento_projetos")
+    .select("status")
+    .eq("id", id)
+    .single();
 
   const patch = {
     projeto_id: projetoId,
@@ -172,8 +178,15 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
     projeto_sem_custo_justificativa: texto(formData, "projeto_sem_custo_justificativa"),
   };
 
+  if (anterior && anterior.status !== patch.status && ["enviado", "aprovado", "cancelado"].includes(patch.status)) {
+    await exigirPapelOrcamento("revisar_modulo");
+  }
+
   const { error } = await supabase.from("orcamento_projetos").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
+  if (anterior && anterior.status !== patch.status) {
+    await registrarEvento("orcamento_projeto", id, anterior.status, patch.status, "Status do orçamento de projeto alterado.");
+  }
   revalidatePath(`${pathLista}/${id}`);
   revalidatePath(pathLista);
 }
@@ -198,6 +211,7 @@ export async function salvarParametrosEconomicosProjeto(formData: FormData) {
     redirect(`${pathLista}/${id}?erro_parametros=${encodeURIComponent(validacao.message)}`);
   }
 
+  await exigirPapelOrcamento("editar_parametros");
   const supabase = await createClient();
   const { error } = await supabase.from("orcamento_projetos").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
@@ -207,6 +221,13 @@ export async function salvarParametrosEconomicosProjeto(formData: FormData) {
     parametros: patch,
     origem: "orcamento/projetos",
   });
+  await registrarEvento(
+    "orcamento_parametros",
+    id,
+    "projeto",
+    "alterado",
+    "Parâmetros econômicos do orçamento de projeto atualizados com nova versão.",
+  );
   revalidatePath(`${pathLista}/${id}`);
   revalidatePath(pathLista);
 }
@@ -557,8 +578,70 @@ export async function criarProjetoDeTemplate(formData: FormData) {
 export async function excluirTemplate(formData: FormData) {
   const templateId = numero(formData, "template_id");
   if (!templateId) return;
+  await exigirPapelOrcamento("gerir_modelos");
   const supabase = await createClient();
-  await supabase.from("orcamento_projeto_templates").delete().eq("id", templateId);
+  const { data: template } = await supabase
+    .from("orcamento_projeto_templates")
+    .select("nome, descricao")
+    .eq("id", templateId)
+    .single();
+  if (!template) return;
+  const nome = template.nome.startsWith("[ARQUIVADO]")
+    ? template.nome
+    : `[ARQUIVADO] ${template.nome}`;
+  const descricaoBase = template.descricao ?? "";
+  const descricao = descricaoBase.includes("Arquivado em ")
+    ? descricaoBase
+    : `${descricaoBase}${descricaoBase ? "\n" : ""}Arquivado em ${new Date().toISOString().slice(0, 10)}.`;
+  await supabase.from("orcamento_projeto_templates").update({ nome, descricao }).eq("id", templateId);
+  await registrarEvento("orcamento_template", templateId, "ativo", "arquivado", "Template arquivado sem remoção física.");
+  revalidatePath(pathLista);
+  revalidatePath("/orcamento/modelos");
+}
+
+export async function duplicarTemplateProjeto(formData: FormData) {
+  const templateId = numero(formData, "template_id");
+  if (!templateId) return;
+  await exigirPapelOrcamento("gerir_modelos");
+  const supabase = await createClient();
+  const { data: template } = await supabase
+    .from("orcamento_projeto_templates")
+    .select("nome, descricao, itens, parametros, origem")
+    .eq("id", templateId)
+    .single();
+  if (!template) return;
+  const nomeBase = template.nome.replace(/^\[ARQUIVADO\]\s*/i, "");
+  const { data: novo, error } = await supabase.from("orcamento_projeto_templates").insert({
+    nome: `${nomeBase} (cópia)`,
+    descricao: template.descricao,
+    itens: template.itens,
+    parametros: template.parametros,
+    origem: "kontrol",
+  }).select("id").single();
+  if (error) throw new Error(error.message);
+  await registrarEvento(
+    "orcamento_template",
+    Number(novo?.id ?? templateId),
+    String(templateId),
+    "duplicado",
+    `Template duplicado a partir de #${templateId}.`,
+  );
+  revalidatePath(pathLista);
+  revalidatePath("/orcamento/modelos");
+}
+
+export async function arquivarCatalogoProjetoItem(formData: FormData) {
+  const catalogoId = texto(formData, "catalogo_item_id");
+  if (!catalogoId) return;
+  await exigirPapelOrcamento("gerir_modelos");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("orcamento_projeto_catalogo")
+    .update({ ativo: false, atualizado_em: new Date().toISOString() })
+    .eq("id", catalogoId);
+  if (error) throw new Error(error.message);
+  await registrarEvento("orcamento_catalogo", Number(catalogoId) || 0, "ativo", "arquivado", "Item de catálogo arquivado sem remoção física.");
+  revalidatePath("/orcamento/modelos");
   revalidatePath(pathLista);
 }
 
@@ -640,6 +723,7 @@ export async function cancelarOrcamentoProjeto(formData: FormData) {
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
   const motivo = texto(formData, "motivo") || "Cancelamento operacional.";
+  await exigirPapelOrcamento("cancelar_documento");
   const supabase = await createClient();
   const { data: atual } = await supabase
     .from("orcamento_projetos")

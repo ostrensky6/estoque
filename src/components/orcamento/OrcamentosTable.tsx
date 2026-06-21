@@ -21,6 +21,10 @@ export type OrcamentoRow = {
   total: number;
   status: string;
   statusLabel: string;
+  etapaAtual?: string;
+  responsavel?: string;
+  atualizadoEm?: string;
+  proximaAcao?: string;
 };
 
 const columns: ColumnDef<OrcamentoRow, unknown>[] = [
@@ -40,6 +44,8 @@ const columns: ColumnDef<OrcamentoRow, unknown>[] = [
   },
   { accessorKey: "tipoLabel", header: "Tipo", filterFn: "equalsString" },
   { accessorKey: "projeto", header: "Projeto vinculado", filterFn: "equalsString" },
+  { accessorKey: "etapaAtual", header: "Etapa", filterFn: "equalsString" },
+  { accessorKey: "responsavel", header: "Responsável", filterFn: "equalsString" },
   {
     accessorKey: "analises",
     header: "Análises",
@@ -113,6 +119,22 @@ export function OrcamentosTable({ rows }: { rows: OrcamentoRow[] }) {
           ],
         },
         {
+          columnId: "etapaAtual",
+          label: "Etapa",
+          options: [...new Set(rows.map((row) => row.etapaAtual).filter(Boolean) as string[])].map((value) => ({
+            value,
+            label: value,
+          })),
+        },
+        {
+          columnId: "responsavel",
+          label: "Responsável",
+          options: [...new Set(rows.map((row) => row.responsavel).filter((value) => value && value !== "—") as string[])].map((value) => ({
+            value,
+            label: value,
+          })),
+        },
+        {
           columnId: "projeto",
           label: "Projeto",
           options: [...new Set(rows.map((row) => row.projeto).filter((value) => value !== "—"))].map((value) => ({
@@ -127,7 +149,7 @@ export function OrcamentosTable({ rows }: { rows: OrcamentoRow[] }) {
         </Link>
       )}
       getMobileDescription={(row) =>
-        `${row.cliente} · ${row.tipoLabel} · ${row.projeto} · ${brl(row.total)}`
+        `${row.cliente} · ${row.tipoLabel} · ${row.etapaAtual ?? "Orçamento"} · ${brl(row.total)}`
       }
       getMobileMeta={(row) => <StatusBadge status={row.status} label={row.statusLabel} />}
     />

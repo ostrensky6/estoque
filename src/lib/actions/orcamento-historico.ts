@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
+import { registrarEvento } from "./eventos";
 
 const historicoPath = "/orcamento/historico";
 
@@ -20,6 +22,7 @@ export async function cancelarVersaoFinal(formData: FormData) {
   const id = Number(formData.get("versao_id"));
   if (!id) return;
   const motivo = String(formData.get("motivo") ?? "").trim() || "Cancelamento operacional pelo histórico.";
+  await exigirPapelOrcamento("cancelar_documento");
   const supabase = await createClient();
   const { error } = await supabase
     .from("orcamento_final_versoes")
@@ -30,6 +33,7 @@ export async function cancelarVersaoFinal(formData: FormData) {
     })
     .eq("id", id);
   if (error) throw new Error(error.message);
+  await registrarEvento("orcamento_final", id, "emitido", "cancelado", motivo);
   revalidatePath(historicoPath);
   revalidatePath("/orcamento");
 }
@@ -37,6 +41,7 @@ export async function cancelarVersaoFinal(formData: FormData) {
 export async function duplicarVersaoFinal(formData: FormData) {
   const id = Number(formData.get("versao_id"));
   if (!id) return;
+  await exigirPapelOrcamento("duplicar_final");
   const validadeDias = Number(formData.get("validade_dias")) || 30;
   const supabase = await createClient();
   const { data: original, error: originalError } = await supabase
@@ -89,6 +94,13 @@ export async function duplicarVersaoFinal(formData: FormData) {
     .select("id")
     .single();
   if (error) throw new Error(error.message);
+  await registrarEvento(
+    "orcamento_final",
+    nova?.id ?? id,
+    String(id),
+    `v${novaVersao}`,
+    `Versão final duplicada a partir de #${id}.`,
+  );
 
   revalidatePath(historicoPath);
   revalidatePath("/orcamento");

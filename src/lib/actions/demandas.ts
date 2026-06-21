@@ -6,7 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
 import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
+import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
 import type { Json } from "@/lib/supabase/database.types";
+import { registrarEvento } from "./eventos";
 
 const listaPath = "/orcamento/demandas";
 
@@ -210,6 +212,7 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
 export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
   const id = Number(formData.get("demanda_id"));
   if (!id) return;
+  await exigirPapelOrcamento("emitir_final");
 
   const validadeDias = Number(formData.get("validade_dias")) || 30;
   const supabase = await createClient();
@@ -344,6 +347,13 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
     criado_por: user?.id ?? null,
   });
   if (error) throw new Error(error.message);
+  await registrarEvento(
+    "orcamento_final",
+    id,
+    ultimaVersao?.versao ? `v${ultimaVersao.versao}` : null,
+    `v${versao}`,
+    `Orçamento final ${numero} emitido para demanda #${id}.`,
+  );
 
   revalidatePath(listaPath);
   revalidatePath(`${listaPath}/${id}`);

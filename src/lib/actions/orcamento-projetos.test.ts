@@ -14,11 +14,13 @@ const from = vi.fn();
 const createClient = vi.fn();
 const registrarEvento = vi.fn();
 const registrarVersaoParametrosEconomicos = vi.fn();
+const exigirPapelOrcamento = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect }));
 vi.mock("./eventos", () => ({ registrarEvento }));
 vi.mock("@/lib/orcamento/parametros-versionamento", () => ({ registrarVersaoParametrosEconomicos }));
+vi.mock("@/lib/orcamento/governanca", () => ({ exigirPapelOrcamento }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient,
 }));
@@ -37,6 +39,7 @@ describe("actions de orcamento de projetos", () => {
     createClient.mockReset();
     registrarEvento.mockReset();
     registrarVersaoParametrosEconomicos.mockReset();
+    exigirPapelOrcamento.mockReset();
     eq.mockResolvedValue({ error: null });
     select.mockReturnValue({ eq });
     single.mockResolvedValue({ data: { status: "rascunho" }, error: null });
@@ -217,5 +220,21 @@ describe("actions de orcamento de projetos", () => {
     );
     expect(revalidatePath).toHaveBeenCalledWith("/orcamento/projetos/77");
     expect(revalidatePath).toHaveBeenCalledWith("/orcamento/projetos");
+  });
+
+  it("arquiva template sem apagar o registro", async () => {
+    const { excluirTemplate } = await import("./orcamento-projetos");
+    const formData = new FormData();
+    formData.set("template_id", "12");
+    single.mockResolvedValue({ data: { nome: "Monitoramento padrão", descricao: "Base recorrente" }, error: null });
+
+    await excluirTemplate(formData);
+
+    expect(deleteRow).not.toHaveBeenCalled();
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      nome: "[ARQUIVADO] Monitoramento padrão",
+    }));
+    expect(eq).toHaveBeenCalledWith("id", 12);
+    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/modelos");
   });
 });

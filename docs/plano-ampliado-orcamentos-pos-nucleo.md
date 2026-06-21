@@ -16,16 +16,16 @@ governanca mais fina.
 
 | Fase | Tema | Objetivo | Faltante estimado |
 | --- | --- | --- | ---: |
-| 8 | Arquitetura de navegacao | Separar subareas do menu Orcamentos e reduzir ambiguidade operacional | 80% |
-| 9 | Demanda em abas | Transformar a demanda em cockpit por etapas, com campos e tabelas especificas | 70% |
-| 10 | Custos laboratoriais detalhados | Expandir a tela laboratorial para composicao tecnica por insumo, equipamento, mao de obra e terceiros | 65% |
-| 11 | Custos de projeto detalhados | Criar visao por rubrica, etapa, atividade, entrega e periodo, com edicao organizada | 55% |
-| 12 | Parametros economicos avancados | Mostrar impacto, formula, versoes, justificativa e comparacao de parametros | 60% |
-| 13 | Orcamento final institucional | Refinar documento final, visual externo e pacote de exportacao/aprovacao | 60% |
-| 14 | Historico avancado e comparacao | Filtros, comparacao lado a lado, auditoria visual e exportacao historica | 55% |
-| 15 | Modelos e catalogos | Area propria para templates, catalogo institucional e origem do app antigo | 50% |
-| 16 | Dashboard de funil | Indicadores de demandas, custos, revisao, emissao, aprovacao e vencimento | 75% |
-| 17 | Governanca e permissoes finas | Perfis, aprovacao tecnica, auditoria por campo e trilhas de recalculo | 65% |
+| 8 | Arquitetura de navegacao | Separar subareas do menu Orcamentos e reduzir ambiguidade operacional | 0% |
+| 9 | Demanda em abas | Transformar a demanda em cockpit por etapas, com campos e tabelas especificas | 0% |
+| 10 | Custos laboratoriais detalhados | Expandir a tela laboratorial para composicao tecnica por insumo, equipamento, mao de obra e terceiros | 0% |
+| 11 | Custos de projeto detalhados | Criar visao por rubrica, etapa, atividade, entrega e periodo, com edicao organizada | 0% |
+| 12 | Parametros economicos avancados | Mostrar impacto, formula, versoes, justificativa e comparacao de parametros | 0% |
+| 13 | Orcamento final institucional | Refinar documento final, visual externo e pacote de exportacao/aprovacao | 0% |
+| 14 | Historico avancado e comparacao | Filtros, comparacao lado a lado, auditoria visual e exportacao historica | 0% |
+| 15 | Modelos e catalogos | Area propria para templates, catalogo institucional e origem do app antigo | 0% |
+| 16 | Dashboard de funil | Indicadores de demandas, custos, revisao, emissao, aprovacao e vencimento | 0% |
+| 17 | Governanca e permissoes finas | Perfis, aprovacao tecnica, auditoria por campo e trilhas de recalculo | 0% |
 
 ## Fase 8 - Arquitetura de navegacao
 
@@ -34,6 +34,33 @@ governanca mais fina.
 Trocar a navegacao generica de Orcamentos por subareas orientadas ao trabalho.
 O usuario deve saber se esta criando demanda, preenchendo custos, revisando
 parametros, emitindo documento ou consultando historico.
+
+### Status
+
+Concluida em 2026-06-21.
+
+Implementado:
+
+- Menu lateral de Orcamentos ampliado com subareas do funil operacional.
+- `/orcamento` virou visao geral com cards para as subareas e lista consolidada
+  recente.
+- Novas rotas: `/orcamento/em-elaboracao`, `/orcamento/revisao`,
+  `/orcamento/emitidos`, `/orcamento/decididos` e `/orcamento/modelos`.
+- A rota existente `/orcamento/historico` foi integrada como area formal do
+  menu.
+- Listagem consolidada centralizada em `src/lib/orcamento/orcamentos-listagem.ts`.
+- Tabelas de orcamento agora exibem etapa, responsavel e filtros por esses
+  campos.
+- Area inicial de Modelos/Templates lista templates de projeto e catalogo
+  institucional com origem preservada.
+- Detecção de link ativo do menu ajustada para `/orcamento` nao marcar todas as
+  subrotas como item principal ativo.
+
+Por fazer:
+
+- Fase completa no escopo da arquitetura de navegacao. Melhorias futuras ficam
+  nas fases 9, 14, 15 e 16: abas da demanda, filtros avancados, gestao completa
+  de modelos e dashboard de funil.
 
 ### Menu recomendado
 
@@ -88,6 +115,37 @@ Campos comuns:
 
 Transformar a demanda em um cockpit operacional com abas ou segmentos fixos. A
 demanda deixa de ser apenas um formulario e passa a coordenar todo o ciclo.
+
+### Status
+
+Concluida em 2026-06-21.
+
+Implementado:
+
+- Detalhe da demanda com barra fixa de segmentos para Demanda, Custos
+  laboratoriais, Custos de projeto, Parametros economicos, Orcamento final e
+  Historico/auditoria.
+- Topo da demanda preservando titulo, modalidade, cliente, status, prioridade,
+  completude e principais metadados.
+- Aba de demanda com formulario existente preservado e status de completude em
+  destaque.
+- Aba de custos laboratoriais com estado `Nao se aplica`, resumo de valores,
+  quantidade de itens e tabela de orcamentos vinculados.
+- Aba de custos de projeto com estado `Nao se aplica`, resumo de custos
+  proprios, analises internas, justificativa e tabela de orcamentos vinculados.
+- Tabela operacional de pendencias com etapa, obrigatoriedade, status, pendencia
+  e acao direta.
+- Aba de parametros economicos com custos recebidos, markup, percentuais,
+  valores calculados, origem e regra de formula.
+- Aba de orcamento final com emissao, resumo financeiro, bloqueios e versoes
+  emitidas.
+- Aba de historico/auditoria com demanda, modulos vinculados e versoes finais em
+  uma linha operacional preservada.
+
+Por fazer:
+
+- Fase completa no escopo de cockpit em abas. Melhorias mais profundas de
+  detalhe tecnico ficam nas fases 10, 11, 12 e 14.
 
 ### Estrutura da tela
 
@@ -238,6 +296,34 @@ Expandir a tela de laboratorio para composicao tecnica auditavel. A tela atual
 ja separa custo operacional do preco, mas ainda nao permite inspecionar e
 editar a composicao fina por item.
 
+### Status
+
+Concluida em 2026-06-21.
+
+Implementado:
+
+- Detalhe de orçamento laboratorial com navegação interna por Identificação,
+  Análises, Composição, Totais, Revisão e Histórico.
+- Cabeçalho enriquecido com orçamento/status, demanda vinculada, cliente,
+  matriz/amostra, responsável, projeto e data do snapshot de custo.
+- Tela ampliada para leitura técnica em largura operacional, mantendo a página
+  como Server Component.
+- Tabela de análises e quantidades com código, nome, matriz, lote, amostras,
+  reagentes, equipamentos, mão de obra, overhead, custo e origem do snapshot.
+- Preço final deixou de ser foco da tabela técnica e ficou preservado no resumo
+  operacional/documento.
+- Caixa de composição técnica com origem, regra e subtotal para reagentes,
+  materiais, equipamentos, mão de obra, terceiros e overhead.
+- Caixa de revisão técnica com pendências explícitas para cliente, responsável,
+  itens e recalculo quando parâmetros mudam.
+- Histórico da tela recebeu âncora própria para ficar integrado à navegação.
+
+Por fazer:
+
+- Fase completa no escopo de inspeção técnica auditável sem alterações
+  estruturais de banco. Edição fina por componente individual e auditoria por
+  campo ficam nas fases 14 e 17.
+
 ### Estrutura da tela
 
 Cabecalho:
@@ -384,6 +470,35 @@ Caixa `Totais tecnicos`:
 
 Evoluir a tela de projeto de uma pagina longa para uma interface de trabalho
 por rubrica, etapa, atividade e entrega.
+
+### Status
+
+Concluida em 2026-06-21.
+
+Implementado:
+
+- Detalhe de orçamento de projeto com navegação interna por Escopo, Entregas,
+  Rubricas, Etapas, Viagens, Anexos, Revisão e Aprovação.
+- Topo enriquecido com demanda vinculada, projeto, cliente, coordenador,
+  responsável, status, data e totais de custo/gross-up.
+- Leitura por entregas com atividades, rubricas, quantidade de itens e custo
+  associado.
+- Leitura por etapas/atividades com entregas, rubricas e total por etapa.
+- Tabela de custos próprios expandida com rubrica, categoria institucional,
+  etapa, atividade, entrega, descrição, quantidade, unidade, custo unitário,
+  subtotal, origem e ação.
+- Caixa de revisão operacional com pendências explícitas antes da alteração de
+  parâmetros econômicos.
+- Âncoras e nomes corrigidos: catálogo institucional, modelos, anexos, revisão,
+  viagens, escopo e aprovação agora apontam para as áreas corretas.
+- Uso normal da tela deixou de chamar o catálogo de `antigo`, preservando a
+  origem antiga apenas como informação auditável na tabela.
+
+Por fazer:
+
+- Fase completa no escopo de organização detalhada de custos de projeto.
+  Edição inline, versionamento visual avançado e auditoria por campo ficam nas
+  fases 12, 14 e 17.
 
 ### Estrutura de tela
 
@@ -547,6 +662,38 @@ Caixas:
 Transformar parametros em uma tela de decisao financeira auditavel, com entrada
 de custos, parametros aplicados, formula, impacto e versoes.
 
+### Status
+
+Concluida em 2026-06-21.
+
+Implementado:
+
+- `/orcamento/parametros` passou a funcionar como cockpit financeiro consolidado
+  de custos recebidos, parametros aplicados, formula, validacao e versoes.
+- Cabecalho e cards principais agora destacam fator economico total, dias
+  uteis, impacto de laboratorio e impacto de projeto.
+- Caixa `Custos recebidos` separa laboratorio, projeto e consolidado, com
+  quantidade de analises/orcamentos considerados.
+- Caixa `Formula e validacao` explicita markup simples de laboratorio e gross-up
+  de projeto, com bases antes/depois e alerta para gross-up invalido.
+- Tabela de impacto dos parametros globais mostra campo, valor, unidade, origem,
+  versao e impacto financeiro estimado sobre o custo medio laboratorial.
+- Tabela de impacto dos parametros de projeto soma os impactos dos orcamentos
+  recentes e apresenta percentual medio por parametro.
+- Tabela de orcamentos de projeto considerados mostra cliente, itens, custo,
+  gross-up, total e validacao com link direto para cada orcamento.
+- Versionamento recente passou a exibir escopo, versao, projeto/global, origem,
+  data e resumo do payload salvo no snapshot.
+- A tela preserva o formulario existente de parametros globais e continua usando
+  o versionamento formal em `parametros_economicos_versoes`.
+
+Por fazer:
+
+- Fase completa no escopo de decisao financeira auditavel sem criar estrutura
+  paralela. Comparacao lado a lado entre duas versoes e restauracao com
+  confirmacao ficam para a Fase 14/17, pois exigem fluxo proprio de auditoria e
+  permissao sensivel.
+
 ### Layout
 
 Coluna esquerda: custos recebidos.
@@ -609,6 +756,36 @@ Tabela:
 
 Refinar o documento final para ser uma proposta institucional completa, com
 visual de cliente e opcoes de ocultar custos internos.
+
+### Status
+
+Concluida em 2026-06-21.
+
+Implementado:
+
+- `/orcamento/final/[id]` passou a abrir primeiro como proposta comercial
+  institucional, com faixa de identidade ATGC, numero, versao, status, cliente,
+  emissao, validade, escopo, total e composicao comercial.
+- A composicao comercial de cliente consolida itens do snapshot por grupo,
+  descricao, quantidade, unidade e subtotal, sem exibir custo interno.
+- Custos, parametros, composicao detalhada, origens de valor e snapshot ficaram
+  separados em `Modo interno`, fora da area principal de impressao.
+- O detalhe final ganhou acoes diretas de imprimir/PDF, exportar DOCX/XLSX,
+  voltar a demanda, duplicar versao e cancelar versao.
+- Exportacao XLSX ganhou aba `Proposta Cliente`, preservando tambem abas de
+  resumo, itens internos e origem dos valores.
+- Exportacao DOCX foi reorganizada como documento comercial: cabecalho,
+  emissao, validade, cliente, escopo, composicao comercial, condicoes e resumo
+  interno.
+- Os dados exportados agora carregam emitido em, validade em dias, responsavel e
+  condicoes comerciais.
+
+Por fazer:
+
+- Fase completa no escopo de documento institucional e pacote de exportacao.
+  Link publico dedicado para versao final permanece como evolucao de governanca
+  da Fase 17; hoje o app ja possui aprovacao externa por link no orcamento de
+  projeto.
 
 ### Estrutura do documento
 
@@ -679,6 +856,35 @@ Modo cliente:
 
 Evoluir o historico atual para consulta executiva e auditoria comparativa.
 
+### Status
+
+Concluida em 2026-06-21.
+
+Implementado:
+
+- `/orcamento/historico` ganhou filtros reais por status, cliente, responsavel,
+  modalidade, periodo de emissao, periodo de validade e faixa de valor.
+- Cards principais agora respondem ao conjunto filtrado: emitidos ativos,
+  vencidos, cancelados e total filtrado.
+- Tabela historica foi ampliada com numero, versao, demanda, cliente,
+  modalidade, responsavel, criado em, enviado em, aprovado em, validade, status,
+  custo total, parametros, preco final, delta e acoes.
+- Cada linha mostra delta financeiro e percentual contra a versao anterior da
+  mesma demanda.
+- Comparacao lado a lado via `?comparar=ID`, exibindo cabecalho, status, datas,
+  itens laboratoriais, itens de projeto, parametros, total e deltas de
+  laboratorio, projeto, total e markup.
+- Exportacao historica em CSV criada em `/orcamento/historico/export`, respeitando
+  os mesmos filtros da tela.
+- Acoes de abrir, duplicar, comparar e cancelar permanecem acessiveis na tabela,
+  preservando snapshot e trilha historica.
+
+Por fazer:
+
+- Fase completa no escopo de historico executivo, comparacao visual e exportacao
+  filtrada. Auditoria por campo com antes/depois detalhado fica para a Fase 17,
+  onde entram regras finas de permissao e eventos sensiveis.
+
 ### Filtros
 
 | Filtro | Tipo |
@@ -741,6 +947,42 @@ Tela/modal:
 Criar area propria para templates e catalogo institucional, reduzindo a
 dependencia visual do "catalogo antigo".
 
+### Status
+
+Concluida em 2026-06-21.
+
+Implementado:
+
+- `/orcamento/modelos` virou area operacional com navegacao interna para
+  Templates, Catalogo institucional, Parametros padrao e Origem importada.
+- Tela ganhou filtros por busca, rubrica, origem e status, aplicados a templates
+  e itens de catalogo.
+- Cards principais mostram templates ativos, templates arquivados, itens ativos
+  e itens com origem importada.
+- Tabela de templates passou a exibir nome, descricao, origem, quantidade de
+  itens, resumo de parametros, criado em, status e acoes.
+- Templates podem ser usados para criar novo orcamento de projeto, inclusive
+  vinculando a um projeto existente.
+- Templates podem ser duplicados sem alterar o original.
+- Arquivar template deixou de apagar registro: a action `excluirTemplate` agora
+  marca o registro como arquivado por metadado no nome/descricao e preserva o
+  historico.
+- Tabela de catalogo institucional passou a exibir codigo, rubrica, categoria,
+  descricao, unidade, custo padrao, origem, validade, ativo e acao.
+- Itens de catalogo podem ser arquivados com `ativo=false`, sem remocao fisica.
+- A origem `orcamento_projetos_antigo` aparece apenas como procedencia
+  auditavel (`Importada`), enquanto o uso normal permanece como catalogo
+  institucional.
+- Bloco de parametros padrao resume medias salvas nos templates ativos.
+- Bloco de origem importada mostra a distribuicao dos itens importados por
+  rubrica.
+
+Por fazer:
+
+- Fase completa no escopo de produto para modelos e catalogos. Edicao completa
+  de item/template em formulario dedicado fica para a governanca fina da Fase
+  17, pois envolve permissoes administrativas e auditoria por campo.
+
 ### Tela `/orcamento/modelos`
 
 Abas:
@@ -790,6 +1032,33 @@ Tabela de catalogo:
 
 Dar visao executiva da operacao de orcamentos.
 
+### Status
+
+Concluida em 2026-06-21.
+
+Implementado:
+
+- `/orcamento` foi transformado em dashboard operacional de funil, mantendo a
+  lista consolidada e as subareas existentes.
+- Filtro de periodo por 15, 30, 60 e 90 dias para os indicadores temporais.
+- Cards principais com Demandas novas, Custos pendentes, Aguardando parametros,
+  Prontos para emissao, Emitidos, Aprovados, Vencidos e Receita potencial.
+- Cards linkam para as areas operacionais correspondentes.
+- Grafico de funil por etapa com Demanda, Custos, Parametros, Final e Aprovado.
+- Grafico/lista de valor por status, conferindo com a listagem consolidada.
+- Tempo medio por etapa calculado em dias desde a ultima atualizacao.
+- Top clientes por valor monitorado.
+- Distribuicao por modalidade.
+- Tabelas de acao para demandas paradas ha mais de 7 dias, orcamentos vencendo
+  em ate 30 dias, custos aguardando revisao e parametros pendentes/antigos.
+- Lista consolidada recente permanece na parte inferior para acao direta.
+
+Por fazer:
+
+- Fase completa no escopo de dashboard executivo e operacional. Automacoes,
+  alertas proativos e SLA formal por perfil ficam para a Fase 17, junto com
+  governanca fina e permissoes.
+
 ### Cards principais
 
 | Card | Conteudo |
@@ -833,6 +1102,41 @@ Dar visao executiva da operacao de orcamentos.
 
 Adicionar controle mais forte sobre revisao, recalculo, aprovacao tecnica e
 alteracoes sensiveis.
+
+### Status
+
+Concluida em 2026-06-21.
+
+Implementado:
+
+- Helper central `src/lib/orcamento/governanca.ts` com matriz de acoes,
+  papel minimo, motivo obrigatorio e evidencia auditavel.
+- Acoes sensiveis de laboratorio passaram a exigir papel em mudanca para
+  enviado/aprovado/cancelado, recalculo de documento ja emitido/aprovado e
+  cancelamento.
+- Recalculo laboratorial passou a registrar evento em `eventos_status`, com
+  motivo obrigatorio quando o documento ja esta enviado, aprovado ou cancelado.
+- Parametros economicos globais exigem papel gestor e continuam criando nova
+  versao formal, agora tambem com evento de governanca.
+- Orcamentos de projeto passaram a registrar mudancas de status e a exigir
+  papel para revisao, cancelamento e edicao de parametros economicos.
+- Templates e catalogo institucional passaram a exigir papel gestor para
+  duplicar/arquivar, preservando a estrategia sem exclusao fisica.
+- Emissao, duplicacao e cancelamento de versoes finais passaram a exigir papel
+  adequado e registrar evento auditavel.
+- Nova pagina `/orcamento/governanca` com matriz operacional, resumo de acoes
+  governadas, eventos sensiveis e auditoria por campo das tabelas de
+  Orcamentos.
+- Menu lateral e dashboard de Orcamentos receberam entrada direta para
+  Governanca.
+
+Por fazer:
+
+- Fase completa no escopo de permissoes finas aplicadas na camada do app,
+  eventos sensiveis e leitura operacional de auditoria. Melhorias futuras
+  possiveis: workflow formal de aprovacao em duas assinaturas, SLA por perfil,
+  notificacoes automaticas e tela administrativa para editar a matriz de
+  permissoes sem deploy.
 
 ### Perfis sugeridos
 

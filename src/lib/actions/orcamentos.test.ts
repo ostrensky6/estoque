@@ -12,6 +12,7 @@ const eq = vi.fn();
 const deleteRow = vi.fn();
 const update = vi.fn();
 const registrarEvento = vi.fn();
+const exigirPapelOrcamento = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect }));
@@ -19,6 +20,7 @@ vi.mock("@/lib/costing/loader", () => ({
   calcularTodas: vi.fn(async () => ({ breakdowns: [] })),
 }));
 vi.mock("./eventos", () => ({ registrarEvento }));
+vi.mock("@/lib/orcamento/governanca", () => ({ exigirPapelOrcamento }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
     from,
@@ -37,6 +39,7 @@ describe("actions de orcamentos", () => {
     deleteRow.mockReset();
     update.mockReset();
     registrarEvento.mockReset();
+    exigirPapelOrcamento.mockReset();
     from.mockReturnValue({ insert, select, delete: deleteRow, update });
     insert.mockReturnValue({ select });
     select.mockReturnValue({ single, eq });

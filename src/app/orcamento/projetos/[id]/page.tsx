@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
@@ -30,7 +32,7 @@ import {
   RUBRICAS_PROJETO,
 } from "@/lib/project-budget/legacy";
 import { gerarPlanejamentoDeOrcamentoProjeto } from "@/lib/actions/planejamento";
-import { formatCurrency as brl } from "@/lib/formatters";
+import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -116,6 +118,14 @@ export default async function OrcamentoProjetoDetalhe({
         .order("descricao"),
     ]);
 
+  const { data: demanda } = orc.demanda_id
+    ? await supabase
+        .from("demandas_propostas")
+        .select("id, titulo, modalidade, status, cliente_nome")
+        .eq("id", orc.demanda_id)
+        .single()
+    : { data: null };
+
   const analisesProjeto = (analisesItens ?? []) as Analise[];
   const custosProjeto = (custosItens ?? []) as Custo[];
   const custosProjetoBase = custosProjeto.map((it) => ({
@@ -189,6 +199,34 @@ export default async function OrcamentoProjetoDetalhe({
   const viagem: ViagemInputs = normalizarViagemInputs(
     (orc.travel_inputs ?? null) as Partial<ViagemInputs> | null,
   );
+  const projetoVinculado = (projetos ?? []).find((projeto) => projeto.id === orc.projeto_id);
+  const linhasOperacionais = [
+    ...custosProjeto.map((item) => ({
+      etapa: item.etapa || "Projeto",
+      atividade: item.atividade || CATEGORIAS[item.categoria] || item.categoria,
+      entrega: item.entrega || "Entrega principal",
+      rubrica: item.rubrica || "OU",
+      total: itemProjetoTotal({ ...item, preco_unitario: Number(item.custo_unitario) }),
+    })),
+    ...analisesProjeto.map((item) => ({
+      etapa: "Laboratório",
+      atividade: "Análise laboratorial",
+      entrega: "Entrega principal",
+      rubrica: "MC",
+      total: Number(item.custo_unitario) * Number(item.n_amostras),
+    })),
+  ];
+  const entregasResumo = agruparOperacional(linhasOperacionais, "entrega");
+  const etapasResumo = agruparOperacional(linhasOperacionais, "etapa");
+  const rubricasComItens = calculoProjeto.summaries.filter((summary) => summary.count > 0).length;
+  const revisaoPendencias = [
+    !orc.titulo ? "informar titulo do projeto" : null,
+    !orc.cliente_nome ? "informar cliente" : null,
+    !orc.responsavel ? "informar responsavel" : null,
+    !orc.escopo ? "registrar escopo" : null,
+    !temCustosProjeto && !orc.projeto_sem_custo_justificativa ? "adicionar custos/analises ou justificar projeto sem custo" : null,
+    calculoProjeto.validationError || null,
+  ].filter(Boolean) as string[];
 
   const { data: links } = await supabase
     .from("orcamento_projeto_links")
@@ -215,6 +253,17 @@ export default async function OrcamentoProjetoDetalhe({
       return { ...a, url: signed?.signedUrl ?? null };
     }),
   );
+  const linksAtivos = (links ?? []).filter((link) => !link.revogado && !link.aprovado_em).length;
+  const tabs = [
+    { href: "#escopo-projeto", label: "Escopo", meta: orc.escopo ? "preenchido" : "pendente" },
+    { href: "#entregas-projeto", label: "Entregas", meta: `${entregasResumo.length} entrega(s)` },
+    { href: "#rubricas-projeto", label: "Rubricas", meta: `${rubricasComItens}/6 com custo` },
+    { href: "#etapas-projeto", label: "Etapas", meta: `${etapasResumo.length} etapa(s)` },
+    { href: "#viagens-projeto", label: "Viagens", meta: `${viagem.pessoas} pessoa(s)` },
+    { href: "#anexos-projeto", label: "Anexos", meta: `${anexosComUrl.length} arquivo(s)` },
+    { href: "#revisao-projeto", label: "Revisão", meta: revisaoPendencias.length === 0 ? "liberada" : `${revisaoPendencias.length} pendencia(s)` },
+    { href: "#aprovacao-projeto", label: "Aprovação", meta: `${linksAtivos} link(s) ativo(s)` },
+  ];
 
   const inp =
     "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
@@ -263,6 +312,22 @@ export default async function OrcamentoProjetoDetalhe({
               <dd className="font-medium">{orc.cliente_nome ?? "—"}</dd>
             </div>
             <div className="flex gap-2">
+              <dt className="text-zinc-500">Demanda:</dt>
+              <dd>
+                {demanda ? (
+                  <Link href={`/orcamento/demandas/${demanda.id}`} className="font-medium text-primary hover:underline">
+                    {demanda.titulo}
+                  </Link>
+                ) : (
+                  "—"
+                )}
+              </dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-zinc-500">Projeto:</dt>
+              <dd>{projetoVinculado?.nome ?? "—"}</dd>
+            </div>
+            <div className="flex gap-2">
               <dt className="text-zinc-500">CNPJ:</dt>
               <dd>{orc.cliente_cnpj ?? "—"}</dd>
             </div>
@@ -271,8 +336,16 @@ export default async function OrcamentoProjetoDetalhe({
               <dd>{orc.cliente_contato ?? "—"}</dd>
             </div>
             <div className="flex gap-2">
+              <dt className="text-zinc-500">Coordenador:</dt>
+              <dd>{orc.coordenador ?? "—"}</dd>
+            </div>
+            <div className="flex gap-2">
               <dt className="text-zinc-500">Responsável:</dt>
               <dd>{orc.responsavel ?? "—"}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-zinc-500">Criado em:</dt>
+              <dd>{formatDateTime(orc.criado_em)}</dd>
             </div>
           </dl>
 
@@ -283,18 +356,15 @@ export default async function OrcamentoProjetoDetalhe({
             <Resumo titulo="Total final" valor={totalFinal} subtitulo={`subtotal base ${brl(calculoProjeto.subtotal)}`} destaque />
           </div>
 
-          <nav className="no-print mt-6 flex flex-wrap gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-300">
-            {[
-              ["#escopo-projeto", "Escopo"],
-              ["#rubricas-projeto", "Rubricas"],
-              ["#viagens-projeto", "Viagens"],
-              ["#anexos-projeto", "Anexos"],
-              ["#aprovacao-projeto", "Aprovação"],
-            ].map(([href, label]) => (
-              <a key={href} href={href} className="rounded-md border border-zinc-200 px-3 py-1.5 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
-                {label}
-              </a>
-            ))}
+          <nav className="no-print sticky top-0 z-10 mt-6 overflow-x-auto border-y border-zinc-200 bg-white/95 py-2 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+            <div className="flex min-w-max gap-2">
+              {tabs.map((tab) => (
+                <a key={tab.href} href={tab.href} className="rounded-md border border-zinc-300 px-3 py-2 text-left text-xs text-zinc-800 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800">
+                  <span className="block font-semibold">{tab.label}</span>
+                  <span className="mt-0.5 block text-[10px] uppercase tracking-wide text-zinc-500">{tab.meta}</span>
+                </a>
+              ))}
+            </div>
           </nav>
 
           {calculoProjeto.validationError && (
@@ -319,6 +389,52 @@ export default async function OrcamentoProjetoDetalhe({
                 </div>
               ))}
             </div>
+          </section>
+
+          <section id="entregas-projeto" className="mt-6 scroll-mt-24">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Entregas</h2>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Soma dos custos já classificados por entrega operacional.
+                </p>
+              </div>
+              <span className="text-xs text-zinc-400">{entregasResumo.length} entrega(s)</span>
+            </div>
+            <TabelaResumoOperacional
+              colunas={["Entrega", "Atividades", "Rubricas", "Itens", "Custo associado"]}
+              vazio="Nenhuma entrega classificada."
+              linhas={entregasResumo.map((item) => [
+                item.nome,
+                item.atividades.join(", ") || "—",
+                item.rubricas.join(", ") || "—",
+                String(item.itens),
+                brl(item.total),
+              ])}
+            />
+          </section>
+
+          <section id="etapas-projeto" className="mt-6 scroll-mt-24">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Etapas e atividades</h2>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Visão de planejamento para revisar esforço, entrega e rubricas associadas.
+                </p>
+              </div>
+              <span className="text-xs text-zinc-400">{etapasResumo.length} etapa(s)</span>
+            </div>
+            <TabelaResumoOperacional
+              colunas={["Etapa", "Atividades", "Entregas", "Rubricas", "Custo"]}
+              vazio="Nenhuma etapa classificada."
+              linhas={etapasResumo.map((item) => [
+                item.nome,
+                item.atividades.join(", ") || "—",
+                item.entregas.join(", ") || "—",
+                item.rubricas.join(", ") || "—",
+                brl(item.total),
+              ])}
+            />
           </section>
 
           {(orc.escopo || orc.cronograma || orc.observacoes || orc.projeto_sem_custo_justificativa) && (
@@ -396,8 +512,8 @@ export default async function OrcamentoProjetoDetalhe({
           </div>
         </section>
 
-        <section id="viagens-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="text-sm font-semibold">Adicionar item do catálogo antigo</h2>
+        <section id="catalogo-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="text-sm font-semibold">Adicionar item do catálogo institucional</h2>
           <form action={adicionarCustoCatalogoProjeto} className="mt-3 grid gap-3 md:grid-cols-[1fr_8rem_auto] md:items-end">
             <input type="hidden" name="orcamento_projeto_id" value={orcId} />
             <input type="hidden" name="entrega" value="Entrega principal" />
@@ -433,7 +549,7 @@ export default async function OrcamentoProjetoDetalhe({
           </form>
         </section>
 
-        <section className="no-print mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="modelos-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-semibold">Salvar como template</h2>
           <p className="mt-1 text-xs text-zinc-500">
             Guarda os parâmetros econômicos, os parâmetros de viagem e as linhas
@@ -456,7 +572,7 @@ export default async function OrcamentoProjetoDetalhe({
           </form>
         </section>
 
-        <section className="no-print mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="anexos-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-semibold">Anexos</h2>
           <p className="mt-1 text-xs text-zinc-500">
             Arquivos do orçamento (propostas, termos, plantas) em armazenamento
@@ -502,7 +618,7 @@ export default async function OrcamentoProjetoDetalhe({
           )}
         </section>
 
-        <section className="no-print mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="aprovacao-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-semibold">Aprovação do cliente (link público)</h2>
           <p className="mt-1 text-xs text-zinc-500">
             Gere um link read-only para o cliente revisar e aprovar sem login.
@@ -568,12 +684,26 @@ export default async function OrcamentoProjetoDetalhe({
           )}
         </section>
 
-        <section id="anexos-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="revisao-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-semibold">Parâmetros econômicos do projeto</h2>
           <p className="mt-1 text-xs text-zinc-500">
             Aplicados somente depois do levantamento de custos. No gross-up, a soma de impostos,
             incubação, reserva, investimentos e lucro precisa ficar abaixo de 100%.
           </p>
+          <div className={`mt-4 rounded-md px-3 py-2 text-xs leading-5 ${revisaoPendencias.length === 0 ? "bg-brand-50 text-brand-900 dark:bg-brand-950/40 dark:text-brand-200" : "bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"}`}>
+            <p className="font-medium">
+              {revisaoPendencias.length === 0 ? "Revisão operacional liberada" : "Pendências de revisão"}
+            </p>
+            {revisaoPendencias.length > 0 ? (
+              <ul className="mt-1 list-disc pl-4">
+                {revisaoPendencias.map((pendencia) => (
+                  <li key={pendencia}>{pendencia}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-1">Escopo, cliente, responsável, custos e parâmetros estão coerentes para seguir no fluxo.</p>
+            )}
+          </div>
           {erroParametros && (
             <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
               {erroParametros}
@@ -615,7 +745,7 @@ export default async function OrcamentoProjetoDetalhe({
           </form>
         </section>
 
-        <section id="escopo-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="viagens-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-semibold">Viagens e diárias (rubrica VD)</h2>
           <p className="mt-1 text-xs text-zinc-500">
             Defina os parâmetros da viagem e salve: as linhas de VD são
@@ -673,7 +803,7 @@ export default async function OrcamentoProjetoDetalhe({
           </form>
         </section>
 
-        <section className="no-print mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="escopo-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-semibold">Dados do orçamento de projeto</h2>
           <form action={salvarOrcamentoProjeto} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input type="hidden" name="orcamento_projeto_id" value={orcId} />
@@ -795,7 +925,7 @@ export default async function OrcamentoProjetoDetalhe({
           </form>
         </section>
 
-        <div id="aprovacao-projeto" className="no-print mt-6 flex scroll-mt-8 flex-wrap gap-3">
+        <div id="acoes-sensiveis-projeto" className="no-print mt-6 flex scroll-mt-8 flex-wrap gap-3">
           {["enviado", "aprovado"].includes(orc.status) ? (
             <ConfirmActionButton
               action={cancelarOrcamentoProjeto}
@@ -839,6 +969,102 @@ function Resumo({
       <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{titulo}</p>
       <p className="mt-1 text-lg font-semibold tabular-nums">{brl(valor)}</p>
       <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{subtitulo}</p>
+    </div>
+  );
+}
+
+type LinhaOperacional = {
+  etapa: string;
+  atividade: string;
+  entrega: string;
+  rubrica: string;
+  total: number;
+};
+
+function agruparOperacional(linhas: LinhaOperacional[], chave: "entrega" | "etapa") {
+  const mapa = new Map<
+    string,
+    {
+      nome: string;
+      atividades: Set<string>;
+      entregas: Set<string>;
+      rubricas: Set<string>;
+      itens: number;
+      total: number;
+    }
+  >();
+
+  for (const linha of linhas) {
+    const nome = linha[chave] || (chave === "entrega" ? "Entrega principal" : "Projeto");
+    const atual =
+      mapa.get(nome) ??
+      {
+        nome,
+        atividades: new Set<string>(),
+        entregas: new Set<string>(),
+        rubricas: new Set<string>(),
+        itens: 0,
+        total: 0,
+      };
+    atual.atividades.add(linha.atividade);
+    atual.entregas.add(linha.entrega);
+    atual.rubricas.add(linha.rubrica);
+    atual.itens += 1;
+    atual.total += Number(linha.total ?? 0);
+    mapa.set(nome, atual);
+  }
+
+  return Array.from(mapa.values())
+    .map((item) => ({
+      ...item,
+      atividades: Array.from(item.atividades).sort(),
+      entregas: Array.from(item.entregas).sort(),
+      rubricas: Array.from(item.rubricas).sort(),
+    }))
+    .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome, "pt-BR"));
+}
+
+function TabelaResumoOperacional({
+  colunas,
+  linhas,
+  vazio,
+}: {
+  colunas: string[];
+  linhas: ReactNode[][];
+  vazio: string;
+}) {
+  return (
+    <div className="mt-3 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+      <table className="w-full text-left text-sm">
+        <thead className="text-xs uppercase tracking-wide text-zinc-500">
+          <tr>
+            {colunas.map((coluna) => (
+              <th key={coluna} className="px-3 py-2">
+                {coluna}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          {linhas.length > 0 ? (
+            linhas.map((linha, index) => (
+              <tr key={index}>
+                {linha.map((celula, celulaIndex) => (
+                  <td key={celulaIndex} className="max-w-sm px-3 py-2 text-zinc-700 dark:text-zinc-200">
+                    {celula}
+                  </td>
+                ))}
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={colunas.length} className="px-3 py-8 text-center text-zinc-400">
+                {vazio}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -913,31 +1139,36 @@ function TabelaCustos({ itens, orcId }: { itens: Custo[]; orcId: number }) {
       <table className="w-full text-right text-sm">
         <thead className="text-xs uppercase tracking-wide text-zinc-500">
           <tr>
+            <th className="px-3 py-2 text-left">Rubrica</th>
+            <th className="px-3 py-2 text-left">Categoria inst.</th>
             <th className="px-3 py-2 text-left">Etapa</th>
-            <th className="px-3 py-2 text-left">Categoria</th>
+            <th className="px-3 py-2 text-left">Atividade</th>
+            <th className="px-3 py-2 text-left">Entrega</th>
             <th className="px-3 py-2 text-left">Descrição</th>
             <th className="px-3 py-2">Qtd.</th>
+            <th className="px-3 py-2">Un.</th>
             <th className="px-3 py-2">Custo unit.</th>
             <th className="px-3 py-2">Subtotal</th>
+            <th className="px-3 py-2 text-left">Origem</th>
             <th className="no-print px-3 py-2"></th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
           {itens.map((it) => (
             <tr key={it.id}>
+              <td className="px-3 py-2 text-left font-semibold">{it.rubrica ?? "OU"}</td>
               <td className="px-3 py-2 text-left">
-                <p className="font-medium">{it.etapa ?? "Projeto"}</p>
-                <p className="text-xs text-zinc-500">{it.atividade ?? CATEGORIAS[it.categoria] ?? it.categoria}</p>
-                <p className="text-xs text-zinc-400">{it.entrega ?? "Entrega principal"}</p>
+                {it.categoria_institucional ?? CATEGORIAS[it.categoria] ?? it.categoria}
               </td>
-              <td className="px-3 py-2 text-left">
-                <p>{it.rubrica ?? "OU"} · {it.categoria_institucional ?? CATEGORIAS[it.categoria] ?? it.categoria}</p>
-                <p className="text-xs text-zinc-400">{origemLabel(it.nomenclatura_origem)}</p>
-              </td>
+              <td className="px-3 py-2 text-left">{it.etapa ?? "Projeto"}</td>
+              <td className="px-3 py-2 text-left">{it.atividade ?? CATEGORIAS[it.categoria] ?? it.categoria}</td>
+              <td className="px-3 py-2 text-left">{it.entrega ?? "Entrega principal"}</td>
               <td className="px-3 py-2 text-left font-medium">{it.descricao}</td>
               <td className="px-3 py-2 tabular-nums">{quantidadeLabel(it)}</td>
+              <td className="px-3 py-2 tabular-nums">{it.unidade ?? "—"}</td>
               <td className="px-3 py-2 tabular-nums">{brl(Number(it.custo_unitario))}</td>
               <td className="px-3 py-2 font-semibold tabular-nums">{brl(itemProjetoTotal({ ...it, preco_unitario: Number(it.custo_unitario) }))}</td>
+              <td className="px-3 py-2 text-left text-xs text-zinc-500">{origemLabel(it.nomenclatura_origem)}</td>
               <td className="no-print px-3 py-2">
                 <form action={removerCustoProjeto}>
                   <input type="hidden" name="orcamento_projeto_id" value={orcId} />
@@ -949,7 +1180,7 @@ function TabelaCustos({ itens, orcId }: { itens: Custo[]; orcId: number }) {
           ))}
           {itens.length === 0 && (
             <tr>
-              <td colSpan={7} className="px-3 py-8 text-center text-zinc-400">
+              <td colSpan={12} className="px-3 py-8 text-center text-zinc-400">
                 Nenhum custo próprio do projeto.
               </td>
             </tr>

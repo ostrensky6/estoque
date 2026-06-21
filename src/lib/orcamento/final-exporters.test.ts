@@ -17,13 +17,17 @@ const info: OrcamentoFinalExportInfo = {
   numero: "OF-2026-0001-v1",
   versao: 1,
   status: "Emitido",
+  emitido_em: "21/06/2026 08:00",
   cliente_nome: "Cliente Final",
   cliente_cnpj: "00.000.000/0001-00",
   cliente_contato: "contato@cliente.com",
   demanda_titulo: "Demanda híbrida",
   modalidade: "projeto_analises_custos",
   validade: "20/07/2026",
+  validade_dias: 30,
   escopo: "Escopo preservado",
+  condicoes: "Condições preservadas",
+  responsavel: "ATGC",
 };
 
 const resumo: OrcamentoFinalExportResumo = {
@@ -74,10 +78,12 @@ describe("exportOrcamentoFinalXlsx", () => {
       "Orçamento Final",
       "Resumo",
       "Itens",
+      "Proposta Cliente",
       "Origem dos Valores",
     ]);
     expect(wb.getWorksheet("Resumo")?.getCell("B6").value).toBe(420);
     expect(wb.getWorksheet("Itens")?.getCell("C2").value).toBe("qPCR");
+    expect(wb.getWorksheet("Proposta Cliente")?.getCell("B2").value).toBe("qPCR");
   });
 });
 

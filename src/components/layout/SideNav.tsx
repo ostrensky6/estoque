@@ -95,6 +95,7 @@ export function SideNav({
   const pathname = usePathname();
 
   function estaAtivo(href: string) {
+    if (href === "/orcamento" || href === "/cadastros") return pathname === href;
     return pathname === href || pathname.startsWith(href + "/");
   }
 

@@ -21,13 +21,17 @@ export type OrcamentoFinalExportInfo = {
   numero: string;
   versao: number;
   status: string;
+  emitido_em?: string | null;
   cliente_nome: string | null;
   cliente_cnpj: string | null;
   cliente_contato: string | null;
   demanda_titulo: string | null;
   modalidade: string | null;
   validade: string | null;
+  validade_dias?: number | null;
   escopo: string | null;
+  condicoes?: string | null;
+  responsavel?: string | null;
 };
 
 export type OrcamentoFinalExportResumo = {
@@ -81,12 +85,16 @@ export async function exportOrcamentoFinalXlsx(
     ["Número", info.numero],
     ["Versão", info.versao],
     ["Status", info.status],
+    ["Emitido em", info.emitido_em ?? ""],
     ["Cliente", info.cliente_nome ?? ""],
     ["CNPJ/CPF", info.cliente_cnpj ?? ""],
     ["Contato", info.cliente_contato ?? ""],
     ["Demanda", info.demanda_titulo ?? ""],
     ["Modalidade", info.modalidade ?? ""],
     ["Validade", info.validade ?? ""],
+    ["Validade em dias", info.validade_dias ?? ""],
+    ["Responsável", info.responsavel ?? ""],
+    ["Condições comerciais", info.condicoes ?? ""],
     ["Escopo", info.escopo ?? ""],
   ]);
 
@@ -113,6 +121,13 @@ export async function exportOrcamentoFinalXlsx(
   ];
   itens.forEach((item) => itensSheet.addRow(item));
 
+  const clienteSheet = wb.addWorksheet("Proposta Cliente");
+  clienteSheet.addRows([
+    ["Grupo", "Descrição", "Quantidade", "Unidade", "Subtotal"],
+    ...itens.map((item) => [item.grupo, item.descricao, item.quantidade, item.unidade ?? "", item.subtotal]),
+    ["", "", "", "Total final", resumo.total_final],
+  ]);
+
   const origemSheet = wb.addWorksheet("Origem dos Valores");
   origemSheet.columns = [
     { header: "Total", key: "titulo", width: 24 },
@@ -127,6 +142,7 @@ export async function exportOrcamentoFinalXlsx(
   formatCurrencyColumn(resumoSheet, ["B"]);
   formatCurrencyColumn(itensSheet, ["F", "G", "H"]);
   formatCurrencyColumn(origemSheet, ["E"]);
+  formatCurrencyColumn(clienteSheet, ["E"]);
 
   const buffer = await wb.xlsx.writeBuffer();
   saveAs(new Blob([buffer]), `${arquivoBase(info)}.xlsx`);
@@ -159,24 +175,13 @@ export async function exportOrcamentoFinalDocx(
             size: 34,
           }),
           docParagraph(`Número: ${info.numero} · Versão ${info.versao}`),
+          docParagraph(`Emitido em: ${info.emitido_em || "-"} · Validade: ${info.validade || "-"}`),
           docParagraph(`Cliente: ${info.cliente_nome || "-"}`),
+          docParagraph(`Contato: ${info.cliente_contato || "-"} · Responsável: ${info.responsavel || "-"}`),
           docParagraph(`Demanda: ${info.demanda_titulo || "-"}`),
-          docParagraph(`Validade: ${info.validade || "-"}`),
-          docParagraph("Resumo financeiro", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            layout: TableLayoutType.FIXED,
-            borders: tableBorders(),
-            rows: [
-              tableRow(["Indicador", "Valor"], true),
-              tableRow(["Custo laboratório", formatCurrency(resumo.total_laboratorio_custo)]),
-              tableRow(["Preço laboratório", formatCurrency(resumo.total_laboratorio_preco)]),
-              tableRow(["Custo projeto", formatCurrency(resumo.total_projeto_custo)]),
-              tableRow(["Projeto final", formatCurrency(resumo.total_projeto_final)]),
-              tableRow(["Total final", formatCurrency(resumo.total_final)], true),
-            ],
-          }),
-          docParagraph("Composição detalhada", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
+          docParagraph("Escopo", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
+          docParagraph(info.escopo || "-"),
+          docParagraph("Composição comercial", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             layout: TableLayoutType.FIXED,
@@ -191,6 +196,23 @@ export async function exportOrcamentoFinalDocx(
                   formatCurrency(item.subtotal),
                 ]),
               ),
+              tableRow(["", "Total final", "", formatCurrency(resumo.total_final)], true),
+            ],
+          }),
+          docParagraph("Condições comerciais", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
+          docParagraph(info.condicoes || "Valores válidos até a data indicada. Alterações de escopo, quantidade de amostras ou premissas técnicas podem exigir nova versão."),
+          docParagraph("Resumo interno", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            layout: TableLayoutType.FIXED,
+            borders: tableBorders(),
+            rows: [
+              tableRow(["Indicador", "Valor"], true),
+              tableRow(["Custo laboratório", formatCurrency(resumo.total_laboratorio_custo)]),
+              tableRow(["Preço laboratório", formatCurrency(resumo.total_laboratorio_preco)]),
+              tableRow(["Custo projeto", formatCurrency(resumo.total_projeto_custo)]),
+              tableRow(["Projeto final", formatCurrency(resumo.total_projeto_final)]),
+              tableRow(["Total final", formatCurrency(resumo.total_final)], true),
             ],
           }),
           docParagraph("Origem dos valores", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),

@@ -11,6 +11,7 @@ import {
   statusOperacionalLaboratorio,
   type ItemLaboratorioOperacional,
 } from "@/lib/orcamento/laboratorio-operacional";
+import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
 import { registrarEvento } from "./eventos";
 
 export type ParametrosEconomicosState = {
@@ -170,6 +171,9 @@ export async function salvarCabecalho(formData: FormData) {
     .select("status")
     .eq("id", id)
     .single();
+  if (anterior && anterior.status !== novoStatus && ["enviado", "aprovado", "cancelado"].includes(novoStatus)) {
+    await exigirPapelOrcamento("revisar_modulo");
+  }
 
   const patch = {
     cliente_id,
@@ -231,6 +235,18 @@ export async function recalcularOrcamento(formData: FormData) {
   const id = Number(formData.get("orcamento_id"));
   if (!id) return;
   const supabase = await createClient();
+  const { data: atual } = await supabase
+    .from("orcamentos")
+    .select("status")
+    .eq("id", id)
+    .single();
+  if (atual && ["enviado", "aprovado", "cancelado"].includes(atual.status)) {
+    await exigirPapelOrcamento("recalcular_custos");
+    const motivo = String(formData.get("motivo") ?? "").trim();
+    if (!motivo) {
+      throw new Error("Recalcular orçamento enviado, aprovado ou cancelado exige motivo.");
+    }
+  }
   const { data: itens } = await supabase
     .from("orcamento_itens")
     .select("id, codigo_analise")
@@ -245,6 +261,13 @@ export async function recalcularOrcamento(formData: FormData) {
       .eq("id", it.id);
   }
   await atualizarOperacionalLaboratorio(supabase, id);
+  await registrarEvento(
+    "orcamento",
+    id,
+    atual?.status ?? null,
+    atual?.status ?? "recalculado",
+    String(formData.get("motivo") ?? "").trim() || "Recalculo de snapshots laboratoriais.",
+  );
   revalidatePath(`/orcamento/${id}`);
 }
 
@@ -270,6 +293,7 @@ export async function cancelarOrcamento(formData: FormData) {
   const id = Number(formData.get("orcamento_id"));
   if (!id) return;
   const motivo = String(formData.get("motivo") ?? "").trim() || "Cancelamento operacional.";
+  await exigirPapelOrcamento("cancelar_documento");
   const supabase = await createClient();
   const { data: atual } = await supabase
     .from("orcamentos")
@@ -308,6 +332,7 @@ export async function salvarParametrosEconomicos(
     }
     return { ok: false, message: "Verifique os campos destacados.", errors };
   }
+  await exigirPapelOrcamento("editar_parametros");
 
   const supabase = await createClient();
   const atualizado_em = new Date().toISOString();
@@ -329,6 +354,13 @@ export async function salvarParametrosEconomicos(
     parametros: parsed.data,
     origem: "orcamento/parametros",
   });
+  await registrarEvento(
+    "orcamento_parametros",
+    0,
+    "laboratorio_global",
+    "alterado",
+    "Parâmetros econômicos globais atualizados com nova versão.",
+  );
 
   revalidatePath("/orcamento/parametros");
   revalidatePath("/orcamento");

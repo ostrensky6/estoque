@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
 import { PrintButton } from "@/components/orcamento/PrintButton";
@@ -16,7 +18,7 @@ import {
 import { gerarPlanejamentoDeOrcamento } from "@/lib/actions/planejamento";
 import { listarEventos } from "@/lib/actions/eventos";
 import { Timeline } from "@/components/common/Timeline";
-import { formatCurrency as brl, formatDate } from "@/lib/formatters";
+import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
 import { montarSnapshotLaboratorio } from "@/lib/orcamento/laboratorio-operacional";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +32,7 @@ type Item = {
 };
 
 type SnapshotLaboratorio = {
+  gerado_em?: string;
   totais?: {
     reagentes?: number;
     materiais?: number;
@@ -42,6 +45,10 @@ type SnapshotLaboratorio = {
     amostras?: number;
   };
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 export default async function OrcamentoDetalhe({
   params,
@@ -75,6 +82,14 @@ export default async function OrcamentoDetalhe({
       supabase.from("projetos").select("id, nome").order("nome"),
     ]);
 
+  const { data: demanda } = orc.demanda_id
+    ? await supabase
+        .from("demandas_propostas")
+        .select("id, titulo, modalidade, status, matriz_amostra, responsavel_interno")
+        .eq("id", orc.demanda_id)
+        .single()
+    : { data: null };
+
   const projetoNome =
     orc.projeto_id != null
       ? (projetos ?? []).find((p) => p.id === orc.projeto_id)?.nome ?? null
@@ -91,12 +106,46 @@ export default async function OrcamentoDetalhe({
     0,
   );
   const snapshotCalculado = montarSnapshotLaboratorio(itens, breakdowns) as SnapshotLaboratorio;
-  const snapshotPersistido = (orc.custo_snapshot ?? {}) as SnapshotLaboratorio;
+  const snapshotPersistido = isRecord(orc.custo_snapshot) ? (orc.custo_snapshot as SnapshotLaboratorio) : {};
   const snapshotOperacional = snapshotPersistido.totais ? snapshotPersistido : snapshotCalculado;
   const totaisOperacionais = snapshotOperacional.totais ?? {};
+  const snapshotGeradoEm =
+    isRecord(snapshotOperacional) && typeof snapshotOperacional.gerado_em === "string"
+      ? snapshotOperacional.gerado_em
+      : null;
   const statusOperacional = orc.status_operacional ?? (
     orc.status === "cancelado" ? "cancelado" : ["enviado", "aprovado"].includes(orc.status) ? "revisado" : itens.length > 0 ? "preenchido" : "pendente"
   );
+  const nomeAnalise = new Map((analises ?? []).map((analise) => [analise.codigo, analise.nome ?? null]));
+  const breakdownPorCodigo = new Map(breakdowns.map((breakdown) => [breakdown.codigo, breakdown]));
+  const linhasTecnicas = itens.map((item) => {
+    const quantidade = Number(item.n_amostras);
+    const breakdown = breakdownPorCodigo.get(item.codigo_analise);
+    const reagentes = Number(breakdown?.reagentes ?? 0) * quantidade;
+    const equipamentos = Number(breakdown?.equipamento ?? 0) * quantidade;
+    const maoObra = Number(breakdown?.pessoal ?? 0) * quantidade;
+    const overhead = Number(breakdown?.overhead ?? 0) * quantidade;
+    const custo = Number(item.custo_unitario) * quantidade;
+    const preco = Number(item.preco_unitario) * quantidade;
+    return {
+      id: item.id,
+      codigo: item.codigo_analise,
+      nome: nomeAnalise.get(item.codigo_analise),
+      quantidade,
+      lote: breakdown?.lote ?? null,
+      reagentes,
+      materiais: reagentes,
+      equipamentos,
+      maoObra,
+      terceiros: 0,
+      overhead,
+      custo,
+      preco,
+      custoUnitario: Number(item.custo_unitario),
+      precoUnitario: Number(item.preco_unitario),
+      origem: breakdown ? "Snapshot de custeio" : "Snapshot preservado no item",
+    };
+  });
 
   // detecta itens cujo preço atual difere do snapshot (parâmetros mudaram)
   const precoAtual = new Map(breakdowns.map((b) => [b.codigo, b.preco]));
@@ -106,6 +155,20 @@ export default async function OrcamentoDetalhe({
   });
 
   const eventos = await listarEventos("orcamento", orcId);
+  const revisaoPendencias = [
+    !orc.cliente_nome ? "informar cliente" : null,
+    !orc.responsavel ? "informar responsável técnico" : null,
+    itens.length === 0 ? "adicionar ao menos uma análise" : null,
+    desatualizado ? "recalcular preços após mudança de parâmetros" : null,
+  ].filter(Boolean) as string[];
+  const tabs = [
+    { href: "#identificacao-tecnica", label: "Identificação", meta: orc.responsavel ? "preenchida" : "pendente" },
+    { href: "#analises-quantidades", label: "Análises", meta: `${itens.length} linha(s)` },
+    { href: "#composicao-tecnica", label: "Composição", meta: `${totalAmostras} amostra(s)` },
+    { href: "#totais-tecnicos", label: "Totais", meta: brl(Number(totaisOperacionais.custo ?? totalCusto)) },
+    { href: "#revisao-laboratorio", label: "Revisão", meta: revisaoPendencias.length === 0 ? "liberada" : `${revisaoPendencias.length} pendência(s)` },
+    { href: "#historico-laboratorio", label: "Histórico", meta: `${eventos.length} evento(s)` },
+  ];
 
   const validade =
     orc.data_orcamento && orc.validade_dias
@@ -123,7 +186,7 @@ export default async function OrcamentoDetalhe({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="print-area mx-auto max-w-4xl px-6 py-10">
+      <main className="print-area mx-auto max-w-6xl px-6 py-10">
         <div className="no-print flex items-center justify-between">
           <Breadcrumbs items={[{ label: "Análises/Lab.", href: "/orcamento" }, { label: `Orçamento #${orc.id}` }]} />
           <div className="flex items-center gap-2">
@@ -167,8 +230,28 @@ export default async function OrcamentoDetalhe({
 
           <dl className="mt-5 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
             <div className="flex gap-2">
+              <dt className="text-zinc-500">Orçamento lab:</dt>
+              <dd className="font-medium">#{orc.id} · {orc.status}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-zinc-500">Demanda:</dt>
+              <dd>
+                {demanda ? (
+                  <Link href={`/orcamento/demandas/${demanda.id}`} className="font-medium text-primary hover:underline">
+                    {demanda.titulo}
+                  </Link>
+                ) : (
+                  "—"
+                )}
+              </dd>
+            </div>
+            <div className="flex gap-2">
               <dt className="text-zinc-500">Cliente:</dt>
               <dd className="font-medium">{orc.cliente_nome}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-zinc-500">Matriz/amostra:</dt>
+              <dd>{demanda?.matriz_amostra ?? "—"}</dd>
             </div>
             <div className="flex gap-2">
               <dt className="text-zinc-500">CNPJ:</dt>
@@ -187,12 +270,27 @@ export default async function OrcamentoDetalhe({
               <dd>{orc.responsavel ?? "—"}</dd>
             </div>
             <div className="flex gap-2">
+              <dt className="text-zinc-500">Snapshot de custo:</dt>
+              <dd>{formatDateTime(snapshotGeradoEm)}</dd>
+            </div>
+            <div className="flex gap-2">
               <dt className="text-zinc-500">Projeto:</dt>
               <dd>{projetoNome ?? "—"}</dd>
             </div>
           </dl>
 
-          <section className="no-print mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+          <nav className="no-print sticky top-0 z-10 mt-6 overflow-x-auto border-y border-zinc-200 bg-white/95 py-2 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+            <div className="flex min-w-max gap-2">
+              {tabs.map((tab) => (
+                <a key={tab.href} href={tab.href} className="rounded-md border border-zinc-300 px-3 py-2 text-left text-xs text-zinc-800 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800">
+                  <span className="block font-semibold">{tab.label}</span>
+                  <span className="mt-0.5 block text-[10px] uppercase tracking-wide text-zinc-500">{tab.meta}</span>
+                </a>
+              ))}
+            </div>
+          </nav>
+
+          <section id="totais-tecnicos" className="no-print mt-6 scroll-mt-24 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold">Preenchimento interno</h2>
@@ -220,41 +318,59 @@ export default async function OrcamentoDetalhe({
           </section>
 
           {/* Análises solicitadas */}
-          <h2 className="mt-6 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-            Análises solicitadas
-          </h2>
+          <section id="analises-quantidades" className="mt-6 scroll-mt-24">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+                  Análises e quantidades
+                </h2>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Leitura técnica por custo. Valores de preço ficam preservados no resumo e no documento final.
+                </p>
+              </div>
+              <span className="text-xs text-zinc-400">{totalAmostras} amostra(s)</span>
+            </div>
           <div className="mt-2 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
             <table className="w-full text-right text-sm">
               <thead className="bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/60">
                 <tr>
                   <th className="px-3 py-2 text-left">Análise</th>
-                  <th className="px-3 py-2 no-print">Custo/amostra</th>
-                  <th className="px-3 py-2 print:hidden">Preço/amostra</th>
+                  <th className="px-3 py-2 text-left">Matriz</th>
+                  <th className="px-3 py-2">Lote</th>
                   <th className="px-3 py-2">Amostras</th>
-                  <th className="px-3 py-2">Subtotal</th>
+                  <th className="px-3 py-2">Reagentes</th>
+                  <th className="px-3 py-2">Equip.</th>
+                  <th className="px-3 py-2">Mão obra</th>
+                  <th className="px-3 py-2">Overhead</th>
+                  <th className="px-3 py-2">Custo</th>
+                  <th className="px-3 py-2 text-left">Origem</th>
                   <th className="px-3 py-2 no-print"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {itens.map((it) => (
-                  <tr key={it.id}>
+                {linhasTecnicas.map((linha) => (
+                  <tr key={linha.id}>
                     <td className="px-3 py-2 text-left font-medium">
-                      {it.codigo_analise}
+                      <p>{linha.codigo}</p>
+                      <p className="text-xs font-normal text-zinc-500">{linha.nome ?? "—"}</p>
                     </td>
+                    <td className="px-3 py-2 text-left text-zinc-500">{demanda?.matriz_amostra ?? "—"}</td>
+                    <td className="px-3 py-2 tabular-nums">{linha.lote ?? "—"}</td>
+                    <td className="px-3 py-2 tabular-nums">{linha.quantidade}</td>
                     <td className="px-3 py-2 tabular-nums text-zinc-500 no-print">
-                      {brl(Number(it.custo_unitario))}
+                      {brl(linha.reagentes)}
                     </td>
-                    <td className="px-3 py-2 tabular-nums print:hidden">
-                      {brl(Number(it.preco_unitario))}
-                    </td>
-                    <td className="px-3 py-2 tabular-nums">{Number(it.n_amostras)}</td>
+                    <td className="px-3 py-2 tabular-nums">{brl(linha.equipamentos)}</td>
+                    <td className="px-3 py-2 tabular-nums">{brl(linha.maoObra)}</td>
+                    <td className="px-3 py-2 tabular-nums">{brl(linha.overhead)}</td>
                     <td className="px-3 py-2 font-semibold tabular-nums">
-                      {brl(Number(it.custo_unitario) * Number(it.n_amostras))}
+                      {brl(linha.custo)}
                     </td>
+                    <td className="px-3 py-2 text-left text-xs text-zinc-500">{linha.origem}</td>
                     <td className="px-3 py-2 no-print">
                       <form action={removerItemOrcamento}>
                         <input type="hidden" name="orcamento_id" value={orcId} />
-                        <input type="hidden" name="item_id" value={it.id} />
+                        <input type="hidden" name="item_id" value={linha.id} />
                         <button className="text-xs text-red-600 hover:underline">
                           Remover
                         </button>
@@ -264,7 +380,7 @@ export default async function OrcamentoDetalhe({
                 ))}
                 {itens.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-3 py-8 text-center text-zinc-400">
+                    <td colSpan={11} className="px-3 py-8 text-center text-zinc-400">
                       Nenhuma análise. Adicione abaixo.
                     </td>
                   </tr>
@@ -274,20 +390,49 @@ export default async function OrcamentoDetalhe({
                 <tfoot className="border-t border-zinc-200 bg-transparent dark:border-zinc-800 dark:bg-zinc-900/60">
                   <tr>
                     <td className="px-3 py-2.5 text-left font-medium">Total</td>
-                    <td className="px-3 py-2.5 tabular-nums text-zinc-500 no-print">
-                      {brl(totalCusto)}
-                    </td>
+                    <td></td>
                     <td></td>
                     <td className="px-3 py-2.5 tabular-nums">{totalAmostras}</td>
+                    <td className="px-3 py-2.5 tabular-nums text-zinc-500 no-print">{brl(Number(totaisOperacionais.reagentes ?? 0))}</td>
+                    <td className="px-3 py-2.5 tabular-nums">{brl(Number(totaisOperacionais.equipamentos ?? 0))}</td>
+                    <td className="px-3 py-2.5 tabular-nums">{brl(Number(totaisOperacionais.mao_obra ?? 0))}</td>
+                    <td className="px-3 py-2.5 tabular-nums">{brl(Number(totaisOperacionais.overhead ?? 0))}</td>
                     <td className="px-3 py-2.5 text-base font-semibold tabular-nums text-brand-700 dark:text-brand-400">
                       {brl(totalCusto)}
                     </td>
+                    <td></td>
                     <td className="no-print"></td>
                   </tr>
                 </tfoot>
               )}
             </table>
           </div>
+          </section>
+
+          <section id="composicao-tecnica" className="no-print mt-6 scroll-mt-24">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+                  Composição técnica por bloco
+                </h2>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Cada subtotal mostra a origem calculada pela engine de custeio e a regra operacional aplicada.
+                </p>
+              </div>
+            </div>
+            <TabelaResumoTecnico
+              colunas={["Bloco", "Origem", "Regra", "Subtotal"]}
+              vazio="Sem composição técnica calculada."
+              linhas={[
+                ["Reagentes", "insumo_analise + custo_unitario do insumo", "Quantidade por amostra multiplicada pelas amostras; itens por execução são rateados pelo lote.", brl(Number(totaisOperacionais.reagentes ?? 0))],
+                ["Materiais", "mesma base de insumos selecionados", "Material de consumo entra no custo técnico junto aos reagentes.", brl(Number(totaisOperacionais.materiais ?? 0))],
+                ["Equipamentos", "equipamento_analise + depreciação/manutenção", "Custo diário do equipamento alocado por peso e capacidade diária da análise.", brl(Number(totaisOperacionais.equipamentos ?? 0))],
+                ["Mão de obra", "tecnicos + etapas", "Horas de bancada por amostra multiplicadas pelo valor-hora dedicado.", brl(Number(totaisOperacionais.mao_obra ?? 0))],
+                ["Terceiros", "lançamento reservado", "Sem terceiros laboratoriais próprios neste snapshot.", brl(Number(totaisOperacionais.terceiros ?? 0))],
+                ["Overhead técnico", "overhead + etapas", "Horas de bancada por amostra multiplicadas pelo custo-hora de overhead.", brl(Number(totaisOperacionais.overhead ?? 0))],
+              ]}
+            />
+          </section>
 
           {orc.observacoes && (
             <div className="mt-4 text-sm">
@@ -315,7 +460,7 @@ export default async function OrcamentoDetalhe({
         )}
 
         {/* Form: adicionar análise */}
-        <section className="no-print mt-6 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="identificacao-tecnica" className="no-print mt-6 scroll-mt-24 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-semibold">Adicionar análise solicitada</h2>
           <form action={adicionarItemOrcamento} className="mt-3 flex flex-wrap items-end gap-2">
             <input type="hidden" name="orcamento_id" value={orcId} />
@@ -433,7 +578,32 @@ export default async function OrcamentoDetalhe({
           </form>
         </section>
 
-        <section className="no-print mt-6 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="revisao-laboratorio" className="no-print mt-6 scroll-mt-24 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Revisão técnica</h2>
+              <p className="mt-1 text-xs text-zinc-500">
+                Checklist para marcar o orçamento como enviado, aprovado ou seguir para planejamento.
+              </p>
+            </div>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${revisaoPendencias.length === 0 ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"}`}>
+              {revisaoPendencias.length === 0 ? "Liberado" : `${revisaoPendencias.length} pendência(s)`}
+            </span>
+          </div>
+          {revisaoPendencias.length > 0 ? (
+            <ul className="mt-3 list-disc space-y-1 pl-4 text-xs leading-5 text-amber-800 dark:text-amber-200">
+              {revisaoPendencias.map((pendencia) => (
+                <li key={pendencia}>{pendencia}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 rounded-md bg-brand-50 px-3 py-2 text-xs leading-5 text-brand-900 dark:bg-brand-950/40 dark:text-brand-200">
+              Cabeçalho, responsável e análises estão coerentes. A próxima ação natural é salvar o status revisado no cabeçalho.
+            </p>
+          )}
+        </section>
+
+        <section id="historico-laboratorio" className="no-print mt-6 scroll-mt-24 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-semibold">Linha do tempo</h2>
           <p className="mt-1 mb-3 text-xs text-zinc-500">
             Transições de status registradas (salve mudando o status acima para gerar eventos).
@@ -488,6 +658,51 @@ function ResumoOperacional({
       <p className="mt-1 text-sm font-semibold tabular-nums">
         {numero ? valor.toLocaleString("pt-BR") : brl(valor)}
       </p>
+    </div>
+  );
+}
+
+function TabelaResumoTecnico({
+  colunas,
+  linhas,
+  vazio,
+}: {
+  colunas: string[];
+  linhas: ReactNode[][];
+  vazio: string;
+}) {
+  return (
+    <div className="mt-3 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+      <table className="w-full text-left text-sm">
+        <thead className="text-xs uppercase tracking-wide text-zinc-500">
+          <tr>
+            {colunas.map((coluna) => (
+              <th key={coluna} className="px-3 py-2">
+                {coluna}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          {linhas.length > 0 ? (
+            linhas.map((linha, index) => (
+              <tr key={index}>
+                {linha.map((celula, celulaIndex) => (
+                  <td key={celulaIndex} className="max-w-lg px-3 py-2 text-zinc-700 dark:text-zinc-200">
+                    {celula}
+                  </td>
+                ))}
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={colunas.length} className="px-3 py-8 text-center text-zinc-400">
+                {vazio}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }

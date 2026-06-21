@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { ExportOrcamentoFinalButtons } from "@/components/orcamento/ExportOrcamentoFinalButtons";
 import { PrintButton } from "@/components/orcamento/PrintButton";
+import { cancelarVersaoFinal, duplicarVersaoFinal } from "@/lib/actions/orcamento-historico";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
 import type { Json } from "@/lib/supabase/database.types";
@@ -148,8 +150,12 @@ export default async function OrcamentoFinalPage({
     cliente_contato: demanda?.cliente_contato ?? null,
     demanda_titulo: demanda?.titulo ?? null,
     modalidade: demanda?.modalidade ?? null,
+    emitido_em: formatDateTime(versao.criado_em),
     validade: formatDate(versao.valido_ate),
+    validade_dias: Number(versao.validade_dias ?? 0),
     escopo: demanda?.escopo_preliminar || demanda?.descricao || null,
+    condicoes: condicoesComerciais(versao),
+    responsavel: "ATGC Genética Ambiental",
   };
   const exportResumo = {
     total_laboratorio_custo: Number(versao.total_laboratorio_custo ?? 0),
@@ -197,10 +203,13 @@ export default async function OrcamentoFinalPage({
     regra: origem.regra ?? "Valor preservado na versão final emitida.",
     valor: Number(origem.valor ?? 0),
   }));
+  const composicaoCliente = consolidarComposicaoCliente(exportItens);
+  const statusLabel = STATUS[versao.status] ?? versao.status;
+  const modoInternoHref = "#modo-interno";
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="print-area mx-auto max-w-5xl px-6 py-10">
+      <main className="print-area mx-auto max-w-6xl px-6 py-10">
         <div className="no-print flex flex-wrap items-center justify-between gap-3">
           <Breadcrumbs
             items={[
@@ -210,6 +219,12 @@ export default async function OrcamentoFinalPage({
             ]}
           />
           <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={modoInternoHref}
+              className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            >
+              Modo interno
+            </a>
             <ExportOrcamentoFinalButtons
               info={exportInfo}
               resumo={exportResumo}
@@ -226,21 +241,138 @@ export default async function OrcamentoFinalPage({
           </div>
         </div>
 
-        <section className="mt-4 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60 print:border-0 print:shadow-none">
+        <section className="mt-4 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60 print:border-0 print:shadow-none">
+          <div className="border-b border-zinc-200 bg-zinc-950 px-6 py-5 text-white dark:border-zinc-800">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200">
+                  ATGC Genética Ambiental
+                </p>
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight">Proposta comercial</h1>
+                <p className="mt-1 text-sm text-zinc-300">{demanda?.titulo ?? `Demanda #${versao.demanda_id}`}</p>
+              </div>
+              <div className="text-right text-sm">
+                <p className="text-xs uppercase tracking-wide text-zinc-400">Número</p>
+                <p className="mt-1 text-lg font-semibold">{versao.numero}</p>
+                <p className="mt-1 text-zinc-300">v{versao.versao} · {statusLabel}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6">
+            <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+              <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Dados do cliente</h2>
+                <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+                  <Campo titulo="Cliente" valor={demanda?.cliente_nome ?? "—"} />
+                  <Campo titulo="CNPJ/CPF" valor={demanda?.cliente_cnpj ?? "—"} />
+                  <Campo titulo="Contato" valor={demanda?.cliente_contato ?? "—"} />
+                  <Campo titulo="Modalidade" valor={demanda?.modalidade ?? "—"} />
+                  <Campo titulo="Emitido em" valor={formatDateTime(versao.criado_em)} />
+                  <Campo titulo="Válido até" valor={formatDate(versao.valido_ate)} />
+                </dl>
+              </section>
+
+              <aside className="rounded-lg border border-brand-200 bg-brand-50 p-4 dark:border-brand-900 dark:bg-brand-950/30">
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">Total da proposta</p>
+                <p className="mt-3 text-3xl font-semibold tabular-nums text-brand-800 dark:text-brand-200">
+                  {brl(Number(versao.total_final ?? 0))}
+                </p>
+                <p className="mt-2 text-sm text-brand-700 dark:text-brand-300">
+                  Validade de {Number(versao.validade_dias ?? 0)} dias a partir da emissão.
+                </p>
+              </aside>
+            </div>
+
+            <section className="mt-6 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Escopo resumido</h2>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+                {demanda?.escopo_preliminar || demanda?.descricao || "—"}
+              </p>
+            </section>
+
+            <section className="mt-6 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+              <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Composição comercial</h2>
+                <p className="mt-1 text-xs text-zinc-500">Valores de cliente, sem exposição de custo interno.</p>
+              </div>
+              <table className="w-full text-left text-sm">
+                <thead className="text-xs uppercase tracking-wide text-zinc-500">
+                  <tr>
+                    <th className="px-4 py-3">Grupo</th>
+                    <th className="px-4 py-3">Descrição</th>
+                    <th className="px-4 py-3 text-right">Qtd.</th>
+                    <th className="px-4 py-3">Unidade</th>
+                    <th className="px-4 py-3 text-right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  {composicaoCliente.map((item) => (
+                    <tr key={`${item.grupo}-${item.descricao}`}>
+                      <td className="px-4 py-3 font-medium">{item.grupo}</td>
+                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{item.descricao}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{item.quantidade}</td>
+                      <td className="px-4 py-3 text-zinc-500">{item.unidade ?? "—"}</td>
+                      <td className="px-4 py-3 text-right font-semibold tabular-nums">{brl(item.subtotal)}</td>
+                    </tr>
+                  ))}
+                  {composicaoCliente.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-5 text-center text-sm text-zinc-400">
+                        Nenhum item preservado no snapshot da proposta.
+                      </td>
+                    </tr>
+                  )}
+                  <tr className="bg-zinc-50 font-semibold dark:bg-zinc-950/50">
+                    <td colSpan={4} className="px-4 py-3 text-right">Total final</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{brl(Number(versao.total_final ?? 0))}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </section>
+
+            <section className="mt-6 grid gap-4 md:grid-cols-3">
+              <BlocoDocumento titulo="Condições comerciais">
+                {condicoesComerciais(versao)}
+              </BlocoDocumento>
+              <BlocoDocumento titulo="Prazos e validade">
+                Emitido em {formatDateTime(versao.criado_em)} e válido até {formatDate(versao.valido_ate)}.
+              </BlocoDocumento>
+              <BlocoDocumento titulo="Responsável">
+                ATGC Genética Ambiental · orçamento emitido a partir do snapshot #{versao.id}.
+              </BlocoDocumento>
+            </section>
+          </div>
+        </section>
+
+        <section id="modo-interno" className="mt-6 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60 print:hidden">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
-                Orçamento final
+                Modo interno
               </p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight">{versao.numero}</h1>
+              <h2 className="mt-1 text-xl font-semibold tracking-tight">Custos, parâmetros e auditoria</h2>
               <p className="mt-1 text-sm text-zinc-500">
-                Versão {versao.versao} · {STATUS[versao.status] ?? versao.status}
+                Snapshot preservado na emissão. Esta área não precisa entrar no documento enviado ao cliente.
               </p>
             </div>
-            <div className="text-right text-sm">
-              <p className="font-medium">{brl(Number(versao.total_final ?? 0))}</p>
-              <p className="text-zinc-500">Emitido em {formatDateTime(versao.criado_em)}</p>
-              <p className="text-zinc-500">Válido até {formatDate(versao.valido_ate)}</p>
+            <div className="no-print flex flex-wrap gap-2">
+              <form action={duplicarVersaoFinal}>
+                <input type="hidden" name="versao_id" value={versao.id} />
+                <input type="hidden" name="validade_dias" value={versao.validade_dias ?? 30} />
+                <button className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                  Duplicar versão
+                </button>
+              </form>
+              {versao.status !== "cancelado" && (
+                <form action={cancelarVersaoFinal} className="flex gap-2">
+                  <input type="hidden" name="versao_id" value={versao.id} />
+                  <input type="hidden" name="motivo" value="Cancelamento a partir do detalhe da versão final." />
+                  <button className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/30">
+                    Cancelar
+                  </button>
+                </form>
+              )}
             </div>
           </div>
 
@@ -260,13 +392,6 @@ export default async function OrcamentoFinalPage({
             <Resumo titulo="Projeto final" valor={versao.total_projeto_final} />
             <Resumo titulo="Total final" valor={versao.total_final} destaque />
           </div>
-
-          <section className="mt-6 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Escopo</h2>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-              {demanda?.escopo_preliminar || demanda?.descricao || "—"}
-            </p>
-          </section>
 
           <section className="mt-6 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -327,6 +452,31 @@ export default async function OrcamentoFinalPage({
       </main>
     </div>
   );
+}
+
+function condicoesComerciais(versao: { valido_ate: string | null; validade_dias: number | null }) {
+  return `Valores válidos até ${formatDate(versao.valido_ate)}. Alterações de escopo, quantidade de amostras, premissas técnicas ou cronograma podem exigir nova versão da proposta.`;
+}
+
+function consolidarComposicaoCliente(
+  itens: Array<{ grupo: string; descricao: string; quantidade: number; unidade?: string | null; subtotal: number }>,
+) {
+  const mapa = new Map<string, { grupo: string; descricao: string; quantidade: number; unidade?: string | null; subtotal: number }>();
+  for (const item of itens) {
+    const grupo = item.grupo.startsWith("Projeto") ? "Projeto" : item.grupo;
+    const chave = `${grupo}-${item.descricao}-${item.unidade ?? ""}`;
+    const atual = mapa.get(chave) ?? {
+      grupo,
+      descricao: item.descricao,
+      quantidade: 0,
+      unidade: item.unidade,
+      subtotal: 0,
+    };
+    atual.quantidade += Number(item.quantidade ?? 0);
+    atual.subtotal += Number(item.subtotal ?? 0);
+    mapa.set(chave, atual);
+  }
+  return [...mapa.values()];
 }
 
 function subtotalProjetoSnapshot(item: SnapshotItemProjeto) {
@@ -497,6 +647,15 @@ function Campo({ titulo, valor }: { titulo: string; valor: string }) {
     <div className="rounded-md bg-zinc-50 p-3 dark:bg-zinc-950/50">
       <dt className="text-xs font-medium text-zinc-500">{titulo}</dt>
       <dd className="mt-1 font-medium">{valor}</dd>
+    </div>
+  );
+}
+
+function BlocoDocumento({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">{titulo}</h2>
+      <p className="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{children}</p>
     </div>
   );
 }

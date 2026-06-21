@@ -7,16 +7,49 @@ import {
   cancelarVersaoFinal,
   duplicarVersaoFinal,
 } from "@/lib/actions/orcamento-historico";
-import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
+import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
+
+type SearchParams = {
+  status?: string;
+  cliente?: string;
+  responsavel?: string;
+  modalidade?: string;
+  emitido_de?: string;
+  emitido_ate?: string;
+  validade_de?: string;
+  validade_ate?: string;
+  valor_min?: string;
+  valor_max?: string;
+  comparar?: string;
+};
 
 type DemandaHistorico = {
   id: number;
   titulo: string | null;
   cliente_nome: string | null;
   responsavel_interno: string | null;
+  modalidade: string | null;
+};
+
+type SnapshotParametro = {
+  key?: string;
+  label?: string;
+  nominalRate?: number;
+  amount?: number;
+};
+
+type SnapshotFinal = {
+  consolidado?: {
+    markupProjeto?: number;
+    parametrosProjeto?: SnapshotParametro[];
+    origens?: Array<{ campo?: string; titulo?: string; regra?: string; valor?: number }>;
+  };
+  orcamentos_analises?: Array<{ id?: number; orcamento_itens?: unknown[] }>;
+  orcamentos_projeto?: Array<{ id?: number; orcamento_projeto_custos?: unknown[]; orcamento_projeto_analises?: unknown[] }>;
 };
 
 type VersaoFinal = {
@@ -37,24 +70,43 @@ type VersaoFinal = {
   duplicada_de_id: number | null;
   cancelado_em: string | null;
   cancelado_motivo: string | null;
+  snapshot: Json;
   demandas_propostas?: DemandaHistorico | null;
 };
 
-export default async function HistoricoOrcamentosPage() {
+type VersaoComAnterior = VersaoFinal & { anterior: VersaoFinal | null };
+
+const statusOptions = [
+  ["", "Todos"],
+  ["emitido", "Emitido"],
+  ["vencido", "Vencido"],
+  ["substituido", "Substituído"],
+  ["cancelado", "Cancelado"],
+] as const;
+
+export default async function HistoricoOrcamentosPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   await atualizarOrcamentosFinaisVencidos();
 
+  const filtros = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase
     .from("orcamento_final_versoes")
     .select(
-      "id, demanda_id, versao, numero, status, validade_dias, valido_ate, total_final, total_laboratorio_custo, total_laboratorio_preco, total_projeto_custo, total_projeto_final, criado_por, criado_em, duplicada_de_id, cancelado_em, cancelado_motivo, demandas_propostas(id, titulo, cliente_nome, responsavel_interno)",
+      "id, demanda_id, versao, numero, status, validade_dias, valido_ate, total_final, total_laboratorio_custo, total_laboratorio_preco, total_projeto_custo, total_projeto_final, criado_por, criado_em, duplicada_de_id, cancelado_em, cancelado_motivo, snapshot, demandas_propostas(id, titulo, cliente_nome, responsavel_interno, modalidade)",
     )
     .order("criado_em", { ascending: false });
 
-  const versoes = ((data ?? []) as VersaoFinal[]).map((versao) => ({
+  const todas = ((data ?? []) as VersaoFinal[]).map((versao) => ({
     ...versao,
     anterior: encontrarAnterior((data ?? []) as VersaoFinal[], versao),
   }));
+  const versoes = filtrarVersoes(todas, filtros);
+  const comparada = todas.find((item) => item.id === Number(filtros.comparar));
+  const exportHref = `/orcamento/historico/export?${new URLSearchParams(limparFiltros(filtros)).toString()}`;
 
   const emitidos = versoes.filter((item) => item.status === "emitido").length;
   const vencidos = versoes.filter((item) => item.status === "vencido").length;
@@ -70,98 +122,172 @@ export default async function HistoricoOrcamentosPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Histórico de Orçamentos</h1>
             <p className="mt-1 max-w-3xl text-sm text-zinc-500">
-              Versões finais emitidas, vencimentos, cancelamentos, duplicações e comparação entre versões da mesma demanda.
+              Consulta executiva de versões finais com filtros, delta contra versão anterior, comparação visual e exportação.
             </p>
           </div>
-          <Link href="/orcamento/demandas" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
-            Nova demanda
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href={exportHref} className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+              Exportar CSV
+            </Link>
+            <Link href="/orcamento/demandas" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
+              Nova demanda
+            </Link>
+          </div>
         </div>
 
         <section className="mt-6 grid gap-3 sm:grid-cols-4">
           <Resumo titulo="Emitidos ativos" valor={emitidos} />
           <Resumo titulo="Vencidos" valor={vencidos} />
           <Resumo titulo="Cancelados" valor={cancelados} />
-          <Resumo titulo="Total histórico" valor={totalHistorico} moeda />
+          <Resumo titulo="Total filtrado" valor={totalHistorico} moeda />
         </section>
 
+        <form className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-8">
+            <CampoFiltro label="Status">
+              <select name="status" defaultValue={filtros.status ?? ""} className={inputCls}>
+                {statusOptions.map(([value, label]) => (
+                  <option key={value || "todos"} value={value}>{label}</option>
+                ))}
+              </select>
+            </CampoFiltro>
+            <CampoFiltro label="Cliente">
+              <input name="cliente" defaultValue={filtros.cliente ?? ""} className={inputCls} />
+            </CampoFiltro>
+            <CampoFiltro label="Responsável">
+              <input name="responsavel" defaultValue={filtros.responsavel ?? ""} className={inputCls} />
+            </CampoFiltro>
+            <CampoFiltro label="Modalidade">
+              <input name="modalidade" defaultValue={filtros.modalidade ?? ""} className={inputCls} />
+            </CampoFiltro>
+            <CampoFiltro label="Emitido de">
+              <input name="emitido_de" type="date" defaultValue={filtros.emitido_de ?? ""} className={inputCls} />
+            </CampoFiltro>
+            <CampoFiltro label="Emitido até">
+              <input name="emitido_ate" type="date" defaultValue={filtros.emitido_ate ?? ""} className={inputCls} />
+            </CampoFiltro>
+            <CampoFiltro label="Validade de">
+              <input name="validade_de" type="date" defaultValue={filtros.validade_de ?? ""} className={inputCls} />
+            </CampoFiltro>
+            <CampoFiltro label="Validade até">
+              <input name="validade_ate" type="date" defaultValue={filtros.validade_ate ?? ""} className={inputCls} />
+            </CampoFiltro>
+            <CampoFiltro label="Valor mínimo">
+              <input name="valor_min" type="number" step="0.01" defaultValue={filtros.valor_min ?? ""} className={inputCls} />
+            </CampoFiltro>
+            <CampoFiltro label="Valor máximo">
+              <input name="valor_max" type="number" step="0.01" defaultValue={filtros.valor_max ?? ""} className={inputCls} />
+            </CampoFiltro>
+            <div className="flex items-end gap-2 md:col-span-2">
+              <button className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
+                Filtrar
+              </button>
+              <Link href="/orcamento/historico" className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                Limpar
+              </Link>
+            </div>
+          </div>
+        </form>
+
+        {comparada && (
+          <ComparacaoLadoALado atual={comparada} anterior={comparada.anterior} />
+        )}
+
         <section className="mt-6 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full min-w-[1100px] text-left text-sm">
+          <table className="w-full min-w-[1500px] text-left text-sm">
             <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
               <tr>
-                <th className="px-3 py-3">Versão</th>
+                <th className="px-3 py-3">Número</th>
                 <th className="px-3 py-3">Demanda</th>
+                <th className="px-3 py-3">Cliente</th>
+                <th className="px-3 py-3">Modalidade</th>
                 <th className="px-3 py-3">Responsável</th>
-                <th className="px-3 py-3">Emissão</th>
+                <th className="px-3 py-3">Criado em</th>
+                <th className="px-3 py-3">Enviado em</th>
+                <th className="px-3 py-3">Aprovado em</th>
                 <th className="px-3 py-3">Validade</th>
-                <th className="px-3 py-3 text-right">Total</th>
-                <th className="px-3 py-3 text-right">Comparação</th>
                 <th className="px-3 py-3">Status</th>
+                <th className="px-3 py-3 text-right">Custo total</th>
+                <th className="px-3 py-3">Parâmetros</th>
+                <th className="px-3 py-3 text-right">Preço final</th>
+                <th className="px-3 py-3 text-right">Delta</th>
                 <th className="px-3 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {versoes.map((item) => (
-                <tr key={item.id}>
-                  <td className="px-3 py-3">
-                    <Link href={`/orcamento/final/${item.id}`} className="font-medium text-primary hover:underline">
-                      {item.numero}
-                    </Link>
-                    <p className="text-xs text-zinc-500">v{item.versao}{item.duplicada_de_id ? ` · duplicada de #${item.duplicada_de_id}` : ""}</p>
-                  </td>
-                  <td className="px-3 py-3">
-                    <Link href={`/orcamento/demandas/${item.demanda_id}`} className="font-medium hover:underline">
-                      {item.demandas_propostas?.titulo ?? `Demanda ${item.demanda_id}`}
-                    </Link>
-                    <p className="text-xs text-zinc-500">{item.demandas_propostas?.cliente_nome ?? "Cliente não informado"}</p>
-                  </td>
-                  <td className="px-3 py-3">
-                    <p>{item.demandas_propostas?.responsavel_interno ?? item.criado_por ?? "—"}</p>
-                    <p className="text-xs text-zinc-500">{item.criado_por ? `usuário ${item.criado_por}` : "sem usuário registrado"}</p>
-                  </td>
-                  <td className="px-3 py-3">{formatDateTime(item.criado_em)}</td>
-                  <td className="px-3 py-3">
-                    <p>{item.valido_ate ?? "—"}</p>
-                    <p className="text-xs text-zinc-500">{item.validade_dias} dias</p>
-                  </td>
-                  <td className="px-3 py-3 text-right font-semibold tabular-nums">{brl(Number(item.total_final ?? 0))}</td>
-                  <td className="px-3 py-3 text-right tabular-nums">
-                    {item.anterior ? (
-                      <Comparacao atual={Number(item.total_final ?? 0)} anterior={Number(item.anterior.total_final ?? 0)} />
-                    ) : (
-                      <span className="text-zinc-400">primeira versão</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3">
-                    <Status status={item.status} />
-                    {item.cancelado_motivo && <p className="mt-1 max-w-40 text-xs text-zinc-500">{item.cancelado_motivo}</p>}
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <form action={duplicarVersaoFinal}>
-                        <input type="hidden" name="versao_id" value={item.id} />
-                        <input type="hidden" name="validade_dias" value={item.validade_dias || 30} />
-                        <button className="text-xs text-brand-700 hover:underline dark:text-brand-300">Duplicar</button>
-                      </form>
-                      {!["cancelado", "substituido"].includes(item.status) && (
-                        <ConfirmActionButton
-                          action={cancelarVersaoFinal}
-                          fields={{ versao_id: item.id, motivo: "Cancelamento operacional pelo histórico." }}
-                          trigger="Cancelar"
-                          titulo="Cancelar versão final"
-                          mensagem={`Cancelar a versão ${item.numero}? O snapshot continuará preservado no histórico.`}
-                          confirmLabel="Cancelar versão"
-                          triggerClassName="text-xs text-red-600 hover:underline"
-                        />
+              {versoes.map((item) => {
+                const snapshot = normalizarSnapshot(item.snapshot);
+                const custoTotal = Number(item.total_laboratorio_custo ?? 0) + Number(item.total_projeto_custo ?? 0);
+                return (
+                  <tr key={item.id}>
+                    <td className="px-3 py-3">
+                      <Link href={`/orcamento/final/${item.id}`} className="font-medium text-primary hover:underline">
+                        {item.numero}
+                      </Link>
+                      <p className="text-xs text-zinc-500">v{item.versao}{item.duplicada_de_id ? ` · duplicada de #${item.duplicada_de_id}` : ""}</p>
+                    </td>
+                    <td className="px-3 py-3">
+                      <Link href={`/orcamento/demandas/${item.demanda_id}`} className="font-medium hover:underline">
+                        {item.demandas_propostas?.titulo ?? `Demanda ${item.demanda_id}`}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-3">{item.demandas_propostas?.cliente_nome ?? "Cliente não informado"}</td>
+                    <td className="px-3 py-3"><Badge>{item.demandas_propostas?.modalidade ?? "—"}</Badge></td>
+                    <td className="px-3 py-3">
+                      <p>{item.demandas_propostas?.responsavel_interno ?? item.criado_por ?? "—"}</p>
+                      <p className="text-xs text-zinc-500">{item.criado_por ? `usuário ${item.criado_por}` : "sem usuário registrado"}</p>
+                    </td>
+                    <td className="px-3 py-3">{formatDateTime(item.criado_em)}</td>
+                    <td className="px-3 py-3">{formatDateTime(item.criado_em)}</td>
+                    <td className="px-3 py-3">{item.status === "aprovado" ? formatDateTime(item.criado_em) : "—"}</td>
+                    <td className="px-3 py-3">
+                      <p>{formatDate(item.valido_ate)}</p>
+                      <p className="text-xs text-zinc-500">{item.validade_dias} dias</p>
+                    </td>
+                    <td className="px-3 py-3">
+                      <Status status={item.status} />
+                      {item.cancelado_motivo && <p className="mt-1 max-w-40 text-xs text-zinc-500">{item.cancelado_motivo}</p>}
+                    </td>
+                    <td className="px-3 py-3 text-right tabular-nums">{brl(custoTotal)}</td>
+                    <td className="px-3 py-3 text-xs text-zinc-500">{resumoParametros(snapshot)}</td>
+                    <td className="px-3 py-3 text-right font-semibold tabular-nums">{brl(Number(item.total_final ?? 0))}</td>
+                    <td className="px-3 py-3 text-right tabular-nums">
+                      {item.anterior ? (
+                        <Comparacao atual={Number(item.total_final ?? 0)} anterior={Number(item.anterior.total_final ?? 0)} />
+                      ) : (
+                        <span className="text-zinc-400">primeira versão</span>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <div className="flex justify-end gap-2">
+                        <Link href={`/orcamento/historico?${new URLSearchParams({ ...limparFiltros(filtros), comparar: String(item.id) }).toString()}`} className="text-xs text-brand-700 hover:underline dark:text-brand-300">
+                          Comparar
+                        </Link>
+                        <form action={duplicarVersaoFinal}>
+                          <input type="hidden" name="versao_id" value={item.id} />
+                          <input type="hidden" name="validade_dias" value={item.validade_dias || 30} />
+                          <button className="text-xs text-brand-700 hover:underline dark:text-brand-300">Duplicar</button>
+                        </form>
+                        {!["cancelado", "substituido"].includes(item.status) && (
+                          <ConfirmActionButton
+                            action={cancelarVersaoFinal}
+                            fields={{ versao_id: item.id, motivo: "Cancelamento operacional pelo histórico." }}
+                            trigger="Cancelar"
+                            titulo="Cancelar versão final"
+                            mensagem={`Cancelar a versão ${item.numero}? O snapshot continuará preservado no histórico.`}
+                            confirmLabel="Cancelar versão"
+                            triggerClassName="text-xs text-red-600 hover:underline"
+                          />
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {versoes.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-3 py-10 text-center text-zinc-400">
-                    Nenhuma versão final emitida.
+                  <td colSpan={15} className="px-3 py-10 text-center text-zinc-400">
+                    Nenhuma versão final encontrada para os filtros atuais.
                   </td>
                 </tr>
               )}
@@ -173,10 +299,67 @@ export default async function HistoricoOrcamentosPage() {
   );
 }
 
+const inputCls =
+  "mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+
+function filtrarVersoes(versoes: VersaoComAnterior[], filtros: SearchParams) {
+  const texto = (valor: string | null | undefined) => (valor ?? "").toLocaleLowerCase("pt-BR");
+  const inclui = (valor: string | null | undefined, filtro: string | undefined) =>
+    !filtro || texto(valor).includes(texto(filtro));
+  const dataMin = (valor: string, min?: string) => !min || valor.slice(0, 10) >= min;
+  const dataMax = (valor: string, max?: string) => !max || valor.slice(0, 10) <= max;
+  const numeroMin = (valor: number, min?: string) => !min || valor >= Number(min);
+  const numeroMax = (valor: number, max?: string) => !max || valor <= Number(max);
+
+  return versoes.filter((item) => {
+    const demanda = item.demandas_propostas;
+    return (
+      (!filtros.status || item.status === filtros.status) &&
+      inclui(demanda?.cliente_nome, filtros.cliente) &&
+      inclui(demanda?.responsavel_interno ?? item.criado_por, filtros.responsavel) &&
+      inclui(demanda?.modalidade, filtros.modalidade) &&
+      dataMin(item.criado_em, filtros.emitido_de) &&
+      dataMax(item.criado_em, filtros.emitido_ate) &&
+      (!item.valido_ate || dataMin(item.valido_ate, filtros.validade_de)) &&
+      (!item.valido_ate || dataMax(item.valido_ate, filtros.validade_ate)) &&
+      numeroMin(Number(item.total_final ?? 0), filtros.valor_min) &&
+      numeroMax(Number(item.total_final ?? 0), filtros.valor_max)
+    );
+  });
+}
+
 function encontrarAnterior(versoes: VersaoFinal[], atual: VersaoFinal) {
   return versoes
     .filter((item) => item.demanda_id === atual.demanda_id && item.versao < atual.versao)
     .sort((a, b) => b.versao - a.versao)[0] ?? null;
+}
+
+function normalizarSnapshot(snapshot: Json): SnapshotFinal {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return {};
+  return snapshot as SnapshotFinal;
+}
+
+function resumoParametros(snapshot: SnapshotFinal) {
+  const markup = Number(snapshot.consolidado?.markupProjeto ?? 0);
+  const params = snapshot.consolidado?.parametrosProjeto ?? [];
+  if (params.length === 0 && markup === 0) return "sem parâmetros no snapshot";
+  const nomes = params.slice(0, 3).map((item) => `${item.label ?? item.key}: ${Number(item.nominalRate ?? 0).toLocaleString("pt-BR")}%`);
+  return [`markup ${markup.toLocaleString("pt-BR")}%`, ...nomes].join(" · ");
+}
+
+function limparFiltros(filtros: SearchParams) {
+  return Object.fromEntries(
+    Object.entries(filtros).filter(([, value]) => value !== undefined && value !== ""),
+  ) as Record<string, string>;
+}
+
+function CampoFiltro({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block text-xs font-medium text-zinc-500">
+      {label}
+      {children}
+    </label>
+  );
 }
 
 function Resumo({ titulo, valor, moeda = false }: { titulo: string; valor: number; moeda?: boolean }) {
@@ -198,6 +381,88 @@ function Comparacao({ atual, anterior }: { atual: number; anterior: number }) {
       <p className="text-xs">{percentual >= 0 ? "+" : ""}{percentual.toFixed(2).replace(".", ",")}%</p>
     </div>
   );
+}
+
+function ComparacaoLadoALado({ atual, anterior }: { atual: VersaoComAnterior; anterior: VersaoFinal | null }) {
+  const snapAtual = normalizarSnapshot(atual.snapshot);
+  const snapAnterior = anterior ? normalizarSnapshot(anterior.snapshot) : null;
+  return (
+    <section className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Comparação lado a lado</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            {atual.numero} contra {anterior ? anterior.numero : "primeira versão da demanda"}.
+          </p>
+        </div>
+        <Link href="/orcamento/historico" className="text-sm text-zinc-500 hover:underline">Fechar comparação</Link>
+      </div>
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <PainelComparado titulo="Versão selecionada" versao={atual} snapshot={snapAtual} />
+        {anterior ? (
+          <PainelComparado titulo="Versão anterior" versao={anterior} snapshot={snapAnterior ?? {}} />
+        ) : (
+          <div className="rounded-lg border border-zinc-200 p-4 text-sm text-zinc-500 dark:border-zinc-800">
+            Esta demanda não tem versão anterior para comparação.
+          </div>
+        )}
+      </div>
+      {anterior && (
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <Delta titulo="Laboratório" atual={atual.total_laboratorio_preco} anterior={anterior.total_laboratorio_preco} />
+          <Delta titulo="Projeto" atual={atual.total_projeto_final} anterior={anterior.total_projeto_final} />
+          <Delta titulo="Total" atual={atual.total_final} anterior={anterior.total_final} />
+          <Delta titulo="Markup" atual={Number(snapAtual.consolidado?.markupProjeto ?? 0)} anterior={Number(snapAnterior?.consolidado?.markupProjeto ?? 0)} percentual />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PainelComparado({ titulo, versao, snapshot }: { titulo: string; versao: VersaoFinal; snapshot: SnapshotFinal }) {
+  const analises = snapshot.orcamentos_analises?.reduce((total, item) => total + (item.orcamento_itens?.length ?? 0), 0) ?? 0;
+  const custosProjeto = snapshot.orcamentos_projeto?.reduce(
+    (total, item) => total + (item.orcamento_projeto_custos?.length ?? 0) + (item.orcamento_projeto_analises?.length ?? 0),
+    0,
+  ) ?? 0;
+  return (
+    <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+      <h3 className="text-sm font-semibold">{titulo}</h3>
+      <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+        <Info label="Número" value={`${versao.numero} · v${versao.versao}`} />
+        <Info label="Status" value={versao.status} />
+        <Info label="Criado em" value={formatDateTime(versao.criado_em)} />
+        <Info label="Validade" value={formatDate(versao.valido_ate)} />
+        <Info label="Itens laboratório" value={String(analises)} />
+        <Info label="Itens projeto" value={String(custosProjeto)} />
+        <Info label="Parâmetros" value={resumoParametros(snapshot)} wide />
+        <Info label="Total" value={brl(Number(versao.total_final ?? 0))} wide />
+      </dl>
+    </div>
+  );
+}
+
+function Delta({ titulo, atual, anterior, percentual = false }: { titulo: string; atual: number; anterior: number; percentual?: boolean }) {
+  const delta = Number(atual ?? 0) - Number(anterior ?? 0);
+  return (
+    <div className="rounded-md bg-zinc-50 p-3 dark:bg-zinc-950/50">
+      <p className="text-xs font-medium text-zinc-500">{titulo}</p>
+      <p className="mt-1 font-semibold tabular-nums">{percentual ? `${delta.toLocaleString("pt-BR")}%` : brl(delta)}</p>
+    </div>
+  );
+}
+
+function Info({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
+  return (
+    <div className={`rounded-md bg-zinc-50 p-2 dark:bg-zinc-950/50 ${wide ? "sm:col-span-2" : ""}`}>
+      <dt className="text-xs text-zinc-500">{label}</dt>
+      <dd className="mt-1 font-medium">{value}</dd>
+    </div>
+  );
+}
+
+function Badge({ children }: { children: React.ReactNode }) {
+  return <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{children}</span>;
 }
 
 function Status({ status }: { status: string }) {
