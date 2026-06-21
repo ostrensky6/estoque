@@ -5,6 +5,7 @@ import {
   salvarParametrosEconomicos,
   type ParametrosEconomicosState,
 } from "@/lib/actions/orcamentos";
+import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
 
 type ParametroCampo = {
   chave:
@@ -88,8 +89,9 @@ export function ParametrosEconomicosForm({
     FormData
   >(salvarParametrosEconomicos, { ok: false });
 
+  // §8.2: o percentual/valor que o usuário define é entrada -> azul (TOM_ENTRADA).
   const inputBase =
-    "mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm tabular-nums dark:bg-zinc-950 focus:outline-none focus:ring-1 focus:ring-brand-500";
+    `mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm font-medium tabular-nums dark:bg-zinc-950 focus:outline-none focus:ring-1 focus:ring-brand-500 ${TOM_ENTRADA}`;
 
   return (
     <form action={action} className="space-y-6">

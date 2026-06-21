@@ -32,3 +32,12 @@ test("etapa de parâmetros econômicos renderiza densa no fluxo da demanda", asy
   await formDemanda.scrollIntoViewIfNeeded();
   await formDemanda.screenshot({ path: "output/demanda-form-entrada.png" });
 });
+
+test("cockpit de parâmetros econômicos aplica §8.2 nos percentuais editáveis", async ({ page }) => {
+  await page.goto("/orcamento/parametros");
+  await expect(page.getByRole("heading", { name: "Parâmetros econômicos" })).toBeVisible();
+  // Os percentuais editáveis (entrada do usuário) são inputs numéricos.
+  const margem = page.locator('input[name="margem_lucro"]');
+  await expect(margem).toBeVisible();
+  await page.screenshot({ path: "output/parametros-cockpit.png", fullPage: true });
+});
