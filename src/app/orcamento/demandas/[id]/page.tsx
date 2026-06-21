@@ -238,6 +238,7 @@ export default async function DemandaDetalhe({
   const inp =
     `rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950 ${TOM_ENTRADA}`;
   const lbl = "block text-xs font-medium text-zinc-600 dark:text-zinc-300";
+  const hydrationSafe = { suppressHydrationWarning: true } as const;
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -323,7 +324,7 @@ export default async function DemandaDetalhe({
             <div className="mt-4 flex flex-wrap gap-2">
               {exigeAnalises && completudeDemanda.completa ? (
                 <form action={gerarOrcamentoAnalisesDaDemanda}>
-                  <input type="hidden" name="demanda_id" value={demandaId} />
+                  <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
                   <button className="rounded-md bg-brand-600 px-3 py-2 text-xs font-medium text-white hover:bg-brand-500">
                     Custos laboratoriais
                   </button>
@@ -339,7 +340,7 @@ export default async function DemandaDetalhe({
               )}
               {exigeProjeto && completudeDemanda.completa ? (
                 <form action={gerarOrcamentoProjetoDaDemanda}>
-                  <input type="hidden" name="demanda_id" value={demandaId} />
+                  <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
                   <button className="rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
                     Custos de projeto
                   </button>
@@ -579,10 +580,11 @@ export default async function DemandaDetalhe({
 
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <form action={emitirOrcamentoFinalDaDemanda} className="flex flex-wrap items-end gap-2">
-              <input type="hidden" name="demanda_id" value={demandaId} />
+              <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
               <div>
                 <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Validade (dias)</label>
                 <input
+                  {...hydrationSafe}
                   name="validade_dias"
                   type="number"
                   min="1"
@@ -654,14 +656,14 @@ export default async function DemandaDetalhe({
             </span>
           </div>
           <form action={salvarDemanda} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <input type="hidden" name="demanda_id" value={demandaId} />
+            <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
             <div className="sm:col-span-2">
               <label className={lbl}>Título</label>
-              <input name="titulo" defaultValue={demanda.titulo ?? ""} className={`${inp} mt-1 w-full`} />
+              <input {...hydrationSafe} name="titulo" defaultValue={demanda.titulo ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Cliente cadastrado</label>
-              <select name="cliente_id" defaultValue={demanda.cliente_id ?? ""} className={`${inp} mt-1 w-full`}>
+              <select {...hydrationSafe} name="cliente_id" defaultValue={demanda.cliente_id ?? ""} className={`${inp} mt-1 w-full`}>
                 <option value="">— cliente livre —</option>
                 {(clientes ?? []).map((c) => (
                   <option key={c.id} value={c.id}>{c.nome}</option>
@@ -670,7 +672,7 @@ export default async function DemandaDetalhe({
             </div>
             <div>
               <label className={lbl}>Projeto</label>
-              <select name="projeto_id" defaultValue={demanda.projeto_id ?? ""} className={`${inp} mt-1 w-full`}>
+              <select {...hydrationSafe} name="projeto_id" defaultValue={demanda.projeto_id ?? ""} className={`${inp} mt-1 w-full`}>
                 <option value="">—</option>
                 {(projetos ?? []).map((p) => (
                   <option key={p.id} value={p.id}>{p.nome}</option>
@@ -679,51 +681,51 @@ export default async function DemandaDetalhe({
             </div>
             <div>
               <label className={lbl}>Cliente livre</label>
-              <input name="cliente_nome" defaultValue={demanda.cliente_nome ?? ""} className={`${inp} mt-1 w-full`} />
+              <input {...hydrationSafe} name="cliente_nome" defaultValue={demanda.cliente_nome ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>CNPJ/CPF</label>
-              <input name="cliente_cnpj" defaultValue={demanda.cliente_cnpj ?? ""} className={`${inp} mt-1 w-full`} />
+              <input {...hydrationSafe} name="cliente_cnpj" defaultValue={demanda.cliente_cnpj ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Contato</label>
-              <input name="cliente_contato" defaultValue={demanda.cliente_contato ?? ""} className={`${inp} mt-1 w-full`} />
+              <input {...hydrationSafe} name="cliente_contato" defaultValue={demanda.cliente_contato ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Instituição</label>
-              <input name="instituicao" defaultValue={demanda.instituicao ?? ""} className={`${inp} mt-1 w-full`} />
+              <input {...hydrationSafe} name="instituicao" defaultValue={demanda.instituicao ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Responsável interno</label>
-              <input name="responsavel_interno" defaultValue={demanda.responsavel_interno ?? ""} className={`${inp} mt-1 w-full`} />
+              <input {...hydrationSafe} name="responsavel_interno" defaultValue={demanda.responsavel_interno ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Origem</label>
-              <input name="origem" defaultValue={demanda.origem ?? ""} className={`${inp} mt-1 w-full`} />
+              <input {...hydrationSafe} name="origem" defaultValue={demanda.origem ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Data da solicitação</label>
-              <input name="data_solicitacao" type="date" defaultValue={demanda.data_solicitacao ?? ""} className={`${inp} mt-1 w-full`} />
+              <input {...hydrationSafe} name="data_solicitacao" type="date" defaultValue={demanda.data_solicitacao ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Prazo esperado</label>
-              <input name="prazo_esperado" type="date" defaultValue={demanda.prazo_esperado ?? ""} className={`${inp} mt-1 w-full`} />
+              <input {...hydrationSafe} name="prazo_esperado" type="date" defaultValue={demanda.prazo_esperado ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Matriz ou tipo de amostra</label>
-              <input name="matriz_amostra" defaultValue={demanda.matriz_amostra ?? ""} className={`${inp} mt-1 w-full`} />
+              <input {...hydrationSafe} name="matriz_amostra" defaultValue={demanda.matriz_amostra ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Quantidade estimada de amostras</label>
-              <input name="quantidade_amostras_estimada" type="number" min="1" step="1" defaultValue={demanda.quantidade_amostras_estimada ?? ""} className={`${inp} mt-1 w-full`} />
+              <input {...hydrationSafe} name="quantidade_amostras_estimada" type="number" min="1" step="1" defaultValue={demanda.quantidade_amostras_estimada ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Prazo técnico estimado (dias)</label>
-              <input name="prazo_tecnico_dias" type="number" min="1" step="1" defaultValue={demanda.prazo_tecnico_dias ?? ""} className={`${inp} mt-1 w-full`} />
+              <input {...hydrationSafe} name="prazo_tecnico_dias" type="number" min="1" step="1" defaultValue={demanda.prazo_tecnico_dias ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Modalidade</label>
-              <select name="modalidade" defaultValue={demanda.modalidade ?? "analises"} className={`${inp} mt-1 w-full`}>
+              <select {...hydrationSafe} name="modalidade" defaultValue={demanda.modalidade ?? "analises"} className={`${inp} mt-1 w-full`}>
                 {Object.entries(MODALIDADES).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
@@ -731,7 +733,7 @@ export default async function DemandaDetalhe({
             </div>
             <div>
               <label className={lbl}>Status</label>
-              <select name="status" defaultValue={demanda.status ?? "nova"} className={`${inp} mt-1 w-full`}>
+              <select {...hydrationSafe} name="status" defaultValue={demanda.status ?? "nova"} className={`${inp} mt-1 w-full`}>
                 <option value="nova">Nova</option>
                 <option value="em_analise">Em análise</option>
                 <option value="orcada">Orçada</option>
@@ -742,7 +744,7 @@ export default async function DemandaDetalhe({
             </div>
             <div>
               <label className={lbl}>Prioridade</label>
-              <select name="prioridade" defaultValue={demanda.prioridade ?? "normal"} className={`${inp} mt-1 w-full`}>
+              <select {...hydrationSafe} name="prioridade" defaultValue={demanda.prioridade ?? "normal"} className={`${inp} mt-1 w-full`}>
                 <option value="baixa">Baixa</option>
                 <option value="normal">Normal</option>
                 <option value="alta">Alta</option>
@@ -751,15 +753,15 @@ export default async function DemandaDetalhe({
             </div>
             <div>
               <label className={lbl}>Descrição da demanda</label>
-              <textarea name="descricao" rows={4} defaultValue={demanda.descricao ?? ""} className={`${inp} mt-1 w-full`} />
+              <textarea {...hydrationSafe} name="descricao" rows={4} defaultValue={demanda.descricao ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div>
               <label className={lbl}>Escopo preliminar</label>
-              <textarea name="escopo_preliminar" rows={4} defaultValue={demanda.escopo_preliminar ?? ""} className={`${inp} mt-1 w-full`} />
+              <textarea {...hydrationSafe} name="escopo_preliminar" rows={4} defaultValue={demanda.escopo_preliminar ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div className="sm:col-span-2">
               <label className={lbl}>Observações</label>
-              <textarea name="observacoes" rows={3} defaultValue={demanda.observacoes ?? ""} className={`${inp} mt-1 w-full`} />
+              <textarea {...hydrationSafe} name="observacoes" rows={3} defaultValue={demanda.observacoes ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div className="sm:col-span-2">
               <button className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900">

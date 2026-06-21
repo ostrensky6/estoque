@@ -63,6 +63,7 @@ export function CusteioSimulator({
           <span className="text-xs font-medium text-slate-600 dark:text-zinc-300">Análise</span>
           <select
             value={analise.codigo}
+            suppressHydrationWarning
             onChange={(event) => {
               const next = analises.find((a) => a.codigo === event.target.value);
               setCodigo(event.target.value);
@@ -86,6 +87,7 @@ export function CusteioSimulator({
           </span>
           <input
             type="range"
+            suppressHydrationWarning
             min={1}
             max={Math.max(192, analise.lotePadrao * 4)}
             step={1}
@@ -102,6 +104,7 @@ export function CusteioSimulator({
           </span>
           <input
             type="range"
+            suppressHydrationWarning
             min={-30}
             max={60}
             step={1}
@@ -119,6 +122,7 @@ export function CusteioSimulator({
               <span className="text-xs font-medium text-slate-600 dark:text-zinc-300">{grupo.nome}</span>
               <select
                 value={escolhasGrupo[grupo.nome] ?? ""}
+                suppressHydrationWarning
                 onChange={(event) =>
                   setEscolhasGrupo((atual) => ({ ...atual, [grupo.nome]: event.target.value }))
                 }

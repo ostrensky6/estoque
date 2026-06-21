@@ -107,6 +107,7 @@ export function ParametrosForm({ params }: { params: Param[] }) {
           id={`valor_${p.chave}`}
           name={`valor_${p.chave}`}
           type="number"
+          suppressHydrationWarning
           inputMode="decimal"
           min="0"
           step={step}
@@ -124,7 +125,7 @@ export function ParametrosForm({ params }: { params: Param[] }) {
 
   return (
     <form action={action} className="space-y-8">
-      <input type="hidden" name="chaves" value={params.map((p) => p.chave).join(",")} />
+      <input suppressHydrationWarning type="hidden" name="chaves" value={params.map((p) => p.chave).join(",")} />
 
       <section>
         <h2 className={sec}>Fatores de preço</h2>

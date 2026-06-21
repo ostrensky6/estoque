@@ -114,6 +114,7 @@ export function ParametrosEconomicosForm({
                   id={campo.chave}
                   name={campo.chave}
                   type="number"
+                  suppressHydrationWarning
                   step={campo.step}
                   min={campo.min}
                   max={campo.max}
