@@ -14,7 +14,10 @@ try {
   & (Join-Path $PSScriptRoot "verify-production-target.ps1")
 
   Write-Host "Publicando producao Vercel em $VercelScope..."
+  $oldEap = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
   $deployOutput = & vercel deploy . --prod -y --scope $VercelScope --token $env:VERCEL_TOKEN 2>&1
+  $ErrorActionPreference = $oldEap
   $deployText = $deployOutput -join "`n"
   Write-Host $deployText
 

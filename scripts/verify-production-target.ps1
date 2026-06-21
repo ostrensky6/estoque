@@ -98,7 +98,10 @@ try {
   }
 
   if ($env:VERCEL_TOKEN) {
+    $oldEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     $inspect = & vercel project inspect $Expected.VercelProject --scope $Expected.VercelScope --token $env:VERCEL_TOKEN 2>&1
+    $ErrorActionPreference = $oldEap
     $inspectText = $inspect -join "`n"
     if ($LASTEXITCODE -ne 0) {
       Add-Failure "Token Vercel nao acessa $($Expected.VercelScope)/$($Expected.VercelProject)."
