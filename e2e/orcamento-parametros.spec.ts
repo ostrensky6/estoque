@@ -25,4 +25,10 @@ test("etapa de parâmetros econômicos renderiza densa no fluxo da demanda", asy
 
   await secao.scrollIntoViewIfNeeded();
   await secao.screenshot({ path: "output/parametros-economicos.png" });
+
+  // §8.2 nos inputs: o form da demanda mostra valores digitados em azul (entrada).
+  const formDemanda = page.locator("#demanda");
+  await expect(formDemanda.locator('input[name="cliente_nome"]')).toHaveValue("Cliente Demo");
+  await formDemanda.scrollIntoViewIfNeeded();
+  await formDemanda.screenshot({ path: "output/demanda-form-entrada.png" });
 });

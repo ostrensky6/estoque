@@ -14,6 +14,7 @@ import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
 import { PainelParametrosEconomicos } from "@/components/orcamento/PainelParametrosEconomicos";
 import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
+import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
 
 export const dynamic = "force-dynamic";
 
@@ -233,8 +234,9 @@ export default async function DemandaDetalhe({
     0,
   );
 
+  // §8.2: valor digitado/escolhido pelo usuário aparece em azul (TOM_ENTRADA).
   const inp =
-    "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+    `rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950 ${TOM_ENTRADA}`;
   const lbl = "block text-xs font-medium text-zinc-600 dark:text-zinc-300";
 
   return (
