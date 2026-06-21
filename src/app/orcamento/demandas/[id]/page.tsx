@@ -12,6 +12,7 @@ import {
 import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
 import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
+import { PainelParametrosEconomicos } from "@/components/orcamento/PainelParametrosEconomicos";
 import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -510,28 +511,17 @@ export default async function DemandaDetalhe({
               {podeConsolidar ? "Liberado" : "Aguardando revisão"}
             </span>
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-4">
-            <Info titulo="Custo laboratório" texto={brl(orcamentoFinal.totalLaboratorioCusto)} />
-            <Info titulo="Preço laboratório" texto={brl(orcamentoFinal.totalLaboratorioPreco)} />
-            <Info titulo="Custo projeto" texto={brl(orcamentoFinal.totalProjetoCusto)} />
-            <Info titulo="Markup projeto" texto={`${orcamentoFinal.markupProjeto.toLocaleString("pt-BR")}%`} />
-          </div>
-          {exigeProjeto ? (
-            <TabelaSimples
-              colunas={["Parâmetro", "Percentual", "Valor", "Origem"]}
-              vazio="Nenhum parâmetro aplicado."
-              linhas={orcamentoFinal.parametrosProjeto.map((parametro) => [
-                parametro.label,
-                `${parametro.nominalRate.toLocaleString("pt-BR")}%`,
-                brl(parametro.amount),
-                "Último orçamento de projeto vinculado",
-              ])}
-            />
-          ) : (
-            <div className="mt-4 rounded-md bg-zinc-50 px-3 py-4 text-sm text-zinc-500 dark:bg-zinc-950/50">
-              Parâmetros econômicos de projeto não se aplicam a esta modalidade.
-            </div>
-          )}
+          <PainelParametrosEconomicos
+            exigeProjeto={exigeProjeto}
+            metodo={orcamentoFinal.parametrosAplicados?.metodo ?? "GROSS_UP"}
+            custoLaboratorio={orcamentoFinal.totalLaboratorioCusto}
+            precoLaboratorio={orcamentoFinal.totalLaboratorioPreco}
+            custoProjeto={orcamentoFinal.totalProjetoCusto}
+            projetoFinal={orcamentoFinal.totalProjetoFinal}
+            totalFinal={orcamentoFinal.totalFinal}
+            parametros={orcamentoFinal.parametrosProjeto}
+            alertas={orcamentoFinal.parametrosAplicados?.alertas ?? []}
+          />
           <TabelaSimples
             colunas={["Campo", "Origem", "Regra", "Valor"]}
             vazio="Sem fórmulas calculadas."
