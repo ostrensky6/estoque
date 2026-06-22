@@ -238,6 +238,7 @@ function withRelations(table: string, row: Row): Row {
 
 class MockQuery {
   private filters: { column: string; value: unknown }[] = [];
+  private neqFilters: { column: string; value: unknown }[] = [];
   private inFilters: { column: string; values: unknown[] }[] = [];
   private notFilters: { column: string; values: string[] }[] = [];
   private isFilters: { column: string; value: null }[] = [];
@@ -256,6 +257,11 @@ class MockQuery {
 
   eq(column: string, value: unknown) {
     this.filters.push({ column, value });
+    return this;
+  }
+
+  neq(column: string, value: unknown) {
+    this.neqFilters.push({ column, value });
     return this;
   }
 
@@ -371,6 +377,7 @@ class MockQuery {
   private matches(row: Row) {
     return (
       this.filters.every((filter) => row[filter.column] === filter.value) &&
+      this.neqFilters.every((filter) => row[filter.column] !== filter.value) &&
       this.inFilters.every((filter) => filter.values.includes(row[filter.column])) &&
       this.notFilters.every((filter) => !filter.values.includes(String(row[filter.column]))) &&
       this.isFilters.every((filter) => (row[filter.column] ?? null) === filter.value)

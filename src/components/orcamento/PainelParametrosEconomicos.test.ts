@@ -13,8 +13,8 @@ import {
  */
 
 const parametros: ParametroAplicadoView[] = [
-  { key: "impostos_legacy", label: "Impostos", nominalRate: 10, amount: 100 },
-  { key: "lucro", label: "Lucro", nominalRate: 20, amount: 200 },
+  { key: "impostos_legacy", label: "Impostos", nominalRate: 10, amount: 100, effectiveRate: 6.67 },
+  { key: "lucro", label: "Lucro", nominalRate: 20, amount: 200, effectiveRate: 13.33 },
 ];
 
 function render(props: Parameters<typeof PainelParametrosEconomicos>[0]) {
@@ -31,6 +31,8 @@ describe("PainelParametrosEconomicos — render §8.2", () => {
     projetoFinal: 700,
     totalFinal: 2000,
     parametros,
+    markupNominal: 30,
+    fatorGrossUp: 1.428571,
     alertas: [] as string[],
   };
 
@@ -41,6 +43,8 @@ describe("PainelParametrosEconomicos — render §8.2", () => {
     // os percentuais informados aparecem
     expect(html).toContain("10%");
     expect(html).toContain("20%");
+    expect(html).toContain("Markup nominal");
+    expect(html).toContain("1,4286x");
   });
 
   it("renderiza total final calculado em tom neutro, nunca em azul", () => {

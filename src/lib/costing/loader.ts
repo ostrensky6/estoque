@@ -9,6 +9,13 @@ import {
   type InsumoLinha,
   type Parametros,
 } from "./engine";
+import { carregarMapaIntegridade } from "@/lib/cadastros/integridade-loader";
+import type { AnaliseIntegridade } from "@/lib/cadastros/validar-integridade";
+
+/** Breakdown enriquecido com o status de integridade da análise. */
+export type BreakdownComIntegridade = Breakdown & {
+  integridade?: AnaliseIntegridade;
+};
 
 export type SimuladorAnalise = {
   codigo: string;
@@ -22,7 +29,7 @@ export type SimuladorAnalise = {
 /** Carrega tudo do banco e calcula o breakdown de todas as análises. */
 export async function calcularTodas(
   cenarioPorAnalise: Record<string, Cenario> = {},
-): Promise<{ breakdowns: Breakdown[]; params: Parametros; valorHoraPessoal: number; custoHoraOverhead: number }> {
+): Promise<{ breakdowns: BreakdownComIntegridade[]; params: Parametros; valorHoraPessoal: number; custoHoraOverhead: number }> {
   const supabase = await createClient();
 
   const [
@@ -34,6 +41,7 @@ export async function calcularTodas(
     { data: overhead },
     { data: insumoAnalise },
     { data: parametros },
+    mapaIntegridade,
   ] = await Promise.all([
     supabase.from("analises").select("codigo").order("codigo"),
     supabase.from("etapas").select("*"),
@@ -47,6 +55,10 @@ export async function calcularTodas(
         "codigo_analise, nome_etapa, nome_atividade, especificacao_insumo, grupo_escolha, quantidade_por_amostra, modo_cobranca, insumos(custo_unitario)",
       ),
     supabase.from("parametros").select("chave, valor"),
+    // Anexa o status de integridade a cada breakdown — sem bloquear aqui (a
+    // exibição precisa mostrar alertas e bloqueios). As travas reais ficam nos
+    // call sites de escrita (guard-custeio).
+    carregarMapaIntegridade(),
   ]);
 
   const par = Object.fromEntries(
@@ -85,7 +97,7 @@ export async function calcularTodas(
     custoDiaPorEquip.set(e.id, equipCustoDia(e, params.dias_uteis_ano));
   }
 
-  const breakdowns: Breakdown[] = (analises ?? []).map((a) => {
+  const breakdowns: BreakdownComIntegridade[] = (analises ?? []).map((a) => {
     const codigo = a.codigo;
     const etapasA = (etapas ?? []).filter((e) => e.codigo_analise === codigo);
     const equipA = (equipAnalise ?? [])
@@ -108,7 +120,7 @@ export async function calcularTodas(
             ?.custo_unitario ?? null,
       }));
 
-    return calcularAnalise({
+    const breakdown = calcularAnalise({
       codigo,
       etapas: etapasA,
       equip: equipA,
@@ -118,6 +130,8 @@ export async function calcularTodas(
       params,
       cenario: cenarioPorAnalise[codigo],
     });
+    const integridade = mapaIntegridade.get(codigo);
+    return integridade ? { ...breakdown, integridade } : breakdown;
   });
 
   return { breakdowns, params, valorHoraPessoal, custoHoraOverhead };

@@ -9,9 +9,10 @@ import { ExportProjetoButtons } from "@/components/orcamento/ExportProjetoButton
 import type { ProjetoExportItem } from "@/lib/project-budget/exporters";
 import {
   adicionarAnaliseProjeto,
-  adicionarCustoCatalogoProjeto,
   adicionarAnexoProjeto,
   adicionarCustoProjeto,
+  alternarCustoCatalogoProjeto,
+  atualizarCustoCatalogoProjeto,
   cancelarOrcamentoProjeto,
   criarLinkPublico,
   excluirOrcamentoProjeto,
@@ -23,6 +24,7 @@ import {
   salvarParametrosEconomicosProjeto,
   salvarOrcamentoProjeto,
   salvarViagensProjeto,
+  selecionarRubricaCatalogoProjeto,
 } from "@/lib/actions/orcamento-projetos";
 import { headers } from "next/headers";
 import { normalizarViagemInputs, type ViagemInputs } from "@/lib/project-budget/travel";
@@ -32,6 +34,7 @@ import {
   RUBRICAS_PROJETO,
 } from "@/lib/project-budget/legacy";
 import { gerarPlanejamentoDeOrcamentoProjeto } from "@/lib/actions/planejamento";
+import { carregarMapaIntegridade } from "@/lib/cadastros/integridade-loader";
 import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +72,17 @@ type Custo = {
   preco_unitario: number;
   meses_selecionados: number[];
   catalogo_item_id: string | null;
+  valor_snapshot?: unknown;
+};
+
+type CatalogoProjetoItem = {
+  id: string;
+  rubrica: string;
+  descricao: string;
+  unidade: string | null;
+  preco_unitario: number;
+  categoria: string | null;
+  origem?: string | null;
 };
 
 export default async function OrcamentoProjetoDetalhe({
@@ -99,7 +113,7 @@ export default async function OrcamentoProjetoDetalhe({
         .order("id"),
       supabase
         .from("orcamento_projeto_custos")
-        .select("id, categoria, rubrica, descricao, etapa, atividade, entrega, categoria_institucional, nomenclatura_origem, quantidade, unidade, custo_unitario, preco_unitario, meses_selecionados, catalogo_item_id")
+        .select("id, categoria, rubrica, descricao, etapa, atividade, entrega, categoria_institucional, nomenclatura_origem, quantidade, unidade, custo_unitario, preco_unitario, meses_selecionados, catalogo_item_id, valor_snapshot")
         .eq("orcamento_projeto_id", orcId)
         .order("etapa")
         .order("atividade")
@@ -112,11 +126,14 @@ export default async function OrcamentoProjetoDetalhe({
       supabase.from("projetos").select("id, nome").order("nome"),
       supabase
         .from("orcamento_projeto_catalogo")
-        .select("id, rubrica, descricao, unidade, preco_unitario, categoria")
+        .select("id, rubrica, descricao, unidade, preco_unitario, categoria, origem")
         .eq("ativo", true)
         .order("rubrica")
         .order("descricao"),
     ]);
+
+  // Status de integridade para sinalizar/bloquear análises no seletor.
+  const mapaIntegridade = await carregarMapaIntegridade();
 
   const { data: demanda } = orc.demanda_id
     ? await supabase
@@ -450,7 +467,16 @@ export default async function OrcamentoProjetoDetalhe({
           <TabelaAnalises itens={analisesProjeto} orcId={orcId} />
 
           <h2 id="rubricas-projeto" className="mt-8 scroll-mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500">Custos próprios do projeto</h2>
-          <TabelaCustos itens={custosProjeto} orcId={orcId} />
+          <TabelaCatalogoProjeto
+            catalogo={(catalogo ?? []) as CatalogoProjetoItem[]}
+            itens={custosProjeto}
+            orcId={orcId}
+            projectMonths={Number(orc.project_months ?? 12)}
+          />
+          <div className="mt-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Itens selecionados e manuais</p>
+            <TabelaCustos itens={custosProjeto} orcId={orcId} />
+          </div>
         </section>
 
         {erroExclusao && (
@@ -459,7 +485,7 @@ export default async function OrcamentoProjetoDetalhe({
           </p>
         )}
 
-        <section className="no-print mt-6 grid gap-6 lg:grid-cols-2">
+        <section className="no-print mt-6 grid gap-6">
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <h2 className="text-sm font-semibold">Adicionar análise do laboratório</h2>
             <form action={adicionarAnaliseProjeto} className="mt-3 flex flex-wrap items-end gap-2">
@@ -468,10 +494,25 @@ export default async function OrcamentoProjetoDetalhe({
                 <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Análise</label>
                 <select name="codigo_analise" defaultValue="" className={inp}>
                   <option value="" disabled>Selecione…</option>
-                  {(analises ?? []).map((a) => (
-                    <option key={a.codigo} value={a.codigo}>{a.codigo}</option>
-                  ))}
+                  {(analises ?? []).map((a) => {
+                    const status = mapaIntegridade.get(a.codigo)?.status;
+                    const bloqueada = status === "BLOQUEADA";
+                    const sufixo = bloqueada
+                      ? " — BLOQUEADA"
+                      : status === "COM_ALERTAS"
+                        ? " — alerta"
+                        : "";
+                    return (
+                      <option key={a.codigo} value={a.codigo} disabled={bloqueada}>
+                        {a.codigo}
+                        {sufixo}
+                      </option>
+                    );
+                  })}
                 </select>
+                <p className="mt-1 text-[10px] text-zinc-400">
+                  Análises bloqueadas (cadastro incompleto) ficam indisponíveis.
+                </p>
               </div>
               <div>
                 <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Amostras</label>
@@ -484,7 +525,10 @@ export default async function OrcamentoProjetoDetalhe({
           </div>
 
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 className="text-sm font-semibold">Adicionar custo do projeto</h2>
+            <h2 className="text-sm font-semibold">Adicionar custo manual do projeto</h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Use apenas para custos que não existem no catálogo institucional acima.
+            </p>
             <form action={adicionarCustoProjeto} className="mt-3 grid grid-cols-2 gap-2">
               <input type="hidden" name="orcamento_projeto_id" value={orcId} />
               <input name="etapa" placeholder="Etapa" className={inp} />
@@ -510,43 +554,6 @@ export default async function OrcamentoProjetoDetalhe({
               </button>
             </form>
           </div>
-        </section>
-
-        <section id="catalogo-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="text-sm font-semibold">Adicionar item do catálogo institucional</h2>
-          <form action={adicionarCustoCatalogoProjeto} className="mt-3 grid gap-3 md:grid-cols-[1fr_8rem_auto] md:items-end">
-            <input type="hidden" name="orcamento_projeto_id" value={orcId} />
-            <input type="hidden" name="entrega" value="Entrega principal" />
-            <div>
-              <label className={lbl}>Item de catálogo</label>
-              <select name="catalogo_item_id" defaultValue="" className={`${inp} mt-1 w-full`}>
-                <option value="" disabled>Selecione...</option>
-                {(catalogo ?? []).map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.rubrica} · {item.descricao} · {brl(Number(item.preco_unitario))}/{item.unidade ?? "un"}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={lbl}>Quantidade</label>
-              <input name="quantidade" type="number" min="0.01" step="0.01" defaultValue="1" className={`${inp} mt-1 w-full`} />
-            </div>
-            <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
-              Adicionar
-            </button>
-            <div className="md:col-span-3">
-              <p className="text-xs font-medium text-zinc-500">Meses para itens de Pessoal (PE)</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {Array.from({ length: Math.max(1, Number(orc.project_months ?? 12)) }, (_, index) => index + 1).map((mes) => (
-                  <label key={mes} className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2 py-1 text-xs dark:border-zinc-700">
-                    <input type="checkbox" name="meses_selecionados" value={mes} className="h-3.5 w-3.5" />
-                    {mes}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </form>
         </section>
 
         <section id="modelos-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -1074,6 +1081,182 @@ function TextoBloco({ titulo, texto }: { titulo: string; texto: string | null })
     <div>
       <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{titulo}</h3>
       <p className="mt-1 whitespace-pre-wrap leading-6 text-zinc-700 dark:text-zinc-300">{texto || "—"}</p>
+    </div>
+  );
+}
+
+function TabelaCatalogoProjeto({
+  catalogo,
+  itens,
+  orcId,
+  projectMonths,
+}: {
+  catalogo: CatalogoProjetoItem[];
+  itens: Custo[];
+  orcId: number;
+  projectMonths: number;
+}) {
+  const itensPorCatalogo = new Map(itens.filter((item) => item.catalogo_item_id).map((item) => [item.catalogo_item_id, item]));
+  const meses = Array.from({ length: Math.max(1, Math.min(60, projectMonths)) }, (_, index) => index + 1);
+  const inputClass =
+    "w-24 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-right text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300";
+
+  return (
+    <div className="mt-3 space-y-5">
+      {(Object.keys(RUBRICAS_PROJETO) as Array<keyof typeof RUBRICAS_PROJETO>).map((rubrica) => {
+        const itensRubrica = catalogo.filter((item) => item.rubrica === rubrica);
+        if (itensRubrica.length === 0) return null;
+        const selecionados = itensRubrica.filter((item) => itensPorCatalogo.has(item.id)).length;
+        return (
+          <section key={rubrica} className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-3 py-3 dark:border-zinc-800">
+              <div>
+                <h3 className="text-sm font-semibold">{rubrica} · {RUBRICAS_PROJETO[rubrica]}</h3>
+                <p className="text-xs text-zinc-500">{selecionados}/{itensRubrica.length} item(ns) selecionados</p>
+              </div>
+              <div className="flex gap-2">
+                <form action={selecionarRubricaCatalogoProjeto}>
+                  <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+                  <input type="hidden" name="rubrica" value={rubrica} />
+                  <input type="hidden" name="incluir" value="true" />
+                  <button className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                    Selecionar todos
+                  </button>
+                </form>
+                <form action={selecionarRubricaCatalogoProjeto}>
+                  <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+                  <input type="hidden" name="rubrica" value={rubrica} />
+                  <input type="hidden" name="incluir" value="false" />
+                  <button className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                    Desmarcar todos
+                  </button>
+                </form>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[980px] text-right text-sm">
+                <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-950/60">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Incluir</th>
+                    <th className="px-3 py-2 text-left">Categoria</th>
+                    <th className="px-3 py-2 text-left">Descrição</th>
+                    <th className="px-3 py-2">Un.</th>
+                    <th className="px-3 py-2">Valor catálogo</th>
+                    <th className="px-3 py-2">{rubrica === "PE" ? "Meses" : "Quantidade"}</th>
+                    <th className="px-3 py-2">Valor usado</th>
+                    <th className="px-3 py-2">Total</th>
+                    <th className="px-3 py-2 text-left">Snapshot</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  {itensRubrica.map((catalogoItem) => {
+                    const item = itensPorCatalogo.get(catalogoItem.id);
+                    const selecionado = Boolean(item);
+                    const mesesSelecionados = new Set(item?.meses_selecionados ?? []);
+                    const quantidade = Number(item?.quantidade ?? (rubrica === "PE" ? 0 : 1));
+                    const valorUsado = Number(item?.custo_unitario ?? catalogoItem.preco_unitario ?? 0);
+                    const total = selecionado ? itemProjetoTotal({
+                      rubrica,
+                      quantidade,
+                      preco_unitario: valorUsado,
+                      meses_selecionados: item?.meses_selecionados ?? [],
+                    }) : 0;
+                    const divergente = selecionado && Math.abs(Number(catalogoItem.preco_unitario ?? 0) - valorUsado) > 0.005;
+
+                    return (
+                      <tr key={catalogoItem.id} className={selecionado ? "bg-brand-50/40 dark:bg-brand-950/10" : ""}>
+                        <td className="px-3 py-2 text-left">
+                          <form action={alternarCustoCatalogoProjeto}>
+                            <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+                            <input type="hidden" name="catalogo_item_id" value={catalogoItem.id} />
+                            <input type="hidden" name="quantidade" value={quantidade || 1} />
+                            <input type="hidden" name="incluir" value={selecionado ? "false" : "true"} />
+                            <button
+                              className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
+                                selecionado
+                                  ? "border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300"
+                                  : "border-brand-200 text-brand-700 hover:bg-brand-50 dark:border-brand-900 dark:text-brand-300"
+                              }`}
+                            >
+                              {selecionado ? "Remover" : "Incluir"}
+                            </button>
+                          </form>
+                        </td>
+                        <td className="px-3 py-2 text-left text-zinc-600 dark:text-zinc-300">{catalogoItem.categoria ?? "—"}</td>
+                        <td className="max-w-sm px-3 py-2 text-left font-medium">{catalogoItem.descricao}</td>
+                        <td className="px-3 py-2">{catalogoItem.unidade ?? "—"}</td>
+                        <td className="px-3 py-2 tabular-nums">{brl(Number(catalogoItem.preco_unitario ?? 0))}</td>
+                        <td className="px-3 py-2">
+                          {selecionado && item ? (
+                            <form action={atualizarCustoCatalogoProjeto} className="flex flex-wrap justify-end gap-2">
+                              <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+                              <input type="hidden" name="item_id" value={item.id} />
+                              <input type="hidden" name="custo_unitario" value={valorUsado} />
+                              {rubrica === "PE" ? (
+                                <div className="flex max-w-sm flex-wrap justify-end gap-1">
+                                  {meses.map((mes) => (
+                                    <label key={mes} className="inline-flex items-center gap-1 rounded border border-zinc-200 px-1.5 py-1 text-[11px] dark:border-zinc-700">
+                                      <input
+                                        type="checkbox"
+                                        name="meses_selecionados"
+                                        value={mes}
+                                        defaultChecked={mesesSelecionados.has(mes)}
+                                      />
+                                      M{mes}
+                                    </label>
+                                  ))}
+                                  <input type="hidden" name="quantidade" value={mesesSelecionados.size || 0} />
+                                </div>
+                              ) : (
+                                <input name="quantidade" type="number" min="0.01" step="0.01" defaultValue={quantidade} className={inputClass} />
+                              )}
+                              <button className="rounded-md border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                                Salvar
+                              </button>
+                            </form>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {selecionado && item ? (
+                            <form action={atualizarCustoCatalogoProjeto} className="flex justify-end gap-2">
+                              <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+                              <input type="hidden" name="item_id" value={item.id} />
+                              <input type="hidden" name="quantidade" value={quantidade || 1} />
+                              {(item.meses_selecionados ?? []).map((mes) => (
+                                <input key={mes} type="hidden" name="meses_selecionados" value={mes} />
+                              ))}
+                              <input name="custo_unitario" type="number" min="0" step="0.01" defaultValue={valorUsado} className={inputClass} />
+                              <button className="rounded-md border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                                Salvar
+                              </button>
+                            </form>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 font-semibold tabular-nums">{brl(total)}</td>
+                        <td className="px-3 py-2 text-left text-xs">
+                          {selecionado ? (
+                            divergente ? (
+                              <span className="text-amber-700 dark:text-amber-300">Valor do catálogo divergiu</span>
+                            ) : (
+                              <span className="text-zinc-500">Valor preservado</span>
+                            )
+                          ) : (
+                            <span className="text-zinc-400">Visível, fora do subtotal</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

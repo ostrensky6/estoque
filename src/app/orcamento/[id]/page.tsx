@@ -6,10 +6,9 @@ import { calcularTodas } from "@/lib/costing/loader";
 import { PrintButton } from "@/components/orcamento/PrintButton";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
-import { Combobox } from "@/components/ui/combobox";
 import {
   salvarCabecalho,
-  adicionarItemOrcamento,
+  alternarAnaliseOrcamento,
   removerItemOrcamento,
   recalcularOrcamento,
   cancelarOrcamento,
@@ -29,6 +28,7 @@ type Item = {
   n_amostras: number;
   custo_unitario: number;
   preco_unitario: number;
+  valor_snapshot?: unknown;
 };
 
 type SnapshotLaboratorio = {
@@ -73,7 +73,7 @@ export default async function OrcamentoDetalhe({
     await Promise.all([
       supabase
         .from("orcamento_itens")
-        .select("id, codigo_analise, n_amostras, custo_unitario, preco_unitario")
+        .select("id, codigo_analise, n_amostras, custo_unitario, preco_unitario, valor_snapshot")
         .eq("orcamento_id", orcId)
         .order("id"),
       supabase.from("analises").select("codigo, nome").eq("ativo", true).order("codigo"),
@@ -459,47 +459,26 @@ export default async function OrcamentoDetalhe({
           </p>
         )}
 
-        {/* Form: adicionar análise */}
+        {/* Catálogo visível de análises */}
         <section id="identificacao-tecnica" className="no-print mt-6 scroll-mt-24 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="text-sm font-semibold">Adicionar análise solicitada</h2>
-          <form action={adicionarItemOrcamento} className="mt-3 flex flex-wrap items-end gap-2">
-            <input type="hidden" name="orcamento_id" value={orcId} />
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-zinc-400">
-                Análise
-              </label>
-              <div className="w-64">
-                <Combobox
-                  name="codigo_analise"
-                  placeholder="Selecione…"
-                  searchPlaceholder="Buscar análise…"
-                  emptyText="Nenhuma análise."
-                  options={(analises ?? []).map((a) => ({
-                    value: a.codigo,
-                    label: a.codigo,
-                    hint: a.nome ?? undefined,
-                  }))}
-                />
-              </div>
+              <h2 className="text-sm font-semibold">Catálogo de análises laboratoriais</h2>
+              <p className="mt-1 text-xs text-zinc-500">
+                Todas as análises ativas ficam visíveis. Somente análises marcadas entram no subtotal técnico; análises bloqueadas ficam indisponíveis.
+              </p>
             </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-wide text-zinc-400">
-                Nº de amostras
-              </label>
-              <input
-                aria-label="Nº de amostras"
-                name="n_amostras"
-                type="number"
-                min="1"
-                step="1"
-                defaultValue="1"
-                className={`${inp} w-28`}
-              />
-            </div>
-            <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
-              Adicionar
-            </button>
-          </form>
+            <span className="text-xs text-zinc-400">{analises?.length ?? 0} análise(s) ativa(s)</span>
+          </div>
+          <TabelaCatalogoAnalises
+            analises={(analises ?? []).map((analise) => ({
+              codigo: analise.codigo,
+              nome: analise.nome ?? null,
+              breakdown: breakdownPorCodigo.get(analise.codigo) ?? null,
+            }))}
+            itens={itens}
+            orcId={orcId}
+          />
         </section>
 
         {/* Form: cabeçalho / dados do cliente */}
@@ -658,6 +637,116 @@ function ResumoOperacional({
       <p className="mt-1 text-sm font-semibold tabular-nums">
         {numero ? valor.toLocaleString("pt-BR") : brl(valor)}
       </p>
+    </div>
+  );
+}
+
+function TabelaCatalogoAnalises({
+  analises,
+  itens,
+  orcId,
+}: {
+  analises: Array<{
+    codigo: string;
+    nome: string | null;
+    breakdown: {
+      lote?: number | null;
+      reagentes?: number;
+      equipamento?: number;
+      pessoal?: number;
+      overhead?: number;
+      custoTotal?: number;
+      preco?: number;
+    } | null;
+  }>;
+  itens: Item[];
+  orcId: number;
+}) {
+  const itensPorCodigo = new Map(itens.map((item) => [item.codigo_analise, item]));
+  const inputClass =
+    "w-24 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-right text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300";
+
+  return (
+    <div className="mt-3 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+      <table className="w-full min-w-[980px] text-right text-sm">
+        <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-950/60">
+          <tr>
+            <th className="px-3 py-2 text-left">Incluir</th>
+            <th className="px-3 py-2 text-left">Código</th>
+            <th className="px-3 py-2 text-left">Nome</th>
+            <th className="px-3 py-2">Lote</th>
+            <th className="px-3 py-2">Custo unit.</th>
+            <th className="px-3 py-2">Composição</th>
+            <th className="px-3 py-2">Amostras</th>
+            <th className="px-3 py-2">Subtotal</th>
+            <th className="px-3 py-2"></th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          {analises.map((analise) => {
+            const item = itensPorCodigo.get(analise.codigo);
+            const selecionada = Boolean(item);
+            const custoUnitario = Number(item?.custo_unitario ?? analise.breakdown?.custoTotal ?? 0);
+            const amostras = Number(item?.n_amostras ?? 1);
+            const subtotal = selecionada ? custoUnitario * amostras : 0;
+            return (
+              <tr key={analise.codigo} className={selecionada ? "bg-brand-50/40 dark:bg-brand-950/10" : ""}>
+                <td className="px-3 py-2 text-left">
+                  <form action={alternarAnaliseOrcamento}>
+                    <input type="hidden" name="orcamento_id" value={orcId} />
+                    <input type="hidden" name="codigo_analise" value={analise.codigo} />
+                    <input type="hidden" name="n_amostras" value={amostras} />
+                    <input type="hidden" name="incluir" value={selecionada ? "false" : "true"} />
+                    <button
+                      className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
+                        selecionada
+                          ? "border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300"
+                          : "border-brand-200 text-brand-700 hover:bg-brand-50 dark:border-brand-900 dark:text-brand-300"
+                      }`}
+                    >
+                      {selecionada ? "Remover" : "Incluir"}
+                    </button>
+                  </form>
+                </td>
+                <td className="px-3 py-2 text-left font-semibold">{analise.codigo}</td>
+                <td className="max-w-xs px-3 py-2 text-left text-zinc-700 dark:text-zinc-200">{analise.nome ?? "—"}</td>
+                <td className="px-3 py-2 tabular-nums">{analise.breakdown?.lote ?? "—"}</td>
+                <td className="px-3 py-2 tabular-nums">{brl(custoUnitario)}</td>
+                <td className="px-3 py-2 text-xs text-zinc-500">
+                  R {brl(Number(analise.breakdown?.reagentes ?? 0))} · E {brl(Number(analise.breakdown?.equipamento ?? 0))} · P {brl(Number(analise.breakdown?.pessoal ?? 0))} · O {brl(Number(analise.breakdown?.overhead ?? 0))}
+                </td>
+                <td className="px-3 py-2">
+                  {selecionada ? (
+                    <form action={alternarAnaliseOrcamento} className="flex justify-end gap-2">
+                      <input type="hidden" name="orcamento_id" value={orcId} />
+                      <input type="hidden" name="codigo_analise" value={analise.codigo} />
+                      <input type="hidden" name="incluir" value="true" />
+                      <input
+                        aria-label={`Amostras de ${analise.codigo}`}
+                        name="n_amostras"
+                        type="number"
+                        min="1"
+                        step="1"
+                        defaultValue={amostras}
+                        className={inputClass}
+                      />
+                      <button className="rounded-md border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                        Salvar
+                      </button>
+                    </form>
+                  ) : (
+                    <span className="text-zinc-400">—</span>
+                  )}
+                </td>
+                <td className="px-3 py-2 font-semibold tabular-nums">{brl(subtotal)}</td>
+                <td className="px-3 py-2 text-left text-xs text-zinc-400">
+                  {selecionada ? "Snapshot preservado" : "Visível, fora do subtotal"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

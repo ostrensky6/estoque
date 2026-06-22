@@ -13,7 +13,7 @@ import {
  *   - subtotais, valores em R$ e total (calculados) em NEUTRO (ValorCalculado).
  *
  * Componente de apresentação puro — recebe os números já consolidados pela
- * engine (aplicarParametrosEconomicos / consolidarOrcamentoFinal) no servidor.
+ * engine (consolidarEconomiaOrcamento / consolidarOrcamentoFinal) no servidor.
  */
 
 export type ParametroAplicadoView = {
@@ -21,6 +21,7 @@ export type ParametroAplicadoView = {
   label: string;
   nominalRate: number;
   amount: number;
+  effectiveRate?: number;
 };
 
 const pct = (v: number) => `${v.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
@@ -62,6 +63,8 @@ export function PainelParametrosEconomicos({
   projetoFinal,
   totalFinal,
   parametros,
+  markupNominal,
+  fatorGrossUp,
   alertas = [],
 }: {
   exigeProjeto: boolean;
@@ -72,10 +75,14 @@ export function PainelParametrosEconomicos({
   projetoFinal: number;
   totalFinal: number;
   parametros: ParametroAplicadoView[];
+  markupNominal?: number;
+  fatorGrossUp?: number;
   alertas?: string[];
 }) {
-  const subtotalCustos = precoLaboratorio + custoProjeto;
+  const subtotalCustos = custoLaboratorio + custoProjeto;
   const totalParametros = parametros.reduce((acc, p) => acc + p.amount, 0);
+  const markup = markupNominal ?? parametros.reduce((acc, p) => acc + p.nominalRate, 0);
+  const fator = fatorGrossUp ?? (markup >= 100 ? 0 : 1 / (1 - markup / 100));
 
   return (
     <div className="mt-4">
@@ -85,7 +92,7 @@ export function PainelParametrosEconomicos({
           <Linha rotulo="Custo laboratório">
             <ValorCalculado>{brl(custoLaboratorio)}</ValorCalculado>
           </Linha>
-          <Linha rotulo="Preço laboratório">
+          <Linha rotulo="Preço laboratório histórico">
             <ValorCalculado estado="snapshot">{brl(precoLaboratorio)}</ValorCalculado>
           </Linha>
           <Linha rotulo="Custo projeto">
@@ -114,9 +121,22 @@ export function PainelParametrosEconomicos({
             ))
           )}
           {exigeProjeto && parametros.length > 0 && (
-            <Linha rotulo="Total de parâmetros" forte>
-              <ValorCalculado estado="bloqueado">{brl(totalParametros)}</ValorCalculado>
-            </Linha>
+            <>
+              {parametros.map((p) => (
+                <Linha key={`${p.key}-efetivo`} rotulo={`${p.label} efetivo`}>
+                  <ValorCalculado>{pct(p.effectiveRate ?? 0)}</ValorCalculado>
+                </Linha>
+              ))}
+              <Linha rotulo="Markup nominal">
+                <ValorEntrada>{pct(markup)}</ValorEntrada>
+              </Linha>
+              <Linha rotulo="Fator gross-up">
+                <ValorCalculado>{fator.toFixed(4).replace(".", ",")}x</ValorCalculado>
+              </Linha>
+              <Linha rotulo="Total de parâmetros" forte>
+                <ValorCalculado estado="bloqueado">{brl(totalParametros)}</ValorCalculado>
+              </Linha>
+            </>
           )}
         </Bloco>
 
@@ -125,8 +145,8 @@ export function PainelParametrosEconomicos({
           <Linha rotulo="Projeto após parâmetros">
             <ValorCalculado>{brl(projetoFinal)}</ValorCalculado>
           </Linha>
-          <Linha rotulo="Laboratório (preço formado)">
-            <ValorCalculado estado="snapshot">{brl(precoLaboratorio)}</ValorCalculado>
+          <Linha rotulo="Custo direto técnico">
+            <ValorCalculado estado="snapshot">{brl(subtotalCustos)}</ValorCalculado>
           </Linha>
           <Linha rotulo="Total final" forte>
             <ValorCalculado estado="bloqueado" className="text-base">
@@ -145,9 +165,9 @@ export function PainelParametrosEconomicos({
       )}
 
       <p className="mt-3 text-[11px] leading-5 text-zinc-400">
-        Total = laboratório (preço já formado) + projeto após parâmetros. Os
-        percentuais são valores de entrada; os valores em R$ e o total são
-        calculados pelo servidor e não devem ser editados diretamente.
+        Total = custo técnico do laboratório + custos próprios do projeto, com
+        gross-up único aplicado no servidor. O preço laboratorial histórico é
+        exibido apenas para compatibilidade.
       </p>
     </div>
   );

@@ -2,15 +2,23 @@ import { createClient } from "@/lib/supabase/server";
 import { criarDemanda } from "@/lib/actions/demandas";
 import { DemandasTable, type DemandaRow } from "@/components/orcamento/DemandasTable";
 import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
+import { normalizarModalidadeOrcamento } from "@/lib/orcamento/orcamento-economico";
 
 export const dynamic = "force-dynamic";
 
 const MODALIDADES: Record<string, string> = {
-  analises: "Apenas análises",
-  projeto: "Apenas projeto",
-  analises_projeto: "Análises dentro de projeto",
-  projeto_analises_custos: "Projeto com análises e custos próprios",
+  analises: "Análises laboratoriais",
+  projeto: "Projeto sem análises",
+  projeto_com_analises: "Projeto com análises",
+  analises_projeto: "Projeto com análises",
+  projeto_analises_custos: "Projeto com análises",
 };
+
+const MODALIDADES_CANONICAS = [
+  ["analises", "Análises laboratoriais"],
+  ["projeto", "Projeto sem análises"],
+  ["projeto_com_analises", "Projeto com análises"],
+] as const;
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   nova: { label: "Nova", cls: "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300" },
@@ -40,7 +48,7 @@ export default async function DemandasPage() {
       titulo: d.titulo ?? "Demanda sem título",
       cliente: d.cliente_nome ?? "—",
       modalidade: d.modalidade,
-      modalidadeLabel: MODALIDADES[d.modalidade] ?? d.modalidade,
+      modalidadeLabel: MODALIDADES[normalizarModalidadeOrcamento(d.modalidade)] ?? d.modalidade,
       projeto: d.projeto_id ? projetoNome.get(d.projeto_id) ?? "—" : "—",
       prazo: d.prazo_esperado ?? "—",
       prioridade: d.prioridade ?? "—",
@@ -88,7 +96,7 @@ export default async function DemandasPage() {
           <div>
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Modalidade</label>
             <select name="modalidade" defaultValue="analises" className={`${inp} mt-1 w-full`}>
-              {Object.entries(MODALIDADES).map(([value, label]) => (
+              {MODALIDADES_CANONICAS.map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>

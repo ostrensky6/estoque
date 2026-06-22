@@ -1,11 +1,10 @@
-import { calcularOrcamentoProjetoLegacy, type ProjetoBudgetRates } from "@/lib/project-budget/legacy";
+import { type ProjetoBudgetRates } from "@/lib/project-budget/legacy";
 import {
-  adaptarOrcamentoParaEntradaParametros,
-  aplicarParametrosDoOrcamento,
   totalLaboratorioCusto as calcularTotalLaboratorioCusto,
   totalLaboratorioPreco as calcularTotalLaboratorioPreco,
   totalProjetoCusto as calcularTotalProjetoCusto,
 } from "./parametros-adapter";
+import { consolidarEconomiaOrcamento } from "./orcamento-economico";
 
 export type ItemLaboratorioFinal = {
   n_amostras?: number | null;
@@ -45,20 +44,64 @@ export function consolidarOrcamentoFinal(args: {
 
   const totalLaboratorioCusto = calcularTotalLaboratorioCusto(args.itensLaboratorio);
   const totalLaboratorioPreco = calcularTotalLaboratorioPreco(args.itensLaboratorio);
-  const itensProjetoBase = args.itensProjeto.map((item) => ({
-    rubrica: item.rubrica,
-    quantidade: item.quantidade,
-    preco_unitario: Number(item.custo_unitario ?? item.preco_unitario ?? 0),
-    meses_selecionados: item.meses_selecionados ?? [],
-  }));
-  const calculoProjeto = calcularOrcamentoProjetoLegacy(itensProjetoBase, args.parametrosProjeto);
-  const entradaParametros = adaptarOrcamentoParaEntradaParametros(args);
-  const parametrosAplicados = calculoProjeto.validationError
-    ? null
-    : aplicarParametrosDoOrcamento(args);
   const totalProjetoCusto = calcularTotalProjetoCusto(args.itensProjeto);
-  const totalProjetoFinal = parametrosAplicados?.projeto.total ?? calculoProjeto.grossTotal;
-  const totalFinal = parametrosAplicados?.totalFinal ?? totalLaboratorioPreco + totalProjetoFinal;
+  const calculoEconomico = consolidarEconomiaOrcamento({
+    custoLaboratorio: totalLaboratorioCusto,
+    custoProjeto: totalProjetoCusto,
+    parametros: args.parametrosProjeto,
+  });
+  const parametrosAplicados = calculoEconomico.valido
+    ? {
+        metodo: "GROSS_UP" as const,
+        laboratorio: {
+          valorEntrada: totalLaboratorioCusto,
+          modo: "CUSTO_TECNICO" as const,
+          baseIncidencia: totalLaboratorioCusto,
+          total: totalLaboratorioCusto,
+        },
+        projeto: {
+          custoEntrada: totalProjetoCusto,
+          baseIncidencia: totalProjetoCusto,
+          total: totalProjetoCusto,
+        },
+        subtotalCustos: calculoEconomico.subtotal,
+        totalParametros: calculoEconomico.totalParametros,
+        totalFinal: calculoEconomico.totalFinal,
+        parametros: calculoEconomico.parametros.map((parametro) => ({
+          chave: String(parametro.key),
+          label: parametro.label,
+          base: "TODOS_COMPONENTES" as const,
+          percentual: parametro.nominalRate,
+          valorInformado: 0,
+          valorCalculado: parametro.amount,
+          baseLaboratorio: totalLaboratorioCusto,
+          baseProjeto: totalProjetoCusto,
+          aplicado: true,
+        })),
+        alertas: [] as string[],
+        snapshot: {
+          metodo: "GROSS_UP" as const,
+          laboratorio: {
+            valorEntrada: totalLaboratorioCusto,
+            modo: "CUSTO_TECNICO" as const,
+            baseIncidencia: totalLaboratorioCusto,
+            total: totalLaboratorioCusto,
+          },
+          projeto: {
+            custoEntrada: totalProjetoCusto,
+            baseIncidencia: totalProjetoCusto,
+            total: totalProjetoCusto,
+          },
+          subtotalCustos: calculoEconomico.subtotal,
+          totalParametros: calculoEconomico.totalParametros,
+          totalFinal: calculoEconomico.totalFinal,
+          parametros: [],
+          alertas: [] as string[],
+        },
+      }
+    : null;
+  const totalProjetoFinal = totalProjetoCusto;
+  const totalFinal = calculoEconomico.totalFinal;
   const origens: OrigemValorFinal[] = [
     {
       campo: "totalLaboratorioCusto",
@@ -71,7 +114,7 @@ export function consolidarOrcamentoFinal(args: {
       campo: "totalLaboratorioPreco",
       titulo: "Preço laboratório",
       origem: "orcamento_itens.preco_unitario × orcamento_itens.n_amostras",
-      regra: "Soma dos preços unitários preservados no snapshot laboratorial multiplicados pela quantidade de amostras.",
+      regra: "Valor histórico preservado para visualização. Não entra na base padrão do orçamento final consolidado.",
       valor: totalLaboratorioPreco,
     },
     {
@@ -83,32 +126,51 @@ export function consolidarOrcamentoFinal(args: {
     },
     {
       campo: "totalProjetoFinal",
-      titulo: "Projeto final",
-      origem: "aplicarParametrosEconomicos via adaptarOrcamentoParaEntradaParametros",
-      regra: "Aplica gross-up explícito sobre os custos próprios do projeto, sem reaplicar parâmetros sobre laboratório já precificado.",
+      titulo: "Projeto direto",
+      origem: "orcamento_projeto_custos.custo_unitario",
+      regra: "Custos próprios do projeto entram como custo direto antes do gross-up único.",
       valor: totalProjetoFinal,
     },
     {
       campo: "totalFinal",
       titulo: "Total final",
-      origem: "snapshot autoritativo de parametros aplicados",
-      regra: "Soma o laboratório como preço já formado com o projeto após parâmetros econômicos aplicados pela engine unificada.",
+      origem: "consolidarEconomiaOrcamento",
+      regra: "Aplica gross-up único sobre custo laboratorial técnico + custo direto do projeto.",
       valor: totalFinal,
     },
   ];
 
   return {
-    pronto: pendencias.length === 0 && !calculoProjeto.validationError,
-    pendencias: calculoProjeto.validationError ? [...pendencias, calculoProjeto.validationError] : pendencias,
+    pronto: pendencias.length === 0 && calculoEconomico.valido,
+    pendencias: calculoEconomico.validationError ? [...pendencias, calculoEconomico.validationError] : pendencias,
     totalLaboratorioCusto,
     totalLaboratorioPreco,
     totalProjetoCusto,
     totalProjetoFinal,
     totalFinal,
-    parametrosProjeto: calculoProjeto.economicParameters,
-    entradaParametros,
+    parametrosProjeto: calculoEconomico.parametros.map((parametro) => ({
+      key: parametro.key,
+      label: parametro.label,
+      nominalRate: parametro.nominalRate,
+      effectiveRate: parametro.effectiveRate,
+      amount: parametro.amount,
+    })),
+    entradaParametros: {
+      metodo: "GROSS_UP" as const,
+      laboratorio: { valor: totalLaboratorioCusto, modo: "CUSTO_TECNICO" as const },
+      projeto: { custo: totalProjetoCusto },
+      parametros: calculoEconomico.parametros.map((parametro) => ({
+        chave: String(parametro.key),
+        label: parametro.label,
+        base: "TODOS_COMPONENTES" as const,
+        percentual: parametro.nominalRate,
+      })),
+    },
     parametrosAplicados,
-    markupProjeto: calculoProjeto.markupRate,
+    markupProjeto: calculoEconomico.somaPercentual,
+    fatorGrossUp: calculoEconomico.grossUpFactor,
+    subtotalTecnico: calculoEconomico.subtotal,
+    formula: calculoEconomico.formula,
     origens,
   };
 }

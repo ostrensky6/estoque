@@ -6,6 +6,7 @@ import {
   insumosSelecionados,
   reagentesPorAmostra,
   calcularAnalise,
+  validarInsumosCusteio,
   type Etapa,
   type InsumoLinha,
   type Parametros,
@@ -139,6 +140,31 @@ describe("reagentesPorAmostra", () => {
       ins({ custo_unitario: 96, quantidade_por_amostra: 1, modo_cobranca: "por_execucao" }), // 96/24 = 4
     ];
     expect(reagentesPorAmostra(linhas, 24).total).toBeCloseTo(10, 6);
+  });
+});
+
+describe("validarInsumosCusteio — sem custo zero silencioso", () => {
+  it("aponta insumo sem vínculo e sem custo", () => {
+    const probs = validarInsumosCusteio([
+      ins({ especificacao_insumo: "órfão", insumo_id: null, custo_unitario: null }),
+    ]);
+    expect(probs).toEqual([{ especificacao: "órfão", motivo: "sem_vinculo" }]);
+  });
+
+  it("aponta insumo vinculado mas sem custo e sem modo de cobrança", () => {
+    const probs = validarInsumosCusteio([
+      ins({ especificacao_insumo: "x", insumo_id: 5, custo_unitario: null, modo_cobranca: null }),
+    ]);
+    expect(probs.map((p) => p.motivo).sort()).toEqual(["sem_custo", "sem_modo_cobranca"]);
+  });
+
+  it("não reclama de insumo íntegro nem de linha inativa", () => {
+    expect(
+      validarInsumosCusteio([
+        ins({ insumo_id: 1, custo_unitario: 2, modo_cobranca: "por_amostra", quantidade_por_amostra: 1 }),
+        { ...ins({ insumo_id: null, custo_unitario: null }), ativo: false },
+      ]),
+    ).toEqual([]);
   });
 });
 

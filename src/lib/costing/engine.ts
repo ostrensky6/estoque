@@ -155,6 +155,47 @@ export function reagentesPorAmostra(
   return { total: detalhe.reduce((a, d) => a + d.valor, 0), detalhe };
 }
 
+/**
+ * Validação explícita contra "custo zero silencioso" (ETAPA 3 do plano).
+ *
+ * A engine de cálculo mantém o fallback histórico (custo ausente => 0) para
+ * preservar a compatibilidade dos snapshots já emitidos. Esta função NÃO altera
+ * o cálculo: ela apenas detecta as linhas que, se calculadas, virariam custo
+ * zero por cadastro incompleto. Callers que emitem novos orçamentos devem
+ * chamá-la e BLOQUEAR a inclusão quando houver problemas (salvo override
+ * administrativo auditado).
+ */
+export type ProblemaInsumoCusteio = {
+  especificacao: string;
+  motivo: "sem_vinculo" | "sem_custo" | "sem_modo_cobranca" | "sem_quantidade";
+};
+
+export function validarInsumosCusteio(
+  linhas: Array<
+    InsumoLinha & { insumo_id?: number | null; ativo?: boolean | null }
+  >,
+): ProblemaInsumoCusteio[] {
+  const problemas: ProblemaInsumoCusteio[] = [];
+  for (const l of linhas) {
+    if (l.ativo === false) continue;
+    const rotulo = l.especificacao_insumo ?? "(sem insumo)";
+    if (l.insumo_id == null && l.custo_unitario == null) {
+      problemas.push({ especificacao: rotulo, motivo: "sem_vinculo" });
+      continue;
+    }
+    if (l.custo_unitario == null) {
+      problemas.push({ especificacao: rotulo, motivo: "sem_custo" });
+    }
+    if (l.modo_cobranca !== "por_amostra" && l.modo_cobranca !== "por_execucao") {
+      problemas.push({ especificacao: rotulo, motivo: "sem_modo_cobranca" });
+    }
+    if (l.quantidade_por_amostra == null) {
+      problemas.push({ especificacao: rotulo, motivo: "sem_quantidade" });
+    }
+  }
+  return problemas;
+}
+
 export type Breakdown = {
   codigo: string;
   lote: number;

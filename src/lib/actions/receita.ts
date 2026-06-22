@@ -3,13 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import {
+  codigoCanonico,
+  normalizarModoCobranca,
+  normalizarTexto,
+} from "@/lib/cadastros/normalizar";
 
 // ---- helpers ---------------------------------------------------------
+// Normalização no servidor (trim + colapsa espaços + NFC) para nunca persistir
+// espaços iniciais/finais a partir do formulário.
 const txt = (fd: FormData, k: string) => {
-  const v = String(fd.get(k) ?? "").trim();
+  const v = normalizarTexto(fd.get(k) == null ? null : String(fd.get(k)));
   return v || null;
 };
-const txtReq = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
+const txtReq = (fd: FormData, k: string) => normalizarTexto(fd.get(k) == null ? null : String(fd.get(k)));
 const numOrNull = (fd: FormData, k: string) => {
   const v = fd.get(k);
   if (v == null || v === "") return null;
@@ -30,7 +37,10 @@ function revalidarReceita(codigo: string) {
 // =====================================================================
 
 export async function criarAnalise(formData: FormData) {
-  const codigo = txtReq(formData, "codigo");
+  // Código é PK e alvo de FKs: para NOVOS códigos, aplicamos a forma canônica
+  // (sem espaços/caracteres inválidos) para evitar variações futuras. Códigos
+  // existentes nunca são reescritos (ver normalizar.ts / plano).
+  const codigo = codigoCanonico(txtReq(formData, "codigo"));
   if (!codigo) throw new Error("Informe o código da análise.");
   const supabase = await createClient();
   const { error } = await supabase.from("analises").insert({
@@ -94,7 +104,7 @@ export async function excluirAnalise(formData: FormData) {
 /** Duplica a análise inteira (cabeçalho + etapas + equipamentos + materiais). */
 export async function duplicarAnalise(formData: FormData) {
   const origem = txtReq(formData, "origem");
-  const novo = txtReq(formData, "novo_codigo");
+  const novo = codigoCanonico(txtReq(formData, "novo_codigo"));
   if (!origem || !novo) throw new Error("Código de origem e novo código são obrigatórios.");
   const supabase = await createClient();
 
@@ -244,7 +254,8 @@ export async function adicionarMaterial(formData: FormData) {
     insumo_id: numOrNull(formData, "insumo_id"),
     quantidade_por_amostra: numOrNull(formData, "quantidade_por_amostra"),
     unidade: txt(formData, "unidade"),
-    modo_cobranca: txt(formData, "modo_cobranca"),
+    // null quando desconhecido — nunca assume por_amostra (ver plano/validador).
+    modo_cobranca: normalizarModoCobranca(formData.get("modo_cobranca") as string | null),
     grupo_escolha: txt(formData, "grupo_escolha"),
   });
   if (error) throw new Error(error.message);
@@ -263,7 +274,7 @@ export async function atualizarMaterial(formData: FormData) {
       insumo_id: numOrNull(formData, "insumo_id"),
       quantidade_por_amostra: numOrNull(formData, "quantidade_por_amostra"),
       unidade: txt(formData, "unidade"),
-      modo_cobranca: txt(formData, "modo_cobranca"),
+      modo_cobranca: normalizarModoCobranca(formData.get("modo_cobranca") as string | null),
       grupo_escolha: txt(formData, "grupo_escolha"),
     })
     .eq("id", id);

@@ -1,0 +1,460 @@
+BEGIN
+SET
+==================== RESUMO ====================
+                       verificacao                        | qtd 
+----------------------------------------------------------+-----
+ 01 codigos de analise com diferenca de caixa             |   0
+ 02 textos com espacos iniciais/finais                    |   0
+ 03 etapas duplicadas (codigo+etapa+atividade)            |   2
+ 04 insumo_analise sem insumo_id                          |   7
+ 05 insumos sem custo (custo_unitario nulo/zero)          |   0
+ 05b insumo_analise vinculado a insumo sem custo          |   0
+ 06 insumo_analise com quantidade nula ou zero            |   6
+ 07 modo_cobranca nulo ou invalido                        | 321
+ 08 grupos de escolha duplicados apos normalizacao        |   0
+ 09 vinculos ambiguos insumo_analise -> etapas (>1 etapa) |  18
+ 09b insumo_analise sem etapa correspondente (0 etapas)   |   0
+ 10 equipamentos sem custo ou vida util                   |   0
+ 11 equipamentos nao possuidos e ainda alocados           |   1
+ 12 pesos de alocacao invalidos (nulo/<0)                 |   0
+ 13 etapas sem produtividade ou tempo                     |   3
+ 14a tecnicos sem dados suficientes                       |   2
+ 14b overhead sem dados suficientes                       |   3
+(17 linhas)
+
+
+==================== DETALHE ====================
+-- 01 codigos de analise com diferenca de caixa
+ chave | variacoes 
+-------+-----------
+(0 linha)
+
+-- 03 etapas duplicadas
+ codigo_analise |         etapa          |  atividade   | n 
+----------------+------------------------+--------------+---
+ Illumina_Sh    | Montagem de biblioteca | Qubit        | 2
+ Illumina_Sh    | Montagem de biblioteca | Eletroforese | 2
+(2 linhas)
+
+-- 04 insumo_analise sem insumo_id (custo indeterminado -> BLOQUEIO)
+ id  |   codigo_analise   |            especificacao_insumo            |    nome_etapa    |  nome_atividade  
+-----+--------------------+--------------------------------------------+------------------+------------------
+  72 | Illumina_Sh_qPCR   | dNTP mix 10 mM. Kit c/ 800 uL (4 x 200 uL) | Geração da curva | PCRe
+  93 | Illumina_Sh_qPCR   | QuantiNova® SYBR®Green RT-PCR Kit          | qPCR             | qPCR
+ 310 | qPCR_F             | dNTP mix 10 mM. Kit c/ 800 uL (4 x 200 uL) | Geração da curva | PCRe
+ 338 | qPCR_SF            | dNTP mix 10 mM. Kit c/ 800 uL (4 x 200 uL) | Geração da curva | PCRe
+ 450 | RTqPCR_RNA_virus_H | QuantiNova® SYBR®Green RT-PCR Kit          | RT-qPCR          | Montagem RT-qPCR
+ 440 | RTqPCR_RNA_virus_T | QuantiNova® SYBR®Green RT-PCR Kit          | RT-qPCR          | Montagem RT-qPCR
+ 364 | Sanger             | dNTP mix 10 mM. Kit c/ 800 uL (4 x 200 uL) | PCR amplicon     | Montagem de PCRe
+(7 linhas)
+
+-- 05b insumo_analise vinculado a insumo sem custo (-> BLOQUEIO)
+ id | codigo_analise | especificacao_insumo | insumo_id | custo_unitario 
+----+----------------+----------------------+-----------+----------------
+(0 linha)
+
+-- 06 quantidade nula/zero
+ id  | codigo_analise  |                 especificacao_insumo                  | quantidade_por_amostra 
+-----+-----------------+-------------------------------------------------------+------------------------
+ 143 | Illumina_16S_AC | Ponteira 1000 μL sem filtro                           |                      0
+ 144 | Illumina_16S_AC | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000) |                      0
+ 148 | Illumina_16S_AC | Microtubo 1,5 mL                                      |                      0
+ 169 | Illumina_16S_AC | MiSeq Reagent kit v2 (300 ciclos)                     |                      0
+ 170 | Illumina_16S_AC | MiSeq Reagent kit v2 (500 ciclos)                     |                      0
+ 171 | Illumina_16S_AC | MiSeq Reagent kit v3 (150 ciclos)                     |                      0
+(6 linhas)
+
+-- 07 modo_cobranca nulo/invalido (-> BLOQUEIO)
+ id  |   codigo_analise   |                                                               especificacao_insumo                                                                | modo_cobranca 
+-----+--------------------+---------------------------------------------------------------------------------------------------------------------------------------------------+---------------
+ 457 | Eletrof_vir_hem    | Agarose LE                                                                                                                                        | 
+ 458 | Eletrof_vir_hem    | TBE 0,5X                                                                                                                                          | 
+ 459 | Eletrof_vir_hem    | GelRed 10.000x (500 uL) - Ludwig Biotec                                                                                                           | 
+ 460 | Eletrof_vir_hem    | Luva procedimento não cirúrgico, não estéril, nitrilo, sem talco, azul cobalto (Sonic), médio, caixa com 100 unidades 283120 (Supermax)           | 
+ 461 | Eletrof_vir_hem    | 6X DNA Loading Dye Buffer 2x1,5 ml                                                                                                                | 
+ 462 | Eletrof_vir_hem    | Ladder 1 KB - Ludwig                                                                                                                              | 
+ 451 | Eletrof_vir_tec    | Agarose LE                                                                                                                                        | 
+ 452 | Eletrof_vir_tec    | TBE 0,5X                                                                                                                                          | 
+ 453 | Eletrof_vir_tec    | GelRed 10.000x (500 uL) - Ludwig Biotec                                                                                                           | 
+ 454 | Eletrof_vir_tec    | Luva procedimento não cirúrgico, não estéril, nitrilo, sem talco, azul cobalto (Sonic), médio, caixa com 100 unidades 283120 (Supermax)           | 
+ 455 | Eletrof_vir_tec    | 6X DNA Loading Dye Buffer 2x1,5 ml                                                                                                                | 
+ 456 | Eletrof_vir_tec    | Ladder 1 KB - Ludwig                                                                                                                              | 
+ 139 | Illumina_16S_AC    | Kit Dneasy Blood e Tissue (250 amostras) (Qiagen)                                                                                                 | 
+ 140 | Illumina_16S_AC    | Kit Dneasy Blood e Tissue (250 amostras) (Qiagen)                                                                                                 | 
+ 141 | Illumina_16S_AC    | High Sensitivity DNA Kit Qubit                                                                                                                    | 
+ 142 | Illumina_16S_AC    | Microtubo Qubit                                                                                                                                   | 
+ 143 | Illumina_16S_AC    | Ponteira 1000 μL sem filtro                                                                                                                       | 
+ 144 | Illumina_16S_AC    | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 145 | Illumina_16S_AC    | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 146 | Illumina_16S_AC    | kit NXTRXT 16S Metagenomic + 96 indexes Set-A                                                                                                     | 
+ 147 | Illumina_16S_AC    | HotStart Taq MasterMix 250U - Qiagen                                                                                                              | 
+ 148 | Illumina_16S_AC    | Microtubo 1,5 mL                                                                                                                                  | 
+ 149 | Illumina_16S_AC    | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 150 | Illumina_16S_AC    | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 151 | Illumina_16S_AC    | Ponteira 1000 μL sem filtro                                                                                                                       | 
+ 152 | Illumina_16S_AC    | Microplaca de PCR (pacote 25 unidades) - K4-9615 KASVI                                                                                            | 
+ 153 | Illumina_16S_AC    | ILMN DNA/RNA UDI-Set A Placa-96wells                                                                                                              | 
+ 154 | Illumina_16S_AC    | Illumina Purification Beads (30 mL)                                                                                                               | 
+ 155 | Illumina_16S_AC    | Isopropanol 99.8 PA ACS ISO                                                                                                                       | 
+ 156 | Illumina_16S_AC    | Ponteira 1000 μL sem filtro                                                                                                                       | 
+ 157 | Illumina_16S_AC    | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 158 | Illumina_16S_AC    | Microtubo 1,5 mL                                                                                                                                  | 
+ 159 | Illumina_16S_AC    | Microplaca de PCR (pacote 25 unidades) - K4-9615 KASVI                                                                                            | 
+ 160 | Illumina_16S_AC    | 50 pb DNA ladder (100 reações) (Ludwig BioTech)                                                                                                   | 
+ 161 | Illumina_16S_AC    | 6X DNA Loading Dye Buffer 2x1,5 ml                                                                                                                | 
+ 162 | Illumina_16S_AC    | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 163 | Illumina_16S_AC    | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 164 | Illumina_16S_AC    | GelRed 10.000x (500 uL) - Ludwig Biotec                                                                                                           | 
+ 165 | Illumina_16S_AC    | High Sensitivity DNA Kit Qubit                                                                                                                    | 
+ 166 | Illumina_16S_AC    | Microtubo Qubit                                                                                                                                   | 
+ 167 | Illumina_16S_AC    | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 168 | Illumina_16S_AC    | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 173 | Illumina_16S_AC    | PhiX Control v3                                                                                                                                   | 
+ 174 | Illumina_16S_AC    | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 175 | Illumina_16S_AC    | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 176 | Illumina_16S_AC    | Microtubo 1,5 mL                                                                                                                                  | 
+   1 | Illumina_Sh        | Kit Dneasy Blood e Tissue (250 amostras) (Qiagen)                                                                                                 | 
+   2 | Illumina_Sh        | Kit Dneasy Blood e Tissue (250 amostras) (Qiagen)                                                                                                 | 
+   3 | Illumina_Sh        | High Sensitivity DNA Kit Qubit                                                                                                                    | 
+   4 | Illumina_Sh        | Microtubo Qubit                                                                                                                                   | 
+   5 | Illumina_Sh        | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+   6 | Illumina_Sh        | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+   7 | Illumina_Sh        | HotStart Taq MasterMix 250U - Qiagen                                                                                                              | 
+   8 | Illumina_Sh        | Oligonucleotídeo RP-OPC (100 nmol) (F e R)                                                                                                        | 
+   9 | Illumina_Sh        | Microtubo 1,5 mL                                                                                                                                  | 
+  10 | Illumina_Sh        | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+  11 | Illumina_Sh        | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+  12 | Illumina_Sh        | Ponteira 1000 μL sem filtro                                                                                                                       | 
+  13 | Illumina_Sh        | Microplaca de PCR (pacote 25 unidades) - K4-9615 KASVI                                                                                            | 
+  14 | Illumina_Sh        | 50 pb DNA ladder (100 reações) (Ludwig BioTech)                                                                                                   | 
+  15 | Illumina_Sh        | 6X DNA Loading Dye Buffer 2x1,5 ml                                                                                                                | 
+  16 | Illumina_Sh        | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+  17 | Illumina_Sh        | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+  18 | Illumina_Sh        | GelRed 10.000x (500 uL) - Ludwig Biotec                                                                                                           | 
+  19 | Illumina_Sh        | Microtubo 1,5 mL                                                                                                                                  | 
+  20 | Illumina_Sh        | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+  21 | Illumina_Sh        | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+  22 | Illumina_Sh        | High Sensitivity DNA Kit Qubit                                                                                                                    | 
+  23 | Illumina_Sh        | Microtubo Qubit                                                                                                                                   | 
+  24 | Illumina_Sh        | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+  25 | Illumina_Sh        | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+  26 | Illumina_Sh        | HotStart Taq MasterMix 250U - Qiagen                                                                                                              | 
+  27 | Illumina_Sh        | Oligonucleotídeo RP-OPC (100 nmol) (F e R)                                                                                                        | 
+  28 | Illumina_Sh        | Microtubo 1,5 mL                                                                                                                                  | 
+  29 | Illumina_Sh        | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+  30 | Illumina_Sh        | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+  31 | Illumina_Sh        | Ponteira 1000 μL sem filtro                                                                                                                       | 
+  32 | Illumina_Sh        | Microplaca de PCR (pacote 25 unidades) - K4-9615 KASVI                                                                                            | 
+  37 | Illumina_Sh        | Illumina Purification Beads (30 mL)                                                                                                               | 
+  38 | Illumina_Sh        | Isopropanol 99.8 PA ACS ISO                                                                                                                       | 
+  39 | Illumina_Sh        | Ponteira 1000 μL sem filtro                                                                                                                       | 
+  40 | Illumina_Sh        | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+  41 | Illumina_Sh        | Microtubo 1,5 mL                                                                                                                                  | 
+  42 | Illumina_Sh        | Microplaca de PCR (pacote 25 unidades) - K4-9615 KASVI                                                                                            | 
+  43 | Illumina_Sh        | 50 pb DNA ladder (100 reações) (Ludwig BioTech)                                                                                                   | 
+  44 | Illumina_Sh        | 6X DNA Loading Dye Buffer 2x1,5 ml                                                                                                                | 
+  45 | Illumina_Sh        | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+  46 | Illumina_Sh        | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+  47 | Illumina_Sh        | GelRed 10.000x (500 uL) - Ludwig Biotec                                                                                                           | 
+  48 | Illumina_Sh        | High Sensitivity DNA Kit Qubit                                                                                                                    | 
+  49 | Illumina_Sh        | Microtubo Qubit                                                                                                                                   | 
+  50 | Illumina_Sh        | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+  51 | Illumina_Sh        | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+  59 | Illumina_Sh        | PhiX Control v3                                                                                                                                   | 
+  60 | Illumina_Sh        | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+  61 | Illumina_Sh        | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+  62 | Illumina_Sh        | Microtubo 1,5 mL                                                                                                                                  | 
+  63 | Illumina_Sh_qPCR   | Kit Dneasy Blood e Tissue (250 amostras) (Qiagen)                                                                                                 | 
+  64 | Illumina_Sh_qPCR   | Kit Dneasy Blood e Tissue (250 amostras) (Qiagen)                                                                                                 | 
+  65 | Illumina_Sh_qPCR   | High Sensitivity DNA Kit Qubit                                                                                                                    | 
+  66 | Illumina_Sh_qPCR   | Microtubo Qubit                                                                                                                                   | 
+  67 | Illumina_Sh_qPCR   | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+  68 | Illumina_Sh_qPCR   | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+  69 | Illumina_Sh_qPCR   | Ponteira 200 μL com filtro - Jet Biofil (rack 96 un)                                                                                              | 
+  70 | Illumina_Sh_qPCR   | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+  71 | Illumina_Sh_qPCR   | TaqNova DNA Polymerase - 500U - QIAGEN                                                                                                            | 
+  72 | Illumina_Sh_qPCR   | dNTP mix 10 mM. Kit c/ 800 uL (4 x 200 uL)                                                                                                        | 
+  73 | Illumina_Sh_qPCR   | Microtubo 0,2 mL parede fina (PCR grade)                                                                                                          | 
+  74 | Illumina_Sh_qPCR   | Primer F e R PCR 50 uM dessalinizado (500 uL cada)                                                                                                | 
+  75 | Illumina_Sh_qPCR   | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+  76 | Illumina_Sh_qPCR   | 50 pb DNA ladder (100 reações) (Ludwig BioTech)                                                                                                   | 
+  77 | Illumina_Sh_qPCR   | 6X DNA Loading Dye Buffer 2x1,5 ml                                                                                                                | 
+  78 | Illumina_Sh_qPCR   | GelRed 10.000x (500 uL) - Ludwig Biotec                                                                                                           | 
+  79 | Illumina_Sh_qPCR   | GE Healthcare Sera-Mag SpeedBeads™ Carboxyl Magnetic Beads                                                                                        | 
+  80 | Illumina_Sh_qPCR   | Isopropanol 99.8 PA ACS ISO                                                                                                                       | 
+  81 | Illumina_Sh_qPCR   | Ponteira 1000 μL sem filtro                                                                                                                       | 
+  82 | Illumina_Sh_qPCR   | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+  83 | Illumina_Sh_qPCR   | Microtubo 1,5 mL                                                                                                                                  | 
+  84 | Illumina_Sh_qPCR   | High Sensitivity DNA Kit Qubit                                                                                                                    | 
+  85 | Illumina_Sh_qPCR   | Microtubo Qubit                                                                                                                                   | 
+  86 | Illumina_Sh_qPCR   | Ponteira 1000 μL sem filtro                                                                                                                       | 
+  87 | Illumina_Sh_qPCR   | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+  88 | Illumina_Sh_qPCR   | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+  89 | Illumina_Sh_qPCR   | Oligonucleotídeo RP-OPC (100 nmol) (F e R)                                                                                                        | 
+  90 | Illumina_Sh_qPCR   | Strip tubes and caps 0.1 mL (pacote 1000) - RotorGene                                                                                             | 
+  91 | Illumina_Sh_qPCR   | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+  92 | Illumina_Sh_qPCR   | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+  93 | Illumina_Sh_qPCR   | QuantiNova® SYBR®Green RT-PCR Kit                                                                                                                 | 
+  94 | Illumina_Sh_qPCR   | Microtubo 0,6 mL                                                                                                                                  | 
+  95 | Illumina_Sh_qPCR   | Microtubo 1,5 mL                                                                                                                                  | 
+  96 | Illumina_Sh_qPCR   | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+  97 | Illumina_Sh_qPCR   | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+  98 | Illumina_Sh_qPCR   | High Sensitivity DNA Kit Qubit                                                                                                                    | 
+  99 | Illumina_Sh_qPCR   | Microtubo Qubit                                                                                                                                   | 
+ 100 | Illumina_Sh_qPCR   | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 101 | Illumina_Sh_qPCR   | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 102 | Illumina_Sh_qPCR   | TaqNova DNA Polymerase - 500U - QIAGEN                                                                                                            | 
+ 103 | Illumina_Sh_qPCR   | Oligonucleotídeo RP-OPC (100 nmol) (F e R)                                                                                                        | 
+ 104 | Illumina_Sh_qPCR   | Microtubo 1,5 mL                                                                                                                                  | 
+ 105 | Illumina_Sh_qPCR   | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 106 | Illumina_Sh_qPCR   | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 107 | Illumina_Sh_qPCR   | Ponteira 1000 μL sem filtro                                                                                                                       | 
+ 108 | Illumina_Sh_qPCR   | Microplaca de PCR (pacote 25 unidades) - K4-9615 KASVI                                                                                            | 
+ 109 | Illumina_Sh_qPCR   | ILMN DNA/RNA UDI-Set A Placa-96wells                                                                                                              | 
+ 110 | Illumina_Sh_qPCR   | ILMN DNA/RNA UDI-Set B Placa-96wells                                                                                                              | 
+ 111 | Illumina_Sh_qPCR   | ILMN DNA/RNA UDI-Set C Placa-96wells                                                                                                              | 
+ 112 | Illumina_Sh_qPCR   | ILMN DNA/RNA UDI-Set D Placa-96wells                                                                                                              | 
+ 113 | Illumina_Sh_qPCR   | Illumina Purification Beads (30 mL)                                                                                                               | 
+ 114 | Illumina_Sh_qPCR   | Isopropanol 99.8 PA ACS ISO                                                                                                                       | 
+ 115 | Illumina_Sh_qPCR   | Ponteira 1000 μL sem filtro                                                                                                                       | 
+ 116 | Illumina_Sh_qPCR   | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 117 | Illumina_Sh_qPCR   | Microtubo 1,5 mL                                                                                                                                  | 
+ 118 | Illumina_Sh_qPCR   | Microplaca de PCR (pacote 25 unidades) - K4-9615 KASVI                                                                                            | 
+ 119 | Illumina_Sh_qPCR   | 50 pb DNA ladder (100 reações) (Ludwig BioTech)                                                                                                   | 
+ 120 | Illumina_Sh_qPCR   | 6X DNA Loading Dye Buffer 2x1,5 ml                                                                                                                | 
+ 121 | Illumina_Sh_qPCR   | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 122 | Illumina_Sh_qPCR   | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 123 | Illumina_Sh_qPCR   | GelRed 10.000x (500 uL) - Ludwig Biotec                                                                                                           | 
+ 124 | Illumina_Sh_qPCR   | High Sensitivity DNA Kit Qubit                                                                                                                    | 
+ 125 | Illumina_Sh_qPCR   | Microtubo Qubit                                                                                                                                   | 
+ 126 | Illumina_Sh_qPCR   | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 127 | Illumina_Sh_qPCR   | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 135 | Illumina_Sh_qPCR   | PhiX Control v3                                                                                                                                   | 
+ 136 | Illumina_Sh_qPCR   | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 137 | Illumina_Sh_qPCR   | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 138 | Illumina_Sh_qPCR   | Microtubo 1,5 mL                                                                                                                                  | 
+ 296 | qPCR_F             | Etanol 99% Merck                                                                                                                                  | 
+ 297 | qPCR_F             | Membrana filtrante 0,45 μm                                                                                                                        | 
+ 298 | qPCR_F             | Microtubo 1,5 mL                                                                                                                                  | 
+ 299 | qPCR_F             | Proteinase K - Ludwig Biotec                                                                                                                      | 
+ 300 | qPCR_F             | Microtubo 1,5 mL                                                                                                                                  | 
+ 301 | qPCR_F             | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 302 | qPCR_F             | Microtubo 1,5 mL                                                                                                                                  | 
+ 303 | qPCR_F             | GE Healthcare Sera-Mag SpeedBeads™ Carboxyl Magnetic Beads                                                                                        | 
+ 304 | qPCR_F             | Isopropanol 99.8 PA ACS ISO                                                                                                                       | 
+ 305 | qPCR_F             | Ponteira 1000 μL sem filtro                                                                                                                       | 
+ 306 | qPCR_F             | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 307 | qPCR_F             | Ponteira 200 μL com filtro - Jet Biofil (rack 96 un)                                                                                              | 
+ 308 | qPCR_F             | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 309 | qPCR_F             | TaqNova DNA Polymerase - 500U - QIAGEN                                                                                                            | 
+ 310 | qPCR_F             | dNTP mix 10 mM. Kit c/ 800 uL (4 x 200 uL)                                                                                                        | 
+ 311 | qPCR_F             | Microtubo 0,2 mL parede fina (PCR grade)                                                                                                          | 
+ 312 | qPCR_F             | Primer F e R PCR 50 uM dessalinizado (500 uL cada)                                                                                                | 
+ 313 | qPCR_F             | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 314 | qPCR_F             | 50 pb DNA ladder (100 reações) (Ludwig BioTech)                                                                                                   | 
+ 315 | qPCR_F             | 6X DNA Loading Dye Buffer 2x1,5 ml                                                                                                                | 
+ 316 | qPCR_F             | GelRed 10.000x (500 uL) - Ludwig Biotec                                                                                                           | 
+ 317 | qPCR_F             | GE Healthcare Sera-Mag SpeedBeads™ Carboxyl Magnetic Beads                                                                                        | 
+ 318 | qPCR_F             | Isopropanol 99.8 PA ACS ISO                                                                                                                       | 
+ 319 | qPCR_F             | Ponteira 1000 μL sem filtro                                                                                                                       | 
+ 320 | qPCR_F             | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 321 | qPCR_F             | Microtubo 1,5 mL                                                                                                                                  | 
+ 322 | qPCR_F             | Quantinova Probe kit (2500 reações)                                                                                                               | 
+ 323 | qPCR_F             | Primers e sonda qPCR 100uM                                                                                                                        | 
+ 324 | qPCR_F             | Ponteira 200 μL com filtro - Jet Biofil (rack 96 un)                                                                                              | 
+ 325 | qPCR_F             | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 326 | qPCR_F             | Strip tubes and caps 0.1 mL (pacote 1000) - RotorGene                                                                                             | 
+ 327 | qPCR_SF            | Proteinase K - Ludwig Biotec                                                                                                                      | 
+ 328 | qPCR_SF            | Microtubo 1,5 mL                                                                                                                                  | 
+ 329 | qPCR_SF            | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 330 | qPCR_SF            | Microtubo 1,5 mL                                                                                                                                  | 
+ 331 | qPCR_SF            | GE Healthcare Sera-Mag SpeedBeads™ Carboxyl Magnetic Beads                                                                                        | 
+ 332 | qPCR_SF            | Isopropanol 99.8 PA ACS ISO                                                                                                                       | 
+ 333 | qPCR_SF            | Ponteira 1000 μL sem filtro                                                                                                                       | 
+ 334 | qPCR_SF            | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 335 | qPCR_SF            | Ponteira 200 μL com filtro - Jet Biofil (rack 96 un)                                                                                              | 
+ 336 | qPCR_SF            | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 337 | qPCR_SF            | TaqNova DNA Polymerase - 500U - QIAGEN                                                                                                            | 
+ 338 | qPCR_SF            | dNTP mix 10 mM. Kit c/ 800 uL (4 x 200 uL)                                                                                                        | 
+ 339 | qPCR_SF            | Microtubo 0,2 mL parede fina (PCR grade)                                                                                                          | 
+ 340 | qPCR_SF            | Primer F e R PCR 50 uM dessalinizado (500 uL cada)                                                                                                | 
+ 341 | qPCR_SF            | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 342 | qPCR_SF            | 50 pb DNA ladder (100 reações) (Ludwig BioTech)                                                                                                   | 
+ 343 | qPCR_SF            | 6X DNA Loading Dye Buffer 2x1,5 ml                                                                                                                | 
+ 344 | qPCR_SF            | GelRed 10.000x (500 uL) - Ludwig Biotec                                                                                                           | 
+ 345 | qPCR_SF            | GE Healthcare Sera-Mag SpeedBeads™ Carboxyl Magnetic Beads                                                                                        | 
+ 346 | qPCR_SF            | Isopropanol 99.8 PA ACS ISO                                                                                                                       | 
+ 347 | qPCR_SF            | Ponteira 1000 μL sem filtro                                                                                                                       | 
+ 348 | qPCR_SF            | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 349 | qPCR_SF            | Microtubo 1,5 mL                                                                                                                                  | 
+ 350 | qPCR_SF            | Quantinova Probe kit (2500 reações)                                                                                                               | 
+ 351 | qPCR_SF            | Primers e sonda qPCR 100uM                                                                                                                        | 
+ 352 | qPCR_SF            | Ponteira 200 μL com filtro - Jet Biofil (rack 96 un)                                                                                              | 
+ 353 | qPCR_SF            | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 354 | qPCR_SF            | Strip tubes and caps 0.1 mL (pacote 1000) - RotorGene                                                                                             | 
+ 407 | RTqPCR_RNA_virus_H | Seringa insulinica 1mL                                                                                                                            | 
+ 408 | RTqPCR_RNA_virus_H | Citrato trissódico dihidratado fr.c/500gr                                                                                                         | 
+ 409 | RTqPCR_RNA_virus_H | Hipoclorito de sódio (10-12%)                                                                                                                     | 
+ 410 | RTqPCR_RNA_virus_H | Microtubo 2 mL                                                                                                                                    | 
+ 411 | RTqPCR_RNA_virus_H | Quick-Zol (Trizol - reagente para isolamento de DNA, RNA e proteínas), frasco com 100 mL QUICKZOL (Ludwig)                                        | 
+ 412 | RTqPCR_RNA_virus_H | PONTEIRA NEUTRA, CURTA, COM FILTRO. VOL. 1000UL. PCT 500 UND - Marca Abdus                                                                        | 
+ 413 | RTqPCR_RNA_virus_H | Luva procedimento não cirúrgico, não estéril, nitrilo, sem talco, azul cobalto (Sonic), médio, caixa com 100 unidades 283120 (Supermax)           | 
+ 414 | RTqPCR_RNA_virus_H | Clorofórmo PA                                                                                                                                     | 
+ 415 | RTqPCR_RNA_virus_H | Ponteira com filtro, 20 a 200 uL, transparente, estéril, livre de DNAse, RNAse, endoxinas e pirogênios, pacote com 1000 unidades K62-200-1 (Olen) | 
+ 416 | RTqPCR_RNA_virus_H | Microtubo 1,5 mL                                                                                                                                  | 
+ 417 | RTqPCR_RNA_virus_H | Isopropanol 99.8 PA ACS ISO                                                                                                                       | 
+ 418 | RTqPCR_RNA_virus_H | Ponteira com filtro, 20 a 200 uL, transparente, estéril, livre de DNAse, RNAse, endoxinas e pirogênios, pacote com 1000 unidades K62-200-1 (Olen) | 
+ 419 | RTqPCR_RNA_virus_H | Alcool Etílico Absoluto 99,8%                                                                                                                     | 
+ 420 | RTqPCR_RNA_virus_H | EDTA em Solução 0,5M pH 8,0 Fatorada, CAS , Frasco 1000 mL (Neon)                                                                                 | 
+ 421 | RTqPCR_RNA_virus_H | Ponteira com filtro, 20 a 200 uL, transparente, estéril, livre de DNAse, RNAse, endoxinas e pirogênios, pacote com 1000 unidades K62-200-1 (Olen) | 
+ 422 | RTqPCR_RNA_virus_H | PONTEIRA NEUTRA, CURTA, COM FILTRO. VOL. 1000UL. PCT 500 UND - Marca Abdus                                                                        | 
+ 427 | RTqPCR_RNA_virus_H | RNA QUBIT HS 100 ENSAIOS                                                                                                                          | 
+ 428 | RTqPCR_RNA_virus_H | Qubit™ Assay Tubes                                                                                                                                | 
+ 429 | RTqPCR_RNA_virus_H | Luva procedimento não cirúrgico, não estéril, nitrilo, sem talco, azul cobalto (Sonic), médio, caixa com 100 unidades 283120 (Supermax)           | 
+ 430 | RTqPCR_RNA_virus_H | Ponteira com filtro, 20 a 200 uL, transparente, estéril, livre de DNAse, RNAse, endoxinas e pirogênios, pacote com 1000 unidades K62-200-1 (Olen) | 
+ 441 | RTqPCR_RNA_virus_H | Tubo de PCR 0,2 ml                                                                                                                                | 
+ 442 | RTqPCR_RNA_virus_H | Strip tubes and caps 0.1 mL (pacote 1000) - RotorGene                                                                                             | 
+ 443 | RTqPCR_RNA_virus_H | Luva procedimento não cirúrgico, não estéril, nitrilo, sem talco, azul cobalto (Sonic), médio, caixa com 100 unidades 283120 (Supermax)           | 
+ 444 | RTqPCR_RNA_virus_H | Ponteira com filtro, 20 a 200 uL, transparente, estéril, livre de DNAse, RNAse, endoxinas e pirogênios, pacote com 1000 unidades K62-200-1 (Olen) | 
+ 445 | RTqPCR_RNA_virus_H | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 446 | RTqPCR_RNA_virus_H | Primers CsRV2/CdPBV1 50 uM dessalinizado (500 uL cada)                                                                                            | 
+ 447 | RTqPCR_RNA_virus_H | Luva procedimento não cirúrgico, não estéril, nitrilo, sem talco, azul cobalto (Sonic), médio, caixa com 100 unidades 283120 (Supermax)           | 
+ 448 | RTqPCR_RNA_virus_H | Ponteira com filtro, 20 a 200 uL, transparente, estéril, livre de DNAse, RNAse, endoxinas e pirogênios, pacote com 1000 unidades K62-200-1 (Olen) | 
+ 449 | RTqPCR_RNA_virus_H | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 450 | RTqPCR_RNA_virus_H | QuantiNova® SYBR®Green RT-PCR Kit                                                                                                                 | 
+ 389 | RTqPCR_RNA_virus_T | Lâmina de Bisturi Aço Carbono Descartável C/100Un DESCARPACK (N°11)                                                                               | 
+ 390 | RTqPCR_RNA_virus_T | Papel Toalha Interfolhado Folha Simples                                                                                                           | 
+ 391 | RTqPCR_RNA_virus_T | Folha de Alumínio em Rolo Wyda 30cm x 4,0m                                                                                                        | 
+ 392 | RTqPCR_RNA_virus_T | Hipoclorito de sódio (10-12%)                                                                                                                     | 
+ 393 | RTqPCR_RNA_virus_T | Microtubo 2 mL                                                                                                                                    | 
+ 394 | RTqPCR_RNA_virus_T | Luva procedimento não cirúrgico, não estéril, nitrilo, sem talco, azul cobalto (Sonic), médio, caixa com 100 unidades 283120 (Supermax)           | 
+ 395 | RTqPCR_RNA_virus_T | Quick-Zol (Trizol - reagente para isolamento de DNA, RNA e proteínas), frasco com 100 mL QUICKZOL (Ludwig)                                        | 
+ 396 | RTqPCR_RNA_virus_T | PONTEIRA NEUTRA, CURTA, COM FILTRO. VOL. 1000UL. PCT 500 UND - Marca Abdus                                                                        | 
+ 397 | RTqPCR_RNA_virus_T | Luva procedimento não cirúrgico, não estéril, nitrilo, sem talco, azul cobalto (Sonic), médio, caixa com 100 unidades 283120 (Supermax)           | 
+ 398 | RTqPCR_RNA_virus_T | Clorofórmo PA                                                                                                                                     | 
+ 399 | RTqPCR_RNA_virus_T | Ponteira com filtro, 20 a 200 uL, transparente, estéril, livre de DNAse, RNAse, endoxinas e pirogênios, pacote com 1000 unidades K62-200-1 (Olen) | 
+ 400 | RTqPCR_RNA_virus_T | Microtubo 1,5 mL                                                                                                                                  | 
+ 401 | RTqPCR_RNA_virus_T | Isopropanol 99.8 PA ACS ISO                                                                                                                       | 
+ 402 | RTqPCR_RNA_virus_T | Ponteira com filtro, 20 a 200 uL, transparente, estéril, livre de DNAse, RNAse, endoxinas e pirogênios, pacote com 1000 unidades K62-200-1 (Olen) | 
+ 403 | RTqPCR_RNA_virus_T | Alcool Etílico Absoluto 99,8%                                                                                                                     | 
+ 404 | RTqPCR_RNA_virus_T | EDTA em Solução 0,5M pH 8,0 Fatorada, CAS , Frasco 1000 mL (Neon)                                                                                 | 
+ 405 | RTqPCR_RNA_virus_T | Ponteira com filtro, 20 a 200 uL, transparente, estéril, livre de DNAse, RNAse, endoxinas e pirogênios, pacote com 1000 unidades K62-200-1 (Olen) | 
+ 406 | RTqPCR_RNA_virus_T | PONTEIRA NEUTRA, CURTA, COM FILTRO. VOL. 1000UL. PCT 500 UND - Marca Abdus                                                                        | 
+ 423 | RTqPCR_RNA_virus_T | RNA QUBIT HS 100 ENSAIOS                                                                                                                          | 
+ 424 | RTqPCR_RNA_virus_T | Qubit™ Assay Tubes                                                                                                                                | 
+ 425 | RTqPCR_RNA_virus_T | Luva procedimento não cirúrgico, não estéril, nitrilo, sem talco, azul cobalto (Sonic), médio, caixa com 100 unidades 283120 (Supermax)           | 
+ 426 | RTqPCR_RNA_virus_T | Ponteira com filtro, 20 a 200 uL, transparente, estéril, livre de DNAse, RNAse, endoxinas e pirogênios, pacote com 1000 unidades K62-200-1 (Olen) | 
+ 431 | RTqPCR_RNA_virus_T | Tubo de PCR 0,2 ml                                                                                                                                | 
+ 432 | RTqPCR_RNA_virus_T | Strip tubes and caps 0.1 mL (pacote 1000) - RotorGene                                                                                             | 
+ 433 | RTqPCR_RNA_virus_T | Luva procedimento não cirúrgico, não estéril, nitrilo, sem talco, azul cobalto (Sonic), médio, caixa com 100 unidades 283120 (Supermax)           | 
+ 434 | RTqPCR_RNA_virus_T | Ponteira com filtro, 20 a 200 uL, transparente, estéril, livre de DNAse, RNAse, endoxinas e pirogênios, pacote com 1000 unidades K62-200-1 (Olen) | 
+ 435 | RTqPCR_RNA_virus_T | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 436 | RTqPCR_RNA_virus_T | Primers CsRV2/CdPBV1 50 uM dessalinizado (500 uL cada)                                                                                            | 
+ 437 | RTqPCR_RNA_virus_T | Luva procedimento não cirúrgico, não estéril, nitrilo, sem talco, azul cobalto (Sonic), médio, caixa com 100 unidades 283120 (Supermax)           | 
+ 438 | RTqPCR_RNA_virus_T | Ponteira com filtro, 20 a 200 uL, transparente, estéril, livre de DNAse, RNAse, endoxinas e pirogênios, pacote com 1000 unidades K62-200-1 (Olen) | 
+ 439 | RTqPCR_RNA_virus_T | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 440 | RTqPCR_RNA_virus_T | QuantiNova® SYBR®Green RT-PCR Kit                                                                                                                 | 
+ 355 | Sanger             | Microtubo 1,5 mL                                                                                                                                  | 
+ 356 | Sanger             | Proteinase K - Ludwig Biotec                                                                                                                      | 
+ 357 | Sanger             | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 358 | Sanger             | Microtubo 1,5 mL                                                                                                                                  | 
+ 359 | Sanger             | GE Healthcare Sera-Mag SpeedBeads™ Carboxyl Magnetic Beads                                                                                        | 
+ 360 | Sanger             | Isopropanol 99.8 PA ACS ISO                                                                                                                       | 
+ 361 | Sanger             | Ponteira 1000 μL sem filtro                                                                                                                       | 
+ 362 | Sanger             | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 363 | Sanger             | HotStart Taq MasterMix 250U - Qiagen                                                                                                              | 
+ 364 | Sanger             | dNTP mix 10 mM. Kit c/ 800 uL (4 x 200 uL)                                                                                                        | 
+ 365 | Sanger             | Microplaca de PCR (pacote 25 unidades) - K4-9615 KASVI                                                                                            | 
+ 366 | Sanger             | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 367 | Sanger             | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 368 | Sanger             | Primer F e R PCR 50 uM dessalinizado (500 uL cada)                                                                                                | 
+ 369 | Sanger             | 50 pb DNA ladder (100 reações) (Ludwig BioTech)                                                                                                   | 
+ 370 | Sanger             | 6X DNA Loading Dye Buffer 2x1,5 ml                                                                                                                | 
+ 371 | Sanger             | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 372 | Sanger             | GelRed 10.000x (500 uL) - Ludwig Biotec                                                                                                           | 
+ 373 | Sanger             | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 374 | Sanger             | GE Healthcare Sera-Mag SpeedBeads™ Carboxyl Magnetic Beads                                                                                        | 
+ 375 | Sanger             | Isopropanol 99.8 PA ACS ISO                                                                                                                       | 
+ 376 | Sanger             | Ponteira 1000 μL sem filtro                                                                                                                       | 
+ 377 | Sanger             | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 378 | Sanger             | Microtubo 1,5 mL                                                                                                                                  | 
+ 379 | Sanger             | High Sensitivity DNA Kit Qubit                                                                                                                    | 
+ 380 | Sanger             | Microtubo Qubit                                                                                                                                   | 
+ 381 | Sanger             | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 382 | Sanger             | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 383 | Sanger             | BigDye™ Terminator v31 Cycle Sequencing Kit 100 reactions                                                                                         | 
+ 384 | Sanger             | Microplaca de PCR (pacote 25 unidades) - K4-9615 KASVI                                                                                            | 
+ 385 | Sanger             | Ponteira 200 μL com filtro - Jet Biofil (pacote 1000)                                                                                             | 
+ 386 | Sanger             | Ponteira 10 μL com filtro - KASVI (pacote 1000)                                                                                                   | 
+ 387 | Sanger             | Primer F e R PCR 50 uM dessalinizado (500 uL cada)                                                                                                | 
+ 388 | Sanger             | POP-7™ Polymer (384 amostras F ou R, 288 de saldo)                                                                                                | 
+(321 linhas)
+
+-- 08 grupos de escolha duplicados por caixa/acento/espaco
+ codigo_analise | chave | variacoes 
+----------------+-------+-----------
+(0 linha)
+
+-- 09 vinculos ambiguos (insumo_analise casa com >1 etapa)
+ id | codigo_analise |       nome_etapa       | nome_atividade | etapas_casadas 
+----+----------------+------------------------+----------------+----------------
+ 14 | Illumina_Sh    | Montagem de biblioteca | Eletroforese   |              2
+ 15 | Illumina_Sh    | Montagem de biblioteca | Eletroforese   |              2
+ 16 | Illumina_Sh    | Montagem de biblioteca | Eletroforese   |              2
+ 17 | Illumina_Sh    | Montagem de biblioteca | Eletroforese   |              2
+ 18 | Illumina_Sh    | Montagem de biblioteca | Eletroforese   |              2
+ 22 | Illumina_Sh    | Montagem de biblioteca | Qubit          |              2
+ 23 | Illumina_Sh    | Montagem de biblioteca | Qubit          |              2
+ 24 | Illumina_Sh    | Montagem de biblioteca | Qubit          |              2
+ 25 | Illumina_Sh    | Montagem de biblioteca | Qubit          |              2
+ 43 | Illumina_Sh    | Montagem de biblioteca | Eletroforese   |              2
+ 44 | Illumina_Sh    | Montagem de biblioteca | Eletroforese   |              2
+ 45 | Illumina_Sh    | Montagem de biblioteca | Eletroforese   |              2
+ 46 | Illumina_Sh    | Montagem de biblioteca | Eletroforese   |              2
+ 47 | Illumina_Sh    | Montagem de biblioteca | Eletroforese   |              2
+ 48 | Illumina_Sh    | Montagem de biblioteca | Qubit          |              2
+ 49 | Illumina_Sh    | Montagem de biblioteca | Qubit          |              2
+ 50 | Illumina_Sh    | Montagem de biblioteca | Qubit          |              2
+ 51 | Illumina_Sh    | Montagem de biblioteca | Qubit          |              2
+(18 linhas)
+
+-- 10 equipamentos sem custo/vida util
+ id | nome | custo_unitario | vida_util_anos | possui 
+----+------+----------------+----------------+--------
+(0 linha)
+
+-- 11 equipamentos nao possuidos e alocados
+ id |          nome          | possui | alocacoes 
+----+------------------------+--------+-----------
+ 23 | MinION Oxford Nanopore | f      |        10
+(1 linha)
+
+-- 12 pesos de alocacao invalidos
+ id | equipamento_id | codigo_analise | peso_alocacao 
+----+----------------+----------------+---------------
+(0 linha)
+
+-- 13 etapas sem produtividade/tempo (amostra)
+ id | codigo_analise  |   nome_etapa   | nome_atividade | execucoes_por_dia | amostras_por_execucao | tempo_bancada_h | tempo_maquina_h 
+----+-----------------+----------------+----------------+-------------------+-----------------------+-----------------+-----------------
+ 59 | Illumina_16S_AC | Bioinformática | Bioinformática |                   |                       |                 |                
+ 32 | Illumina_Sh     | Bioinformática | Bioinformática |                   |                       |                 |                
+ 79 | Sanger          | Bioinformática | Bioinformática |                   |                       |                 |                
+(3 linhas)
+
+-- 14a tecnicos sem dados suficientes
+ id |  nome   | valor_mes | horas_mes_base | percentual_dedicado 
+----+---------+-----------+----------------+---------------------
+  5 | Juliana |     10000 |            170 |                   0
+  4 | Rocio   |     10000 |            170 |                   0
+(2 linhas)
+
+-- 14b overhead sem dados suficientes
+ id |          item          | custo_mensal | horas_bancada_mes | percentual_compensada 
+----+------------------------+--------------+-------------------+-----------------------
+ 15 | Custos administrativos |            0 |               450 |                    50
+ 16 | Outros (1)             |            0 |               450 |                    50
+ 17 | Outros (2)             |            0 |               450 |                    50
+(3 linhas)
+
+ROLLBACK

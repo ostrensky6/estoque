@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClientUntyped } from "@/lib/supabase/server";
+import { normalizarTexto } from "@/lib/cadastros/normalizar";
 
 export type FormState = {
   ok: boolean;
@@ -29,9 +30,18 @@ const optNum = (opts: { min?: number; max?: number } = {}) =>
       .refine((n) => opts.max == null || n <= opts.max, `Máximo ${opts.max}`)
       .nullable(),
   );
-const reqStr = z.string().trim().min(1, "Obrigatório");
+// Normalização de texto no servidor (trim + colapsa espaços + NFC). Garante que
+// espaços iniciais/finais e caixa Unicode nunca sejam persistidos a partir do
+// formulário — a regra do plano é não confiar só no frontend.
+const reqStr = z.preprocess(
+  (v) => normalizarTexto(v == null ? null : String(v)),
+  z.string().min(1, "Obrigatório"),
+);
 const optStr = z.preprocess(
-  (v) => (v === "" || v == null ? null : String(v).trim()),
+  (v) => {
+    const s = normalizarTexto(v == null ? null : String(v));
+    return s === "" ? null : s;
+  },
   z.string().nullable(),
 );
 const optDate = optStr;
