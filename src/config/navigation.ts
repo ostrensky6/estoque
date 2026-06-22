@@ -24,12 +24,20 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
   ];
 
   if (ehGestor) {
-    linksGovernanca.push({
-      href: "/auditoria",
-      label: "Auditoria",
-      desc: "trilha de alterações e eventos",
-      icon: "History",
-    });
+    linksGovernanca.push(
+      {
+        href: "/auditoria",
+        label: "Auditoria",
+        desc: "trilha de alterações e eventos",
+        icon: "History",
+      },
+      {
+        href: "/governanca/integridade-cadastros",
+        label: "Integridade dos cadastros",
+        desc: "auditoria da cadeia de custeio (prontas, alertas, bloqueadas)",
+        icon: "ShieldCheck",
+      },
+    );
   }
 
   if (ehAdmin) {
