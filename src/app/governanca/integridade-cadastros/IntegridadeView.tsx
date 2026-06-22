@@ -53,6 +53,8 @@ const CADASTRO_LABEL: Record<Problema["cadastro"], string> = {
 
 type FiltroStatus = "TODAS" | StatusIntegridade;
 
+const ORDEM_STATUS: Record<StatusIntegridade, number> = { BLOQUEADA: 0, COM_ALERTAS: 1, PRONTA: 2 };
+
 function ProblemaRow({ p }: { p: Problema }) {
   const grav = GRAVIDADE_META[p.gravidade];
   return (
@@ -129,8 +131,6 @@ export function IntegridadeView({ analises }: { analises: AnaliseIntegridade[] }
     return { cadastros: [...cads].sort(), tipos: [...tps].sort() };
   }, [analises]);
 
-  const ordem: Record<StatusIntegridade, number> = { BLOQUEADA: 0, COM_ALERTAS: 1, PRONTA: 2 };
-
   const visiveis = useMemo(() => {
     return analises
       .filter((a) => (status === "TODAS" ? true : a.status === status))
@@ -145,7 +145,11 @@ export function IntegridadeView({ analises }: { analises: AnaliseIntegridade[] }
         if (!cadastro && !tipo) return true;
         return problemas.length > 0 || a.problemas.length === 0;
       })
-      .sort((x, y) => ordem[x.a.status] - ordem[y.a.status] || x.a.codigo.localeCompare(y.a.codigo));
+      .sort(
+        (x, y) =>
+          ORDEM_STATUS[x.a.status] - ORDEM_STATUS[y.a.status] ||
+          x.a.codigo.localeCompare(y.a.codigo),
+      );
   }, [analises, status, cadastro, tipo]);
 
   const btn = (ativo: boolean) =>

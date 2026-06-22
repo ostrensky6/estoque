@@ -85,6 +85,16 @@ describe("validarAnalise — classificação", () => {
     expect(r.problemas.some((p) => p.codigo === "insumo.sem_custo")).toBe(true);
   });
 
+  it("custo ausente NÃO vira zero: custoCalculavel é falso e o problema aponta o campo", () => {
+    const base = analiseBase();
+    base.insumos[0].custo_unitario = null;
+    const r = validarAnalise(base, ctxOk);
+    expect(r.custoCalculavel).toBe(false);
+    const p = r.problemas.find((x) => x.codigo === "insumo.sem_custo");
+    expect(p?.campo).toBe("custo_unitario");
+    expect(p?.valorAtual).toBe("(nulo)");
+  });
+
   // teste 3 do plano: modo de cobrança obrigatório
   it("BLOQUEIA modo de cobrança ausente (null não é por_amostra)", () => {
     const base = analiseBase();

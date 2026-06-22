@@ -65,4 +65,17 @@ describe("montarSnapshotLaboratorio", () => {
 
     vi.useRealTimers();
   });
+
+  it("snapshot histórico continua legível sem breakdown atual (lê custo do item)", () => {
+    // Quando o cadastro nao esta mais disponivel/recalculavel, o snapshot do
+    // item (custo_unitario/preco_unitario gravados) preserva o valor historico.
+    const snapshot = montarSnapshotLaboratorio(
+      [{ codigo_analise: "ANTIGA", n_amostras: 3, custo_unitario: 15, preco_unitario: 25 }],
+      [], // sem breakdown atual (cadastro removido/alterado)
+    ) as { totais: Record<string, number>; linhas: Array<Record<string, number | string>> };
+
+    expect(snapshot.totais.custo).toBe(45);
+    expect(snapshot.totais.preco).toBe(75);
+    expect(snapshot.linhas[0]).toMatchObject({ codigo_analise: "ANTIGA", custo: 45, preco: 75 });
+  });
 });
