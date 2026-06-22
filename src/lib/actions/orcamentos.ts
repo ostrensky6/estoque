@@ -12,6 +12,10 @@ import {
   type ItemLaboratorioOperacional,
 } from "@/lib/orcamento/laboratorio-operacional";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
+import {
+  assegurarAnaliseLiberada,
+  assegurarAnalisesLiberadas,
+} from "@/lib/cadastros/guard-custeio";
 import { registrarEvento } from "./eventos";
 
 export type ParametrosEconomicosState = {
@@ -173,6 +177,15 @@ export async function salvarCabecalho(formData: FormData) {
     .single();
   if (anterior && anterior.status !== novoStatus && ["enviado", "aprovado", "cancelado"].includes(novoStatus)) {
     await exigirPapelOrcamento("revisar_modulo");
+    // Revisão do módulo laboratorial: não permite avançar com análise bloqueada
+    // (cancelamento é exceção — só desativa o documento).
+    if (novoStatus !== "cancelado") {
+      const { data: itens } = await supabase
+        .from("orcamento_itens")
+        .select("codigo_analise")
+        .eq("orcamento_id", id);
+      await assegurarAnalisesLiberadas((itens ?? []).map((it) => it.codigo_analise));
+    }
   }
 
   const patch = {
@@ -204,6 +217,13 @@ export async function adicionarItemOrcamento(formData: FormData) {
   const codigo = String(formData.get("codigo_analise") ?? "");
   const n = Number(formData.get("n_amostras"));
   if (!id || !codigo || !(n > 0)) return;
+
+  // Trava de integridade: análise BLOQUEADA não entra sem override justificado.
+  await assegurarAnaliseLiberada({
+    codigo,
+    override: { justificativa: String(formData.get("override_justificativa") ?? "") },
+    auditoria: { entidade: "orcamento", entidadeId: id },
+  });
 
   const { breakdowns } = await calcularTodas();
   const b = breakdowns.find((x) => x.codigo === codigo);
@@ -251,6 +271,8 @@ export async function recalcularOrcamento(formData: FormData) {
     .from("orcamento_itens")
     .select("id, codigo_analise")
     .eq("orcamento_id", id);
+  // Recálculo é bloqueado se algum item está bloqueado (custo zero silencioso).
+  await assegurarAnalisesLiberadas((itens ?? []).map((it) => it.codigo_analise));
   const { breakdowns } = await calcularTodas();
   for (const it of itens ?? []) {
     const b = breakdowns.find((x) => x.codigo === it.codigo_analise);

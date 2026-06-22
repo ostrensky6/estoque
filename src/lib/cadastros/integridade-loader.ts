@@ -3,6 +3,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import {
   validarCadastros,
+  type AnaliseIntegridade,
   type AnaliseParaValidar,
   type ContextoCusteio,
   type EquipamentoAnaliseInput,
@@ -140,4 +141,23 @@ export async function carregarIntegridadeCadastros(): Promise<ResumoIntegridade>
   });
 
   return validarCadastros(dados, ctx);
+}
+
+/**
+ * Mapa código→integridade, reutilizando o mesmo carregamento da tela. Usado pela
+ * engine (`calcularTodas`) para anexar o status a cada breakdown e pelo guard de
+ * custeio para decidir inclusão/bloqueio sem recalcular a validação em cada call
+ * site.
+ */
+export async function carregarMapaIntegridade(): Promise<Map<string, AnaliseIntegridade>> {
+  const resumo = await carregarIntegridadeCadastros();
+  return new Map(resumo.analises.map((a) => [a.codigo, a]));
+}
+
+/** Integridade de uma única análise (ou null se o código não existe no catálogo). */
+export async function carregarIntegridadeAnalise(
+  codigo: string,
+): Promise<AnaliseIntegridade | null> {
+  const mapa = await carregarMapaIntegridade();
+  return mapa.get(codigo) ?? null;
 }

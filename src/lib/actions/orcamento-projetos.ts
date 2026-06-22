@@ -16,6 +16,7 @@ import {
 import { validarParametrosProjetoGrossUp } from "@/lib/project-budget/legacy";
 import { registrarVersaoParametrosEconomicos } from "@/lib/orcamento/parametros-versionamento";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
+import { assegurarAnaliseLiberada } from "@/lib/cadastros/guard-custeio";
 
 const pathLista = "/orcamento/projetos";
 
@@ -237,6 +238,13 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
   const codigo = texto(formData, "codigo_analise");
   const nAmostras = numero(formData, "n_amostras", 1);
   if (!id || !codigo || nAmostras <= 0) return;
+
+  // Trava de integridade: análise BLOQUEADA não entra no projeto sem override.
+  await assegurarAnaliseLiberada({
+    codigo,
+    override: { justificativa: String(formData.get("override_justificativa") ?? "") },
+    auditoria: { entidade: "orcamento_projeto", entidadeId: id },
+  });
 
   const { breakdowns } = await calcularTodas();
   const breakdown = breakdowns.find((x) => x.codigo === codigo);

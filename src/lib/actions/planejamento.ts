@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
+import { assegurarAnalisesLiberadas } from "@/lib/cadastros/guard-custeio";
 import type { FormState } from "./cadastros";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
@@ -89,6 +90,9 @@ export async function gerarPlanejamentoDeOrcamento(formData: FormData) {
   if (itens.length === 0)
     throw new Error("O orçamento não tem análises para gerar um planejamento.");
 
+  // Não gera planejamento a partir de análises bloqueadas (custo zero silencioso).
+  await assegurarAnalisesLiberadas(itens.map((it) => it.codigo_analise));
+
   const { data: plano, error: planoErr } = await supabase
     .from("planejamento")
     .insert({
@@ -131,6 +135,9 @@ export async function gerarPlanejamentoDeOrcamentoProjeto(formData: FormData) {
   const itens = orc.orcamento_projeto_analises ?? [];
   if (itens.length === 0)
     throw new Error("O orçamento de projeto não tem análises para gerar um planejamento.");
+
+  // Não gera planejamento a partir de análises bloqueadas (custo zero silencioso).
+  await assegurarAnalisesLiberadas(itens.map((it) => it.codigo_analise));
 
   const { data: plano, error: planoErr } = await supabase
     .from("planejamento")

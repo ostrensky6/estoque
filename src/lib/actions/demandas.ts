@@ -7,6 +7,7 @@ import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
 import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
+import { assegurarAnalisesLiberadas, AnaliseBloqueadaError } from "@/lib/cadastros/guard-custeio";
 import type { Json } from "@/lib/supabase/database.types";
 import { registrarEvento } from "./eventos";
 
@@ -248,6 +249,32 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
       .limit(1)
       .maybeSingle(),
   ]);
+
+  // Emissão final é bloqueada se qualquer análise consolidada está bloqueada.
+  const idsOrcamentos = (orcamentos ?? []).map((o) => o.id);
+  const idsProjetos = (orcProjetos ?? []).map((o) => o.id);
+  const [{ data: codsLab }, { data: codsProjeto }] = await Promise.all([
+    idsOrcamentos.length
+      ? supabase.from("orcamento_itens").select("codigo_analise").in("orcamento_id", idsOrcamentos)
+      : Promise.resolve({ data: [] as { codigo_analise: string }[] }),
+    idsProjetos.length
+      ? supabase
+          .from("orcamento_projeto_analises")
+          .select("codigo_analise")
+          .in("orcamento_projeto_id", idsProjetos)
+      : Promise.resolve({ data: [] as { codigo_analise: string }[] }),
+  ]);
+  try {
+    await assegurarAnalisesLiberadas([
+      ...(codsLab ?? []).map((r) => r.codigo_analise),
+      ...(codsProjeto ?? []).map((r) => r.codigo_analise),
+    ]);
+  } catch (e) {
+    if (e instanceof AnaliseBloqueadaError) {
+      redirect(`${listaPath}/${id}?erro_emissao=${encodeURIComponent(e.message)}`);
+    }
+    throw e;
+  }
 
   const exigeAnalises = MODALIDADES_COM_ANALISES.has(demanda.modalidade);
   const exigeProjeto = MODALIDADES_COM_PROJETO.has(demanda.modalidade);
