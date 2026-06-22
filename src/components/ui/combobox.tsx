@@ -14,7 +14,19 @@ import {
   CommandList,
 } from "@/components/ui/command";
 
-export type ComboOption = { value: string; label: string; hint?: string };
+export type ComboOption = {
+  value: string;
+  label: string;
+  hint?: string;
+  /** desabilita a opção (não selecionável) — ex.: análise bloqueada */
+  disabled?: boolean;
+  /** rótulo curto de status (ex.: "Bloqueada", "Alerta") */
+  badge?: string;
+  /** classe do badge para diferenciar gravidade */
+  badgeClassName?: string;
+  /** texto explicativo (motivo do bloqueio/alerta) exibido na opção */
+  description?: string;
+};
 
 /**
  * Combobox com busca, pronto para forms (mantém um <input type="hidden" name>).
@@ -92,12 +104,28 @@ export function Combobox({
                     key={o.value}
                     value={o.value}
                     keywords={[o.label, o.hint ?? ""]}
-                    onSelect={() => escolher(o.value)}
+                    disabled={o.disabled}
+                    onSelect={() => {
+                      if (o.disabled) return;
+                      escolher(o.value);
+                    }}
+                    className={cn(o.disabled && "opacity-60")}
+                    title={o.description}
                   >
                     <Check
                       className={cn("h-4 w-4", value === o.value ? "opacity-100" : "opacity-0")}
                     />
-                    <span className="truncate">{o.label}</span>
+                    <span className={cn("truncate", o.disabled && "line-through")}>{o.label}</span>
+                    {o.badge && (
+                      <span
+                        className={cn(
+                          "ml-2 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                          o.badgeClassName ?? "bg-zinc-200 text-zinc-700",
+                        )}
+                      >
+                        {o.badge}
+                      </span>
+                    )}
                     {o.hint && (
                       <span className="ml-auto truncate text-xs text-muted-foreground">
                         {o.hint}

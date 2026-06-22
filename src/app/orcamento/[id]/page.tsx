@@ -462,6 +462,12 @@ export default async function OrcamentoDetalhe({
         {/* Form: adicionar análise */}
         <section id="identificacao-tecnica" className="no-print mt-6 scroll-mt-24 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-semibold">Adicionar análise solicitada</h2>
+          <p className="mt-1 text-[11px] text-zinc-400">
+            Análises <span className="font-semibold text-red-600">bloqueadas</span> aparecem
+            desabilitadas (cadastro incompleto geraria custo zero); as marcadas com{" "}
+            <span className="font-semibold text-amber-600">alerta</span> podem ser incluídas, mas
+            revise o cadastro.
+          </p>
           <form action={adicionarItemOrcamento} className="mt-3 flex flex-wrap items-end gap-2">
             <input type="hidden" name="orcamento_id" value={orcId} />
             <div>
@@ -474,11 +480,30 @@ export default async function OrcamentoDetalhe({
                   placeholder="Selecione…"
                   searchPlaceholder="Buscar análise…"
                   emptyText="Nenhuma análise."
-                  options={(analises ?? []).map((a) => ({
-                    value: a.codigo,
-                    label: a.codigo,
-                    hint: a.nome ?? undefined,
-                  }))}
+                  options={(analises ?? []).map((a) => {
+                    const integ = breakdownPorCodigo.get(a.codigo)?.integridade;
+                    const bloqueada = integ?.status === "BLOQUEADA";
+                    const alerta = integ?.status === "COM_ALERTAS";
+                    const motivo = integ?.problemas
+                      .filter((p) => p.gravidade === (bloqueada ? "bloqueio" : "alerta"))
+                      .map((p) => p.mensagem)
+                      .join(" | ");
+                    return {
+                      value: a.codigo,
+                      label: a.codigo,
+                      hint: a.nome ?? undefined,
+                      disabled: bloqueada,
+                      badge: bloqueada ? "Bloqueada" : alerta ? "Alerta" : undefined,
+                      badgeClassName: bloqueada
+                        ? "bg-red-100 text-red-800"
+                        : alerta
+                          ? "bg-amber-100 text-amber-800"
+                          : undefined,
+                      description: motivo
+                        ? `${bloqueada ? "Bloqueada" : "Alerta"}: ${motivo}`
+                        : undefined,
+                    };
+                  })}
                 />
               </div>
             </div>

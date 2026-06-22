@@ -32,6 +32,7 @@ import {
   RUBRICAS_PROJETO,
 } from "@/lib/project-budget/legacy";
 import { gerarPlanejamentoDeOrcamentoProjeto } from "@/lib/actions/planejamento";
+import { carregarMapaIntegridade } from "@/lib/cadastros/integridade-loader";
 import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -117,6 +118,9 @@ export default async function OrcamentoProjetoDetalhe({
         .order("rubrica")
         .order("descricao"),
     ]);
+
+  // Status de integridade para sinalizar/bloquear análises no seletor.
+  const mapaIntegridade = await carregarMapaIntegridade();
 
   const { data: demanda } = orc.demanda_id
     ? await supabase
@@ -468,10 +472,25 @@ export default async function OrcamentoProjetoDetalhe({
                 <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Análise</label>
                 <select name="codigo_analise" defaultValue="" className={inp}>
                   <option value="" disabled>Selecione…</option>
-                  {(analises ?? []).map((a) => (
-                    <option key={a.codigo} value={a.codigo}>{a.codigo}</option>
-                  ))}
+                  {(analises ?? []).map((a) => {
+                    const status = mapaIntegridade.get(a.codigo)?.status;
+                    const bloqueada = status === "BLOQUEADA";
+                    const sufixo = bloqueada
+                      ? " — BLOQUEADA"
+                      : status === "COM_ALERTAS"
+                        ? " — alerta"
+                        : "";
+                    return (
+                      <option key={a.codigo} value={a.codigo} disabled={bloqueada}>
+                        {a.codigo}
+                        {sufixo}
+                      </option>
+                    );
+                  })}
                 </select>
+                <p className="mt-1 text-[10px] text-zinc-400">
+                  Análises bloqueadas (cadastro incompleto) ficam indisponíveis.
+                </p>
               </div>
               <div>
                 <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Amostras</label>
