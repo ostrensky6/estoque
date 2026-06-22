@@ -111,6 +111,10 @@ export type Problema = {
   mensagem: string;
   /** referência específica da origem (nome da etapa, especificação do insumo…) */
   origem?: string;
+  /** campo do cadastro que está com problema (ex.: custo_unitario) */
+  campo?: string;
+  /** valor atual do campo problemático, já formatado para exibição */
+  valorAtual?: string;
   acaoRecomendada: string;
   /** link para edição do cadastro correspondente */
   link?: string;
@@ -300,6 +304,8 @@ export function validarAnalise(dados: AnaliseParaValidar, ctx: ContextoCusteio):
         cadastro: "insumo",
         mensagem: `Insumo "${rotulo}" não está vinculado a um cadastro de insumo — custo indeterminado.`,
         origem: rotulo,
+        campo: "insumo_id",
+        valorAtual: "(nulo)",
         acaoRecomendada: "Vincular a um insumo do catálogo ou marcar a linha como inativa.",
         link: LINK_INSUMOS,
       });
@@ -310,6 +316,8 @@ export function validarAnalise(dados: AnaliseParaValidar, ctx: ContextoCusteio):
         cadastro: "insumo",
         mensagem: `Insumo "${rotulo}" sem custo unitário cadastrado — não pode virar custo zero.`,
         origem: rotulo,
+        campo: "custo_unitario",
+        valorAtual: i.custo_unitario == null ? "(nulo)" : String(i.custo_unitario),
         acaoRecomendada: "Informar valor e quantidade da embalagem do insumo.",
         link: linkIns,
       });
@@ -324,6 +332,8 @@ export function validarAnalise(dados: AnaliseParaValidar, ctx: ContextoCusteio):
         cadastro: "insumo",
         mensagem: `Insumo "${rotulo}" sem modo de cobrança definido (por_amostra / por_execucao).`,
         origem: rotulo,
+        campo: "modo_cobranca",
+        valorAtual: i.modo_cobranca == null ? "(nulo)" : String(i.modo_cobranca),
         acaoRecomendada: "Definir explicitamente o modo de cobrança da linha.",
         link,
       });
@@ -336,6 +346,8 @@ export function validarAnalise(dados: AnaliseParaValidar, ctx: ContextoCusteio):
         cadastro: "insumo",
         mensagem: `Insumo "${rotulo}" sem quantidade por amostra.`,
         origem: rotulo,
+        campo: "quantidade_por_amostra",
+        valorAtual: "(nulo)",
         acaoRecomendada: "Informar a quantidade consumida por amostra.",
         link,
       });
@@ -346,6 +358,8 @@ export function validarAnalise(dados: AnaliseParaValidar, ctx: ContextoCusteio):
         cadastro: "insumo",
         mensagem: `Insumo "${rotulo}" com quantidade zero — não usar zero para representar item inativo.`,
         origem: rotulo,
+        campo: "quantidade_por_amostra",
+        valorAtual: "0",
         acaoRecomendada: "Definir a quantidade real ou marcar a linha como inativa (campo próprio).",
         link,
       });
@@ -421,6 +435,8 @@ export function validarAnalise(dados: AnaliseParaValidar, ctx: ContextoCusteio):
         cadastro: "equipamento",
         mensagem: `Peso de alocação inválido para "${rotulo}".`,
         origem: rotulo,
+        campo: "peso_alocacao",
+        valorAtual: ea.peso_alocacao == null ? "(nulo)" : String(ea.peso_alocacao),
         acaoRecomendada: "Informar um peso de alocação >= 0.",
         link: LINK_EQUIP,
       });
@@ -433,6 +449,8 @@ export function validarAnalise(dados: AnaliseParaValidar, ctx: ContextoCusteio):
         cadastro: "equipamento",
         mensagem: `Equipamento "${rotulo}" sem vida útil — depreciação será zero.`,
         origem: rotulo,
+        campo: "vida_util_anos",
+        valorAtual: eq.vida_util_anos == null ? "(nulo)" : String(eq.vida_util_anos),
         acaoRecomendada: "Informar a vida útil (anos) para a depreciação linear.",
         link: LINK_EQUIP,
       });
@@ -445,6 +463,8 @@ export function validarAnalise(dados: AnaliseParaValidar, ctx: ContextoCusteio):
         cadastro: "equipamento",
         mensagem: `Equipamento "${rotulo}" sem custo — não contribui para o custo/dia.`,
         origem: rotulo,
+        campo: "custo_unitario",
+        valorAtual: eq.custo_unitario == null ? "(nulo)" : String(eq.custo_unitario),
         acaoRecomendada: "Informar o custo unitário do equipamento.",
         link: LINK_EQUIP,
       });

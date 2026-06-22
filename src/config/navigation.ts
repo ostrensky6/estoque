@@ -12,6 +12,7 @@ function nivelDoPapel(papel?: string | null) {
 
 export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
   const nivel = nivelDoPapel(perfil?.papel);
+  const ehCoordenador = nivel >= ORDEM_PAPEIS.indexOf("coordenador");
   const ehGestor = nivel >= ORDEM_PAPEIS.indexOf("gestor");
   const ehAdmin = perfil?.papel === "admin";
   const linksGovernanca: NavLink[] = [
@@ -23,21 +24,25 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
     },
   ];
 
+  // Integridade dos cadastros: visível para coordenador+ (permissão
+  // cadastros.integridade.visualizar) — coordenadores precisam enxergar por que
+  // uma análise aparece bloqueada nos orçamentos.
+  if (ehCoordenador) {
+    linksGovernanca.push({
+      href: "/governanca/integridade-cadastros",
+      label: "Integridade dos cadastros",
+      desc: "auditoria da cadeia de custeio (prontas, alertas, bloqueadas)",
+      icon: "ShieldCheck",
+    });
+  }
+
   if (ehGestor) {
-    linksGovernanca.push(
-      {
-        href: "/auditoria",
-        label: "Auditoria",
-        desc: "trilha de alterações e eventos",
-        icon: "History",
-      },
-      {
-        href: "/governanca/integridade-cadastros",
-        label: "Integridade dos cadastros",
-        desc: "auditoria da cadeia de custeio (prontas, alertas, bloqueadas)",
-        icon: "ShieldCheck",
-      },
-    );
+    linksGovernanca.push({
+      href: "/auditoria",
+      label: "Auditoria",
+      desc: "trilha de alterações e eventos",
+      icon: "History",
+    });
   }
 
   if (ehAdmin) {
