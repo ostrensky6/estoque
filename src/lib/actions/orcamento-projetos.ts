@@ -17,6 +17,7 @@ import { validarParametrosProjetoGrossUp } from "@/lib/project-budget/legacy";
 import { registrarVersaoParametrosEconomicos } from "@/lib/orcamento/parametros-versionamento";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
 import { assegurarAnaliseLiberada } from "@/lib/cadastros/guard-custeio";
+import { gravarSnapshotItem } from "@/lib/orcamento/snapshot-item";
 
 const pathLista = "/orcamento/projetos";
 
@@ -240,7 +241,7 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
   if (!id || !codigo || nAmostras <= 0) return;
 
   // Trava de integridade: análise BLOQUEADA não entra no projeto sem override.
-  await assegurarAnaliseLiberada({
+  const guard = await assegurarAnaliseLiberada({
     codigo,
     override: { justificativa: String(formData.get("override_justificativa") ?? "") },
     auditoria: { entidade: "orcamento_projeto", entidadeId: id },
@@ -249,14 +250,27 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
   const { breakdowns } = await calcularTodas();
   const breakdown = breakdowns.find((x) => x.codigo === codigo);
   const supabase = await createClient();
-  const { error } = await supabase.from("orcamento_projeto_analises").insert({
-    orcamento_projeto_id: id,
-    codigo_analise: codigo,
-    n_amostras: nAmostras,
-    custo_unitario: breakdown?.custoTotal ?? 0,
-    preco_unitario: breakdown?.preco ?? 0,
-  });
+  const { data: linha, error } = await supabase
+    .from("orcamento_projeto_analises")
+    .insert({
+      orcamento_projeto_id: id,
+      codigo_analise: codigo,
+      n_amostras: nAmostras,
+      custo_unitario: breakdown?.custoTotal ?? 0,
+      preco_unitario: breakdown?.preco ?? 0,
+    })
+    .select("id")
+    .single();
   if (error) throw new Error(error.message);
+  if (linha) {
+    await gravarSnapshotItem(
+      supabase,
+      { orcamento_projeto_analise_id: linha.id },
+      codigo,
+      breakdown,
+      guard.override,
+    );
+  }
   revalidatePath(`${pathLista}/${id}`);
 }
 

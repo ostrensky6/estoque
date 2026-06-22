@@ -16,6 +16,7 @@ import {
   assegurarAnaliseLiberada,
   assegurarAnalisesLiberadas,
 } from "@/lib/cadastros/guard-custeio";
+import { gravarSnapshotItem } from "@/lib/orcamento/snapshot-item";
 import { registrarEvento } from "./eventos";
 
 export type ParametrosEconomicosState = {
@@ -219,7 +220,7 @@ export async function adicionarItemOrcamento(formData: FormData) {
   if (!id || !codigo || !(n > 0)) return;
 
   // Trava de integridade: análise BLOQUEADA não entra sem override justificado.
-  await assegurarAnaliseLiberada({
+  const guard = await assegurarAnaliseLiberada({
     codigo,
     override: { justificativa: String(formData.get("override_justificativa") ?? "") },
     auditoria: { entidade: "orcamento", entidadeId: id },
@@ -229,13 +230,20 @@ export async function adicionarItemOrcamento(formData: FormData) {
   const b = breakdowns.find((x) => x.codigo === codigo);
 
   const supabase = await createClient();
-  await supabase.from("orcamento_itens").insert({
-    orcamento_id: id,
-    codigo_analise: codigo,
-    n_amostras: n,
-    custo_unitario: b?.custoTotal ?? 0,
-    preco_unitario: b?.preco ?? 0,
-  });
+  const { data: item } = await supabase
+    .from("orcamento_itens")
+    .insert({
+      orcamento_id: id,
+      codigo_analise: codigo,
+      n_amostras: n,
+      custo_unitario: b?.custoTotal ?? 0,
+      preco_unitario: b?.preco ?? 0,
+    })
+    .select("id")
+    .single();
+  if (item) {
+    await gravarSnapshotItem(supabase, { orcamento_item_id: item.id }, codigo, b, guard.override);
+  }
   await atualizarOperacionalLaboratorio(supabase, id);
   revalidatePath(`/orcamento/${id}`);
 }

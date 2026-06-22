@@ -573,44 +573,146 @@ export type Database = {
         }
         Relationships: []
       }
+      orcamento_item_snapshot: {
+        Row: {
+          alertas: Json
+          cadastros_versao: Json
+          calculado_em: string
+          codigo_analise: string
+          criado_em: string
+          custo_tecnico_unitario: number
+          equipamentos: number
+          escolhas_grupo: Json
+          id: number
+          lote: number | null
+          orcamento_item_id: number | null
+          orcamento_projeto_analise_id: number | null
+          overhead: number
+          override_aplicado: boolean
+          override_justificativa: string | null
+          override_problemas: Json
+          override_usuario: string | null
+          pessoal: number
+          reagentes: number
+        }
+        Insert: {
+          alertas?: Json
+          cadastros_versao?: Json
+          calculado_em?: string
+          codigo_analise: string
+          criado_em?: string
+          custo_tecnico_unitario?: number
+          equipamentos?: number
+          escolhas_grupo?: Json
+          id?: never
+          lote?: number | null
+          orcamento_item_id?: number | null
+          orcamento_projeto_analise_id?: number | null
+          overhead?: number
+          override_aplicado?: boolean
+          override_justificativa?: string | null
+          override_problemas?: Json
+          override_usuario?: string | null
+          pessoal?: number
+          reagentes?: number
+        }
+        Update: {
+          alertas?: Json
+          cadastros_versao?: Json
+          calculado_em?: string
+          codigo_analise?: string
+          criado_em?: string
+          custo_tecnico_unitario?: number
+          equipamentos?: number
+          escolhas_grupo?: Json
+          id?: never
+          lote?: number | null
+          orcamento_item_id?: number | null
+          orcamento_projeto_analise_id?: number | null
+          overhead?: number
+          override_aplicado?: boolean
+          override_justificativa?: string | null
+          override_problemas?: Json
+          override_usuario?: string | null
+          pessoal?: number
+          reagentes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_item_snapshot_orcamento_item_id_fkey"
+            columns: ["orcamento_item_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_item_snapshot_orcamento_projeto_analise_id_fkey"
+            columns: ["orcamento_projeto_analise_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_projeto_analises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insumo_analise: {
         Row: {
+          ativo: boolean
           base_calculo: string | null
           codigo_analise: string
           especificacao_insumo: string | null
+          estado_integridade: string
+          etapa_id: number | null
           grupo_escolha: string | null
           id: number
           insumo_id: number | null
           modo_cobranca: string | null
+          motivo_inativacao: string | null
           nome_atividade: string
           nome_etapa: string
+          obrigatorio: boolean
           quantidade_por_amostra: number | null
+          revisado_em: string | null
+          revisado_por: string | null
           unidade: string | null
         }
         Insert: {
+          ativo?: boolean
           base_calculo?: string | null
           codigo_analise: string
           especificacao_insumo?: string | null
+          estado_integridade?: string
+          etapa_id?: number | null
           grupo_escolha?: string | null
           id?: never
           insumo_id?: number | null
           modo_cobranca?: string | null
+          motivo_inativacao?: string | null
           nome_atividade: string
           nome_etapa: string
+          obrigatorio?: boolean
           quantidade_por_amostra?: number | null
+          revisado_em?: string | null
+          revisado_por?: string | null
           unidade?: string | null
         }
         Update: {
+          ativo?: boolean
           base_calculo?: string | null
           codigo_analise?: string
           especificacao_insumo?: string | null
+          estado_integridade?: string
+          etapa_id?: number | null
           grupo_escolha?: string | null
           id?: never
           insumo_id?: number | null
           modo_cobranca?: string | null
+          motivo_inativacao?: string | null
           nome_atividade?: string
           nome_etapa?: string
+          obrigatorio?: boolean
           quantidade_por_amostra?: number | null
+          revisado_em?: string | null
+          revisado_por?: string | null
           unidade?: string | null
         }
         Relationships: [
@@ -620,6 +722,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "analises"
             referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "insumo_analise_etapa_id_fkey"
+            columns: ["etapa_id"]
+            isOneToOne: false
+            referencedRelation: "etapas"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "insumo_analise_insumo_id_fkey"
