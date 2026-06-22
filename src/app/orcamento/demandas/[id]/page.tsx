@@ -15,18 +15,27 @@ import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
 import { PainelParametrosEconomicos } from "@/components/orcamento/PainelParametrosEconomicos";
 import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
+import {
+  modalidadeExigeLaboratorio,
+  modalidadeExigeProjeto,
+  normalizarModalidadeOrcamento,
+} from "@/lib/orcamento/orcamento-economico";
 
 export const dynamic = "force-dynamic";
 
 const MODALIDADES: Record<string, string> = {
   analises: "Apenas análises laboratoriais",
   projeto: "Apenas projeto",
-  analises_projeto: "Análises dentro de projeto",
-  projeto_analises_custos: "Projeto com custos próprios e análises laboratoriais",
+  projeto_com_analises: "Projeto com análises laboratoriais",
+  analises_projeto: "Projeto com análises laboratoriais",
+  projeto_analises_custos: "Projeto com análises laboratoriais",
 };
 
-const MODALIDADES_COM_ANALISES = new Set(["analises", "analises_projeto", "projeto_analises_custos"]);
-const MODALIDADES_COM_PROJETO = new Set(["projeto", "analises_projeto", "projeto_analises_custos"]);
+const MODALIDADES_CANONICAS = [
+  ["analises", "Análises laboratoriais"],
+  ["projeto", "Projeto sem análises"],
+  ["projeto_com_analises", "Projeto com análises"],
+] as const;
 
 type OrcamentoAnalisesResumo = {
   id: number;
@@ -99,8 +108,9 @@ export default async function DemandaDetalhe({
         .order("versao", { ascending: false }),
     ]);
 
-  const exigeAnalises = MODALIDADES_COM_ANALISES.has(demanda.modalidade);
-  const exigeProjeto = MODALIDADES_COM_PROJETO.has(demanda.modalidade);
+  const modalidadeCanonica = normalizarModalidadeOrcamento(demanda.modalidade);
+  const exigeAnalises = modalidadeExigeLaboratorio(demanda.modalidade);
+  const exigeProjeto = modalidadeExigeProjeto(demanda.modalidade);
   const completudeDemanda = avaliarCompletudeDemanda(demanda);
   const orcamentosAnalises = ((orcamentos ?? []) as OrcamentoAnalisesResumo[]);
   const orcamentosProjeto = ((orcProjetos ?? []) as OrcamentoProjetoResumo[]);
@@ -172,7 +182,7 @@ export default async function DemandaDetalhe({
     { id: "demanda", label: "Demanda", status: completudeDemanda.completa ? "Completa" : `${completudeDemanda.faltante}% faltante`, aplicavel: true },
     { id: "laboratorio", label: "Custos laboratoriais", status: moduloAnalises.label, aplicavel: exigeAnalises },
     { id: "projeto", label: "Custos de projeto", status: moduloProjeto.label, aplicavel: exigeProjeto },
-    { id: "parametros", label: "Parametros economicos", status: podeConsolidar ? "Liberado" : "Bloqueado", aplicavel: exigeProjeto },
+    { id: "parametros", label: "Parametros economicos", status: podeConsolidar ? "Liberado" : "Bloqueado", aplicavel: true },
     { id: "final", label: "Orcamento final", status: orcamentoFinal.pronto ? "Pronto" : "Bloqueado", aplicavel: true },
     { id: "historico", label: "Historico e auditoria", status: `${versoesFinais?.length ?? 0} versao(oes)`, aplicavel: true },
   ];
@@ -258,7 +268,7 @@ export default async function DemandaDetalhe({
               </p>
               <h1 className="mt-1 text-2xl font-semibold tracking-tight">{demanda.titulo}</h1>
               <p className="mt-1 text-sm text-zinc-500">
-                {MODALIDADES[demanda.modalidade] ?? demanda.modalidade}
+                {MODALIDADES[modalidadeCanonica] ?? demanda.modalidade}
               </p>
             </div>
             <div className="text-right text-sm">
@@ -515,14 +525,16 @@ export default async function DemandaDetalhe({
             </span>
           </div>
           <PainelParametrosEconomicos
-            exigeProjeto={exigeProjeto}
+            exigeProjeto={true}
             metodo={orcamentoFinal.parametrosAplicados?.metodo ?? "GROSS_UP"}
             custoLaboratorio={orcamentoFinal.totalLaboratorioCusto}
-            precoLaboratorio={orcamentoFinal.totalLaboratorioPreco}
+            precoLaboratorio={orcamentoFinal.totalLaboratorioCusto}
             custoProjeto={orcamentoFinal.totalProjetoCusto}
             projetoFinal={orcamentoFinal.totalProjetoFinal}
             totalFinal={orcamentoFinal.totalFinal}
             parametros={orcamentoFinal.parametrosProjeto}
+            markupNominal={orcamentoFinal.markupProjeto}
+            fatorGrossUp={orcamentoFinal.fatorGrossUp}
             alertas={orcamentoFinal.parametrosAplicados?.alertas ?? []}
           />
           <TabelaSimples
@@ -552,7 +564,7 @@ export default async function DemandaDetalhe({
 
           <div className="mt-4 grid gap-3 md:grid-cols-4">
             <ResumoFinal titulo="Custo laboratório" valor={orcamentoFinal.totalLaboratorioCusto} />
-            <ResumoFinal titulo="Preço laboratório" valor={orcamentoFinal.totalLaboratorioPreco} />
+            <ResumoFinal titulo="Subtotal técnico" valor={orcamentoFinal.subtotalTecnico ?? (orcamentoFinal.totalLaboratorioCusto + orcamentoFinal.totalProjetoCusto)} />
             <ResumoFinal titulo="Custo projeto" valor={orcamentoFinal.totalProjetoCusto} />
             <ResumoFinal titulo="Total final" valor={orcamentoFinal.totalFinal} destaque />
           </div>
@@ -726,7 +738,7 @@ export default async function DemandaDetalhe({
             <div>
               <label className={lbl}>Modalidade</label>
               <select {...hydrationSafe} name="modalidade" defaultValue={demanda.modalidade ?? "analises"} className={`${inp} mt-1 w-full`}>
-                {Object.entries(MODALIDADES).map(([value, label]) => (
+                {MODALIDADES_CANONICAS.map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>

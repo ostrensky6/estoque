@@ -8,6 +8,11 @@ import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
 import { assegurarAnalisesLiberadas, AnaliseBloqueadaError } from "@/lib/cadastros/guard-custeio";
+import {
+  modalidadeExigeLaboratorio,
+  modalidadeExigeProjeto,
+  normalizarModalidadeOrcamento,
+} from "@/lib/orcamento/orcamento-economico";
 import type { Json } from "@/lib/supabase/database.types";
 import { registrarEvento } from "./eventos";
 
@@ -33,8 +38,8 @@ function snapshotCompletude(demanda: Parameters<typeof avaliarCompletudeDemanda>
   };
 }
 
-const MODALIDADES_COM_ANALISES = new Set(["analises", "analises_projeto", "projeto_analises_custos"]);
-const MODALIDADES_COM_PROJETO = new Set(["projeto", "analises_projeto", "projeto_analises_custos"]);
+const MODALIDADES_COM_ANALISES = new Set(["analises", "analises_projeto", "projeto_analises_custos", "projeto_com_analises"]);
+const MODALIDADES_COM_PROJETO = new Set(["projeto", "analises_projeto", "projeto_analises_custos", "projeto_com_analises"]);
 
 async function clienteSnapshot(clienteId: number | null) {
   if (!clienteId) return null;
@@ -45,6 +50,68 @@ async function clienteSnapshot(clienteId: number | null) {
     .eq("id", clienteId)
     .single();
   return data;
+}
+
+async function garantirModulosDaDemanda(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  id: number,
+) {
+  const { data: demanda } = await supabase
+    .from("demandas_propostas")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (!demanda) return;
+
+  const exigeLaboratorio = modalidadeExigeLaboratorio(demanda.modalidade);
+  const exigeProjeto = modalidadeExigeProjeto(demanda.modalidade);
+
+  if (exigeLaboratorio) {
+    const { data: existente } = await supabase
+      .from("orcamentos")
+      .select("id")
+      .eq("demanda_id", id)
+      .neq("status", "cancelado")
+      .limit(1)
+      .maybeSingle();
+    if (!existente) {
+      await supabase.from("orcamentos").insert({
+        demanda_id: id,
+        cliente_id: demanda.cliente_id,
+        projeto_id: demanda.projeto_id,
+        cliente_nome: demanda.cliente_nome || demanda.titulo,
+        cliente_cnpj: demanda.cliente_cnpj,
+        cliente_contato: demanda.cliente_contato,
+        responsavel: demanda.responsavel_interno,
+        observacoes: demanda.escopo_preliminar || demanda.descricao || demanda.observacoes,
+        tipo: "analises",
+      });
+    }
+  }
+
+  if (exigeProjeto) {
+    const { data: existente } = await supabase
+      .from("orcamento_projetos")
+      .select("id")
+      .eq("demanda_id", id)
+      .neq("status", "cancelado")
+      .limit(1)
+      .maybeSingle();
+    if (!existente) {
+      await supabase.from("orcamento_projetos").insert({
+        demanda_id: id,
+        projeto_id: demanda.projeto_id,
+        cliente_id: demanda.cliente_id,
+        titulo: demanda.titulo,
+        cliente_nome: demanda.cliente_nome,
+        cliente_cnpj: demanda.cliente_cnpj,
+        cliente_contato: demanda.cliente_contato,
+        responsavel: demanda.responsavel_interno,
+        escopo: demanda.escopo_preliminar || demanda.descricao,
+        observacoes: demanda.observacoes,
+      });
+    }
+  }
 }
 
 export async function criarDemanda(formData: FormData) {
@@ -58,7 +125,7 @@ export async function criarDemanda(formData: FormData) {
     cliente_nome: cliente?.nome ?? texto(formData, "cliente_nome"),
     cliente_cnpj: cliente?.cnpj ?? texto(formData, "cliente_cnpj"),
     cliente_contato: cliente?.contato || cliente?.email || cliente?.telefone || texto(formData, "cliente_contato"),
-    modalidade: texto(formData, "modalidade") || "analises",
+    modalidade: normalizarModalidadeOrcamento(texto(formData, "modalidade")),
     origem: texto(formData, "origem"),
     prioridade: texto(formData, "prioridade") || "normal",
     descricao: texto(formData, "descricao"),
@@ -81,6 +148,7 @@ export async function criarDemanda(formData: FormData) {
     .single();
 
   if (error) throw new Error(error.message);
+  await garantirModulosDaDemanda(supabase, data.id);
   revalidatePath(listaPath);
   redirect(`${listaPath}/${data.id}`);
 }
@@ -104,7 +172,7 @@ export async function salvarDemanda(formData: FormData) {
     responsavel_interno: texto(formData, "responsavel_interno"),
     data_solicitacao: texto(formData, "data_solicitacao") ?? undefined,
     prazo_esperado: texto(formData, "prazo_esperado"),
-    modalidade: texto(formData, "modalidade") || "analises",
+    modalidade: normalizarModalidadeOrcamento(texto(formData, "modalidade")),
     status: texto(formData, "status") || "nova",
     origem: texto(formData, "origem"),
     prioridade: texto(formData, "prioridade") || "normal",
@@ -126,6 +194,7 @@ export async function salvarDemanda(formData: FormData) {
     })
     .eq("id", id);
   if (error) throw new Error(error.message);
+  await garantirModulosDaDemanda(supabase, id);
   revalidatePath(listaPath);
   revalidatePath(`${listaPath}/${id}`);
 }
@@ -146,6 +215,17 @@ export async function gerarOrcamentoAnalisesDaDemanda(formData: FormData) {
   }
   if (!MODALIDADES_COM_ANALISES.has(demanda.modalidade)) {
     redirect(`${listaPath}/${id}`);
+  }
+
+  const { data: existente } = await supabase
+    .from("orcamentos")
+    .select("id")
+    .eq("demanda_id", id)
+    .neq("status", "cancelado")
+    .limit(1)
+    .maybeSingle();
+  if (existente) {
+    redirect(`/orcamento/${existente.id}`);
   }
 
   const { data, error } = await supabase
@@ -185,6 +265,17 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
   }
   if (!MODALIDADES_COM_PROJETO.has(demanda.modalidade)) {
     redirect(`${listaPath}/${id}`);
+  }
+
+  const { data: existente } = await supabase
+    .from("orcamento_projetos")
+    .select("id")
+    .eq("demanda_id", id)
+    .neq("status", "cancelado")
+    .limit(1)
+    .maybeSingle();
+  if (existente) {
+    redirect(`/orcamento/projetos/${existente.id}`);
   }
 
   const { data, error } = await supabase

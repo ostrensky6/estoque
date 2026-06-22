@@ -1038,6 +1038,7 @@ export type Database = {
           n_amostras: number
           orcamento_id: number
           preco_unitario: number
+          valor_snapshot: Json
         }
         Insert: {
           codigo_analise: string
@@ -1046,6 +1047,7 @@ export type Database = {
           n_amostras?: number
           orcamento_id: number
           preco_unitario?: number
+          valor_snapshot?: Json
         }
         Update: {
           codigo_analise?: string
@@ -1054,6 +1056,7 @@ export type Database = {
           n_amostras?: number
           orcamento_id?: number
           preco_unitario?: number
+          valor_snapshot?: Json
         }
         Relationships: [
           {
@@ -1080,6 +1083,7 @@ export type Database = {
           n_amostras: number
           orcamento_projeto_id: number
           preco_unitario: number
+          valor_snapshot: Json
         }
         Insert: {
           codigo_analise: string
@@ -1088,6 +1092,7 @@ export type Database = {
           n_amostras?: number
           orcamento_projeto_id: number
           preco_unitario?: number
+          valor_snapshot?: Json
         }
         Update: {
           codigo_analise?: string
@@ -1096,6 +1101,7 @@ export type Database = {
           n_amostras?: number
           orcamento_projeto_id?: number
           preco_unitario?: number
+          valor_snapshot?: Json
         }
         Relationships: [
           {
@@ -1216,6 +1222,7 @@ export type Database = {
           quantidade: number
           rubrica: string | null
           unidade: string | null
+          valor_snapshot: Json
         }
         Insert: {
           catalogo_item_id?: string | null
@@ -1235,6 +1242,7 @@ export type Database = {
           quantidade?: number
           rubrica?: string | null
           unidade?: string | null
+          valor_snapshot?: Json
         }
         Update: {
           catalogo_item_id?: string | null
@@ -1254,6 +1262,7 @@ export type Database = {
           quantidade?: number
           rubrica?: string | null
           unidade?: string | null
+          valor_snapshot?: Json
         }
         Relationships: [
           {

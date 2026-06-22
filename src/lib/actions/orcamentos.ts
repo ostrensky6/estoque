@@ -74,6 +74,29 @@ const PARAMETROS_META: Record<
   },
 };
 
+function snapshotAnaliseLaboratorio(args: {
+  codigo: string;
+  nome?: string | null;
+  custoUnitario: number;
+  nAmostras: number;
+  lote?: number | null;
+  composicao?: Record<string, number>;
+}) {
+  return {
+    tipo: "analise_laboratorial",
+    codigo_analise: args.codigo,
+    descricao: args.nome ?? args.codigo,
+    rubrica: "Laboratório",
+    unidade: "amostra",
+    valor_unitario_utilizado: args.custoUnitario,
+    quantidade: args.nAmostras,
+    lote_padrao: args.lote ?? null,
+    composicao: args.composicao ?? {},
+    data_snapshot: new Date().toISOString(),
+    origem_valor: "breakdown.custoTotal",
+  };
+}
+
 async function atualizarOperacionalLaboratorio(
   supabase: Awaited<ReturnType<typeof createClient>>,
   id: number,
@@ -230,22 +253,72 @@ export async function adicionarItemOrcamento(formData: FormData) {
   const b = breakdowns.find((x) => x.codigo === codigo);
 
   const supabase = await createClient();
-  const { data: item } = await supabase
+  const { data: analisesEncontradas } = await supabase
+    .from("analises")
+    .select("nome")
+    .eq("codigo", codigo);
+  const analise = Array.isArray(analisesEncontradas) ? analisesEncontradas[0] : null;
+  const { data: existentes } = await supabase
     .from("orcamento_itens")
-    .insert({
-      orcamento_id: id,
-      codigo_analise: codigo,
-      n_amostras: n,
-      custo_unitario: b?.custoTotal ?? 0,
-      preco_unitario: b?.preco ?? 0,
-    })
     .select("id")
-    .single();
-  if (item) {
-    await gravarSnapshotItem(supabase, { orcamento_item_id: item.id }, codigo, b, guard.override);
+    .eq("orcamento_id", id)
+    .eq("codigo_analise", codigo);
+  const existente = Array.isArray(existentes) ? existentes[0] : null;
+  const payload = {
+    orcamento_id: id,
+    codigo_analise: codigo,
+    n_amostras: n,
+    custo_unitario: b?.custoTotal ?? 0,
+    preco_unitario: b?.preco ?? 0,
+    valor_snapshot: snapshotAnaliseLaboratorio({
+      codigo,
+      nome: analise?.nome,
+      custoUnitario: b?.custoTotal ?? 0,
+      nAmostras: n,
+      lote: b?.lote ?? null,
+      composicao: {
+        reagentes: b?.reagentes ?? 0,
+        equipamento: b?.equipamento ?? 0,
+        pessoal: b?.pessoal ?? 0,
+        overhead: b?.overhead ?? 0,
+      },
+    }),
+  };
+  let itemId = existente?.id ?? null;
+  if (existente) {
+    await supabase.from("orcamento_itens").update(payload).eq("id", existente.id);
+  } else {
+    const { data: item } = await supabase
+      .from("orcamento_itens")
+      .insert(payload)
+      .select("id")
+      .single();
+    itemId = item?.id ?? null;
+  }
+  if (itemId) {
+    await gravarSnapshotItem(supabase, { orcamento_item_id: itemId }, codigo, b, guard.override);
   }
   await atualizarOperacionalLaboratorio(supabase, id);
   revalidatePath(`/orcamento/${id}`);
+}
+
+export async function alternarAnaliseOrcamento(formData: FormData) {
+  const id = Number(formData.get("orcamento_id"));
+  const codigo = String(formData.get("codigo_analise") ?? "");
+  const incluir = String(formData.get("incluir") ?? "") === "true";
+  if (!id || !codigo) return;
+  if (!incluir) {
+    const supabase = await createClient();
+    await supabase
+      .from("orcamento_itens")
+      .delete()
+      .eq("orcamento_id", id)
+      .eq("codigo_analise", codigo);
+    await atualizarOperacionalLaboratorio(supabase, id);
+    revalidatePath(`/orcamento/${id}`);
+    return;
+  }
+  await adicionarItemOrcamento(formData);
 }
 
 export async function removerItemOrcamento(formData: FormData) {

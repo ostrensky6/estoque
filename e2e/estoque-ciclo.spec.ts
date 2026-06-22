@@ -1,18 +1,20 @@
 import { expect, test } from "@playwright/test";
 
 test("ciclo de estoque: receber lote, aceitar, ajustar consumo e bloquear", async ({ page }) => {
+  const loteCodigo = `LOTE-E2E-${Date.now()}`;
+
   await page.goto("/estoque");
 
   await page.getByRole("button", { name: "+ Entrada" }).first().click();
   await expect(page.getByRole("heading", { name: "Entrada de inventário (ajuste)" })).toBeVisible();
   await page.locator('input[name="quantidade"]').fill("25");
   await page.locator('input[name="validade"]').fill("2026-12-31");
-  await page.locator('input[name="codigo"]').fill("LOTE-E2E");
+  await page.locator('input[name="codigo"]').fill(loteCodigo);
   await page.locator('input[name="fornecedor"]').fill("Fornecedor E2E");
   await page.locator('input[name="motivo"]').fill("Entrada E2E");
   await page.getByRole("button", { name: "Registrar entrada" }).click();
 
-  const row = page.getByRole("row").filter({ has: page.getByRole("cell", { name: "LOTE-E2E" }) });
+  const row = page.getByRole("row").filter({ has: page.getByRole("cell", { name: loteCodigo }) });
   await expect(row).toBeVisible();
   await expect(row.getByText("Quarentena")).toBeVisible();
 
