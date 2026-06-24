@@ -1,72 +1,49 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
-import {
-  exportOrcamentoFinalDocx,
-  exportOrcamentoFinalXlsx,
-  type OrcamentoFinalExportInfo,
-  type OrcamentoFinalExportItem,
-  type OrcamentoFinalExportOrigem,
-  type OrcamentoFinalExportResumo,
-} from "./final-exporters";
+import { exportOrcamentoFinalDocx, exportOrcamentoFinalXlsx } from "./final-exporters";
+import { montarPropostaFinalExport } from "./proposta-final-export";
 
 vi.mock("file-saver", () => ({ saveAs: vi.fn() }));
 const saveAsMock = vi.mocked(saveAs);
 
-const info: OrcamentoFinalExportInfo = {
-  numero: "OF-2026-0001-v1",
-  versao: 1,
-  status: "Emitido",
-  emitido_em: "21/06/2026 08:00",
-  cliente_nome: "Cliente Final",
-  cliente_cnpj: "00.000.000/0001-00",
-  cliente_contato: "contato@cliente.com",
-  demanda_titulo: "Demanda híbrida",
-  modalidade: "projeto_analises_custos",
-  validade: "20/07/2026",
-  validade_dias: 30,
-  escopo: "Escopo preservado",
-  condicoes: "Condições preservadas",
-  responsavel: "ATGC",
-};
-
-const resumo: OrcamentoFinalExportResumo = {
-  total_laboratorio_custo: 80,
-  total_laboratorio_preco: 120,
-  total_projeto_custo: 200,
-  total_projeto_final: 300,
-  total_final: 420,
-};
-
-const itens: OrcamentoFinalExportItem[] = [
-  {
-    grupo: "Laboratório",
-    origem: "Laboratório #1",
-    descricao: "qPCR",
-    quantidade: 2,
-    unidade: "amostra",
-    custo_unitario: 40,
-    preco_unitario: 60,
-    subtotal: 120,
+// Estrutura reconciliada (Política A): lab 80 + projeto 200, Σ 20% → total 350.
+const dados = montarPropostaFinalExport({
+  versao: {
+    numero: "OF-2026-0001-v1",
+    versao: 1,
+    status: "emitido",
+    criado_em: "2026-06-21T08:00:00Z",
+    valido_ate: "2026-07-20",
+    validade_dias: 30,
+    total_final: 350,
   },
-];
-
-const origens: OrcamentoFinalExportOrigem[] = [
-  {
-    titulo: "Total final",
-    campo: "totalFinal",
-    origem: "totalLaboratorioPreco + totalProjetoFinal",
-    regra: "Soma dos módulos revisados.",
-    valor: 420,
+  snapshot: {
+    consolidado: {
+      totalLaboratorioCusto: 80,
+      totalProjetoCusto: 200,
+      economia: {
+        politica: "A_GROSS_UP_TOTAL",
+        subtotal: 280,
+        somaPercentual: 20,
+        fatorGrossUp: 1.25,
+        totalParametros: 70,
+        totalFinal: 350,
+        formula: "total_final = (custo_laboratorial_tecnico + custo_direto_projeto) / (1 - Σparametros/100)",
+        parametros: [{ label: "Impostos", percentual: 20, valorNominal: 70 }],
+      },
+    },
+    orcamentos_analises: [{ orcamento_itens: [{ codigo_analise: "qPCR", n_amostras: 2, custo_unitario: 40, preco_unitario: 60 }] }],
+    orcamentos_projeto: [{ orcamento_projeto_custos: [{ rubrica: "MC", quantidade: 1, custo_unitario: 200 }], orcamento_projeto_analises: [] }],
   },
-];
+  demanda: { titulo: "Demanda híbrida", cliente_nome: "Cliente Final", modalidade: "projeto_com_analises", escopo_preliminar: "Escopo" },
+});
 
-describe("exportOrcamentoFinalXlsx", () => {
+describe("exportOrcamentoFinalXlsx (reconciliado)", () => {
   beforeEach(() => saveAsMock.mockClear());
 
-  it("gera workbook com resumo, itens e origem dos valores", async () => {
-    await exportOrcamentoFinalXlsx(info, resumo, itens, origens);
-
+  it("gera workbook com composição comercial reconciliada ao total final", async () => {
+    await exportOrcamentoFinalXlsx(dados);
     expect(saveAsMock).toHaveBeenCalledTimes(1);
     expect(saveAsMock.mock.calls[0][1]).toBe("orcamento-final-OF-2026-0001-v1.xlsx");
 
@@ -74,25 +51,30 @@ describe("exportOrcamentoFinalXlsx", () => {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(await blob.arrayBuffer());
 
-    expect(wb.worksheets.map((sheet) => sheet.name)).toEqual([
-      "Orçamento Final",
-      "Resumo",
-      "Itens",
-      "Proposta Cliente",
-      "Origem dos Valores",
+    expect(wb.worksheets.map((s) => s.name)).toEqual([
+      "Proposta",
+      "Resumo econômico",
+      "Composição comercial",
+      "Detalhamento técnico",
     ]);
-    expect(wb.getWorksheet("Resumo")?.getCell("B6").value).toBe(420);
-    expect(wb.getWorksheet("Itens")?.getCell("C2").value).toBe("qPCR");
-    expect(wb.getWorksheet("Proposta Cliente")?.getCell("B2").value).toBe("qPCR");
+    // a soma dos valores comerciais deve reconciliar com o total final (350)
+    const comercial = wb.getWorksheet("Composição comercial")!;
+    let soma = 0;
+    comercial.eachRow((row, n) => {
+      if (n === 1) return; // header
+      const v = row.getCell(7).value; // coluna "Valor comercial"
+      if (typeof v === "number") soma += v;
+    });
+    // inclui a linha "Total final" (350) + linhas dos componentes (350) = 700
+    expect(soma).toBe(700);
   });
 });
 
-describe("exportOrcamentoFinalDocx", () => {
+describe("exportOrcamentoFinalDocx (reconciliado)", () => {
   beforeEach(() => saveAsMock.mockClear());
 
   it("gera DOCX nomeado pelo numero da versao final", async () => {
-    await exportOrcamentoFinalDocx(info, resumo, itens, origens);
-
+    await exportOrcamentoFinalDocx(dados);
     expect(saveAsMock).toHaveBeenCalledTimes(1);
     expect(saveAsMock.mock.calls[0][1]).toBe("orcamento-final-OF-2026-0001-v1.docx");
     expect((saveAsMock.mock.calls[0][0] as Blob).size).toBeGreaterThan(1000);
