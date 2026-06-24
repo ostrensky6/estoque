@@ -7,6 +7,7 @@ import { PrintButton } from "@/components/orcamento/PrintButton";
 import { cancelarVersaoFinal, duplicarVersaoFinal } from "@/lib/actions/orcamento-historico";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
+import { montarPropostaFinalExport } from "@/lib/orcamento/proposta-final-export";
 import type { Json } from "@/lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
@@ -141,69 +142,14 @@ export default async function OrcamentoFinalPage({
       status: orcamento.status ?? "—",
     })),
   );
-  const exportInfo = {
-    numero: versao.numero,
-    versao: Number(versao.versao),
-    status: STATUS[versao.status] ?? versao.status,
-    cliente_nome: demanda?.cliente_nome ?? null,
-    cliente_cnpj: demanda?.cliente_cnpj ?? null,
-    cliente_contato: demanda?.cliente_contato ?? null,
-    demanda_titulo: demanda?.titulo ?? null,
-    modalidade: demanda?.modalidade ?? null,
-    emitido_em: formatDateTime(versao.criado_em),
-    validade: formatDate(versao.valido_ate),
-    validade_dias: Number(versao.validade_dias ?? 0),
-    escopo: demanda?.escopo_preliminar || demanda?.descricao || null,
-    condicoes: condicoesComerciais(versao),
+  // Estrutura única de exportação/apresentação (reusa proposta-final-export).
+  const dadosExport = montarPropostaFinalExport({
+    versao,
+    snapshot: versao.snapshot,
+    demanda: demanda ?? null,
     responsavel: "ATGC Genética Ambiental",
-  };
-  const exportResumo = {
-    total_laboratorio_custo: Number(versao.total_laboratorio_custo ?? 0),
-    total_laboratorio_preco: Number(versao.total_laboratorio_preco ?? 0),
-    total_projeto_custo: Number(versao.total_projeto_custo ?? 0),
-    total_projeto_final: Number(versao.total_projeto_final ?? 0),
-    total_final: Number(versao.total_final ?? 0),
-  };
-  const exportItens = [
-    ...itensLaboratorio.map((item) => ({
-      grupo: "Laboratório",
-      origem: item.origem,
-      descricao: item.codigo_analise ?? "Análise",
-      quantidade: Number(item.n_amostras ?? 0),
-      unidade: "amostra",
-      custo_unitario: Number(item.custo_unitario ?? 0),
-      preco_unitario: Number(item.preco_unitario ?? 0),
-      subtotal: Number(item.n_amostras ?? 0) * Number(item.preco_unitario ?? 0),
-    })),
-    ...custosProjeto.map((item) => ({
-      grupo: `Projeto ${item.rubrica ?? "OU"}`,
-      origem: item.origem,
-      descricao: item.descricao ?? "Custo de projeto",
-      quantidade: item.rubrica === "PE" && item.meses_selecionados?.length ? item.meses_selecionados.length : Number(item.quantidade ?? 0),
-      unidade: item.rubrica === "PE" && item.meses_selecionados?.length ? "mes" : item.unidade,
-      custo_unitario: Number(item.custo_unitario ?? item.preco_unitario ?? 0),
-      preco_unitario: Number(item.custo_unitario ?? item.preco_unitario ?? 0),
-      subtotal: subtotalProjetoSnapshot(item),
-    })),
-    ...analisesProjeto.map((item) => ({
-      grupo: "Análise em projeto",
-      origem: item.origem,
-      descricao: item.codigo_analise ?? "Análise",
-      quantidade: Number(item.n_amostras ?? 0),
-      unidade: "amostra",
-      custo_unitario: Number(item.custo_unitario ?? 0),
-      preco_unitario: Number(item.custo_unitario ?? 0),
-      subtotal: Number(item.n_amostras ?? 0) * Number(item.custo_unitario ?? 0),
-    })),
-  ];
-  const exportOrigens = origens.map((origem) => ({
-    titulo: origem.titulo ?? origem.campo ?? "Total",
-    campo: origem.campo ?? "",
-    origem: origem.origem ?? "Snapshot da emissão",
-    regra: origem.regra ?? "Valor preservado na versão final emitida.",
-    valor: Number(origem.valor ?? 0),
-  }));
-  const composicaoCliente = consolidarComposicaoCliente(exportItens);
+  });
+  const composicaoCliente = dadosExport.composicaoComercial;
   const statusLabel = STATUS[versao.status] ?? versao.status;
   const modoInternoHref = "#modo-interno";
 
@@ -225,12 +171,7 @@ export default async function OrcamentoFinalPage({
             >
               Modo interno
             </a>
-            <ExportOrcamentoFinalButtons
-              info={exportInfo}
-              resumo={exportResumo}
-              itens={exportItens}
-              origens={exportOrigens}
-            />
+            <ExportOrcamentoFinalButtons dados={dadosExport} />
             <Link
               href={`/orcamento/demandas/${versao.demanda_id}`}
               className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
@@ -294,26 +235,29 @@ export default async function OrcamentoFinalPage({
             <section className="mt-6 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
               <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Composição comercial</h2>
-                <p className="mt-1 text-xs text-zinc-500">Valores de cliente, sem exposição de custo interno.</p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Valor comercial alocado por participação técnica; soma reconcilia com o total final.
+                  {dadosExport.avisoLegado ? ` · ${dadosExport.avisoLegado}` : ""}
+                </p>
               </div>
               <table className="w-full text-left text-sm">
                 <thead className="text-xs uppercase tracking-wide text-zinc-500">
                   <tr>
-                    <th className="px-4 py-3">Grupo</th>
+                    <th className="px-4 py-3">Componente</th>
                     <th className="px-4 py-3">Descrição</th>
                     <th className="px-4 py-3 text-right">Qtd.</th>
-                    <th className="px-4 py-3">Unidade</th>
-                    <th className="px-4 py-3 text-right">Subtotal</th>
+                    <th className="px-4 py-3 text-right">Participação</th>
+                    <th className="px-4 py-3 text-right">Valor comercial</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                   {composicaoCliente.map((item) => (
-                    <tr key={`${item.grupo}-${item.descricao}`}>
-                      <td className="px-4 py-3 font-medium">{item.grupo}</td>
+                    <tr key={`${item.componente}-${item.descricao}`}>
+                      <td className="px-4 py-3 font-medium">{item.componente}</td>
                       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{item.descricao}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{item.quantidade}</td>
-                      <td className="px-4 py-3 text-zinc-500">{item.unidade ?? "—"}</td>
-                      <td className="px-4 py-3 text-right font-semibold tabular-nums">{brl(item.subtotal)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{(item.participacao * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</td>
+                      <td className="px-4 py-3 text-right font-semibold tabular-nums">{brl(item.valorComercial)}</td>
                     </tr>
                   ))}
                   {composicaoCliente.length === 0 && (
@@ -456,35 +400,6 @@ export default async function OrcamentoFinalPage({
 
 function condicoesComerciais(versao: { valido_ate: string | null; validade_dias: number | null }) {
   return `Valores válidos até ${formatDate(versao.valido_ate)}. Alterações de escopo, quantidade de amostras, premissas técnicas ou cronograma podem exigir nova versão da proposta.`;
-}
-
-function consolidarComposicaoCliente(
-  itens: Array<{ grupo: string; descricao: string; quantidade: number; unidade?: string | null; subtotal: number }>,
-) {
-  const mapa = new Map<string, { grupo: string; descricao: string; quantidade: number; unidade?: string | null; subtotal: number }>();
-  for (const item of itens) {
-    const grupo = item.grupo.startsWith("Projeto") ? "Projeto" : item.grupo;
-    const chave = `${grupo}-${item.descricao}-${item.unidade ?? ""}`;
-    const atual = mapa.get(chave) ?? {
-      grupo,
-      descricao: item.descricao,
-      quantidade: 0,
-      unidade: item.unidade,
-      subtotal: 0,
-    };
-    atual.quantidade += Number(item.quantidade ?? 0);
-    atual.subtotal += Number(item.subtotal ?? 0);
-    mapa.set(chave, atual);
-  }
-  return [...mapa.values()];
-}
-
-function subtotalProjetoSnapshot(item: SnapshotItemProjeto) {
-  const unitario = Number(item.custo_unitario ?? item.preco_unitario ?? 0);
-  if (item.rubrica === "PE" && item.meses_selecionados?.length) {
-    return item.meses_selecionados.length * unitario;
-  }
-  return Number(item.quantidade ?? 0) * unitario;
 }
 
 function TabelaAnalisesSnapshot({

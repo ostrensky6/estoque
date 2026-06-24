@@ -16,50 +16,9 @@ import {
 } from "docx";
 import { saveAs } from "file-saver";
 import { formatCurrency } from "@/lib/formatters";
+import type { PropostaFinalExport } from "./proposta-final-export";
 
-export type OrcamentoFinalExportInfo = {
-  numero: string;
-  versao: number;
-  status: string;
-  emitido_em?: string | null;
-  cliente_nome: string | null;
-  cliente_cnpj: string | null;
-  cliente_contato: string | null;
-  demanda_titulo: string | null;
-  modalidade: string | null;
-  validade: string | null;
-  validade_dias?: number | null;
-  escopo: string | null;
-  condicoes?: string | null;
-  responsavel?: string | null;
-};
-
-export type OrcamentoFinalExportResumo = {
-  total_laboratorio_custo: number;
-  total_laboratorio_preco: number;
-  total_projeto_custo: number;
-  total_projeto_final: number;
-  total_final: number;
-};
-
-export type OrcamentoFinalExportItem = {
-  grupo: string;
-  origem: string;
-  descricao: string;
-  quantidade: number;
-  unidade?: string | null;
-  custo_unitario: number;
-  preco_unitario: number;
-  subtotal: number;
-};
-
-export type OrcamentoFinalExportOrigem = {
-  titulo: string;
-  campo: string;
-  origem: string;
-  regra: string;
-  valor: number;
-};
+const pct = (v: number) => `${v.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
 
 const FONT_FAMILY = "Helvetica";
 const INK = "1B3530";
@@ -68,92 +27,98 @@ const HEADER_FILL = "E8F4F3";
 const SOFT_FILL = "F4FBFB";
 const LINE = "D9E7E4";
 
-const arquivoBase = (info: OrcamentoFinalExportInfo) =>
-  `orcamento-final-${(info.numero || "kontrol").replace(/[^\w-]+/g, "_")}`;
+const arquivoBase = (numero: string) =>
+  `orcamento-final-${(numero || "kontrol").replace(/[^\w-]+/g, "_")}`;
 
-export async function exportOrcamentoFinalXlsx(
-  info: OrcamentoFinalExportInfo,
-  resumo: OrcamentoFinalExportResumo,
-  itens: OrcamentoFinalExportItem[],
-  origens: OrcamentoFinalExportOrigem[],
-) {
+export async function exportOrcamentoFinalXlsx(dados: PropostaFinalExport) {
+  const { info, economico } = dados;
   const wb = new ExcelJS.Workbook();
   wb.creator = "Kontrol — ATGC";
 
-  const dados = wb.addWorksheet("Orçamento Final");
-  dados.addRows([
+  const capa = wb.addWorksheet("Proposta");
+  capa.addRows([
     ["Número", info.numero],
     ["Versão", info.versao],
     ["Status", info.status],
-    ["Emitido em", info.emitido_em ?? ""],
-    ["Cliente", info.cliente_nome ?? ""],
-    ["CNPJ/CPF", info.cliente_cnpj ?? ""],
-    ["Contato", info.cliente_contato ?? ""],
-    ["Demanda", info.demanda_titulo ?? ""],
+    ["Emitido em", info.emitidoEm ?? ""],
+    ["Cliente", info.clienteNome ?? ""],
+    ["CNPJ/CPF", info.clienteCnpj ?? ""],
+    ["Contato", info.clienteContato ?? ""],
+    ["Demanda", info.demandaTitulo ?? ""],
     ["Modalidade", info.modalidade ?? ""],
     ["Validade", info.validade ?? ""],
-    ["Validade em dias", info.validade_dias ?? ""],
     ["Responsável", info.responsavel ?? ""],
-    ["Condições comerciais", info.condicoes ?? ""],
     ["Escopo", info.escopo ?? ""],
+    ...(dados.avisoLegado ? [["Aviso", dados.avisoLegado]] : []),
   ]);
 
-  const resumoSheet = wb.addWorksheet("Resumo");
-  resumoSheet.addRows([
+  // Visão econômica (interna).
+  const econ = wb.addWorksheet("Resumo econômico");
+  econ.addRows([
     ["Indicador", "Valor"],
-    ["Custo laboratório", resumo.total_laboratorio_custo],
-    ["Preço laboratório", resumo.total_laboratorio_preco],
-    ["Custo projeto", resumo.total_projeto_custo],
-    ["Projeto final", resumo.total_projeto_final],
-    ["Total final", resumo.total_final],
+    ["Custo laboratório (técnico)", economico.custoLaboratorioTecnico],
+    ["Custo direto de projeto", economico.custoDiretoProjeto],
+    ["Subtotal técnico", economico.subtotalTecnico],
+    ["Soma dos parâmetros (%)", economico.somaPercentual],
+    ["Fator de gross-up", economico.fatorGrossUp],
+    ["Total de parâmetros", economico.totalParametros],
+    ["Total final", economico.totalFinal],
+    [],
+    ["Parâmetro", "Percentual (%)", "Valor nominal"],
+    ...economico.parametros.map((p) => [p.label, p.percentual, p.valorNominal]),
   ]);
 
-  const itensSheet = wb.addWorksheet("Itens");
-  itensSheet.columns = [
-    { header: "Grupo", key: "grupo", width: 26 },
-    { header: "Origem", key: "origem", width: 24 },
-    { header: "Descrição", key: "descricao", width: 48 },
-    { header: "Quantidade", key: "quantidade", width: 14 },
-    { header: "Unidade", key: "unidade", width: 12 },
-    { header: "Custo unitário", key: "custo_unitario", width: 16 },
-    { header: "Preço unitário", key: "preco_unitario", width: 16 },
-    { header: "Subtotal", key: "subtotal", width: 16 },
+  // Visão comercial (reconciliada): a soma dos valores comerciais = total final.
+  const comercial = wb.addWorksheet("Composição comercial");
+  comercial.columns = [
+    { header: "Componente", key: "componente", width: 22 },
+    { header: "Descrição", key: "descricao", width: 36 },
+    { header: "Qtd", key: "quantidade", width: 10 },
+    { header: "Custo unit. técnico", key: "custoUnitarioTecnico", width: 18 },
+    { header: "Subtotal técnico", key: "subtotalTecnico", width: 18 },
+    { header: "Participação", key: "participacao", width: 14 },
+    { header: "Valor comercial", key: "valorComercial", width: 18 },
+    { header: "Observação", key: "observacao", width: 22 },
   ];
-  itens.forEach((item) => itensSheet.addRow(item));
+  dados.composicaoComercial.forEach((l) =>
+    comercial.addRow({
+      componente: l.componente,
+      descricao: l.descricao,
+      quantidade: l.quantidade,
+      custoUnitarioTecnico: l.custoUnitarioTecnico,
+      subtotalTecnico: l.subtotalTecnico,
+      participacao: `${(l.participacao * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`,
+      valorComercial: l.valorComercial,
+      observacao: l.observacao ?? "",
+    }),
+  );
+  comercial.addRow({ descricao: "Total final", valorComercial: economico.totalFinal });
 
-  const clienteSheet = wb.addWorksheet("Proposta Cliente");
-  clienteSheet.addRows([
-    ["Grupo", "Descrição", "Quantidade", "Unidade", "Subtotal"],
-    ...itens.map((item) => [item.grupo, item.descricao, item.quantidade, item.unidade ?? "", item.subtotal]),
-    ["", "", "", "Total final", resumo.total_final],
-  ]);
-
-  const origemSheet = wb.addWorksheet("Origem dos Valores");
-  origemSheet.columns = [
-    { header: "Total", key: "titulo", width: 24 },
-    { header: "Campo", key: "campo", width: 26 },
-    { header: "Origem", key: "origem", width: 48 },
-    { header: "Regra", key: "regra", width: 68 },
-    { header: "Valor", key: "valor", width: 16 },
-  ];
-  origens.forEach((origem) => origemSheet.addRow(origem));
+  // Detalhamento técnico (interno).
+  const det = wb.addWorksheet("Detalhamento técnico");
+  if (dados.exigeLaboratorio) {
+    det.addRow(["Laboratório"]);
+    det.addRow(["Descrição", "Amostras", "Custo unit. (técnico)", "Preço unit. (snapshot)", "Custo total"]);
+    dados.detalhamento.laboratorio.forEach((i) => det.addRow([i.descricao, i.quantidade, i.custoUnitarioTecnico, i.precoSnapshot, i.custoTotal]));
+    det.addRow([]);
+  }
+  if (dados.exigeProjeto) {
+    det.addRow(["Projeto"]);
+    det.addRow(["Rubrica", "Quantidade", "Custo unit. (técnico)", "Custo total", "Observação"]);
+    dados.detalhamento.projeto.forEach((i) => det.addRow([i.rubrica, i.quantidade, i.custoUnitarioTecnico, i.custoTotal, i.observacao ?? ""]));
+  }
 
   styleWorkbook(wb);
-  formatCurrencyColumn(resumoSheet, ["B"]);
-  formatCurrencyColumn(itensSheet, ["F", "G", "H"]);
-  formatCurrencyColumn(origemSheet, ["E"]);
-  formatCurrencyColumn(clienteSheet, ["E"]);
+  formatCurrencyColumn(econ, ["B"]);
+  formatCurrencyColumn(comercial, ["D", "E", "G"]);
+  formatCurrencyColumn(det, ["C", "D", "E"]);
 
   const buffer = await wb.xlsx.writeBuffer();
-  saveAs(new Blob([buffer]), `${arquivoBase(info)}.xlsx`);
+  saveAs(new Blob([buffer]), `${arquivoBase(info.numero)}.xlsx`);
 }
 
-export async function exportOrcamentoFinalDocx(
-  info: OrcamentoFinalExportInfo,
-  resumo: OrcamentoFinalExportResumo,
-  itens: OrcamentoFinalExportItem[],
-  origens: OrcamentoFinalExportOrigem[],
-) {
+export async function exportOrcamentoFinalDocx(dados: PropostaFinalExport) {
+  const { info, economico } = dados;
   const doc = new Document({
     creator: "Kontrol — ATGC",
     styles: {
@@ -168,70 +133,70 @@ export async function exportOrcamentoFinalDocx(
       {
         properties: { page: { margin: { top: 900, right: 720, bottom: 900, left: 720 } } },
         children: [
-          docParagraph("Orçamento final — ATGC Genética Ambiental", {
-            heading: HeadingLevel.TITLE,
-            bold: true,
-            color: BLUE,
-            size: 34,
-          }),
-          docParagraph(`Número: ${info.numero} · Versão ${info.versao}`),
-          docParagraph(`Emitido em: ${info.emitido_em || "-"} · Validade: ${info.validade || "-"}`),
-          docParagraph(`Cliente: ${info.cliente_nome || "-"}`),
-          docParagraph(`Contato: ${info.cliente_contato || "-"} · Responsável: ${info.responsavel || "-"}`),
-          docParagraph(`Demanda: ${info.demanda_titulo || "-"}`),
+          docParagraph("Orçamento final — ATGC Genética Ambiental", { heading: HeadingLevel.TITLE, bold: true, color: BLUE, size: 34 }),
+          docParagraph(`Número: ${info.numero} · Versão ${info.versao} · ${info.status}`),
+          docParagraph(`Emitido em: ${info.emitidoEm || "-"} · Validade: ${info.validade || "-"}`),
+          docParagraph(`Cliente: ${info.clienteNome || "-"} · Contato: ${info.clienteContato || "-"}`),
+          docParagraph(`Demanda: ${info.demandaTitulo || "-"} · Responsável: ${info.responsavel}`),
+          ...(dados.avisoLegado ? [docParagraph(dados.avisoLegado, { bold: true, color: "9A6700" })] : []),
           docParagraph("Escopo", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
           docParagraph(info.escopo || "-"),
+
+          // VISÃO COMERCIAL: valor comercial alocado + total final.
           docParagraph("Composição comercial", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             layout: TableLayoutType.FIXED,
             borders: tableBorders(),
             rows: [
-              tableRow(["Grupo", "Descrição", "Qtd.", "Subtotal"], true),
-              ...itens.map((item) =>
-                tableRow([
-                  item.grupo,
-                  item.descricao,
-                  `${item.quantidade} ${item.unidade ?? ""}`.trim(),
-                  formatCurrency(item.subtotal),
-                ]),
+              tableRow(["Componente", "Descrição", "Qtd.", "Valor comercial"], true),
+              ...dados.composicaoComercial.map((l) =>
+                tableRow([l.componente, l.descricao, String(l.quantidade), formatCurrency(l.valorComercial)]),
               ),
-              tableRow(["", "Total final", "", formatCurrency(resumo.total_final)], true),
+              tableRow(["", "Total final", "", formatCurrency(economico.totalFinal)], true),
             ],
           }),
           docParagraph("Condições comerciais", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
-          docParagraph(info.condicoes || "Valores válidos até a data indicada. Alterações de escopo, quantidade de amostras ou premissas técnicas podem exigir nova versão."),
-          docParagraph("Resumo interno", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
+          docParagraph("Valores válidos até a data indicada. Alterações de escopo, quantidade de amostras ou premissas técnicas podem exigir nova versão."),
+
+          // VISÃO INTERNA: resumo econômico + parâmetros + detalhamento técnico.
+          docParagraph("Resumo econômico (interno)", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             layout: TableLayoutType.FIXED,
             borders: tableBorders(),
             rows: [
               tableRow(["Indicador", "Valor"], true),
-              tableRow(["Custo laboratório", formatCurrency(resumo.total_laboratorio_custo)]),
-              tableRow(["Preço laboratório", formatCurrency(resumo.total_laboratorio_preco)]),
-              tableRow(["Custo projeto", formatCurrency(resumo.total_projeto_custo)]),
-              tableRow(["Projeto final", formatCurrency(resumo.total_projeto_final)]),
-              tableRow(["Total final", formatCurrency(resumo.total_final)], true),
+              tableRow(["Custo laboratório (técnico)", formatCurrency(economico.custoLaboratorioTecnico)]),
+              tableRow(["Custo direto de projeto", formatCurrency(economico.custoDiretoProjeto)]),
+              tableRow(["Subtotal técnico", formatCurrency(economico.subtotalTecnico)]),
+              tableRow(["Soma dos parâmetros", pct(economico.somaPercentual)]),
+              tableRow(["Total de parâmetros", formatCurrency(economico.totalParametros)]),
+              tableRow(["Total final", formatCurrency(economico.totalFinal)], true),
             ],
           }),
-          docParagraph("Origem dos valores", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            layout: TableLayoutType.FIXED,
-            borders: tableBorders(),
-            rows: [
-              tableRow(["Total", "Regra", "Valor"], true),
-              ...origens.map((origem) => tableRow([origem.titulo, origem.regra, formatCurrency(origem.valor)])),
-            ],
-          }),
+          ...(economico.parametros.length
+            ? [
+                docParagraph("Parâmetros econômicos", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
+                new Table({
+                  width: { size: 100, type: WidthType.PERCENTAGE },
+                  layout: TableLayoutType.FIXED,
+                  borders: tableBorders(),
+                  rows: [
+                    tableRow(["Parâmetro", "Percentual", "Valor nominal"], true),
+                    ...economico.parametros.map((p) => tableRow([p.label, pct(p.percentual), formatCurrency(p.valorNominal)])),
+                  ],
+                }),
+              ]
+            : []),
+          docParagraph(economico.formula, { color: "6B7280", size: 18 }),
         ],
       },
     ],
   });
 
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, `${arquivoBase(info)}.docx`);
+  saveAs(blob, `${arquivoBase(info.numero)}.docx`);
 }
 
 function styleWorkbook(wb: ExcelJS.Workbook) {
