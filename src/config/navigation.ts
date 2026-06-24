@@ -129,57 +129,21 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
       links: [
         {
           href: "/orcamento/demandas",
-          label: "Demandas/Propostas",
-          desc: "entrada antes do orçamento formal",
+          label: "Propostas",
+          desc: "entrada, funil e acompanhamento das propostas",
           icon: "Inbox",
-        },
-        {
-          href: "/orcamento",
-          label: "Orçamentos",
-          desc: "visão geral do funil operacional",
-          icon: "DollarSign",
           shortcut: "O",
         },
         {
-          href: "/orcamento/em-elaboracao",
-          label: "Em elaboração",
-          desc: "custos pendentes ou em preenchimento",
-          icon: "ClipboardList",
-        },
-        {
-          href: "/orcamento/revisao",
-          label: "Prontos para revisão",
-          desc: "módulos preenchidos para conferência",
-          icon: "FileText",
-        },
-        {
-          href: "/orcamento/emitidos",
-          label: "Emitidos/enviados",
-          desc: "versões finais ativas e vencidas",
-          icon: "History",
-        },
-        {
-          href: "/orcamento/decididos",
-          label: "Aprovados/recusados",
-          desc: "resultados e documentos cancelados",
-          icon: "ShieldCheck",
-        },
-        {
           href: "/orcamento/historico",
-          label: "Histórico de Orçamentos",
+          label: "Histórico",
           desc: "versões, validade e comparação",
           icon: "History",
         },
         {
-          href: "/orcamento/projetos",
-          label: "Projetos",
-          desc: "custos próprios por projeto",
-          icon: "DollarSign",
-        },
-        {
           href: "/orcamento/parametros",
           label: "Parâmetros econômicos",
-          desc: "margens, impostos e fundos",
+          desc: "padrões de margens, impostos e fundos",
           icon: "SlidersHorizontal",
         },
         {
