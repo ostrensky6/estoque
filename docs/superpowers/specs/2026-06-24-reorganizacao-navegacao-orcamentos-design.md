@@ -48,7 +48,7 @@ A entidade central é `demandas_propostas`. A página
 
 | Item | Papel |
 |---|---|
-| **Propostas** | Ponto de entrada único. Topo: indicadores do funil (em elaboração, revisão, emitidas, aprovadas, recusadas, concluídas). Abaixo: lista operacional com filtros por status + botão **Nova proposta**. |
+| **Propostas** | Ponto de entrada único, servido pela rota existente `/orcamento/demandas` (apenas relabel de "Demandas/Propostas" → "Propostas"). Topo: indicadores do funil (em elaboração, revisão, emitidas, aprovadas, recusadas, concluídas). Abaixo: lista operacional com filtros por status + o formulário **Nova proposta** já existente na página. |
 | **Histórico** | Versões, validade, comparação (transversal). Hospeda futuros relatórios agregados de custos de projeto. |
 | **Parâmetros econômicos** | Cadastro/configuração dos **parâmetros-padrão do sistema**: taxas, impostos, margem de lucro, fundos de investimento e fundos de equipamentos. É a fonte canônica dos valores globais. Também aparece como etapa na proposta (que copia esses valores como base/snapshot), mas o destino global permanece como o cadastro mestre. |
 | **Modelos/Templates** | Catálogo institucional. |
@@ -59,7 +59,7 @@ A entidade central é `demandas_propostas`. A página
 - Proposta final → etapa final no workspace.
 - Painel/funil `/orcamento` → indicadores no topo de Propostas.
 - Em elaboração, Prontos p/ revisão, Emitidos/enviados, Aprovados/recusados →
-  filtros de status dentro de Propostas.
+  filtros de status dentro de Propostas (`/orcamento/demandas?status=...`).
 
 ## Parte 2 — Workspace da proposta (stepper condicional por modalidade)
 
@@ -106,13 +106,14 @@ Regras:
 Nada é apagado de imediato. As rotas viram redirects para preservar links
 salvos, histórico e auditoria:
 
-- `/orcamento/projetos` → lista de Propostas (ou visão filtrada).
-- `/orcamento/projetos/[id]` → proposta correspondente, etapa "Custos do projeto".
-- `/orcamento/final/[id]` → proposta correspondente, etapa "Proposta final"
-  (a visão de export/impressão atual é preservada como sub-rota/aba).
+- `/orcamento/projetos` → `/orcamento/demandas` (hub de Propostas).
+- `/orcamento/projetos/[id]` → proposta correspondente (`/orcamento/demandas/{demanda_id}#projeto`).
+- `/orcamento/final/[id]` → **mantida como está** (página de export/impressão da
+  versão final). Deixa de ser item de menu; passa a ser alcançada pela etapa
+  "Proposta final" dentro do workspace.
 - `/orcamento/em-elaboracao`, `/orcamento/revisao`, `/orcamento/emitidos`,
-  `/orcamento/decididos` → `/orcamento/propostas?status=<estado>`.
-- `/orcamento` → `/orcamento/propostas` (com indicadores no topo).
+  `/orcamento/decididos` → `/orcamento/demandas?status=<estado>`.
+- `/orcamento` → `/orcamento/demandas` (hub de Propostas, com indicadores no topo).
 
 ## Componentes afetados
 
