@@ -23,12 +23,11 @@ function render(props: Parameters<typeof PainelParametrosEconomicos>[0]) {
 
 describe("PainelParametrosEconomicos — render §8.2", () => {
   const baseProps = {
-    exigeProjeto: true,
-    metodo: "GROSS_UP",
     custoLaboratorio: 1000,
     precoLaboratorio: 1300,
     custoProjeto: 500,
-    projetoFinal: 700,
+    subtotalTecnico: 1500,
+    totalParametros: 500,
     totalFinal: 2000,
     parametros,
     alertas: [] as string[],
@@ -55,9 +54,9 @@ describe("PainelParametrosEconomicos — render §8.2", () => {
     expect(html.replace(/ /g, " ")).toContain(totalFormatado.replace(/ /g, " "));
   });
 
-  it("quando não há componente de projeto, não exibe parâmetros nem azul de entrada", () => {
-    const html = render({ ...baseProps, exigeProjeto: false, parametros: [] });
-    expect(html).toContain("não se aplicam");
+  it("quando não há parâmetros, exibe aviso e nenhum azul de entrada", () => {
+    const html = render({ ...baseProps, parametros: [] });
+    expect(html).toContain("Nenhum parâmetro aplicado");
     // sem ValorEntrada (nenhum percentual) => sem token brand
     expect(html).not.toMatch(/text-brand-700/);
   });

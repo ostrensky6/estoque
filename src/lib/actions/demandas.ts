@@ -348,7 +348,8 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
     .single();
   if (error) throw new Error(error.message);
 
-  if (consolidado.parametrosAplicados) {
+  if (consolidado.economia.valido) {
+    const economia = consolidado.economia;
     const { error: parametrosError } = await supabase
       .from("orcamento_parametros_aplicados")
       .insert({
@@ -357,19 +358,23 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
         orcamento_projeto_id: projetoReferencia?.id ?? null,
         orcamento_final_versao_id: versaoFinal.id,
         versao,
-        metodo_calculo: consolidado.parametrosAplicados.metodo,
-        laboratorio_modo: consolidado.parametrosAplicados.laboratorio.modo,
-        subtotal_laboratorio: consolidado.parametrosAplicados.laboratorio.total,
-        subtotal_projeto: consolidado.parametrosAplicados.projeto.total,
-        subtotal_custos: consolidado.parametrosAplicados.subtotalCustos,
-        total_parametros: consolidado.parametrosAplicados.totalParametros,
-        total_final: consolidado.parametrosAplicados.totalFinal,
-        parametros_snapshot: consolidado.parametrosAplicados.parametros,
+        // Política A (DEC-ORC-001): gross-up único sobre o subtotal técnico.
+        metodo_calculo: "GROSS_UP",
+        laboratorio_modo: "CUSTO_TECNICO",
+        subtotal_laboratorio: economia.custoLaboratorioTecnico,
+        subtotal_projeto: economia.custoDiretoProjeto,
+        subtotal_custos: economia.subtotal,
+        total_parametros: economia.totalParametros,
+        total_final: economia.totalFinal,
+        parametros_snapshot: economia.parametros satisfies Json,
         formula_snapshot: {
-          entrada: consolidado.entradaParametros,
+          politica: economia.politica,
+          formula: economia.formula,
+          somaPercentual: economia.somaPercentual,
+          fatorGrossUp: economia.fatorGrossUp,
           origens: consolidado.origens,
         } satisfies Json,
-        alertas_snapshot: consolidado.parametrosAplicados.alertas,
+        alertas_snapshot: economia.alertas,
         criado_por: user?.id ?? null,
       });
     if (parametrosError) throw new Error(parametrosError.message);
