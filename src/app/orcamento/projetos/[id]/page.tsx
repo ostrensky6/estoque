@@ -16,7 +16,7 @@ export default async function OrcamentoProjetoLegacyRedirect({
     .eq("id", Number(id))
     .single();
   if (data?.demanda_id) {
-    redirect(`/orcamento/demandas/${data.demanda_id}#projeto`);
+    redirect(`/orcamento/demandas/${data.demanda_id}?etapa=projeto`);
   }
   redirect("/orcamento/demandas");
 }
