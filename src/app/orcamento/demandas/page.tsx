@@ -8,12 +8,21 @@ import { resumirFunilPropostas } from "@/lib/orcamento/funil-propostas";
 
 export const dynamic = "force-dynamic";
 
+// Rótulos de exibição (inclui legados para leitura de dados antigos).
 const MODALIDADES: Record<string, string> = {
   analises: "Apenas análises",
   projeto: "Apenas projeto",
+  projeto_com_analises: "Projeto com análises",
   analises_projeto: "Análises dentro de projeto",
   projeto_analises_custos: "Projeto com análises e custos próprios",
 };
+
+// Novos cadastros usam somente as três modalidades canônicas.
+const MODALIDADES_NOVAS: Array<[string, string]> = [
+  ["analises", MODALIDADES.analises],
+  ["projeto", MODALIDADES.projeto],
+  ["projeto_com_analises", MODALIDADES.projeto_com_analises],
+];
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   nova: { label: "Nova", cls: "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300" },
@@ -123,7 +132,7 @@ export default async function DemandasPage({
           <div>
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Modalidade</label>
             <select name="modalidade" defaultValue="analises" className={`${inp} mt-1 w-full`}>
-              {Object.entries(MODALIDADES).map(([value, label]) => (
+              {MODALIDADES_NOVAS.map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>

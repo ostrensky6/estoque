@@ -22,6 +22,7 @@ const TIPO = {
 const MODALIDADE_TIPO: Record<string, keyof typeof TIPO> = {
   analises: "analises",
   projeto: "projeto",
+  projeto_com_analises: "analises_projeto",
   analises_projeto: "analises_projeto",
   projeto_analises_custos: "analises_projeto",
 };

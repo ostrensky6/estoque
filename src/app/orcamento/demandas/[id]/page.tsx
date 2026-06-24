@@ -15,20 +15,31 @@ import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
 import { PainelParametrosEconomicos } from "@/components/orcamento/PainelParametrosEconomicos";
 import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
+import { montarEtapasProposta, ORDEM_ETAPAS, type EtapaId } from "@/lib/orcamento/etapas-proposta";
 import {
-  montarEtapasProposta,
-  MODALIDADES_COM_ANALISES,
-  MODALIDADES_COM_PROJETO,
-} from "@/lib/orcamento/etapas-proposta";
+  modalidadeExigeLaboratorio,
+  modalidadeExigeProjeto,
+  normalizarModalidadeOrcamento,
+} from "@/lib/orcamento/orcamento-economico";
 
 export const dynamic = "force-dynamic";
 
+// Rótulos de exibição. As modalidades legadas continuam mapeadas para leitura de
+// dados antigos; a forma canônica `projeto_com_analises` é o destino normalizado.
 const MODALIDADES: Record<string, string> = {
   analises: "Apenas análises laboratoriais",
   projeto: "Apenas projeto",
+  projeto_com_analises: "Projeto com análises laboratoriais",
   analises_projeto: "Análises dentro de projeto",
   projeto_analises_custos: "Projeto com custos próprios e análises laboratoriais",
 };
+
+// Opções oferecidas em novos cadastros: apenas as três modalidades canônicas.
+const MODALIDADES_SELECIONAVEIS: Array<[string, string]> = [
+  ["analises", MODALIDADES.analises],
+  ["projeto", MODALIDADES.projeto],
+  ["projeto_com_analises", MODALIDADES.projeto_com_analises],
+];
 
 type OrcamentoAnalisesResumo = {
   id: number;
@@ -66,10 +77,10 @@ export default async function DemandaDetalhe({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ erro_emissao?: string }>;
+  searchParams: Promise<{ erro_emissao?: string; etapa?: string }>;
 }) {
   const { id } = await params;
-  const { erro_emissao: erroEmissao } = await searchParams;
+  const { erro_emissao: erroEmissao, etapa: etapaParam } = await searchParams;
   const demandaId = Number(id);
   const supabase = await createClient();
 
@@ -101,8 +112,9 @@ export default async function DemandaDetalhe({
         .order("versao", { ascending: false }),
     ]);
 
-  const exigeAnalises = MODALIDADES_COM_ANALISES.has(demanda.modalidade);
-  const exigeProjeto = MODALIDADES_COM_PROJETO.has(demanda.modalidade);
+  const modalidadeCanonica = normalizarModalidadeOrcamento(demanda.modalidade);
+  const exigeAnalises = modalidadeExigeLaboratorio(demanda.modalidade);
+  const exigeProjeto = modalidadeExigeProjeto(demanda.modalidade) || Boolean(demanda.projeto_id);
   const completudeDemanda = avaliarCompletudeDemanda(demanda);
   const orcamentosAnalises = ((orcamentos ?? []) as OrcamentoAnalisesResumo[]);
   const orcamentosProjeto = ((orcProjetos ?? []) as OrcamentoProjetoResumo[]);
@@ -170,55 +182,69 @@ export default async function DemandaDetalhe({
     moduloProjeto.status === "preenchido" ? "revisar custos de projeto" : null,
   ].filter(Boolean) as string[];
   const podeConsolidar = modulosPendentes.length === 0;
-  const statusPorEtapa: Record<string, string> = {
-    demanda: completudeDemanda.completa ? "Completa" : `${completudeDemanda.faltante}% faltante`,
-    laboratorio: moduloAnalises.label,
-    projeto: moduloProjeto.label,
-    parametros: podeConsolidar ? "Liberado" : "Bloqueado",
-    final: orcamentoFinal.pronto ? "Pronto" : "Bloqueado",
-  };
-  const etapas = montarEtapasProposta(demanda.modalidade);
-  const tabs = etapas.map((etapa) => ({
-    id: etapa.id,
-    label: etapa.label,
-    status: statusPorEtapa[etapa.id] ?? "",
-    aplicavel: etapa.aplicavel,
-  }));
+  const etapas = montarEtapasProposta({
+    demandaId,
+    modalidade: demanda.modalidade,
+    projetoAssociado: Boolean(demanda.projeto_id),
+    demandaCompleta: completudeDemanda.completa,
+    demandaFaltante: completudeDemanda.faltante,
+    laboratorioStatus: moduloAnalises.status === "nao_exigido" ? "nao_exigido" : moduloAnalises.status,
+    laboratorioLabel: moduloAnalises.label,
+    projetoStatus: moduloProjeto.status === "nao_exigido" ? "nao_exigido" : moduloProjeto.status,
+    projetoLabel: moduloProjeto.label,
+    parametrosLiberados: podeConsolidar,
+    orcamentoFinalPronto: orcamentoFinal.pronto,
+    versoesFinais: versoesFinais?.length ?? 0,
+  });
+  // §2.7/2.8: a query string ?etapa= controla a etapa exibida, na ordem fixa.
+  const etapaSolicitada = ORDEM_ETAPAS.includes(etapaParam as EtapaId) ? (etapaParam as EtapaId) : "demanda";
+  const etapaAtiva: EtapaId =
+    etapas.find((etapa) => etapa.id === etapaSolicitada && etapa.aplicavel)?.id ?? "demanda";
+  // Exibe somente a seção da etapa ativa (Fase 2.7). As demais permanecem no DOM
+  // ocultas para preservar âncoras e submissões; o redesenho da etapa final em
+  // visão própria é tratado na Fase 10.
+  const passo = (id: EtapaId) => (etapaAtiva === id ? "" : "hidden");
+  // Oferece as modalidades canônicas; preserva o valor legado atual da demanda
+  // como opção selecionável para não forçar reescrita em saves não relacionados.
+  const opcoesModalidade: Array<[string, string]> =
+    demanda.modalidade && !MODALIDADES_SELECIONAVEIS.some(([value]) => value === demanda.modalidade)
+      ? [[demanda.modalidade, MODALIDADES[demanda.modalidade] ?? demanda.modalidade], ...MODALIDADES_SELECIONAVEIS]
+      : MODALIDADES_SELECIONAVEIS;
   const pendenciasTabela = [
     {
       etapa: "Demanda",
       obrigatoria: true,
       status: completudeDemanda.completa ? "Completo" : "Pendente",
       pendencia: completudeDemanda.completa ? "concluida" : completudeDemanda.pendencias.join("; "),
-      acao: "#demanda",
+      acao: `/orcamento/demandas/${demandaId}?etapa=demanda`,
     },
     {
       etapa: "Laboratorio",
       obrigatoria: exigeAnalises,
       status: moduloAnalises.label,
       pendencia: moduloAnalises.pendencias.join("; "),
-      acao: "#laboratorio",
+      acao: `/orcamento/demandas/${demandaId}?etapa=laboratorio`,
     },
     {
       etapa: "Projeto",
       obrigatoria: exigeProjeto,
       status: moduloProjeto.label,
       pendencia: moduloProjeto.pendencias.join("; "),
-      acao: "#projeto",
+      acao: `/orcamento/demandas/${demandaId}?etapa=projeto`,
     },
     {
       etapa: "Parametros",
       obrigatoria: exigeProjeto,
       status: podeConsolidar ? "Liberado" : "Bloqueado",
       pendencia: podeConsolidar ? "custos revisados" : modulosPendentes.join("; "),
-      acao: "#parametros",
+      acao: `/orcamento/demandas/${demandaId}?etapa=parametros`,
     },
     {
       etapa: "Final",
       obrigatoria: true,
       status: orcamentoFinal.pronto ? "Pronto" : "Bloqueado",
       pendencia: orcamentoFinal.pendencias.length > 0 ? orcamentoFinal.pendencias.join("; ") : "pronto para emissao",
-      acao: "#final",
+      acao: `/orcamento/demandas/${demandaId}?etapa=final`,
     },
   ];
   const totalAnalisesCusto = orcamentosAnalises.reduce(
@@ -266,7 +292,7 @@ export default async function DemandaDetalhe({
               </p>
               <h1 className="mt-1 text-2xl font-semibold tracking-tight">{demanda.titulo}</h1>
               <p className="mt-1 text-sm text-zinc-500">
-                {MODALIDADES[demanda.modalidade] ?? demanda.modalidade}
+                {MODALIDADES[modalidadeCanonica] ?? MODALIDADES[demanda.modalidade] ?? demanda.modalidade}
               </p>
             </div>
             <div className="text-right text-sm">
@@ -299,26 +325,36 @@ export default async function DemandaDetalhe({
 
         <nav className="sticky top-0 z-10 mt-4 overflow-x-auto border-y border-zinc-200 bg-white/95 py-2 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
           <div className="flex min-w-max gap-2 px-2">
-            {tabs.map((tab) => (
-              <a
-                key={tab.id}
-                href={`#${tab.id}`}
-                className={`rounded-md border px-3 py-2 text-left text-xs transition hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
-                  tab.aplicavel
-                    ? "border-zinc-300 text-zinc-800 dark:border-zinc-700 dark:text-zinc-100"
-                    : "border-zinc-200 text-zinc-400 dark:border-zinc-800"
-                }`}
-              >
-                <span className="block font-semibold">{tab.label}</span>
-                <span className="mt-0.5 block text-[10px] uppercase tracking-wide">
-                  {tab.aplicavel ? tab.status : "Nao se aplica"}
-                </span>
-              </a>
-            ))}
+            {etapas.map((etapa, indice) => {
+              const ativa = etapa.id === etapaAtiva;
+              const desabilitada = !etapa.aplicavel;
+              return (
+                <a
+                  key={etapa.id}
+                  href={etapa.href}
+                  aria-current={ativa ? "step" : undefined}
+                  aria-disabled={desabilitada || undefined}
+                  className={`rounded-md border px-3 py-2 text-left text-xs transition hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+                    ativa
+                      ? "border-brand-500 bg-brand-50 text-brand-800 dark:border-brand-500 dark:bg-brand-950/40 dark:text-brand-200"
+                      : desabilitada
+                        ? "border-zinc-200 text-zinc-400 dark:border-zinc-800"
+                        : "border-zinc-300 text-zinc-800 dark:border-zinc-700 dark:text-zinc-100"
+                  }`}
+                >
+                  <span className="block font-semibold">
+                    {indice + 1}. {etapa.label}
+                  </span>
+                  <span className="mt-0.5 block text-[10px] uppercase tracking-wide">
+                    {etapa.aplicavel ? etapa.status : "Não se aplica"}
+                  </span>
+                </a>
+              );
+            })}
           </div>
         </nav>
 
-        <section id="acoes" className="mt-6 scroll-mt-20 grid gap-4 lg:grid-cols-3">
+        <section id="acoes" className={`mt-6 scroll-mt-20 grid gap-4 lg:grid-cols-3 ${passo("demanda")}`}>
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <h2 className="text-sm font-semibold">Próximos módulos</h2>
             <p className="mt-1 text-xs leading-5 text-zinc-500">
@@ -395,7 +431,7 @@ export default async function DemandaDetalhe({
           </div>
         </section>
 
-        <section id="laboratorio" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="laboratorio" className={`mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("laboratorio")}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Orçamento laboratorial</h2>
@@ -449,7 +485,7 @@ export default async function DemandaDetalhe({
           )}
         </section>
 
-        <section id="projeto" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="projeto" className={`mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("projeto")}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Custos do projeto</h2>
@@ -493,7 +529,7 @@ export default async function DemandaDetalhe({
           )}
         </section>
 
-        <section className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section className={`mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("demanda")}`}>
           <h2 className="text-sm font-semibold">Pendências por etapa</h2>
           <TabelaSimples
             colunas={["Etapa", "Obrigatório?", "Status", "Pendência", "Ação"]}
@@ -510,7 +546,7 @@ export default async function DemandaDetalhe({
           />
         </section>
 
-        <section id="parametros" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="parametros" className={`mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("parametros")}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Parâmetros econômicos</h2>
@@ -545,7 +581,7 @@ export default async function DemandaDetalhe({
           />
         </section>
 
-        <section id="final" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="final" className={`mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("final")}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Proposta final</h2>
@@ -651,7 +687,7 @@ export default async function DemandaDetalhe({
           )}
         </section>
 
-        <section id="demanda" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="demanda" className={`mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("demanda")}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Dados da demanda</h2>
@@ -734,7 +770,7 @@ export default async function DemandaDetalhe({
             <div>
               <label className={lbl}>Modalidade</label>
               <select {...hydrationSafe} name="modalidade" defaultValue={demanda.modalidade ?? "analises"} className={`${inp} mt-1 w-full`}>
-                {Object.entries(MODALIDADES).map(([value, label]) => (
+                {opcoesModalidade.map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
@@ -779,7 +815,7 @@ export default async function DemandaDetalhe({
           </form>
         </section>
 
-        <section id="historico" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="historico" className={`mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("historico")}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Histórico e auditoria</h2>

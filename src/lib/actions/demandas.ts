@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
 import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
+import { modalidadeExigeLaboratorio, modalidadeExigeProjeto } from "@/lib/orcamento/orcamento-economico";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
 import type { Json } from "@/lib/supabase/database.types";
 import { registrarEvento } from "./eventos";
@@ -31,9 +32,6 @@ function snapshotCompletude(demanda: Parameters<typeof avaliarCompletudeDemanda>
     atualizado_em: new Date().toISOString(),
   };
 }
-
-const MODALIDADES_COM_ANALISES = new Set(["analises", "analises_projeto", "projeto_analises_custos"]);
-const MODALIDADES_COM_PROJETO = new Set(["projeto", "analises_projeto", "projeto_analises_custos"]);
 
 async function clienteSnapshot(clienteId: number | null) {
   if (!clienteId) return null;
@@ -143,7 +141,7 @@ export async function gerarOrcamentoAnalisesDaDemanda(formData: FormData) {
   if (!avaliarCompletudeDemanda(demanda).completa) {
     redirect(`${listaPath}/${id}`);
   }
-  if (!MODALIDADES_COM_ANALISES.has(demanda.modalidade)) {
+  if (!modalidadeExigeLaboratorio(demanda.modalidade)) {
     redirect(`${listaPath}/${id}`);
   }
 
@@ -182,7 +180,7 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
   if (!avaliarCompletudeDemanda(demanda).completa) {
     redirect(`${listaPath}/${id}`);
   }
-  if (!MODALIDADES_COM_PROJETO.has(demanda.modalidade)) {
+  if (!modalidadeExigeProjeto(demanda.modalidade)) {
     redirect(`${listaPath}/${id}`);
   }
 
@@ -204,7 +202,7 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
   if (error) throw new Error(error.message);
   await supabase.from("demandas_propostas").update({ status: "orcada" }).eq("id", id);
   revalidatePath(listaPath);
-  redirect(`/orcamento/demandas/${id}#projeto`);
+  redirect(`/orcamento/demandas/${id}?etapa=projeto`);
 }
 
 export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
@@ -224,7 +222,7 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
 
   const completude = avaliarCompletudeDemanda(demanda);
   if (!completude.completa) {
-    redirect(`${listaPath}/${id}?erro_emissao=${encodeURIComponent("Complete a demanda antes de emitir o orçamento final.")}`);
+    redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent("Complete a demanda antes de emitir o orçamento final.")}`);
   }
 
   const [{ data: orcamentos }, { data: orcProjetos }, { data: ultimaVersao }] = await Promise.all([
@@ -247,8 +245,8 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
       .maybeSingle(),
   ]);
 
-  const exigeAnalises = MODALIDADES_COM_ANALISES.has(demanda.modalidade);
-  const exigeProjeto = MODALIDADES_COM_PROJETO.has(demanda.modalidade);
+  const exigeAnalises = modalidadeExigeLaboratorio(demanda.modalidade);
+  const exigeProjeto = modalidadeExigeProjeto(demanda.modalidade);
   const itensAnalises = (orcamentos ?? []).reduce((total, orcamento) => (
     total + (orcamento.orcamento_itens?.length ?? 0)
   ), 0);
@@ -307,7 +305,7 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
   });
 
   if (!consolidado.pronto) {
-    redirect(`${listaPath}/${id}?erro_emissao=${encodeURIComponent(consolidado.pendencias.join("; "))}`);
+    redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent(consolidado.pendencias.join("; "))}`);
   }
 
   const versao = Number(ultimaVersao?.versao ?? 0) + 1;
@@ -387,5 +385,5 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
   revalidatePath(listaPath);
   revalidatePath(`${listaPath}/${id}`);
   revalidatePath("/orcamento");
-  redirect(`${listaPath}/${id}`);
+  redirect(`${listaPath}/${id}?etapa=final`);
 }

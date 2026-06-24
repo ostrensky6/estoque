@@ -120,7 +120,7 @@ export async function criarOrcamento(formData: FormData) {
         cliente_nome,
       });
     if (error) throw new Error(error.message);
-    redirect(`/orcamento/demandas/${demandaId}#projeto`);
+    redirect(`/orcamento/demandas/${demandaId}?etapa=projeto`);
   }
 
   const { data, error } = await supabase
