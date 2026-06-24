@@ -70,6 +70,13 @@ export function calcularTotalProjetoDireto(
   return dinheiro(total);
 }
 
+/**
+ * @deprecated ENGINE LEGADA (Alternativa B do DEC-ORC-001). **NÃO é a engine
+ * autoritativa.** A regra de fechamento de novas propostas é a Política A em
+ * `engine-economica.ts` (`calcularPropostaEconomica`). Esta função é mantida
+ * apenas como referência/compatibilidade e não é usada em produção (somente em
+ * seu próprio teste). Não usar em código novo.
+ */
 export function consolidarEconomiaOrcamento(args: {
   custoLaboratorio: number;
   custoProjeto: number;

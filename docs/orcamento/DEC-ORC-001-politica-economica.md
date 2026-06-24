@@ -1,11 +1,26 @@
-# DEC-ORC-001 — Política econômica autoritativa (decisão pendente)
+# DEC-ORC-001 — Política econômica autoritativa
 
-Data: 2026-06-24 · Status: **PROPOSTA / aguardando aprovação do usuário**
-Relacionado: [inventário das engines](2026-06-24-inventario-engines-economicas.md)
+Data: 2026-06-24 · Status: **APROVADA — Alternativa A** (decisão do usuário, 2026-06-24)
+Relacionado: [inventário das engines](2026-06-24-inventario-engines-economicas.md) ·
+implementação: `src/lib/orcamento/engine-economica.ts`
 
-> Esta decisão escolhe **uma** política de cálculo para a engine econômica
-> autoritativa. **Nada foi trocado.** A engine de produção segue a Alternativa C
-> (ver §6). A implementação só ocorre após aprovação explícita.
+> ## ✅ Decisão aprovada: **Alternativa A** (para novas propostas)
+>
+> ```
+> total_final = (custo_laboratorial_tecnico + custo_direto_projeto) / (1 - Σparametros/100)
+> ```
+>
+> - Laboratório = **custo técnico** (não preço já formado); recebe parâmetros.
+> - Projeto = **custo direto**.
+> - Parâmetros incidem sobre a **proposta inteira**, em **gross-up único** (sem
+>   gross-up separado de projeto + proposta).
+> - Lucro, fundos, impostos, taxas e incubação = percentuais líquidos do valor final.
+> - Preço laboratorial já formado = **apenas referência/snapshot**, não entra no
+>   fechamento de novas propostas.
+> - **Versões históricas não são recalculadas**; snapshots antigos são lidos no
+>   **modo legado**.
+> - A **Alternativa C** permanece **somente** como compatibilidade histórica
+>   (`aplicarParametrosEconomicos`/adapters legados, marcados `@deprecated`).
 
 ## 1. Glossário de operações
 
@@ -22,7 +37,7 @@ Relacionado: [inventário das engines](2026-06-24-inventario-engines-economicas.
 
 ## 3. Alternativas
 
-### A) Todos os percentuais em GROSS-UP sobre o total final
+### A) Todos os percentuais em GROSS-UP sobre o total final ✅ *(APROVADA)*
 - **Fórmula:** `subtotal = lab + projeto`; `totalFinal = subtotal / (1 − Σ/100)`.
   Parâmetros incidem sobre **lab e projeto**.
 - **Exemplo:** `300 / (1 − 0,20) = ` **375,00**.
@@ -54,7 +69,7 @@ Relacionado: [inventário das engines](2026-06-24-inventario-engines-economicas.
 - **Decisão que exige aprovação:** classificação de cada parâmetro (tributo vs margem)
   e incidência sobre laboratório.
 
-### C) Laboratório já precificado; parâmetros aplicados APENAS ao projeto  ✅ *(implementada hoje)*
+### C) Laboratório já precificado; parâmetros aplicados APENAS ao projeto  ⚠️ *(LEGADA — só compat. histórica)*
 - **Fórmula (`consolidarOrcamentoFinal` → `aplicarParametrosEconomicos`):**
   lab entra como **preço já formado** (não recebe parâmetros);
   `projetoFinal = custoProjeto / (1 − Σprojeto/100)`;
@@ -105,35 +120,38 @@ Materialidade: spread de **340 → 375** (~10%) só pela política. A escolha é
   ser confirmado abrindo o `Laboratorio1.xlsm`** — não foi possível verificar
   automaticamente nesta entrega. **Item de aprovação/validação.**
 
-## 6. O que está implementado HOJE
+## 6. O que está implementado AGORA (pós-decisão)
 
-**Alternativa C.** `consolidarOrcamentoFinal` usa `aplicarParametrosEconomicos`
-com `laboratorio.modo = PRECO_JA_FORMADO` (lab não recebe parâmetros) e os 5
-parâmetros com `base = APENAS_PROJETO` em **gross-up**. O total final é
-`labPreço + projeto/(1−Σ/100)`. A engine `consolidarEconomiaOrcamento` (Alt. B)
-existe mas **não é usada** em produção.
+**Alternativa A.** A engine autoritativa é `engine-economica.ts`
+(`calcularPropostaEconomica`): `subtotal = custoLabTécnico + custoDiretoProjeto`;
+`totalFinal = subtotal / (1 − Σ/100)`; cada parâmetro = `totalFinal × %`; bloqueio
+quando Σ ≥ 100%. `consolidarOrcamentoFinal` e a emissão usam **esta** engine.
 
-## 7. Recomendação técnica preliminar (não é decisão)
+Engines/adapters rebaixados a **legado** (`@deprecated`, só compat./testes):
+`consolidarEconomiaOrcamento` (Alt. B) e `aplicarParametrosDoOrcamento`/
+`adaptarOrcamentoParaEntradaParametros` (Alt. C). **Não recalculam** propostas
+históricas; snapshots antigos são lidos no modo legado em `/orcamento/final/[id]`.
 
-- **Manter a Alternativa C como base** (é a atual; não muda propostas antigas),
-  **formalizá-la** como engine autoritativa única e **transformar a engine B
-  (`consolidarEconomiaOrcamento`) em adapter de compatibilidade ou removê-la**.
-- **Antes de fixar**, validar dois pontos com o usuário e com a planilha:
-  1. Laboratório **não** deve receber parâmetros na proposta (confirma C vs A/B)?
-  2. Projeto usa **gross-up** (C) ou **markup** (D)? — depende do que a planilha faz.
-- Unificar o vocabulário de parâmetros (custeio × projeto) e o bloqueio Σ≥100%
-  num único ponto.
+## 7. Respostas às perguntas (decididas)
 
-## 8. Decisões que precisam da sua aprovação explícita
+1. **Política:** **A**.
+2. **Laboratório na proposta:** recebe parâmetros, entrando como **custo técnico**.
+3. **Projeto:** **custo direto**; gross-up **único** sobre lab + projeto.
 
-1. **Política:** A, B, **C** (atual) ou D?
-2. **Laboratório na proposta final:** preço já formado (não recebe parâmetros) **ou**
-   recebe parâmetros?
-3. **Projeto:** gross-up **ou** markup?
-4. **Vocabulário único** de parâmetros e mapeamento custeio↔projeto.
-5. **Destino da engine B** (`consolidarEconomiaOrcamento`): adapter de
-   compatibilidade ou remoção.
+## 8. Decisões registradas
 
-> Após sua escolha, implemento a engine autoritativa única (com testes de valores
-> conhecidos e snapshot reproduzível), mantendo as antigas como adapters quando
-> necessário — **sem recalcular propostas históricas**.
+- Vocabulário de parâmetros da proposta: `impostos_legacy, incubacao, reserva,
+  investimentos, lucro` (ordem canônica em `engine-economica.PARAMETROS_PROPOSTA`).
+- Bloqueio Σ ≥ 100% centralizado na engine autoritativa.
+- Engine B e adapters C ficam como compatibilidade histórica (`@deprecated`).
+
+## 9. Pendências conhecidas
+
+- **Fonte dos parâmetros para propostas só-laboratório:** hoje os percentuais vêm
+  do módulo de projeto; para uma proposta sem projeto, é preciso uma fonte de
+  parâmetros em nível de proposta (a tratar na unificação de parâmetros).
+- **Compatibilidade com `Laboratorio1.xlsm`** no nível do projeto: confirmar
+  abrindo a planilha (não verificável automaticamente nesta fase).
+- **Reconciliação da “composição comercial”** em `/orcamento/final/[id]`: a tabela
+  itemizada soma preços de item (lab a `preco_unitario`) e **não** bate com o
+  `total_final` (gross-up sobre custo técnico). Reconciliar no redesign (Fase 10).

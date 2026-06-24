@@ -1,115 +1,76 @@
-// Testes canônicos preparatórios da Fase 4 (DEC-ORC-001).
+// Testes canônicos da política econômica (DEC-ORC-001).
 //
-// IMPORTANTE: estes testes NÃO trocam a engine de produção. Eles:
-//   1) caracterizam (lockam) o comportamento ATUAL da engine de produção
-//      (Alternativa C — laboratório como preço já formado, gross-up só no projeto);
-//   2) documentam, em describe.skip, os valores das políticas CANDIDATAS (A/B/D)
-//      ainda NÃO implementadas — pendentes de aprovação explícita.
+// DECISÃO APROVADA: Alternativa A (gross-up único sobre lab técnico + projeto
+// direto). Os testes ATIVOS validam a Alternativa A pela engine autoritativa.
 //
-// Ver docs/orcamento/DEC-ORC-001-politica-economica.md.
+// A Alternativa C permanece apenas como COMPATIBILIDADE HISTÓRICA (leitura de
+// propostas antigas) — caracterizada aqui pela engine flexível legada
+// `aplicarParametrosEconomicos` (que segue existindo para esse fim), sem ser a
+// regra de fechamento de novas propostas.
 import { describe, expect, it } from "vitest";
-import { aplicarParametrosEconomicos, roundMoney, type ParametroEconomicoAplicavel } from "@/lib/costing/pricing";
-import { consolidarOrcamentoFinal } from "./orcamento-final";
-
-function paramsProjeto(map: Record<string, number>): ParametroEconomicoAplicavel[] {
-  return Object.entries(map).map(([chave, percentual]) => ({
-    chave,
-    label: chave,
-    base: "APENAS_PROJETO",
-    percentual,
-  }));
-}
-
-function aplicar(labValor: number, projetoCusto: number, params: Record<string, number>) {
-  return aplicarParametrosEconomicos({
-    metodo: "GROSS_UP",
-    laboratorio: { valor: labValor, modo: "PRECO_JA_FORMADO" },
-    projeto: { custo: projetoCusto },
-    parametros: paramsProjeto(params),
-  });
-}
+import { aplicarParametrosEconomicos, type ParametroEconomicoAplicavel } from "@/lib/costing/pricing";
+import { calcularPropostaEconomica } from "./engine-economica";
 
 // =====================================================================
-// 1) Comportamento ATUAL de produção (Alternativa C) — caracterização.
-//    Estes DEVEM passar; servem para flagrar qualquer mudança não intencional.
+// ATIVO — Alternativa A (autoritativa).
 // =====================================================================
-describe("DEC-ORC-001 — comportamento ATUAL (Alternativa C, produção)", () => {
-  it("custo 100, impostos 10%, lucro 5% (só projeto): gross-up no projeto", () => {
-    const r = aplicar(0, 100, { impostos: 10, lucro: 5 });
-    // 100 / (1 - 0,15) = 117,6470… → 117,65
-    expect(r.projeto.total).toBeCloseTo(117.65, 2);
-    expect(r.totalFinal).toBeCloseTo(117.65, 2);
+describe("DEC-ORC-001 — Alternativa A (autoritativa, novas propostas)", () => {
+  const params = (m: Record<string, number>) =>
+    Object.entries(m).map(([chave, percentual]) => ({ chave, label: chave, percentual }));
+
+  it("custo 100, impostos 10%, lucro 5% → 117,65", () => {
+    expect(
+      calcularPropostaEconomica({ custoLaboratorioTecnico: 100, custoDiretoProjeto: 0, parametros: params({ impostos: 10, lucro: 5 }) }).totalFinal,
+    ).toBe(117.65);
   });
 
-  it("custo 200, parâmetros totais 20% (só projeto)", () => {
-    const r = aplicar(0, 200, { impostos: 10, reserva: 3, investimentos: 2, lucro: 5 });
-    // 200 / (1 - 0,20) = 250
-    expect(r.totalFinal).toBeCloseTo(250, 2);
+  it("custo 200, parâmetros totais 20% → 250,00", () => {
+    expect(
+      calcularPropostaEconomica({ custoLaboratorioTecnico: 0, custoDiretoProjeto: 200, parametros: params({ impostos: 20 }) }).totalFinal,
+    ).toBe(250);
   });
 
-  it("laboratório 100 + projeto 200 + parâmetros 20%: lab passa direto, gross-up só no projeto", () => {
-    const r = aplicar(100, 200, { impostos: 10, reserva: 3, investimentos: 2, lucro: 5 });
-    expect(r.laboratorio.total).toBeCloseTo(100, 2); // preço já formado, sem parâmetros
-    expect(r.projeto.total).toBeCloseTo(250, 2); // 200 / (1 - 0,20)
-    expect(r.totalFinal).toBeCloseTo(350, 2);
+  it("laboratório 100 + projeto 200 + parâmetros 20% → 375,00 (lab recebe parâmetros)", () => {
+    const r = calcularPropostaEconomica({ custoLaboratorioTecnico: 100, custoDiretoProjeto: 200, parametros: params({ impostos: 20 }) });
+    expect(r.totalFinal).toBe(375);
+    expect(r.subtotal).toBe(300);
   });
 
-  it("soma de parâmetros >= 100% é bloqueada (throw)", () => {
-    expect(() => aplicar(0, 100, { impostos: 60, lucro: 40 })).toThrow(/menor que 100%/i);
+  it("soma de parâmetros >= 100% bloqueia", () => {
+    const r = calcularPropostaEconomica({ custoLaboratorioTecnico: 0, custoDiretoProjeto: 100, parametros: params({ impostos: 60, lucro: 40 }) });
+    expect(r.valido).toBe(false);
+    expect(r.totalFinal).toBe(0);
   });
 
-  it("custo zero: total acompanha apenas o laboratório", () => {
-    expect(aplicar(0, 0, { impostos: 10, lucro: 5 }).totalFinal).toBeCloseTo(0, 2);
-    expect(aplicar(100, 0, { impostos: 10, lucro: 5 }).totalFinal).toBeCloseTo(100, 2);
-  });
-
-  it("arredondamento monetário a 2 casas", () => {
-    // 10 / (1 - 0,03) = 10,3092… → 10,31
-    expect(aplicar(0, 10, { impostos: 3 }).totalFinal).toBeCloseTo(10.31, 2);
-    expect(roundMoney(117.6470588)).toBe(117.65);
-  });
-
-  it("consolidarOrcamentoFinal (produção) reproduz o total 350 no cenário canônico", () => {
-    const r = consolidarOrcamentoFinal({
-      laboratorioExigido: true,
-      projetoExigido: true,
-      laboratorioRevisado: true,
-      projetoRevisado: true,
-      itensLaboratorio: [{ n_amostras: 1, custo_unitario: 50, preco_unitario: 100 }],
-      itensProjeto: [{ rubrica: "MC", quantidade: 1, custo_unitario: 200, preco_unitario: 200 }],
-      parametrosProjeto: { impostos_legacy: 10, reserva: 3, investimentos: 2, lucro: 5 },
-    });
-    expect(r.totalLaboratorioPreco).toBeCloseTo(100, 2);
-    expect(r.totalProjetoFinal).toBeCloseTo(250, 2);
-    expect(r.totalFinal).toBeCloseTo(350, 2);
+  it("custo zero e arredondamento", () => {
+    expect(calcularPropostaEconomica({ custoLaboratorioTecnico: 0, custoDiretoProjeto: 0, parametros: params({ impostos: 10 }) }).totalFinal).toBe(0);
+    expect(calcularPropostaEconomica({ custoLaboratorioTecnico: 10, custoDiretoProjeto: 0, parametros: params({ impostos: 3 }) }).totalFinal).toBe(10.31);
   });
 });
 
 // =====================================================================
-// 2) Políticas CANDIDATAS (pendentes de decisão) — describe.skip.
-//    NÃO rodam na suíte principal. Documentam os valores esperados de cada
-//    alternativa no cenário canônico (lab 100 + projeto 200 + Σ 20%).
-//    Só viram testes reais APÓS aprovação explícita da política.
+// LEGADO — Alternativa C (compat. histórica; NÃO é a regra de fechamento).
+// Documenta o comportamento da engine flexível `aplicarParametrosEconomicos`
+// quando o laboratório entra como preço já formado e o gross-up incide só no
+// projeto. Mantido apenas para leitura de propostas antigas.
 // =====================================================================
-describe.skip("DEC-ORC-001 — políticas candidatas (NÃO implementadas; pendentes de aprovação)", () => {
-  const SUB = 300; // lab 100 + projeto 200
-  const SIGMA = 0.2;
-  const grossUp = (base: number, s: number) => roundMoney(base / (1 - s));
-  const markup = (base: number, s: number) => roundMoney(base * (1 + s));
+describe("DEC-ORC-001 — Alternativa C (LEGADA, compatibilidade histórica)", () => {
+  function paramsProjeto(map: Record<string, number>): ParametroEconomicoAplicavel[] {
+    return Object.entries(map).map(([chave, percentual]) => ({ chave, label: chave, base: "APENAS_PROJETO", percentual }));
+  }
+  const aplicarC = (lab: number, projeto: number, m: Record<string, number>) =>
+    aplicarParametrosEconomicos({
+      metodo: "GROSS_UP",
+      laboratorio: { valor: lab, modo: "PRECO_JA_FORMADO" },
+      projeto: { custo: projeto },
+      parametros: paramsProjeto(m),
+    });
 
-  it("A) gross-up sobre o total (lab recebe parâmetros) → 375,00", () => {
-    expect(grossUp(SUB, SIGMA)).toBeCloseTo(375, 2);
+  it("(legado C) lab 100 + projeto 200 + 20% → 350 (lab passa direto)", () => {
+    expect(aplicarC(100, 200, { impostos: 10, reserva: 3, investimentos: 2, lucro: 5 }).totalFinal).toBeCloseTo(350, 2);
   });
 
-  it("B) tributos gross-up + margem/fundos markup → 366,67", () => {
-    // markup de margem/fundos (10%) sobre custo, depois gross-up de tributos (10%)
-    const baseComMarkup = markup(SUB, 0.1); // 330
-    expect(grossUp(baseComMarkup, 0.1)).toBeCloseTo(366.67, 2);
-  });
-
-  it("D) markup no projeto (coerente com o custeio) → 340,00", () => {
-    const labPreco = 100; // preço já formado
-    const projeto = markup(200, SIGMA); // 240
-    expect(roundMoney(labPreco + projeto)).toBeCloseTo(340, 2);
+  it("(legado C) soma de parâmetros >= 100% lança erro", () => {
+    expect(() => aplicarC(0, 100, { impostos: 60, lucro: 40 })).toThrow(/menor que 100%/i);
   });
 });

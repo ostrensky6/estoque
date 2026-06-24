@@ -399,7 +399,7 @@ export default async function OrcamentoFinalPage({
                 Parâmetros econômicos
               </h2>
               <span className="text-xs text-zinc-500">
-                Markup projeto: {Number(consolidado.markupProjeto ?? 0).toLocaleString("pt-BR")}%
+                Σ parâmetros: {Number(consolidado.markupProjeto ?? 0).toLocaleString("pt-BR")}%
               </span>
             </div>
             <div className="mt-3 grid gap-2 md:grid-cols-3">

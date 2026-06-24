@@ -1,11 +1,11 @@
-import { calcularOrcamentoProjetoLegacy, type ProjetoBudgetRates } from "@/lib/project-budget/legacy";
+import type { ProjetoBudgetRates } from "@/lib/project-budget/legacy";
+import { roundMoney } from "@/lib/costing/pricing";
 import {
-  adaptarOrcamentoParaEntradaParametros,
-  aplicarParametrosDoOrcamento,
   totalLaboratorioCusto as calcularTotalLaboratorioCusto,
   totalLaboratorioPreco as calcularTotalLaboratorioPreco,
   totalProjetoCusto as calcularTotalProjetoCusto,
 } from "./parametros-adapter";
+import { calcularPropostaEconomica, parametrosDeRates } from "./engine-economica";
 
 export type ItemLaboratorioFinal = {
   n_amostras?: number | null;
@@ -29,6 +29,14 @@ export type OrigemValorFinal = {
   valor: number;
 };
 
+/**
+ * Consolidação da proposta final — usa a engine AUTORITATIVA (Política A,
+ * `calcularPropostaEconomica`). Laboratório entra como custo técnico, projeto
+ * como custo direto, e o gross-up é único sobre o subtotal técnico.
+ *
+ * `totalLaboratorioPreco` permanece exposto apenas como REFERÊNCIA/snapshot
+ * operacional — não entra no fechamento consolidado (Política A).
+ */
 export function consolidarOrcamentoFinal(args: {
   laboratorioExigido: boolean;
   projetoExigido: boolean;
@@ -43,72 +51,90 @@ export function consolidarOrcamentoFinal(args: {
     args.projetoExigido && !args.projetoRevisado ? "revisar custos de projeto" : null,
   ].filter(Boolean) as string[];
 
-  const totalLaboratorioCusto = calcularTotalLaboratorioCusto(args.itensLaboratorio);
-  const totalLaboratorioPreco = calcularTotalLaboratorioPreco(args.itensLaboratorio);
-  const itensProjetoBase = args.itensProjeto.map((item) => ({
-    rubrica: item.rubrica,
-    quantidade: item.quantidade,
-    preco_unitario: Number(item.custo_unitario ?? item.preco_unitario ?? 0),
-    meses_selecionados: item.meses_selecionados ?? [],
+  const custoLaboratorioTecnico = calcularTotalLaboratorioCusto(args.itensLaboratorio);
+  const totalLaboratorioPreco = calcularTotalLaboratorioPreco(args.itensLaboratorio); // referência
+  const custoDiretoProjeto = calcularTotalProjetoCusto(args.itensProjeto);
+
+  // Engine única autoritativa (Política A).
+  const economia = calcularPropostaEconomica({
+    custoLaboratorioTecnico,
+    custoDiretoProjeto,
+    parametros: parametrosDeRates(args.parametrosProjeto),
+  });
+
+  const totalFinal = economia.totalFinal;
+  const subtotalTecnico = economia.subtotal;
+  // Participação informativa do projeto no total (não é um segundo gross-up).
+  const totalProjetoFinal =
+    economia.valido && subtotalTecnico > 0
+      ? roundMoney(totalFinal * (custoDiretoProjeto / subtotalTecnico))
+      : 0;
+
+  // Compat para a etapa de Parâmetros e para o snapshot (formato {key,...}).
+  const parametrosProjeto = economia.parametros.map((p) => ({
+    key: p.chave,
+    label: p.label,
+    nominalRate: p.percentual,
+    amount: p.valorNominal,
   }));
-  const calculoProjeto = calcularOrcamentoProjetoLegacy(itensProjetoBase, args.parametrosProjeto);
-  const entradaParametros = adaptarOrcamentoParaEntradaParametros(args);
-  const parametrosAplicados = calculoProjeto.validationError
-    ? null
-    : aplicarParametrosDoOrcamento(args);
-  const totalProjetoCusto = calcularTotalProjetoCusto(args.itensProjeto);
-  const totalProjetoFinal = parametrosAplicados?.projeto.total ?? calculoProjeto.grossTotal;
-  const totalFinal = parametrosAplicados?.totalFinal ?? totalLaboratorioPreco + totalProjetoFinal;
+
   const origens: OrigemValorFinal[] = [
     {
       campo: "totalLaboratorioCusto",
-      titulo: "Custo laboratório",
+      titulo: "Custo laboratório (técnico)",
       origem: "orcamento_itens.custo_unitario × orcamento_itens.n_amostras",
-      regra: "Soma dos custos unitários de análises laboratoriais multiplicados pela quantidade de amostras.",
-      valor: totalLaboratorioCusto,
+      regra: "Custo técnico laboratorial; base de cálculo da proposta (Política A).",
+      valor: custoLaboratorioTecnico,
     },
     {
       campo: "totalLaboratorioPreco",
-      titulo: "Preço laboratório",
+      titulo: "Preço laboratório (referência)",
       origem: "orcamento_itens.preco_unitario × orcamento_itens.n_amostras",
-      regra: "Soma dos preços unitários preservados no snapshot laboratorial multiplicados pela quantidade de amostras.",
+      regra: "Preço já formado preservado apenas como referência/snapshot; NÃO entra no fechamento da proposta nova.",
       valor: totalLaboratorioPreco,
     },
     {
       campo: "totalProjetoCusto",
-      titulo: "Custo projeto",
-      origem: "orcamento_projeto_custos.custo_unitario e orcamento_projeto_analises.custo_unitario",
-      regra: "Soma dos custos próprios do projeto e das análises incluídas no projeto, sempre pela base de custo.",
-      valor: totalProjetoCusto,
+      titulo: "Custo projeto (direto)",
+      origem: "orcamento_projeto_custos e orcamento_projeto_analises (base de custo)",
+      regra: "Custo direto do projeto; base de cálculo da proposta (Política A).",
+      valor: custoDiretoProjeto,
     },
     {
-      campo: "totalProjetoFinal",
-      titulo: "Projeto final",
-      origem: "aplicarParametrosEconomicos via adaptarOrcamentoParaEntradaParametros",
-      regra: "Aplica gross-up explícito sobre os custos próprios do projeto, sem reaplicar parâmetros sobre laboratório já precificado.",
-      valor: totalProjetoFinal,
+      campo: "subtotalTecnico",
+      titulo: "Subtotal técnico",
+      origem: "custo laboratorial técnico + custo direto de projeto",
+      regra: "Base única sobre a qual incide o gross-up dos parâmetros.",
+      valor: subtotalTecnico,
     },
     {
       campo: "totalFinal",
       titulo: "Total final",
-      origem: "snapshot autoritativo de parametros aplicados",
-      regra: "Soma o laboratório como preço já formado com o projeto após parâmetros econômicos aplicados pela engine unificada.",
+      origem: "engine-economica.calcularPropostaEconomica (Política A)",
+      regra: economia.formula,
       valor: totalFinal,
     },
   ];
 
   return {
-    pronto: pendencias.length === 0 && !calculoProjeto.validationError,
-    pendencias: calculoProjeto.validationError ? [...pendencias, calculoProjeto.validationError] : pendencias,
-    totalLaboratorioCusto,
-    totalLaboratorioPreco,
-    totalProjetoCusto,
-    totalProjetoFinal,
+    pronto: pendencias.length === 0 && economia.valido,
+    pendencias: economia.valido ? pendencias : [...pendencias, economia.alertas[0]],
+    // Bases técnicas
+    totalLaboratorioCusto: custoLaboratorioTecnico,
+    totalLaboratorioPreco, // referência apenas
+    totalProjetoCusto: custoDiretoProjeto,
+    subtotalTecnico,
+    // Resultado (Política A)
+    somaPercentual: economia.somaPercentual,
+    fatorGrossUp: economia.fatorGrossUp,
+    totalParametros: economia.totalParametros,
+    totalProjetoFinal, // participação informativa do projeto
     totalFinal,
-    parametrosProjeto: calculoProjeto.economicParameters,
-    entradaParametros,
-    parametrosAplicados,
-    markupProjeto: calculoProjeto.markupRate,
+    parametros: economia.parametros, // canônico
+    parametrosProjeto, // compat (página/snapshot)
+    alertas: economia.alertas,
+    economia, // snapshot reproduzível da engine autoritativa
+    markupProjeto: economia.somaPercentual, // compat de exibição (Σ parâmetros)
     origens,
   };
 }

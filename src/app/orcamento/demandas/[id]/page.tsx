@@ -559,15 +559,14 @@ export default async function DemandaDetalhe({
             </span>
           </div>
           <PainelParametrosEconomicos
-            exigeProjeto={exigeProjeto}
-            metodo={orcamentoFinal.parametrosAplicados?.metodo ?? "GROSS_UP"}
             custoLaboratorio={orcamentoFinal.totalLaboratorioCusto}
             precoLaboratorio={orcamentoFinal.totalLaboratorioPreco}
             custoProjeto={orcamentoFinal.totalProjetoCusto}
-            projetoFinal={orcamentoFinal.totalProjetoFinal}
+            subtotalTecnico={orcamentoFinal.subtotalTecnico}
+            totalParametros={orcamentoFinal.totalParametros}
             totalFinal={orcamentoFinal.totalFinal}
             parametros={orcamentoFinal.parametrosProjeto}
-            alertas={orcamentoFinal.parametrosAplicados?.alertas ?? []}
+            alertas={orcamentoFinal.alertas}
           />
           <TabelaSimples
             colunas={["Campo", "Origem", "Regra", "Valor"]}
