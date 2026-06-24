@@ -17,6 +17,14 @@ import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
 import { montarEtapasProposta, ORDEM_ETAPAS, type EtapaId } from "@/lib/orcamento/etapas-proposta";
 import {
+  detectarCustosZero,
+  montarComponentesTecnicos,
+  reconciliarComposicao,
+  statusPropostaFinal,
+  LABEL_STATUS_FINAL,
+  type StatusPropostaFinal,
+} from "@/lib/orcamento/proposta-final";
+import {
   modalidadeExigeLaboratorio,
   modalidadeExigeProjeto,
   normalizarModalidadeOrcamento,
@@ -41,11 +49,21 @@ const MODALIDADES_SELECIONAVEIS: Array<[string, string]> = [
   ["projeto_com_analises", MODALIDADES.projeto_com_analises],
 ];
 
+const STATUS_FINAL_CLS: Record<StatusPropostaFinal, string> = {
+  bloqueada: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300",
+  em_composicao: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
+  aguardando_revisao: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
+  pronta_para_emitir: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300",
+  emitida: "bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300",
+  substituida: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
+  cancelada: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800",
+};
+
 type OrcamentoAnalisesResumo = {
   id: number;
   status: string;
   data_orcamento: string | null;
-  orcamento_itens?: { id: number; n_amostras: number; custo_unitario: number; preco_unitario: number }[] | null;
+  orcamento_itens?: { id: number; codigo_analise: string | null; n_amostras: number; custo_unitario: number; preco_unitario: number }[] | null;
 };
 
 type OrcamentoProjetoResumo = {
@@ -97,7 +115,7 @@ export default async function DemandaDetalhe({
       supabase.from("projetos").select("id, nome").order("nome"),
       supabase
         .from("orcamentos")
-        .select("id, status, data_orcamento, orcamento_itens(id, n_amostras, custo_unitario, preco_unitario)")
+        .select("id, status, data_orcamento, orcamento_itens(id, codigo_analise, n_amostras, custo_unitario, preco_unitario)")
         .eq("demanda_id", demandaId)
         .order("id"),
       supabase
@@ -210,6 +228,42 @@ export default async function DemandaDetalhe({
     demanda.modalidade && !MODALIDADES_SELECIONAVEIS.some(([value]) => value === demanda.modalidade)
       ? [[demanda.modalidade, MODALIDADES[demanda.modalidade] ?? demanda.modalidade], ...MODALIDADES_SELECIONAVEIS]
       : MODALIDADES_SELECIONAVEIS;
+
+  // --- Proposta final (Fase 10): reconciliação, custo zero e status padronizado ---
+  const itensLaboratorioFlat = orcamentosAnalises.flatMap((o) => o.orcamento_itens ?? []);
+  const custosProjetoFlat = orcamentosProjeto.flatMap((o) => o.orcamento_projeto_custos ?? []);
+  const analisesProjetoFlat = orcamentosProjeto.flatMap((o) => o.orcamento_projeto_analises ?? []);
+  const projetoTemJustificativa = orcamentosProjeto.some((o) => Boolean(o.projeto_sem_custo_justificativa));
+  const componentesTecnicos = montarComponentesTecnicos({
+    itensLaboratorio: itensLaboratorioFlat,
+    custosProjeto: custosProjetoFlat,
+    analisesProjeto: analisesProjetoFlat,
+  });
+  const composicaoFinal = reconciliarComposicao({
+    componentes: componentesTecnicos,
+    totalFinal: orcamentoFinal.totalFinal,
+  });
+  const custosZero = detectarCustosZero({
+    itensLaboratorio: itensLaboratorioFlat,
+    custosProjeto: custosProjetoFlat,
+    analisesProjeto: analisesProjetoFlat,
+    projetoTemJustificativa,
+  });
+  const temCustoZeroSemJustificativa = custosZero.length > 0;
+  const ultimaVersaoFinal = versoesFinais?.[0];
+  const statusFinal: StatusPropostaFinal = statusPropostaFinal({
+    demandaCompleta: completudeDemanda.completa,
+    laboratorioExigido: exigeAnalises,
+    projetoExigido: exigeProjeto,
+    laboratorioStatus: moduloAnalises.status === "nao_exigido" ? "nao_exigido" : moduloAnalises.status,
+    projetoStatus: moduloProjeto.status === "nao_exigido" ? "nao_exigido" : moduloProjeto.status,
+    parametrosValidos: orcamentoFinal.economia.valido,
+    temCustoZeroSemJustificativa,
+    versoesEmitidas: versoesFinais?.length ?? 0,
+    ultimaVersaoStatus: ultimaVersaoFinal?.status ?? null,
+  });
+  const podeEmitir = orcamentoFinal.pronto && !temCustoZeroSemJustificativa;
+  const versaoEmitidaVigente = (versoesFinais ?? []).find((v) => v.status === "emitido");
   const pendenciasTabela = [
     {
       etapa: "Demanda",
@@ -580,80 +634,201 @@ export default async function DemandaDetalhe({
           />
         </section>
 
-        <section id="final" className={`mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("final")}`}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold">Proposta final</h2>
-              <p className="mt-1 text-xs leading-5 text-zinc-500">
-                Consolidação calculada a partir dos módulos vinculados à demanda.
-              </p>
+        <section id="final" className={`mt-6 scroll-mt-20 space-y-4 ${passo("final")}`}>
+          {/* A — Cabeçalho da proposta + ações */}
+          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
+                  Proposta final · Nº {demanda.id}
+                </p>
+                <h2 className="mt-1 text-lg font-semibold tracking-tight">{demanda.titulo}</h2>
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  {demanda.cliente_nome || "Cliente livre"} · {MODALIDADES[modalidadeCanonica] ?? demanda.modalidade}
+                  {versaoEmitidaVigente?.valido_ate ? ` · válido até ${versaoEmitidaVigente.valido_ate}` : ""}
+                </p>
+              </div>
+              <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_FINAL_CLS[statusFinal]}`}>
+                {LABEL_STATUS_FINAL[statusFinal]}
+              </span>
             </div>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${orcamentoFinal.pronto ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"}`}>
-              {orcamentoFinal.pronto ? "Pronto para emissão" : "Bloqueado"}
-            </span>
+
+            {/* Total final acima da dobra */}
+            <div className="mt-4 flex flex-wrap items-end justify-between gap-4 rounded-md border border-brand-200 bg-brand-50 px-4 py-3 dark:border-brand-900 dark:bg-brand-950/30">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-brand-700 dark:text-brand-300">Total final</p>
+                <p className="mt-1 text-3xl font-semibold tabular-nums text-brand-800 dark:text-brand-200">{brl(orcamentoFinal.totalFinal)}</p>
+              </div>
+              <div className="flex flex-wrap items-end gap-2">
+                {versaoEmitidaVigente && (
+                  <Link
+                    href={`/orcamento/final/${versaoEmitidaVigente.id}`}
+                    className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                  >
+                    Abrir versão emitida ({versaoEmitidaVigente.numero})
+                  </Link>
+                )}
+                <form action={emitirOrcamentoFinalDaDemanda} className="flex items-end gap-2">
+                  <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wide text-zinc-500">Validade (dias)</label>
+                    <input {...hydrationSafe} name="validade_dias" type="number" min="1" step="1" defaultValue="30" className={`${inp} mt-1 w-24`} disabled={!podeEmitir} />
+                  </div>
+                  <button
+                    className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 dark:disabled:bg-zinc-800"
+                    disabled={!podeEmitir}
+                  >
+                    Emitir versão final
+                  </button>
+                </form>
+              </div>
+            </div>
+            {erroEmissao && (
+              <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">{erroEmissao}</p>
+            )}
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-4">
-            <ResumoFinal titulo="Custo laboratório" valor={orcamentoFinal.totalLaboratorioCusto} />
-            <ResumoFinal titulo="Preço laboratório" valor={orcamentoFinal.totalLaboratorioPreco} />
-            <ResumoFinal titulo="Custo projeto" valor={orcamentoFinal.totalProjetoCusto} />
-            <ResumoFinal titulo="Total final" valor={orcamentoFinal.totalFinal} destaque />
+          {/* B — Resumo executivo */}
+          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <h3 className="text-sm font-semibold">Resumo executivo</h3>
+            <div className={`mt-3 grid gap-3 ${exigeProjeto ? "md:grid-cols-5" : "md:grid-cols-4"}`}>
+              <ResumoFinal titulo="Custo laboratório (técnico)" valor={orcamentoFinal.totalLaboratorioCusto} />
+              {exigeProjeto && <ResumoFinal titulo="Custo direto projeto" valor={orcamentoFinal.totalProjetoCusto} />}
+              <ResumoFinal titulo="Subtotal técnico" valor={orcamentoFinal.subtotalTecnico} />
+              <ResumoFinal titulo="Total de parâmetros" valor={orcamentoFinal.totalParametros} />
+              <ResumoFinal titulo="Total final" valor={orcamentoFinal.totalFinal} destaque />
+            </div>
           </div>
 
-          {orcamentoFinal.pendencias.length > 0 ? (
-            <div className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-              <p className="font-medium">Pendências para emissão:</p>
-              <ul className="mt-1 list-disc pl-4">
-                {orcamentoFinal.pendencias.map((pendencia) => (
-                  <li key={pendencia}>{pendencia}</li>
+          {/* C — Resumo econômico */}
+          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <h3 className="text-sm font-semibold">Resumo econômico</h3>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <Info titulo="Subtotal técnico" texto={brl(orcamentoFinal.subtotalTecnico)} />
+              <Info titulo="Soma dos parâmetros" texto={`${orcamentoFinal.somaPercentual.toLocaleString("pt-BR")}%`} />
+              <Info titulo="Fator de gross-up" texto={orcamentoFinal.fatorGrossUp.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} />
+            </div>
+            {orcamentoFinal.parametrosProjeto.length > 0 && (
+              <TabelaSimples
+                colunas={["Parâmetro", "Percentual", "Valor nominal"]}
+                vazio="Sem parâmetros."
+                linhas={orcamentoFinal.parametrosProjeto.map((p) => [
+                  p.label,
+                  `${p.nominalRate.toLocaleString("pt-BR")}%`,
+                  brl(p.amount),
+                ])}
+              />
+            )}
+            <p className="mt-3 text-[11px] leading-5 text-zinc-400">{orcamentoFinal.economia.formula}</p>
+          </div>
+
+          {/* F — Pendências e bloqueios */}
+          {(orcamentoFinal.pendencias.length > 0 || temCustoZeroSemJustificativa || !composicaoFinal.reconciliaOk) && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
+              <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">Pendências e bloqueios</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-amber-900 dark:text-amber-200">
+                {orcamentoFinal.pendencias.map((p) => (
+                  <li key={p}>{p}</li>
                 ))}
+                {temCustoZeroSemJustificativa && (
+                  <li>
+                    Itens com custo técnico zero (sem justificativa de isenção):{" "}
+                    {custosZero.map((c) => c.descricao).join(", ")}. Emissão bloqueada.
+                  </li>
+                )}
+                {!composicaoFinal.reconciliaOk && (
+                  <li>Divergência de reconciliação entre composição e total final — revisar itens.</li>
+                )}
               </ul>
             </div>
-          ) : (
-            <div className="mt-4 rounded-md bg-brand-50 px-3 py-2 text-xs leading-5 text-brand-900 dark:bg-brand-950/40 dark:text-brand-200">
-              Módulos exigidos revisados. A versão final pode ser emitida e preservada no histórico.
+          )}
+
+          {/* D — Composição da proposta (reconciliada) */}
+          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">Composição da proposta</h3>
+              <span className="text-[11px] text-zinc-400">
+                valor comercial = total final × participação técnica · {composicaoFinal.reconciliaOk ? "reconciliado" : "divergente"}
+              </span>
             </div>
-          )}
-
-          {erroEmissao && (
-            <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
-              {erroEmissao}
-            </p>
-          )}
-
-          <div className="mt-4 flex flex-wrap items-end gap-3">
-            <form action={emitirOrcamentoFinalDaDemanda} className="flex flex-wrap items-end gap-2">
-              <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
-              <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Validade (dias)</label>
-                <input
-                  {...hydrationSafe}
-                  name="validade_dias"
-                  type="number"
-                  min="1"
-                  step="1"
-                  defaultValue="30"
-                  className={`${inp} mt-1 w-28`}
-                  disabled={!orcamentoFinal.pronto}
-                />
-              </div>
-              <button
-                className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 dark:disabled:bg-zinc-800"
-                disabled={!orcamentoFinal.pronto}
-              >
-                Emitir versão final
-              </button>
-            </form>
+            {composicaoFinal.linhas.length === 0 ? (
+              <p className="mt-3 text-xs text-zinc-400">Nenhum componente com valor positivo para compor a proposta.</p>
+            ) : (
+              <TabelaSimples
+                colunas={["Componente", "Descrição", "Qtd", "Custo unit. téc.", "Subtotal téc.", "Participação", "Valor comercial", "Obs."]}
+                vazio="Sem componentes."
+                linhas={composicaoFinal.linhas.map((l) => [
+                  l.componente,
+                  l.descricao,
+                  String(l.quantidade),
+                  brl(l.custoUnitarioTecnico),
+                  brl(l.subtotalTecnico),
+                  `${(l.participacao * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`,
+                  brl(l.valorComercial),
+                  l.observacao ?? "—",
+                ])}
+              />
+            )}
           </div>
 
-          <div className="mt-5 rounded-md border border-zinc-200 dark:border-zinc-800">
-            <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2 dark:border-zinc-800">
-              <p className="text-xs font-semibold">Versões emitidas</p>
+          {/* E — Itens detalhados (custo técnico × preço snapshot), expansível */}
+          <details className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <summary className="cursor-pointer text-sm font-semibold">Detalhamento interno (custo técnico × preço snapshot)</summary>
+            <div className="mt-3 space-y-4">
+              {exigeAnalises && (
+                <div>
+                  <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">Laboratório</p>
+                  <TabelaSimples
+                    colunas={["Análise", "Amostras", "Custo unit. (técnico)", "Preço unit. (snapshot)", "Custo total"]}
+                    vazio="Sem itens laboratoriais."
+                    linhas={itensLaboratorioFlat.map((item, i) => [
+                      item.codigo_analise ?? `Item ${i + 1}`,
+                      String(item.n_amostras ?? 0),
+                      brl(Number(item.custo_unitario ?? 0)),
+                      brl(Number(item.preco_unitario ?? 0)),
+                      brl(Number(item.custo_unitario ?? 0) * Number(item.n_amostras ?? 0)),
+                    ])}
+                  />
+                </div>
+              )}
+              {exigeProjeto && (
+                <div>
+                  <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">Projeto</p>
+                  <TabelaSimples
+                    colunas={["Rubrica", "Quantidade", "Custo unit. (técnico)", "Custo total"]}
+                    vazio="Sem custos de projeto."
+                    linhas={custosProjetoFlat.map((item, i) => [
+                      item.rubrica ?? `Item ${i + 1}`,
+                      String(
+                        item.rubrica === "PE" && (item.meses_selecionados?.length ?? 0) > 0
+                          ? item.meses_selecionados!.length
+                          : item.quantidade ?? 0,
+                      ),
+                      brl(Number(item.custo_unitario ?? 0)),
+                      brl(
+                        (item.rubrica === "PE" && (item.meses_selecionados?.length ?? 0) > 0
+                          ? item.meses_selecionados!.length
+                          : Number(item.quantidade ?? 0)) * Number(item.custo_unitario ?? 0),
+                      ),
+                    ])}
+                  />
+                </div>
+              )}
+              <p className="text-[11px] text-zinc-400">
+                O preço laboratorial (snapshot) é apenas referência operacional e NÃO entra no fechamento da proposta (Política A).
+              </p>
+            </div>
+          </details>
+
+          {/* G — Histórico resumido */}
+          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">Histórico de versões</h3>
               <span className="text-xs text-zinc-400">{versoesFinais?.length ?? 0} versão(ões)</span>
             </div>
-            <div className="divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
+            <div className="mt-3 divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
               {(versoesFinais ?? []).map((versao) => (
-                <div key={versao.id} className="grid gap-2 px-3 py-2 md:grid-cols-5">
+                <div key={versao.id} className="grid items-center gap-2 px-1 py-2 md:grid-cols-5">
                   <Link href={`/orcamento/final/${versao.id}`} className="font-medium text-primary hover:underline">
                     {versao.numero}
                   </Link>
@@ -664,26 +839,13 @@ export default async function DemandaDetalhe({
                 </div>
               ))}
               {(versoesFinais ?? []).length === 0 && (
-                <p className="px-3 py-4 text-xs text-zinc-400">Nenhuma versão final emitida.</p>
+                <p className="px-1 py-4 text-xs text-zinc-400">Nenhuma versão final emitida.</p>
               )}
             </div>
+            <p className="mt-2 text-[11px] text-zinc-400">
+              Versões emitidas antes da engine atual mantêm seus snapshots originais (modo legado) e não são recalculadas.
+            </p>
           </div>
-
-          {exigeProjeto && (
-            <div className="mt-4 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
-              <p className="text-xs font-semibold">Parâmetros econômicos do projeto</p>
-              <div className="mt-2 grid gap-2 text-xs text-zinc-500 md:grid-cols-3">
-                {orcamentoFinal.parametrosProjeto.map((parametro) => (
-                  <div key={parametro.key} className="flex justify-between gap-3 rounded bg-zinc-50 px-2 py-1.5 dark:bg-zinc-950/50">
-                    <span>{parametro.label}</span>
-                    <span className="font-medium text-zinc-700 dark:text-zinc-200">
-                      {parametro.nominalRate.toLocaleString("pt-BR")}% · {brl(parametro.amount)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </section>
 
         <section id="demanda" className={`mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("demanda")}`}>

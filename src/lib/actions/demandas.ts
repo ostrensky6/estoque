@@ -7,6 +7,7 @@ import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
 import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
 import { modalidadeExigeLaboratorio, modalidadeExigeProjeto } from "@/lib/orcamento/orcamento-economico";
+import { detectarCustosZero } from "@/lib/orcamento/proposta-final";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
 import type { Json } from "@/lib/supabase/database.types";
 import { registrarEvento } from "./eventos";
@@ -306,6 +307,19 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
 
   if (!consolidado.pronto) {
     redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent(consolidado.pendencias.join("; "))}`);
+  }
+
+  // Validação defensiva (Fase 10): bloqueia emissão com custo técnico <= 0 sem
+  // justificativa de isenção. Não altera dados — apenas impede a emissão.
+  const custosZero = detectarCustosZero({
+    itensLaboratorio: (orcamentos ?? []).flatMap((o) => o.orcamento_itens ?? []),
+    custosProjeto: (orcProjetos ?? []).flatMap((o) => o.orcamento_projeto_custos ?? []),
+    analisesProjeto: (orcProjetos ?? []).flatMap((o) => o.orcamento_projeto_analises ?? []),
+    projetoTemJustificativa: (orcProjetos ?? []).some((o) => Boolean(o.projeto_sem_custo_justificativa)),
+  });
+  if (custosZero.length > 0) {
+    const msg = `Itens com custo técnico zero sem justificativa: ${custosZero.map((c) => c.descricao).join(", ")}.`;
+    redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent(msg)}`);
   }
 
   const versao = Number(ultimaVersao?.versao ?? 0) + 1;
