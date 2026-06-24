@@ -111,18 +111,16 @@ export async function criarOrcamento(formData: FormData) {
     const titulo =
       String(formData.get("titulo") ?? "").trim() ||
       (tipo === "analises_projeto" ? `Projeto com análises - ${cliente_nome}` : `Projeto - ${cliente_nome}`);
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("orcamento_projetos")
       .insert({
         demanda_id: demandaId,
         projeto_id,
         titulo,
         cliente_nome,
-      })
-      .select("id")
-      .single();
+      });
     if (error) throw new Error(error.message);
-    redirect(`/orcamento/projetos/${data.id}`);
+    redirect(`/orcamento/demandas/${demandaId}#projeto`);
   }
 
   const { data, error } = await supabase

@@ -76,7 +76,7 @@ describe("actions de orcamentos", () => {
     formData.set("projeto_id", "5");
     formData.set("titulo", "Proposta Completa");
 
-    await expect(criarOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/projetos/42");
+    await expect(criarOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/demandas/9#projeto");
 
     expect(insert).toHaveBeenCalledWith({
       demanda_id: 9,
@@ -84,7 +84,7 @@ describe("actions de orcamentos", () => {
       titulo: "Proposta Completa",
       cliente_nome: "Cliente Projeto",
     });
-    expect(redirect).toHaveBeenCalledWith("/orcamento/projetos/42");
+    expect(redirect).toHaveBeenCalledWith("/orcamento/demandas/9#projeto");
   });
 
   it("bloqueia criacao direta sem demanda vinculada", async () => {

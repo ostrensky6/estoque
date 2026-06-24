@@ -186,7 +186,7 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
     redirect(`${listaPath}/${id}`);
   }
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("orcamento_projetos")
     .insert({
       demanda_id: id,
@@ -199,14 +199,12 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
       responsavel: demanda.responsavel_interno,
       escopo: demanda.escopo_preliminar || demanda.descricao,
       observacoes: demanda.observacoes,
-    })
-    .select("id")
-    .single();
+    });
 
   if (error) throw new Error(error.message);
   await supabase.from("demandas_propostas").update({ status: "orcada" }).eq("id", id);
   revalidatePath(listaPath);
-  redirect(`/orcamento/projetos/${data.id}`);
+  redirect(`/orcamento/demandas/${id}#projeto`);
 }
 
 export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {

@@ -37,4 +37,12 @@ describe("montarEtapasProposta", () => {
     const ids = montarEtapasProposta("analises").map((e) => e.id);
     expect(ids).toEqual(["demanda", "laboratorio", "projeto", "parametros", "final"]);
   });
+
+  it("parametros e final sempre aplicaveis; laboratorio/projeto condicionais", () => {
+    const flags = (m: string) =>
+      Object.fromEntries(montarEtapasProposta(m).map((e) => [e.id, e.aplicavel]));
+    expect(flags("analises")).toMatchObject({ laboratorio: true, projeto: false, parametros: true, final: true });
+    expect(flags("projeto")).toMatchObject({ laboratorio: false, projeto: true, parametros: true, final: true });
+    expect(flags("projeto_analises_custos")).toMatchObject({ laboratorio: true, projeto: true, parametros: true, final: true });
+  });
 });
