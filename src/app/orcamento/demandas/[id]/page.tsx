@@ -15,6 +15,11 @@ import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
 import { PainelParametrosEconomicos } from "@/components/orcamento/PainelParametrosEconomicos";
 import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
+import {
+  montarEtapasProposta,
+  MODALIDADES_COM_ANALISES,
+  MODALIDADES_COM_PROJETO,
+} from "@/lib/orcamento/etapas-proposta";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +29,6 @@ const MODALIDADES: Record<string, string> = {
   analises_projeto: "Análises dentro de projeto",
   projeto_analises_custos: "Projeto com custos próprios e análises laboratoriais",
 };
-
-const MODALIDADES_COM_ANALISES = new Set(["analises", "analises_projeto", "projeto_analises_custos"]);
-const MODALIDADES_COM_PROJETO = new Set(["projeto", "analises_projeto", "projeto_analises_custos"]);
 
 type OrcamentoAnalisesResumo = {
   id: number;
@@ -168,14 +170,20 @@ export default async function DemandaDetalhe({
     moduloProjeto.status === "preenchido" ? "revisar custos de projeto" : null,
   ].filter(Boolean) as string[];
   const podeConsolidar = modulosPendentes.length === 0;
-  const tabs = [
-    { id: "demanda", label: "Demanda", status: completudeDemanda.completa ? "Completa" : `${completudeDemanda.faltante}% faltante`, aplicavel: true },
-    { id: "laboratorio", label: "Custos laboratoriais", status: moduloAnalises.label, aplicavel: exigeAnalises },
-    { id: "projeto", label: "Custos de projeto", status: moduloProjeto.label, aplicavel: exigeProjeto },
-    { id: "parametros", label: "Parametros economicos", status: podeConsolidar ? "Liberado" : "Bloqueado", aplicavel: exigeProjeto },
-    { id: "final", label: "Orcamento final", status: orcamentoFinal.pronto ? "Pronto" : "Bloqueado", aplicavel: true },
-    { id: "historico", label: "Historico e auditoria", status: `${versoesFinais?.length ?? 0} versao(oes)`, aplicavel: true },
-  ];
+  const statusPorEtapa: Record<string, string> = {
+    demanda: completudeDemanda.completa ? "Completa" : `${completudeDemanda.faltante}% faltante`,
+    laboratorio: moduloAnalises.label,
+    projeto: moduloProjeto.label,
+    parametros: podeConsolidar ? "Liberado" : "Bloqueado",
+    final: orcamentoFinal.pronto ? "Pronto" : "Bloqueado",
+  };
+  const etapas = montarEtapasProposta(demanda.modalidade);
+  const tabs = etapas.map((etapa) => ({
+    id: etapa.id,
+    label: etapa.label,
+    status: statusPorEtapa[etapa.id] ?? "",
+    aplicavel: etapa.aplicavel,
+  }));
   const pendenciasTabela = [
     {
       etapa: "Demanda",
@@ -326,7 +334,7 @@ export default async function DemandaDetalhe({
                 <form action={gerarOrcamentoAnalisesDaDemanda}>
                   <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
                   <button className="rounded-md bg-brand-600 px-3 py-2 text-xs font-medium text-white hover:bg-brand-500">
-                    Custos laboratoriais
+                    Orçamento laboratorial
                   </button>
                 </form>
               ) : exigeAnalises ? (
@@ -390,7 +398,7 @@ export default async function DemandaDetalhe({
         <section id="laboratorio" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold">Custos laboratoriais</h2>
+              <h2 className="text-sm font-semibold">Orçamento laboratorial</h2>
               <p className="mt-1 text-xs leading-5 text-zinc-500">
                 Tabela operacional dos orçamentos de análises gerados a partir desta demanda.
               </p>
@@ -444,7 +452,7 @@ export default async function DemandaDetalhe({
         <section id="projeto" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold">Custos de projeto</h2>
+              <h2 className="text-sm font-semibold">Custos do projeto</h2>
               <p className="mt-1 text-xs leading-5 text-zinc-500">
                 Custos próprios, análises internas do projeto e justificativas de projeto sem custo.
               </p>
@@ -540,7 +548,7 @@ export default async function DemandaDetalhe({
         <section id="final" className="mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold">Orçamento final</h2>
+              <h2 className="text-sm font-semibold">Proposta final</h2>
               <p className="mt-1 text-xs leading-5 text-zinc-500">
                 Consolidação calculada a partir dos módulos vinculados à demanda.
               </p>
