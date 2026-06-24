@@ -1,3 +1,5 @@
+import { modalidadeExigeLaboratorio, modalidadeExigeProjeto } from "./orcamento-economico";
+
 export type DemandaCompletudeInput = {
   titulo?: string | null;
   cliente_id?: number | null;
@@ -10,9 +12,6 @@ export type DemandaCompletudeInput = {
   quantidade_amostras_estimada?: number | null;
   prazo_tecnico_dias?: number | null;
 };
-
-const MODALIDADES_COM_ANALISES = new Set(["analises", "analises_projeto", "projeto_analises_custos"]);
-const MODALIDADES_COM_PROJETO = new Set(["projeto", "analises_projeto", "projeto_analises_custos"]);
 
 function preenchido(valor: unknown) {
   return typeof valor === "string" ? valor.trim().length > 0 : Boolean(valor);
@@ -43,14 +42,14 @@ export function avaliarCompletudeDemanda(demanda: DemandaCompletudeInput) {
     pendencias.push("descrever escopo preliminar ou descricao da demanda");
   }
 
-  if (MODALIDADES_COM_PROJETO.has(modalidade)) {
+  if (modalidadeExigeProjeto(modalidade)) {
     criterios.push(Boolean(demanda.projeto_id));
     if (!criterios.at(-1)) {
       pendencias.push("vincular um projeto para modalidades com projeto");
     }
   }
 
-  if (MODALIDADES_COM_ANALISES.has(modalidade)) {
+  if (modalidadeExigeLaboratorio(modalidade)) {
     criterios.push(preenchido(demanda.matriz_amostra));
     if (!criterios.at(-1)) {
       pendencias.push("informar matriz ou tipo de amostra");
