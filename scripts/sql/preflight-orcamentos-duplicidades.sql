@@ -16,7 +16,7 @@
 -- bloco "RESUMO" e, depois, cada consulta de DETALHE individualmente.
 --
 -- Schema de referência (migrations 0007/0010/0011/0013/0033/0035/0037/0038/0039/
--- 0040/0041). "Módulo ativo" = status <> 'cancelado' (e, no laboratório, também
+-- 0040/0045). "Módulo ativo" = status <> 'cancelado' (e, no laboratório, também
 -- status_operacional <> 'cancelado').
 -- =====================================================================
 
@@ -311,8 +311,10 @@ rollback;
 
 -- A15 — conflito de numeração de migrations aplicadas (ledger do Supabase).
 --       Detecta dois arquivos com o mesmo prefixo numérico (ex.: 0041) aplicados.
---       Observação: o conflito 0041 desta entrega é de REPOSITÓRIO (arquivos),
---       resolvido na revisão de integração; esta consulta cobre o que já foi aplicado.
+--       Observação: o conflito de REPOSITÓRIO foi resolvido preventivamente —
+--       a migration de modalidade foi renumerada de 0041 para 0045 (0041..0044 já
+--       são usadas por feat/integridade-cadastros e feat/orcamento-integrado-final).
+--       Esta consulta cobre o que já foi aplicado no banco-alvo.
 -- select left(version, 4) as prefixo, count(*) as qtd, array_agg(version order by version) as versions
 --   from supabase_migrations.schema_migrations
 --  group by left(version, 4) having count(*) > 1 order by prefixo;

@@ -40,7 +40,7 @@ No **Supabase SQL Editor** (mostra só o último result set): rode o bloco
 
 ## Esquema de referência
 
-Migrations `0007/0010/0011/0013/0033/0035/0037/0038/0039/0040/0041`.
+Migrations `0007/0010/0011/0013/0033/0035/0037/0038/0039/0040/0045`.
 "Módulo ativo" = `status <> 'cancelado'` (no laboratório, também
 `status_operacional <> 'cancelado'`). "Versão vigente" = `status = 'emitido'`.
 
@@ -60,20 +60,23 @@ Migrations `0007/0010/0011/0013/0033/0035/0037/0038/0039/0040/0041`.
 | **A8** | **>1 versão vigente (emitida)** por demanda | ALTA | Duas propostas "válidas" simultâneas para a mesma demanda | Manter a mais recente como `emitido`; marcar anteriores como `substituido` (não apagar); proteção: 1 vigente por demanda |
 | **A9** | **Parâmetros aplicados duplicados** por versão final | ALTA | Snapshot econômico ambíguo da mesma versão | Eleger o registro consistente com `total_final` da versão; arquivar duplicatas; registrar decisão em log |
 | **A10** | **Registros órfãos** (módulos sem demanda; parâmetros sem versão/demanda) | MÉDIA | Dados fora do fluxo da proposta; ruído em relatórios | Revisar: vincular à demanda correta ou arquivar; **não** `DELETE` sem backup/relatório e comprovação de ausência de dependências |
-| **A11** | **Modalidades legadas e canônica coexistindo** | MÉDIA | Inconsistência de modalidade entre linhas | Normalizar legadas → `projeto_com_analises` via migration **0041** (aditiva, já entregue no PR #4); código já trata legadas == canônica |
+| **A11** | **Modalidades legadas e canônica coexistindo** | MÉDIA | Inconsistência de modalidade entre linhas | Normalizar legadas → `projeto_com_analises` via migration **0045** (aditiva, já entregue no PR #4); código já trata legadas == canônica |
 | **A12** | **Status incompatíveis** (demanda `orcada` sem módulo; `aprovada` sem versão; versão emitida em demanda `cancelada`) | ALTA | Estado do funil não reflete a realidade | Reconciliar status conforme regra de ciclo de vida (Fase 8); registrar em auditoria |
 | **A13** | **Itens com custo ≤ 0 sem justificativa** | MÉDIA | Emissão com preço/custo zerado sem aprovação (ver Fase 7) | Exigir flag de isenção + justificativa + responsável + aprovação (Fase 7); por ora, sinalizar na etapa |
 | **A14** | **Total final que não reconcilia** com `snapshot.consolidado.totalFinal` | ALTA | Página/PDF/banco divergem do snapshot | Investigar a engine (Fase 6 — `DEC-ORC-001`); **não** reescrever snapshots históricos; corrigir o cálculo no fluxo novo |
-| **A15** | **Conflito de numeração de migrations** (ledger aplicado + repositório) | ALTA | Migrations com mesmo prefixo (ex.: **0041**) podem colidir na aplicação | Renumerar antes de integrar: a `0041` desta linha de trabalho colide com a `0041–0051` projetadas em outra branch (ver abaixo) |
+| **A15** | **Conflito de numeração de migrations** (ledger aplicado + repositório) | ALTA | Migrations com mesmo prefixo podem colidir na aplicação | **RESOLVIDO** preventivamente: migration renumerada `0041 → 0045` no PR #4 (ver abaixo) |
 
-### Detalhe do A15 (numeração 0041)
+### Detalhe do A15 (numeração de migrations) — RESOLVIDO
 
-- **Repositório:** a migration `0041_modalidade_projeto_com_analises.sql` (PR #4)
-  ocupa o número **0041**. Há, em outra branch não mesclada, migrations
-  **0041–0051** projetadas (cadastros/integridade). Como ambas partem do mesmo
-  `0040`, há **colisão de prefixo** ao integrar. **Ação:** renumerar uma das
-  séries no momento da integração (decisão de ordem de merge), preservando o
-  conteúdo. O preflight A15 consulta `supabase_migrations.schema_migrations` para
+- **Colisão identificada:** a migration de modalidade ocupava o número **0041**,
+  mas `0041`, `0042`, `0043` e `0044` já estão em uso por outras branches abertas
+  (`feat/integridade-cadastros` e `feat/orcamento-integrado-final`, PR #2).
+- **Resolução (preventiva, neste stack):** a migration foi **renumerada de
+  `0041` para `0045`** no PR #4 (`0045_modalidade_projeto_com_analises.sql`),
+  conteúdo inalterado. `0045` é o primeiro número livre acima de `0044`. Assim, o
+  resultado integrado não terá dois arquivos com o mesmo prefixo,
+  **independentemente da ordem de merge**.
+- O preflight A15 consulta `supabase_migrations.schema_migrations` para
   detectar prefixos duplicados **já aplicados** no banco-alvo.
 
 ---
