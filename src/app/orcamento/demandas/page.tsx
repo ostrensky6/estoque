@@ -117,12 +117,12 @@ export default async function DemandasPage({
           className="mt-6 grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm md:grid-cols-4 md:items-end dark:border-zinc-800 dark:bg-zinc-900"
         >
           <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Título da demanda</label>
-            <input name="titulo" placeholder="Ex.: Sequenciamento de amostras ambientais" className={`${inp} mt-1 w-full`} />
+            <label htmlFor="titulo" className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Título da demanda</label>
+            <input id="titulo" name="titulo" placeholder="Ex.: Sequenciamento de amostras ambientais" className={`${inp} mt-1 w-full`} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Cliente</label>
-            <select name="cliente_id" defaultValue="" className={`${inp} mt-1 w-full`}>
+            <label htmlFor="cliente_id" className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Cliente</label>
+            <select id="cliente_id" name="cliente_id" defaultValue="" className={`${inp} mt-1 w-full`}>
               <option value="">Cliente livre</option>
               {(clientes ?? []).map((c) => (
                 <option key={c.id} value={c.id}>{c.nome}</option>
@@ -130,28 +130,28 @@ export default async function DemandasPage({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Modalidade</label>
-            <select name="modalidade" defaultValue="analises" className={`${inp} mt-1 w-full`}>
+            <label htmlFor="modalidade" className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Modalidade</label>
+            <select id="modalidade" name="modalidade" defaultValue="analises" className={`${inp} mt-1 w-full`}>
               {MODALIDADES_NOVAS.map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Cliente livre</label>
-            <input name="cliente_nome" placeholder="Nome do cliente/instituição se não estiver cadastrado" className={`${inp} mt-1 w-full`} />
+            <label htmlFor="cliente_nome" className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Cliente livre</label>
+            <input id="cliente_nome" name="cliente_nome" placeholder="Nome do cliente/instituição se não estiver cadastrado" className={`${inp} mt-1 w-full`} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Matriz/amostra</label>
-            <input name="matriz_amostra" placeholder="Ex.: água, solo, tecido" className={`${inp} mt-1 w-full`} />
+            <label htmlFor="matriz_amostra" className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Matriz/amostra</label>
+            <input id="matriz_amostra" name="matriz_amostra" placeholder="Ex.: água, solo, tecido" className={`${inp} mt-1 w-full`} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Qtd. amostras</label>
-            <input name="quantidade_amostras_estimada" type="number" min="1" step="1" className={`${inp} mt-1 w-full`} />
+            <label htmlFor="quantidade_amostras_estimada" className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Qtd. amostras</label>
+            <input id="quantidade_amostras_estimada" name="quantidade_amostras_estimada" type="number" min="1" step="1" className={`${inp} mt-1 w-full`} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Projeto</label>
-            <select name="projeto_id" defaultValue="" className={`${inp} mt-1 w-full`}>
+            <label htmlFor="projeto_id" className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Projeto</label>
+            <select id="projeto_id" name="projeto_id" defaultValue="" className={`${inp} mt-1 w-full`}>
               <option value="">Sem projeto</option>
               {(projetos ?? []).map((p) => (
                 <option key={p.id} value={p.id}>{p.nome}</option>
