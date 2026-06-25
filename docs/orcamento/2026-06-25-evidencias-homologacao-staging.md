@@ -90,10 +90,31 @@
 
 ## BLOQUEADORES (exigem decisão humana)
 
-### INFRA-001 (ex-B1) — Supabase Staging não identificado — **ABERTO** — **HOMOLOGAÇÃO REMOTA PARADA**
+### INFRA-001 — Supabase Staging — **DESBLOQUEADO PARA VERIFICAÇÃO** (Staging oficial identificado) — **PUSH/LINK AINDA NÃO AUTORIZADOS**
 
-> **Status:** ABERTO · **Severidade:** Bloqueador · **Bloqueia merge:** Sim (impede homologação real em Staging) · **Aberto em:** 2026-06-25
-> **Resumo:** Não existe ambiente Supabase Staging formalmente identificado; `supabase db push --linked` resolveria para PRODUÇÃO.
+> **Status:** DESBLOQUEADO PARA VERIFICAÇÃO · **Severidade:** (rebaixada) · **Bloqueia merge:** Sim, até concluir homologação · **Atualizado em:** 2026-06-25
+> **Resumo:** Staging oficial identificado e confirmado read-only na org correta. Produção continua **proibida**. `supabase link`/`db push`/migrations **ainda não autorizados**.
+
+**Staging OFICIAL do Kontrol (confirmado read-only via `supabase projects list` em 2026-06-25):**
+
+| Item | Valor |
+|---|---|
+| Nome do projeto | `teste_kontrol_provisorio` |
+| Project Ref | `bebeqqrrmdvqaabkqfhp` |
+| URL | `https://bebeqqrrmdvqaabkqfhp.supabase.co` |
+| Org | `syexigkdeqzrlgpsbgtt` ("ostrensky6") — mesma org da produção, **projeto separado** |
+| Região | South America / São Paulo (`sa-east-1`) — igual à produção |
+| Criado em | 2026-06-25 15:01:11 UTC |
+| **≠ Produção?** | ✅ Sim — Staging `bebeqqrrmdvqaabkqfhp` **≠** Produção `hhxwdcwphitfxywbgtju` |
+
+**✅ Relink concluído (2026-06-25):** `supabase link --project-ref bebeqqrrmdvqaabkqfhp` executado com sucesso (`Finished supabase link.`). Confirmado read-only via `supabase projects list`:
+- `LINKED ●` agora aponta para **STAGING** `bebeqqrrmdvqaabkqfhp` (teste_kontrol_provisorio).
+- Produção `hhxwdcwphitfxywbgtju` **NÃO está mais linkada** (sem marcador) e permanece intocada.
+- Nenhum `db push`, migration, SQL ou preflight executado. Nenhum secret/senha impresso ou registrado.
+
+**⚠️ `db push` ainda NÃO autorizado.** Mesmo com o CLI agora linkado ao Staging, qualquer `supabase db push`/migration aguarda autorização explícita do responsável.
+
+**Proibições mantidas:** produção `hhxwdcwphitfxywbgtju` intocável; sem `link`, `db push`, migrations, preflight, limpeza, constraints, merge ou cópia de dados de produção até autorização explícita.
 
 **Decisão humana registrada (2026-06-25):**
 - `hhxwdcwphitfxywbgtju` = **PRODUÇÃO** (Kontrol/estoque). **Não tocar.**
@@ -123,6 +144,35 @@
 - Criar/identificar formalmente o projeto **Staging** no Supabase Dashboard e fornecer o ref + confirmação documental, **ou**
 - Confirmar via Dashboard que `hxrzgisczusgqzwixrhk` é Staging e prover um access token com acesso à org `gjkxxhfwezicjasqowji` (o token atual não a acessa).
 - Recomenda-se também corrigir/realinhar o `supabase link` (hoje o CLI aponta para produção) antes de qualquer execução de homologação.
+
+---
+
+## Execução em Staging — Migrations + Testes (2026-06-25)
+
+### Migrations aplicadas no Staging `bebeqqrrmdvqaabkqfhp`
+- **Pré-condição verificada:** `supabase projects list` → `LINKED ●` em `bebeqqrrmdvqaabkqfhp`; produção `hhxwdcwphitfxywbgtju` **sem** marcador. ✅
+- **`supabase db push --linked`** → EXIT 0. Banco de Staging estava vazio → aplicou toda a cadeia `0001`→`0047`, **incluindo 0045, 0046, 0047** (0044 não existe).
+- **`supabase migration list --linked`** → Local = Remote para todas as versões, incluindo 0045/0046/0047. ✅
+- **Produção intocada:** push direcionado por `--linked` ao Staging; nenhum comando contra `hhxwdcwphitfxywbgtju`. ✅
+- Sem SQL manual, sem preflight, sem limpeza, sem constraints definitivas, sem merge.
+
+### Testes automatizados (working tree da RC, com alterações NÃO commitadas de outro fluxo)
+
+| Suíte | Comando | Resultado | EXIT |
+|---|---|---|---|
+| Unit/integração | `npm test` (vitest run) | **2 falhas / 179 passou** (181) | 1 |
+| Lint | `npm run lint` | **5 erros** (`no-explicit-any`) | 1 |
+| Typecheck | `npx tsc --noEmit` | **1 erro de tipo** | 2 |
+| Build | `npm run build` | compilou OK; **falha no type-check** | 1 |
+| E2E/A11y | `npm run test:e2e` (playwright) | **16 passou / 1 falhou** | 1 |
+
+**Causa-raiz comum (não é defeito da RC commitada):** todas as 4 falhas convergem para alterações **não-commitadas no working tree**, de outro fluxo, fora da pilha PR #3→#12:
+- `src/lib/actions/demandas.ts` (Modified, não commitado) → 5 erros de lint `no-explicit-any` e mudança de assinatura de `salvarDemanda`.
+- `src/app/orcamento/demandas/[id]/page.tsx` (commitado) consome a assinatura nova → erro de tipo no `tsc`/`build`.
+- `src/lib/actions/demandas-sync-rpc.test.ts` (untracked) → 2 falhas unitárias.
+- `e2e/orcamento-parametros.spec.ts:9` → `#parametros` não renderiza (página da demanda quebrada pela `demandas.ts` suja).
+
+> Nenhuma correção/stash/cleanup aplicada (fora de escopo). Recomenda-se re-executar a suíte sobre um checkout **limpo** da RC para isolar o status real da pilha.
 
 ---
 
