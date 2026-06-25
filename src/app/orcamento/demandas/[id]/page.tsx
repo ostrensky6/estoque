@@ -9,6 +9,7 @@ import {
   gerarOrcamentoProjetoDaDemanda,
   salvarDemanda,
 } from "@/lib/actions/demandas";
+import { planejarModulosProposta, type PlanoModulo } from "@/lib/orcamento/garantir-modulos";
 import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
 import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
@@ -95,10 +96,10 @@ export default async function DemandaDetalhe({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ erro_emissao?: string; etapa?: string }>;
+  searchParams: Promise<{ erro_emissao?: string; etapa?: string; erro_integridade?: string }>;
 }) {
   const { id } = await params;
-  const { erro_emissao: erroEmissao, etapa: etapaParam } = await searchParams;
+  const { erro_emissao: erroEmissao, etapa: etapaParam, erro_integridade: erroIntegridade } = await searchParams;
   const demandaId = Number(id);
   const supabase = await createClient();
 
@@ -264,6 +265,14 @@ export default async function DemandaDetalhe({
   });
   const podeEmitir = orcamentoFinal.pronto && !temCustoZeroSemJustificativa;
   const versaoEmitidaVigente = (versoesFinais ?? []).find((v) => v.status === "emitido");
+
+  // --- Idempotência/UI dos módulos (Fase 5) ---
+  const planoModulosUi = planejarModulosProposta({
+    modalidade: demanda.modalidade,
+    projetoAssociado: Boolean(demanda.projeto_id),
+    laboratorioAtivos: orcamentosAnalises.filter((o) => o.status !== "cancelado").map((o) => o.id),
+    projetoAtivos: orcamentosProjeto.filter((o) => o.status !== "cancelado").map((o) => o.id),
+  });
   const pendenciasTabela = [
     {
       etapa: "Demanda",
@@ -419,39 +428,32 @@ export default async function DemandaDetalhe({
                 Complete a demanda antes de gerar módulos: {completudeDemanda.pendencias.join("; ")}.
               </div>
             )}
+            {(planoModulosUi.bloqueadoPorDuplicidade || erroIntegridade) && (
+              <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+                <p className="font-medium">Integridade comprometida</p>
+                {erroIntegridade && <p>{erroIntegridade}</p>}
+                {planoModulosUi.erros.map((e) => (
+                  <p key={e}>{e}</p>
+                ))}
+              </div>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
-              {exigeAnalises && completudeDemanda.completa ? (
-                <form action={gerarOrcamentoAnalisesDaDemanda}>
-                  <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
-                  <button className="rounded-md bg-brand-600 px-3 py-2 text-xs font-medium text-white hover:bg-brand-500">
-                    Orçamento laboratorial
-                  </button>
-                </form>
-              ) : exigeAnalises ? (
-                <span className="rounded-md border border-amber-200 px-3 py-2 text-xs text-amber-700 dark:border-amber-900 dark:text-amber-300">
-                  Complete a demanda
-                </span>
-              ) : (
-                <span className="rounded-md border border-zinc-200 px-3 py-2 text-xs text-zinc-400 dark:border-zinc-800">
-                  Laboratório não se aplica
-                </span>
-              )}
-              {exigeProjeto && completudeDemanda.completa ? (
-                <form action={gerarOrcamentoProjetoDaDemanda}>
-                  <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
-                  <button className="rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
-                    Custos de projeto
-                  </button>
-                </form>
-              ) : exigeProjeto ? (
-                <span className="rounded-md border border-amber-200 px-3 py-2 text-xs text-amber-700 dark:border-amber-900 dark:text-amber-300">
-                  Complete a demanda
-                </span>
-              ) : (
-                <span className="rounded-md border border-zinc-200 px-3 py-2 text-xs text-zinc-400 dark:border-zinc-800">
-                  Projeto não se aplica
-                </span>
-              )}
+              <ModuloAcao
+                plano={planoModulosUi.laboratorio}
+                rotulo="laboratorial"
+                demandaCompleta={completudeDemanda.completa}
+                demandaId={demandaId}
+                acaoCriar={gerarOrcamentoAnalisesDaDemanda}
+                hrefBase="/orcamento"
+              />
+              <ModuloAcao
+                plano={planoModulosUi.projeto}
+                rotulo="de projeto"
+                demandaCompleta={completudeDemanda.completa}
+                demandaId={demandaId}
+                acaoCriar={gerarOrcamentoProjetoDaDemanda}
+                hrefBase="/orcamento/projetos"
+              />
             </div>
           </div>
 
@@ -1026,6 +1028,62 @@ export default async function DemandaDetalhe({
         </section>
       </main>
     </div>
+  );
+}
+
+function ModuloAcao({
+  plano,
+  rotulo,
+  demandaCompleta,
+  demandaId,
+  acaoCriar,
+  hrefBase,
+}: {
+  plano: PlanoModulo;
+  rotulo: string;
+  demandaCompleta: boolean;
+  demandaId: number;
+  acaoCriar: (formData: FormData) => void | Promise<void>;
+  hrefBase: string;
+}) {
+  if (!plano.aplicavel) {
+    return (
+      <span className="rounded-md border border-zinc-200 px-3 py-2 text-xs text-zinc-400 dark:border-zinc-800">
+        {rotulo === "laboratorial" ? "Laboratório" : "Projeto"} não se aplica
+      </span>
+    );
+  }
+  if (plano.acao === "bloqueado") {
+    return (
+      <span className="rounded-md border border-red-200 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:text-red-300">
+        Orçamento {rotulo}: saneamento necessário
+      </span>
+    );
+  }
+  if (!demandaCompleta) {
+    return (
+      <span className="rounded-md border border-amber-200 px-3 py-2 text-xs text-amber-700 dark:border-amber-900 dark:text-amber-300">
+        Complete a demanda
+      </span>
+    );
+  }
+  if (plano.acao === "abrir" && plano.moduloId) {
+    return (
+      <Link
+        href={`${hrefBase}/${plano.moduloId}`}
+        className="rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+      >
+        Abrir orçamento {rotulo}
+      </Link>
+    );
+  }
+  return (
+    <form action={acaoCriar}>
+      <input suppressHydrationWarning type="hidden" name="demanda_id" value={demandaId} />
+      <button className="rounded-md bg-brand-600 px-3 py-2 text-xs font-medium text-white hover:bg-brand-500">
+        Criar orçamento {rotulo}
+      </button>
+    </form>
   );
 }
 

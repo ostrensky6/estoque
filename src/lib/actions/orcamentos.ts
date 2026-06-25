@@ -12,7 +12,25 @@ import {
   type ItemLaboratorioOperacional,
 } from "@/lib/orcamento/laboratorio-operacional";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
+import { moduloBloqueadoParaEdicao } from "@/lib/orcamento/ciclo-vida-modulo";
 import { registrarEvento } from "./eventos";
+
+// Validação defensiva de servidor: impede edição direta de módulo laboratorial
+// revisado/enviado/aprovado/cancelado (Fase 5). Não confiar só no botão da UI.
+async function assegurarLaboratorioEditavel(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orcamentoId: number,
+) {
+  const { data } = await supabase
+    .from("orcamentos")
+    .select("status, status_operacional")
+    .eq("id", orcamentoId)
+    .single();
+  const bloqueio = moduloBloqueadoParaEdicao({ status: data?.status, statusOperacional: data?.status_operacional });
+  if (bloqueio.bloqueado) {
+    throw new Error(bloqueio.motivo ?? "Edição bloqueada.");
+  }
+}
 
 export type ParametrosEconomicosState = {
   ok: boolean;
@@ -207,6 +225,7 @@ export async function adicionarItemOrcamento(formData: FormData) {
   const b = breakdowns.find((x) => x.codigo === codigo);
 
   const supabase = await createClient();
+  await assegurarLaboratorioEditavel(supabase, id);
   await supabase.from("orcamento_itens").insert({
     orcamento_id: id,
     codigo_analise: codigo,
@@ -223,6 +242,7 @@ export async function removerItemOrcamento(formData: FormData) {
   const itemId = Number(formData.get("item_id"));
   if (!itemId) return;
   const supabase = await createClient();
+  await assegurarLaboratorioEditavel(supabase, id);
   await supabase.from("orcamento_itens").delete().eq("id", itemId);
   await atualizarOperacionalLaboratorio(supabase, id);
   revalidatePath(`/orcamento/${id}`);

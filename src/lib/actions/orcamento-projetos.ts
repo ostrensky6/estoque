@@ -16,8 +16,26 @@ import {
 import { validarParametrosProjetoGrossUp } from "@/lib/project-budget/legacy";
 import { registrarVersaoParametrosEconomicos } from "@/lib/orcamento/parametros-versionamento";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
+import { moduloBloqueadoParaEdicao } from "@/lib/orcamento/ciclo-vida-modulo";
 
 const pathLista = "/orcamento/projetos";
+
+// Validação defensiva de servidor: impede edição direta de orçamento de projeto
+// revisado/enviado/aprovado/cancelado (Fase 5). Não confiar só no botão da UI.
+async function assegurarProjetoEditavel(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orcamentoProjetoId: number,
+) {
+  const { data } = await supabase
+    .from("orcamento_projetos")
+    .select("status")
+    .eq("id", orcamentoProjetoId)
+    .single();
+  const bloqueio = moduloBloqueadoParaEdicao({ status: data?.status });
+  if (bloqueio.bloqueado) {
+    throw new Error(bloqueio.motivo ?? "Edição bloqueada.");
+  }
+}
 
 function texto(formData: FormData, chave: string) {
   const valor = String(formData.get(chave) ?? "").trim();
@@ -213,6 +231,7 @@ export async function salvarParametrosEconomicosProjeto(formData: FormData) {
 
   await exigirPapelOrcamento("editar_parametros");
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   const { error } = await supabase.from("orcamento_projetos").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
   await registrarVersaoParametrosEconomicos(supabase, {
@@ -241,6 +260,7 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
   const { breakdowns } = await calcularTodas();
   const breakdown = breakdowns.find((x) => x.codigo === codigo);
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   const { error } = await supabase.from("orcamento_projeto_analises").insert({
     orcamento_projeto_id: id,
     codigo_analise: codigo,
@@ -263,6 +283,7 @@ export async function adicionarCustoProjeto(formData: FormData) {
   const categoria = texto(formData, "categoria") || categoriaPorRubrica(rubrica);
 
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   const { error } = await supabase.from("orcamento_projeto_custos").insert({
     orcamento_projeto_id: id,
     categoria,
@@ -298,6 +319,7 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
   if (itemError) throw new Error(itemError.message);
   if (!item) return;
 
+  await assegurarProjetoEditavel(supabase, id);
   const quantidade = numero(formData, "quantidade", 1);
   const mesesSelecionados = inteiroArray(formData, "meses_selecionados");
   const { error } = await supabase.from("orcamento_projeto_custos").insert({
@@ -340,6 +362,7 @@ export async function salvarViagensProjeto(formData: FormData) {
   });
 
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   await supabase.from("orcamento_projetos").update({ travel_inputs: inputs }).eq("id", id);
 
   // Recalcula a quantidade das linhas VD automatizáveis a partir dos parâmetros.
@@ -366,6 +389,7 @@ export async function removerAnaliseProjeto(formData: FormData) {
   const itemId = numero(formData, "item_id");
   if (!id || !itemId) return;
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   await supabase.from("orcamento_projeto_analises").delete().eq("id", itemId);
   revalidatePath(`${pathLista}/${id}`);
 }
@@ -375,6 +399,7 @@ export async function removerCustoProjeto(formData: FormData) {
   const itemId = numero(formData, "item_id");
   if (!id || !itemId) return;
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   await supabase.from("orcamento_projeto_custos").delete().eq("id", itemId);
   revalidatePath(`${pathLista}/${id}`);
 }
