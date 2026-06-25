@@ -189,6 +189,32 @@ Clone limpo `D:/Aplicativos/estoque-rc-clean` da branch RC `claude/rls-permissoe
 
 > Nota a11y: o `a11y.spec.ts` registra (log, não-bloqueante) violações `color-contrast` [serious] em Estoque/Compras/Análises/Parâmetros e `scrollable-region-focusable` em Parâmetros econômicos. Os testes passam; são pendências de melhoria de acessibilidade, não bloqueadores.
 
+### Preflight read-only no Staging (2026-06-25)
+- `node scripts/sql/verify-preflight-readonly.mjs` → ✅ SQL é SOMENTE LEITURA (sem verbos de escrita/DDL; envolto em `BEGIN; SET TRANSACTION READ ONLY; … ROLLBACK;`).
+- Runner `run-preflight-orcamentos.mjs` contra Staging (`PREFLIGHT_ENV=homologacao`, pooler `aws-1-sa-east-1`, sem imprimir a connection string):
+  - ✅ `transaction_read_only = on` confirmado · **READ ONLY + ROLLBACK** · nenhuma escrita.
+  - Artifacts: `artifacts/orcamento-preflight/2026-06-25T18-31-12-203Z/` (resultado.txt, resultados.json, resumo.md, detalhes/A*.csv).
+
+| Check | Sev. | Ocorrências | Verificação |
+|---|---|---:|---|
+| A1 | ALTA | 0 | demandas com >1 orçamento laboratorial ativo |
+| A2 | ALTA | 0 | demandas com >1 orçamento de projeto ativo |
+| A3 | ALTA | 0 | análises repetidas no mesmo orçamento laboratorial |
+| A4 | ALTA | 0 | mesma análise duplicada lab × análises-de-projeto |
+| A5 | MEDIA | 0 | custos de catálogo repetidos no mesmo orçamento de projeto |
+| A6 | ALTA | 0 | versões finais com módulos cancelados no snapshot |
+| A7 | ALTA | 0 | números de versão final duplicados |
+| A8 | ALTA | 0 | mais de uma versão vigente por demanda |
+| A9 | ALTA | 0 | parâmetros aplicados duplicados por versão |
+| A10 | MEDIA | 0 | registros órfãos |
+| A11 | MEDIA | 0 | modalidades legadas e canônica coexistindo |
+| A12 | ALTA | 0 | status incompatíveis (demanda/módulos/proposta) |
+| A13 | MEDIA | 0 | itens com custo zero sem justificativa |
+| A14 | ALTA | 0 | total final que não reconcilia com snapshot |
+| A15 | ALTA | 0 | conflito de numeração de migrations aplicadas |
+
+**Resultado:** 15/15 checks com **0 ocorrências** (esperado — Staging recém-migrado, sem dados). Nenhum bloqueador; nenhuma decisão manual exigida; nenhuma limpeza executada.
+
 ### Re-validação read-only do Staging (pós suíte limpa)
 - `supabase projects list` → `LINKED ●` em `bebeqqrrmdvqaabkqfhp`; produção `hhxwdcwphitfxywbgtju` **sem** LINKED. ✅
 - `supabase migration list --linked` → 0045/0046/0047 com Local=Remote (aplicadas no Staging). ✅
