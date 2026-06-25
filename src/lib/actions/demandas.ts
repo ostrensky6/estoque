@@ -85,7 +85,7 @@ export type DemandaFormState = {
   errors?: Record<string, string>;
 };
 
-export async function criarDemanda(prevState: any, formData?: FormData) {
+export async function criarDemanda(prevState: unknown, formData?: FormData) {
   let actualFormData: FormData;
   if (formData === undefined && prevState instanceof FormData) {
     actualFormData = prevState;
@@ -131,7 +131,7 @@ export async function criarDemanda(prevState: any, formData?: FormData) {
   redirect(`${listaPath}/${data.id}`);
 }
 
-export async function criarDemandaCompleta(prevState: any, formData: FormData): Promise<DemandaFormState> {
+export async function criarDemandaCompleta(prevState: unknown, formData: FormData): Promise<DemandaFormState> {
   try {
     await exigirPapelOrcamento("criar_demanda");
     const supabase = await createClient();
@@ -171,13 +171,14 @@ export async function criarDemandaCompleta(prevState: any, formData: FormData): 
     }
     revalidatePath(listaPath);
     redirect(`${listaPath}/${data.id}`);
-  } catch (e: any) {
-    if (e.message && e.message.startsWith("NEXT_REDIRECT")) throw e;
-    return { ok: false, message: e.message || "Erro desconhecido." };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.startsWith("NEXT_REDIRECT")) throw e;
+    return { ok: false, message: msg || "Erro desconhecido." };
   }
 }
 
-export async function salvarDemanda(prevState: any, formData?: FormData): Promise<DemandaFormState> {
+export async function salvarDemanda(prevState: unknown, formData?: FormData): Promise<DemandaFormState> {
   let actualFormData: FormData;
   if (formData === undefined && prevState instanceof FormData) {
     actualFormData = prevState;
@@ -237,9 +238,16 @@ export async function salvarDemanda(prevState: any, formData?: FormData): Promis
     revalidatePath(listaPath);
     revalidatePath(`${listaPath}/${id}`);
     return { ok: true, savedAt: new Date().toISOString() };
-  } catch (e: any) {
-    return { ok: false, message: e.message || "Erro desconhecido." };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, message: msg || "Erro desconhecido." };
   }
+}
+
+// Wrapper para uso como server action direta em <form action={...}> (retorna void).
+// salvarDemanda mantém a assinatura compatível com useActionState (DemandaForm.tsx).
+export async function salvarDemandaForm(formData: FormData): Promise<void> {
+  await salvarDemanda(undefined, formData);
 }
 
 export async function salvarParametrosEconomicosDaDemanda(formData: FormData) {
