@@ -117,6 +117,7 @@ async function carregarCliente(clienteId: number | null) {
 }
 
 export async function criarOrcamentoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const demandaId = formData.get("demanda_id") ? Number(formData.get("demanda_id")) : null;
   if (!demandaId) {
     redirect("/orcamento/demandas");
@@ -159,6 +160,7 @@ export async function criarOrcamentoProjeto(formData: FormData) {
 }
 
 export async function salvarOrcamentoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
 
@@ -210,6 +212,7 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
 }
 
 export async function salvarParametrosEconomicosProjeto(formData: FormData) {
+  await exigirPapelOrcamento("editar_parametros");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
 
@@ -228,8 +231,6 @@ export async function salvarParametrosEconomicosProjeto(formData: FormData) {
   if (!validacao.ok) {
     redirect(`${pathLista}/${id}?erro_parametros=${encodeURIComponent(validacao.message)}`);
   }
-
-  await exigirPapelOrcamento("editar_parametros");
   const supabase = await createClient();
   await assegurarProjetoEditavel(supabase, id);
   const { error } = await supabase.from("orcamento_projetos").update(patch).eq("id", id);
@@ -252,6 +253,7 @@ export async function salvarParametrosEconomicosProjeto(formData: FormData) {
 }
 
 export async function adicionarAnaliseProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const codigo = texto(formData, "codigo_analise");
   const nAmostras = numero(formData, "n_amostras", 1);
@@ -273,6 +275,7 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
 }
 
 export async function adicionarCustoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const descricao = texto(formData, "descricao");
   if (!id || !descricao) return;
@@ -306,6 +309,7 @@ export async function adicionarCustoProjeto(formData: FormData) {
 }
 
 export async function adicionarCustoCatalogoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const catalogoId = texto(formData, "catalogo_item_id");
   if (!id || !catalogoId) return;
@@ -345,6 +349,7 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
 }
 
 export async function salvarViagensProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
 
@@ -385,6 +390,7 @@ export async function salvarViagensProjeto(formData: FormData) {
 }
 
 export async function removerAnaliseProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const itemId = numero(formData, "item_id");
   if (!id || !itemId) return;
@@ -395,6 +401,7 @@ export async function removerAnaliseProjeto(formData: FormData) {
 }
 
 export async function removerCustoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const itemId = numero(formData, "item_id");
   if (!id || !itemId) return;
@@ -409,6 +416,7 @@ const hashToken = (token: string) => createHash("sha256").update(token).digest("
 /** Gera um link público read-only de aprovação. O token bruto é mostrado uma
  *  única vez (via query param); o banco guarda só o hash SHA-256. */
 export async function criarLinkPublico(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
 
@@ -430,6 +438,7 @@ export async function criarLinkPublico(formData: FormData) {
 }
 
 export async function revogarLinkPublico(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const linkId = numero(formData, "link_id");
   if (!id || !linkId) return;
@@ -483,6 +492,7 @@ type ParametrosTemplate = {
  *  Análises de laboratório não entram (são específicas de cada cotação).
  *  Usa o schema existente (0012): parâmetros e itens em colunas jsonb. */
 export async function salvarComoTemplate(formData: FormData) {
+  await exigirPapelOrcamento("gerir_modelos");
   const id = numero(formData, "orcamento_projeto_id");
   const nome = texto(formData, "nome");
   if (!id || !nome) return;
@@ -527,6 +537,7 @@ export async function salvarComoTemplate(formData: FormData) {
 
 /** Cria um novo orçamento de projeto a partir de um template. */
 export async function criarProjetoDeTemplate(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const templateId = numero(formData, "template_id");
   if (!templateId) return;
 
@@ -674,6 +685,7 @@ const BUCKET_ANEXOS = "orcamento-anexos";
 
 /** Faz upload de um anexo do orçamento de projeto para o bucket privado. */
 export async function adicionarAnexoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const arquivo = formData.get("arquivo");
   if (!id || !(arquivo instanceof File) || arquivo.size === 0) return;
@@ -708,6 +720,7 @@ export async function adicionarAnexoProjeto(formData: FormData) {
 }
 
 export async function removerAnexoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const anexoId = numero(formData, "anexo_id");
   if (!id || !anexoId) return;
@@ -726,6 +739,7 @@ export async function removerAnexoProjeto(formData: FormData) {
 }
 
 export async function excluirOrcamentoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("cancelar_documento");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
   const supabase = await createClient();

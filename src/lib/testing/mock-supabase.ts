@@ -434,3 +434,21 @@ export function createMockSupabaseClient() {
     },
   };
 }
+
+export function getMockSupabaseStore(): Store {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (globalThis as any).__kontrolMockStore;
+}
+
+export function resetMockSupabaseStore(): void {
+  const fresh = baseStore();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const current = (globalThis as any).__kontrolMockStore;
+  if (current) {
+    for (const key of Object.keys(current)) {
+      delete current[key];
+    }
+    Object.assign(current, fresh);
+  }
+}
+

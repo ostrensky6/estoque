@@ -4,8 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const redirect = vi.fn((url: string) => {
   throw new Error(`NEXT_REDIRECT:${url}`);
 });
+const exigirPapelOrcamento = vi.fn();
+
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect }));
+vi.mock("@/lib/orcamento/governanca", () => ({ exigirPapelOrcamento }));
 
 const state = {
   demanda: {} as Record<string, unknown>,
@@ -67,6 +70,7 @@ const demandaLab = {
 
 beforeEach(() => {
   redirect.mockClear();
+  exigirPapelOrcamento.mockClear();
   state.demanda = { ...demandaLab };
   state.labRows = [];
   state.projRows = [];
@@ -81,6 +85,7 @@ describe("idempotência de gerarOrcamentoAnalisesDaDemanda", () => {
     const fd = new FormData();
     fd.set("demanda_id", "7");
     await expect(gerarOrcamentoAnalisesDaDemanda(fd)).rejects.toThrow("NEXT_REDIRECT:/orcamento/5");
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(state.inserts).toHaveLength(0);
   });
 
@@ -93,6 +98,7 @@ describe("idempotência de gerarOrcamentoAnalisesDaDemanda", () => {
     const fd = new FormData();
     fd.set("demanda_id", "7");
     await expect(gerarOrcamentoAnalisesDaDemanda(fd)).rejects.toThrow(/erro_integridade=/);
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(state.inserts).toHaveLength(0);
   });
 
@@ -101,6 +107,7 @@ describe("idempotência de gerarOrcamentoAnalisesDaDemanda", () => {
     const fd = new FormData();
     fd.set("demanda_id", "7");
     await expect(gerarOrcamentoAnalisesDaDemanda(fd)).rejects.toThrow("NEXT_REDIRECT:/orcamento/999");
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(state.inserts.some((i) => i.table === "orcamentos")).toBe(true);
     const statusUpdate = state.updates.find((u) => u.table === "demandas_propostas");
     expect(statusUpdate?.patch.status).toBe("em_analise");
