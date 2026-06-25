@@ -55,3 +55,11 @@ __pycache__/
 
 # Resultados do preflight de Orçamentos (podem conter dados reais — não versionar)
 artifacts/
+
+# backups de banco e logs locais (não versionar — podem conter dados reais)
+backups/
+*.log
+.next-dev.log
+dev-server.*.log
+local-dev-*.log
+local-prod.*.log

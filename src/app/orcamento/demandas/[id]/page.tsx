@@ -7,7 +7,7 @@ import {
   emitirOrcamentoFinalDaDemanda,
   gerarOrcamentoAnalisesDaDemanda,
   gerarOrcamentoProjetoDaDemanda,
-  salvarDemanda,
+  salvarDemandaForm,
 } from "@/lib/actions/demandas";
 import { planejarModulosProposta, type PlanoModulo } from "@/lib/orcamento/garantir-modulos";
 import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
@@ -862,7 +862,7 @@ export default async function DemandaDetalhe({
               {completudeDemanda.completa ? "Completa" : `${completudeDemanda.faltante}% faltante`}
             </span>
           </div>
-          <form action={salvarDemanda} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <form action={salvarDemandaForm} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
             <div className="sm:col-span-2">
               <label className={lbl}>Título</label>

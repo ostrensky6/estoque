@@ -12,16 +12,16 @@ insert into parametros (chave, valor, unidade, descricao) values ('fundo_reserva
 insert into parametros (chave, valor, unidade, descricao) values ('fundo_investimento', 0, '%', 'Fundo de investimento');
 
 -- analises (10 linhas) — codigo, nome_simplificado, descricao, status
-insert into analises (codigo, nome_simplificado, descricao, status) values ('Eletrof_vir_hem', 'Eletroforese hemolinfa', 'Gel para hemolinfa', 'Ainda é feito');
-insert into analises (codigo, nome_simplificado, descricao, status) values ('Eletrof_vir_tec', 'Eletroforese tecido', 'Gel para tecido', 'Ainda é feito');
-insert into analises (codigo, nome_simplificado, descricao, status) values ('Illumina_16S_AC', '16S alta cobertura', 'Sequenciamento focado em microbioma, com alta cobertura', 'Nunca feito; pode ser oferecido');
-insert into analises (codigo, nome_simplificado, descricao, status) values ('Illumina_Sh', 'Shotgun', 'Sequenciamento shotgun, com qualquer marcador', 'Revisar');
-insert into analises (codigo, nome_simplificado, descricao, status) values ('Illumina_Sh_qPCR', 'Shotgun com qPCR', 'Shotgun substituindo algumas etapas por qPCR para otimização de tempo e custo', 'Ainda não testado');
-insert into analises (codigo, nome_simplificado, descricao, status) values ('RTqPCR_RNA_virus_H', 'RT-qPCR vírus hemolinfa', 'PCR em tempo real de vírus 1', 'Ativo');
-insert into analises (codigo, nome_simplificado, descricao, status) values ('RTqPCR_RNA_virus_T', 'RT-qPCR vírus tecidos', 'PCR em tempo real de vírus 2', 'Ativo');
-insert into analises (codigo, nome_simplificado, descricao, status) values ('Sanger', 'Sanger', 'Sequenciamento Sanger', 'Ainda pode ser oferecido');
-insert into analises (codigo, nome_simplificado, descricao, status) values ('qPCR_F', 'qPCR com filtração', 'PCR em tempo real com filtração', 'Ativo');
-insert into analises (codigo, nome_simplificado, descricao, status) values ('qPCR_SF', 'qPCR sem filtração', 'PCR em tempo real sem filtração', 'Ativo');
+insert into analises (codigo, nome_simplificado, descricao, status) values ('Eletrof_vir_hem', 'Eletroforese hemolinfa', 'Gel para hemolinfa', 'Ainda é feito') on conflict (codigo) do nothing;
+insert into analises (codigo, nome_simplificado, descricao, status) values ('Eletrof_vir_tec', 'Eletroforese tecido', 'Gel para tecido', 'Ainda é feito') on conflict (codigo) do nothing;
+insert into analises (codigo, nome_simplificado, descricao, status) values ('Illumina_16S_AC', '16S alta cobertura', 'Sequenciamento focado em microbioma, com alta cobertura', 'Nunca feito; pode ser oferecido') on conflict (codigo) do nothing;
+insert into analises (codigo, nome_simplificado, descricao, status) values ('Illumina_Sh', 'Shotgun', 'Sequenciamento shotgun, com qualquer marcador', 'Revisar') on conflict (codigo) do nothing;
+insert into analises (codigo, nome_simplificado, descricao, status) values ('Illumina_Sh_qPCR', 'Shotgun com qPCR', 'Shotgun substituindo algumas etapas por qPCR para otimização de tempo e custo', 'Ainda não testado') on conflict (codigo) do nothing;
+insert into analises (codigo, nome_simplificado, descricao, status) values ('RTqPCR_RNA_virus_H', 'RT-qPCR vírus hemolinfa', 'PCR em tempo real de vírus 1', 'Ativo') on conflict (codigo) do nothing;
+insert into analises (codigo, nome_simplificado, descricao, status) values ('RTqPCR_RNA_virus_T', 'RT-qPCR vírus tecidos', 'PCR em tempo real de vírus 2', 'Ativo') on conflict (codigo) do nothing;
+insert into analises (codigo, nome_simplificado, descricao, status) values ('Sanger', 'Sanger', 'Sequenciamento Sanger', 'Ainda pode ser oferecido') on conflict (codigo) do nothing;
+insert into analises (codigo, nome_simplificado, descricao, status) values ('qPCR_F', 'qPCR com filtração', 'PCR em tempo real com filtração', 'Ativo') on conflict (codigo) do nothing;
+insert into analises (codigo, nome_simplificado, descricao, status) values ('qPCR_SF', 'qPCR sem filtração', 'PCR em tempo real sem filtração', 'Ativo') on conflict (codigo) do nothing;
 
 -- etapas (134 linhas)
 insert into etapas (codigo_analise, nome_etapa, nome_atividade, execucoes_por_dia, amostras_por_execucao, tempo_maquina_h, tempo_bancada_h, atividade_opcional, tipo_limitacao, dia_inicio, dia_fim_max) values ('qPCR_F', 'Filtração', 'Filtração', 1, 16, 0.5, 0.5, false, 'Pessoal', '1', 1);

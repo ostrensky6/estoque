@@ -32,7 +32,12 @@ export default function LoginPage() {
           Entre para continuar. No primeiro acesso, use o link de redefinição para criar sua senha.
         </p>
 
-        <form action={action} className="mt-6 space-y-4">
+        <form
+          action={action}
+          className="mt-6 space-y-4"
+          suppressHydrationWarning
+          data-lpignore="true"
+        >
           <div>
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
               E-mail
@@ -41,6 +46,7 @@ export default function LoginPage() {
               name="email"
               type="email"
               autoComplete="username"
+              data-lpignore="true"
               className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </div>
@@ -52,6 +58,7 @@ export default function LoginPage() {
               name="senha"
               type="password"
               autoComplete="current-password"
+              data-lpignore="true"
               className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </div>
@@ -70,7 +77,12 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <form action={resetAction} className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+        <form
+          action={resetAction}
+          className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40"
+          suppressHydrationWarning
+          data-lpignore="true"
+        >
           <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
             Recuperar acesso
           </label>
@@ -79,6 +91,7 @@ export default function LoginPage() {
               name="email"
               type="email"
               autoComplete="email"
+              data-lpignore="true"
               placeholder="seu@email"
               className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             />

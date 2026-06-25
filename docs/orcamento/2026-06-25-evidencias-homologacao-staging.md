@@ -222,6 +222,56 @@ Clone limpo `D:/Aplicativos/estoque-rc-clean` da branch RC `claude/rls-permissoe
 
 ---
 
+## Smoke test funcional em Staging (2026-06-25)
+
+**Ambiente:** Staging `bebeqqrrmdvqaabkqfhp` (teste_kontrol_provisorio) · **Branch/commit:** `claude/rls-permissoes-orcamentos-fase11` @ `153697d` · **LINKED:** confirmado no Staging; produção sem LINKED.
+
+**Seed mínimo criado no Staging (autorizado):**
+- Usuário de teste `teste.kontrol@gia.org.br` (auth.users id `af902401-9289-4382-935e-23d3c927bf92`, email confirmado) — **senha não registrada/impressa** (arquivo local gitignored no clone descartável).
+- Perfil `perfis` papel **admin** vinculado ao user_id.
+- Cliente `Cliente Teste Homologacao` (id 1).
+- Catálogo parcial pré-existente via migrations: `analises`=13, `orcamento_projeto_catalogo`=100, `parametros`=3.
+
+**Matriz de cenários (camada API/Postgres real do Staging):**
+
+| # | Cenário | Esperado | Obtido | Status |
+|---|---|---|---|---|
+| 1 | Login do usuário de teste (password grant) | autentica, role authenticated | HTTP 200, `role: authenticated` | ✅ OK |
+| 2 | RPC `emitir_orcamento_final_transacional` como **authenticated** | executa (erro de negócio, não de permissão) | HTTP 500 `P0002 "Demanda 999999 nao encontrada"` | ✅ OK (EXECUTE concedido) |
+| 3 | Mesma RPC como **anon** | negado | HTTP 401 `42501 permission denied for function` | ✅ OK (anon negado) |
+| 4 | Guarda de negócio da RPC (demanda inexistente) | bloqueia com mensagem clara | `Demanda 999999 nao encontrada` | ✅ OK |
+
+**Validação read-only de migrations/RPC/RLS (já registrada acima):** 0045/0046/0047 aplicadas; RPC presente; grants authenticated/service_role (anon ausente); RLS ativo.
+
+**NÃO executado nesta passada (precisa de sessão de browser real):** walkthrough de UI (criar proposta via tela, `?etapa=final`, emitir criando versão, 2ª emissão substituindo, export DOCX/XLSX reconciliado com a tela, visual desktop/mobile).
+**Motivo:** o servidor Next em Staging exige `NODE_EXTRA_CA_CERTS` (cadeia corporativa) no processo Node — o `preview_start`/`launch.json` não injeta env, e o login por UI exporia a senha em `preview_fill`. Os mesmos fluxos passam na suíte E2E automatizada (17/17, supabase mockado).
+
+> Nenhuma limpeza executada. Produção `hhxwdcwphitfxywbgtju` intocada. Nenhum merge.
+
+---
+
+## Fechamento controlado de PRODUÇÃO (2026-06-25)
+
+**Produção:** `hhxwdcwphitfxywbgtju` ("ostrensky6's Project", sa-east-1) · confirmada por dados reais (auth.users=2, perfis=2, demandas_propostas=10) — distinta do staging.
+
+| # | Passo | Resultado | Status |
+|---|---|---|---|
+| 1 | Backup lógico de produção (antes de tudo) | `supabase db dump` → `backups/prod-20260625-155947-schema.sql` (187KB) + `-data.sql` (335KB); `backups/` gitignored | ✅ feito |
+| 2 | Confirmar banco de produção | `hhxwdcwphitfxywbgtju` | ✅ |
+| 3 | Confirmar migrations alvo | 0045, 0046, 0047 | ✅ |
+| 4 | Aplicar migrations | **Já aplicadas em produção** (schema_migrations 0001–0047). **Nada a aplicar — não re-executado** | ✅ (no-op) |
+| 5 | Validar DB | RPC existe; grants authenticated/service_role/postgres (anon ausente); constraint inclui `projeto_com_analises`; RLS ativo em demandas_propostas/orcamento_final_versoes/orcamento_parametros_aplicados; RC compila (verde em checkout limpo); produção responde | ✅ |
+| 6 | Merge controlado PR #3→#12 → `main` | merge commit `783e6e4` (fast-forwardable, 0 conflitos, 32 commits), push `6f60490..783e6e4` | ✅ |
+| 7 | Deploy Vercel produção | **BLOQUEADO** — push em `main` não dispara Production deploy (só Preview); sem `VERCEL_TOKEN` não há como rodar `vercel --prod`. Produção segue no código anterior | ⛔ pendente |
+| 8 | Smoke test produção (não-destrutivo) | `/`→307 `/login`; `/login`→200; `/orcamento`→307 `/login` (auth gate OK). **Não** criei/emiti proposta teste em produção (evita poluição de dados reais) | ✅ parcial |
+| 9 | Rollback | **Não necessário** — DB inalterado por mim; backup disponível; prod app no código anterior e respondendo. Merge revertível via git se desejado | n/a |
+
+**Pendência única para concluir:** `VERCEL_TOKEN` (org `team_HYxJGUZ1QLz2P0H2U4l9Ayn8`, projeto `prj_EnHPskP6CjuCv8UCzC6iXjQpcwQi`) para `vercel --prod`, **ou** promoção manual do commit `783e6e4` a Production no Dashboard do Vercel.
+
+> Nenhuma limpeza, nenhum recálculo histórico, nenhuma constraint extra, nenhum dado de produção apagado.
+
+---
+
 ## Checklist de Retomada da Homologação Remota (executar SOMENTE após desbloquear INFRA-001)
 
 > Nenhum passo abaixo deve registrar chaves reais em texto. `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` permanecem como placeholders ou são configuradas apenas no ambiente seguro apropriado.
