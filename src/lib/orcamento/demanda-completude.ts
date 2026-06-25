@@ -9,10 +9,11 @@ export type DemandaCompletudeInput = {
   matriz_amostra?: string | null;
   quantidade_amostras_estimada?: number | null;
   prazo_tecnico_dias?: number | null;
+  analises_solicitadas?: number | null;
 };
 
-const MODALIDADES_COM_ANALISES = new Set(["analises", "analises_projeto", "projeto_analises_custos"]);
-const MODALIDADES_COM_PROJETO = new Set(["projeto", "analises_projeto", "projeto_analises_custos"]);
+const MODALIDADES_COM_ANALISES = new Set(["analises", "analises_projeto", "projeto_analises_custos", "projeto_com_analises"]);
+const MODALIDADES_COM_PROJETO = new Set(["projeto", "analises_projeto", "projeto_analises_custos", "projeto_com_analises"]);
 
 function preenchido(valor: unknown) {
   return typeof valor === "string" ? valor.trim().length > 0 : Boolean(valor);
@@ -59,6 +60,11 @@ export function avaliarCompletudeDemanda(demanda: DemandaCompletudeInput) {
     criterios.push(Number(demanda.quantidade_amostras_estimada ?? 0) > 0);
     if (!criterios.at(-1)) {
       pendencias.push("informar quantidade estimada de amostras");
+    }
+
+    criterios.push(Number(demanda.analises_solicitadas ?? 0) > 0);
+    if (!criterios.at(-1)) {
+      pendencias.push("selecionar ao menos uma análise solicitada");
     }
   }
 

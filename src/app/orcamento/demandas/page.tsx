@@ -1,15 +1,21 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { criarDemanda } from "@/lib/actions/demandas";
 import { DemandasTable, type DemandaRow } from "@/components/orcamento/DemandasTable";
 import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
+import {
+  modalidadeExigeProjeto,
+  normalizarModalidadeOrcamento,
+} from "@/lib/orcamento/orcamento-economico";
+import { carregarLinhasOrcamentos, type OrcamentoFila } from "@/lib/orcamento/orcamentos-listagem";
 
 export const dynamic = "force-dynamic";
 
 const MODALIDADES: Record<string, string> = {
-  analises: "Apenas análises",
-  projeto: "Apenas projeto",
-  analises_projeto: "Análises dentro de projeto",
-  projeto_analises_custos: "Projeto com análises e custos próprios",
+  analises: "Análises laboratoriais",
+  projeto: "Projeto sem análises",
+  projeto_com_analises: "Projeto com análises",
+  analises_projeto: "Projeto com análises",
+  projeto_analises_custos: "Projeto com análises",
 };
 
 const STATUS: Record<string, { label: string; cls: string }> = {
@@ -21,26 +27,55 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   cancelada: { label: "Cancelada", cls: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
 };
 
-export default async function DemandasPage() {
+export default async function DemandasPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ filtro?: string }>;
+}) {
+  const filtro = (await searchParams)?.filtro;
   const supabase = await createClient();
-  const [{ data: demandas }, { data: clientes }, { data: projetos }] = await Promise.all([
+  const [{ data: demandas }, { data: projetos }, { data: analisesSolicitadas }, linhasOrcamentos] = await Promise.all([
     supabase
       .from("demandas_propostas")
       .select("id, titulo, cliente_id, cliente_nome, modalidade, status, prioridade, data_solicitacao, prazo_esperado, projeto_id, descricao, escopo_preliminar, matriz_amostra, quantidade_amostras_estimada, prazo_tecnico_dias, criado_em")
       .order("criado_em", { ascending: false }),
-    supabase.from("clientes").select("id, nome").eq("ativo", true).order("nome"),
     supabase.from("projetos").select("id, nome").order("nome"),
+    supabase.from("demanda_analises").select("demanda_id"),
+    carregarLinhasOrcamentos(),
   ]);
   const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
-  const linhas: DemandaRow[] = (demandas ?? []).map((d) => {
+  const analisesPorDemanda = new Map<number, number>();
+  for (const item of analisesSolicitadas ?? []) {
+    const demandaId = Number(item.demanda_id);
+    analisesPorDemanda.set(demandaId, (analisesPorDemanda.get(demandaId) ?? 0) + 1);
+  }
+  const orcamentosPorDemanda = new Map<number, OrcamentoFila[]>();
+  for (const linha of linhasOrcamentos) {
+    if (!linha.demandaId) continue;
+    const atuais = orcamentosPorDemanda.get(linha.demandaId) ?? [];
+    atuais.push(linha);
+    orcamentosPorDemanda.set(linha.demandaId, atuais);
+  }
+  const linhasTodas: DemandaRow[] = (demandas ?? []).map((d) => {
     const st = STATUS[d.status] ?? { label: d.status, cls: "" };
-    const completude = avaliarCompletudeDemanda(d);
+    const completude = avaliarCompletudeDemanda({
+      ...d,
+      analises_solicitadas: analisesPorDemanda.get(Number(d.id)) ?? 0,
+    });
+    const documentos = orcamentosPorDemanda.get(Number(d.id)) ?? [];
+    const estado = estadoFluxoDemanda({
+      demandaId: Number(d.id),
+      modalidade: d.modalidade,
+      projetoId: d.projeto_id,
+      completa: completude.completa,
+      documentos,
+    });
     return {
       id: d.id as number,
       titulo: d.titulo ?? "Demanda sem título",
       cliente: d.cliente_nome ?? "—",
       modalidade: d.modalidade,
-      modalidadeLabel: MODALIDADES[d.modalidade] ?? d.modalidade,
+      modalidadeLabel: MODALIDADES[normalizarModalidadeOrcamento(d.modalidade)] ?? d.modalidade,
       projeto: d.projeto_id ? projetoNome.get(d.projeto_id) ?? "—" : "—",
       prazo: d.prazo_esperado ?? "—",
       prioridade: d.prioridade ?? "—",
@@ -49,75 +84,36 @@ export default async function DemandasPage() {
       statusLabel: st.label,
       completudeLabel: completude.completa ? "Pronta" : `${completude.faltante}% faltante`,
       completa: completude.completa,
+      fluxoStatus: estado.fluxoStatus,
+      etapaAtual: estado.etapaAtual,
+      proximaAcao: estado.proximaAcao,
+      proximaHref: estado.proximaHref,
+      totalEmAberto: estado.totalEmAberto,
     };
   });
-  const inp =
-    "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"; // §8.2: entrada em azul
-
+  const linhas = filtro === "em_elaboracao"
+    ? linhasTodas.filter((linha) => linha.fluxoStatus !== "Proposta concluída" && linha.fluxoStatus !== "Proposta em revisão")
+    : linhasTodas;
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-6xl px-6 py-10">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
-            Entrada comercial
-          </p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Demandas/Propostas</h1>
-          <p className="mt-1 max-w-3xl text-sm text-zinc-500">
-            Registre a demanda antes do orçamento formal. A partir daqui o fluxo segue para orçamento
-            de análises, orçamento de projeto ou composição híbrida.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
+              Entrada comercial
+            </p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight">Orçamentos não finalizados</h1>
+            <p className="mt-1 max-w-3xl text-sm text-zinc-500">
+              Acesse e complete orçamentos ainda em preenchimento, com custos pendentes, em revisão ou aguardando proposta final.
+            </p>
+          </div>
+          <Link
+            href="/orcamento/demandas/nova"
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500"
+          >
+            + Novo Orçamento
+          </Link>
         </div>
-
-        <form
-          action={criarDemanda}
-          className="mt-6 grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm md:grid-cols-4 md:items-end dark:border-zinc-800 dark:bg-zinc-900"
-        >
-          <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Título da demanda</label>
-            <input name="titulo" placeholder="Ex.: Sequenciamento de amostras ambientais" className={`${inp} mt-1 w-full`} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Cliente</label>
-            <select name="cliente_id" defaultValue="" className={`${inp} mt-1 w-full`}>
-              <option value="">Cliente livre</option>
-              {(clientes ?? []).map((c) => (
-                <option key={c.id} value={c.id}>{c.nome}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Modalidade</label>
-            <select name="modalidade" defaultValue="analises" className={`${inp} mt-1 w-full`}>
-              {Object.entries(MODALIDADES).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Cliente livre</label>
-            <input name="cliente_nome" placeholder="Nome do cliente/instituição se não estiver cadastrado" className={`${inp} mt-1 w-full`} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Matriz/amostra</label>
-            <input name="matriz_amostra" placeholder="Ex.: água, solo, tecido" className={`${inp} mt-1 w-full`} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Qtd. amostras</label>
-            <input name="quantidade_amostras_estimada" type="number" min="1" step="1" className={`${inp} mt-1 w-full`} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Projeto</label>
-            <select name="projeto_id" defaultValue="" className={`${inp} mt-1 w-full`}>
-              <option value="">Sem projeto</option>
-              {(projetos ?? []).map((p) => (
-                <option key={p.id} value={p.id}>{p.nome}</option>
-              ))}
-            </select>
-          </div>
-          <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
-            Nova demanda
-          </button>
-        </form>
 
         <div className="mt-6">
           <DemandasTable rows={linhas} />
@@ -125,4 +121,69 @@ export default async function DemandasPage() {
       </main>
     </div>
   );
+}
+
+function estadoFluxoDemanda({
+  demandaId,
+  modalidade,
+  projetoId,
+  completa,
+  documentos,
+}: {
+  demandaId: number;
+  modalidade?: string | null;
+  projetoId?: number | null;
+  completa: boolean;
+  documentos: OrcamentoFila[];
+}) {
+  const exigeProjeto = modalidadeExigeProjeto(modalidade) || Boolean(projetoId);
+  const projeto = documentos.find((documento) => documento.origem === "projeto");
+  const final = documentos.find((documento) => documento.origem === "final");
+  const totalEmAberto = documentos
+    .filter((documento) => documento.grupo === "em_elaboracao" || documento.grupo === "revisao")
+    .reduce((total, documento) => total + Number(documento.total ?? 0), 0);
+
+  if (final && ["emitido", "aprovado", "vencido"].includes(final.status)) {
+    return {
+      fluxoStatus: "Proposta concluída",
+      etapaAtual: final.etapaAtual ?? "Proposta final",
+      proximaAcao: "Abrir proposta",
+      proximaHref: final.href,
+      totalEmAberto: Number(final.total ?? totalEmAberto),
+    };
+  }
+  if (!completa) {
+    return {
+      fluxoStatus: "Demanda criada",
+      etapaAtual: "Dados da demanda",
+      proximaAcao: "Completar demanda",
+      proximaHref: `/orcamento/demandas/${demandaId}?etapa=demanda`,
+      totalEmAberto,
+    };
+  }
+  if (exigeProjeto && (!projeto || projeto.etapaAtual === "Custos pendentes")) {
+    return {
+      fluxoStatus: "Orçamento de projeto pendente",
+      etapaAtual: projeto?.etapaAtual ?? "Projeto",
+      proximaAcao: projeto ? "Continuar projeto" : "Iniciar projeto",
+      proximaHref: `/orcamento/demandas/${demandaId}?etapa=projeto`,
+      totalEmAberto,
+    };
+  }
+  if (documentos.some((documento) => documento.grupo === "revisao")) {
+    return {
+      fluxoStatus: "Proposta em revisão",
+      etapaAtual: "Revisão",
+      proximaAcao: "Revisar proposta",
+      proximaHref: `/orcamento/demandas/${demandaId}?etapa=final`,
+      totalEmAberto,
+    };
+  }
+  return {
+    fluxoStatus: "Proposta final pendente",
+    etapaAtual: "Proposta final",
+    proximaAcao: "Preparar proposta",
+    proximaHref: `/orcamento/demandas/${demandaId}?etapa=final`,
+    totalEmAberto,
+  };
 }

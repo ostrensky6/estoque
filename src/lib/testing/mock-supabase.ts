@@ -34,9 +34,13 @@ const baseStore = (): Store => {
   orcamento_projetos: [],
   orcamento_projeto_analises: [],
   orcamento_projeto_custos: [],
+  demanda_analises: [],
   projetos: [{ id: 1, nome: "Projeto E2E" }],
   clientes: [{ id: 1, nome: "Cliente Cadastrado", ativo: true }],
-  analises: [{ codigo: "TESTE-16S", nome: "Metagenomica 16S", ativo: true }],
+  analises: [
+    { codigo: "TESTE-16S", nome: "Metagenomica 16S", ativo: true },
+    { codigo: "TESTE-QPCR", nome: "qPCR marcador alvo", ativo: true },
+  ],
   etapas: [
     {
       codigo_analise: "TESTE-16S",
@@ -46,6 +50,15 @@ const baseStore = (): Store => {
       amostras_por_execucao: 12,
       tempo_maquina_h: 0,
       tempo_bancada_h: 6,
+    },
+    {
+      codigo_analise: "TESTE-QPCR",
+      nome_etapa: "Amplificação",
+      nome_atividade: "qPCR",
+      execucoes_por_dia: 2,
+      amostras_por_execucao: 8,
+      tempo_maquina_h: 1,
+      tempo_bancada_h: 2,
     },
   ],
   equipamentos: [],
@@ -62,6 +75,28 @@ const baseStore = (): Store => {
       quantidade_por_amostra: 1,
       modo_cobranca: "por_amostra",
       insumos: { custo_unitario: 45 },
+    },
+    {
+      codigo_analise: "TESTE-16S",
+      nome_etapa: "Preparo",
+      nome_atividade: "PCR",
+      especificacao_insumo: "Kit corrida 16S",
+      unidade: "kit",
+      grupo_escolha: null,
+      quantidade_por_amostra: 1,
+      modo_cobranca: "por_execucao",
+      insumos: { custo_unitario: 10 },
+    },
+    {
+      codigo_analise: "TESTE-QPCR",
+      nome_etapa: "Amplificação",
+      nome_atividade: "qPCR",
+      especificacao_insumo: "Master Mix qPCR",
+      unidade: "uL",
+      grupo_escolha: null,
+      quantidade_por_amostra: 2,
+      modo_cobranca: "por_amostra",
+      insumos: { custo_unitario: 20 },
     },
   ],
   parametros: [
@@ -172,6 +207,32 @@ const baseStore = (): Store => {
       custo_unitario: 45,
       preco_unitario: 90,
     });
+    seed.orcamento_itens.push({
+      id: 3,
+      orcamento_id: 2,
+      codigo_analise: "TESTE-QPCR",
+      n_amostras: 5,
+      custo_unitario: 40,
+      preco_unitario: 80,
+    });
+    seed.demanda_analises = [
+      {
+        id: 1,
+        demanda_id: 1,
+        codigo_analise: "TESTE-16S",
+        quantidade_amostras: 12,
+        origem_quantidade: "padrao",
+        status_custeio: "disponivel",
+      },
+      {
+        id: 2,
+        demanda_id: 1,
+        codigo_analise: "TESTE-QPCR",
+        quantidade_amostras: 5,
+        origem_quantidade: "manual",
+        status_custeio: "disponivel",
+      },
+    ];
     seed.orcamento_projetos = [
       {
         id: 1,
@@ -209,6 +270,16 @@ const baseStore = (): Store => {
 const store = (globalThis as typeof globalThis & { __kontrolMockStore?: Store }).__kontrolMockStore ?? baseStore();
 (globalThis as typeof globalThis & { __kontrolMockStore?: Store }).__kontrolMockStore = store;
 
+export function resetMockSupabaseStore() {
+  const fresh = baseStore();
+  for (const key of Object.keys(store)) delete store[key];
+  Object.assign(store, fresh);
+}
+
+export function getMockSupabaseStore() {
+  return store;
+}
+
 const nextId = (table: string) =>
   Math.max(0, ...((store[table] ?? []) as Row[]).map((row) => Number(row.id) || 0)) + 1;
 
@@ -238,6 +309,7 @@ function withRelations(table: string, row: Row): Row {
 
 class MockQuery {
   private filters: { column: string; value: unknown }[] = [];
+  private neqFilters: { column: string; value: unknown }[] = [];
   private inFilters: { column: string; values: unknown[] }[] = [];
   private notFilters: { column: string; values: string[] }[] = [];
   private isFilters: { column: string; value: null }[] = [];
@@ -256,6 +328,11 @@ class MockQuery {
 
   eq(column: string, value: unknown) {
     this.filters.push({ column, value });
+    return this;
+  }
+
+  neq(column: string, value: unknown) {
+    this.neqFilters.push({ column, value });
     return this;
   }
 
@@ -371,6 +448,7 @@ class MockQuery {
   private matches(row: Row) {
     return (
       this.filters.every((filter) => row[filter.column] === filter.value) &&
+      this.neqFilters.every((filter) => row[filter.column] !== filter.value) &&
       this.inFilters.every((filter) => filter.values.includes(row[filter.column])) &&
       this.notFilters.every((filter) => !filter.values.includes(String(row[filter.column]))) &&
       this.isFilters.every((filter) => (row[filter.column] ?? null) === filter.value)
@@ -416,6 +494,90 @@ function ajustarSaldoLote(args: Row) {
   if (Number(lote.quantidade_atual) <= 0) lote.status = "consumido";
 }
 
+function sincronizarDemandaAnalises(args: Row) {
+  const demandaId = Number(args.p_demanda_id);
+  const itens = Array.isArray(args.p_itens) ? args.p_itens as Row[] : [];
+  const exigeLaboratorio = args.p_exige_laboratorio !== false;
+  const backup = {
+    demanda_analises: [...(store.demanda_analises ?? [])],
+    orcamento_itens: [...(store.orcamento_itens ?? [])],
+    orcamentos: [...(store.orcamentos ?? [])],
+  };
+
+  try {
+    const demanda = store.demandas_propostas?.find((row) => Number(row.id) === demandaId);
+    if (!demanda) throw new Error(`Demanda ${demandaId} nao encontrada`);
+    if (itens.some((item) => item.codigo_analise === "FORCAR-FALHA-RPC")) {
+      throw new Error("Falha simulada na RPC de sincronização");
+    }
+
+    let orcamento = store.orcamentos.find((row) => Number(row.demanda_id) === demandaId && row.status !== "cancelado");
+    if (exigeLaboratorio) {
+      if (orcamento && orcamento.status !== "rascunho") {
+        throw new Error("Somente orcamento laboratorial em rascunho pode ser sincronizado pela demanda");
+      }
+      if (!orcamento) {
+        orcamento = {
+          id: nextId("orcamentos"),
+          demanda_id: demandaId,
+          tipo: "analises",
+          cliente_nome: demanda.cliente_nome ?? demanda.titulo ?? "Cliente",
+          status: "rascunho",
+          criado_em: new Date().toISOString(),
+        };
+        store.orcamentos.push(orcamento);
+      }
+    }
+
+    store.demanda_analises = (store.demanda_analises ?? []).filter((row) => Number(row.demanda_id) !== demandaId);
+    for (const item of itens) {
+      store.demanda_analises.push({
+        id: nextId("demanda_analises"),
+        demanda_id: demandaId,
+        codigo_analise: item.codigo_analise,
+        quantidade_amostras: item.quantidade_amostras,
+        origem_quantidade: item.origem_quantidade ?? "padrao",
+        status_custeio: item.status_custeio ?? "pendente",
+      });
+    }
+
+    if (exigeLaboratorio && orcamento) {
+      const codigos = itens.map((item) => item.codigo_analise);
+      store.orcamento_itens = (store.orcamento_itens ?? []).filter(
+        (row) => Number(row.orcamento_id) !== Number(orcamento.id) || codigos.includes(row.codigo_analise),
+      );
+      for (const item of itens) {
+        const existente = store.orcamento_itens.find(
+          (row) => Number(row.orcamento_id) === Number(orcamento?.id) && row.codigo_analise === item.codigo_analise,
+        );
+        const payload = {
+          orcamento_id: orcamento.id,
+          codigo_analise: item.codigo_analise,
+          n_amostras: item.quantidade_amostras,
+          custo_unitario: item.custo_unitario ?? 0,
+          preco_unitario: item.preco_unitario ?? 0,
+          valor_snapshot: item.valor_snapshot ?? {},
+        };
+        if (existente) Object.assign(existente, payload);
+        else store.orcamento_itens.push({ id: nextId("orcamento_itens"), ...payload });
+      }
+      orcamento.status_operacional = itens.length > 0 ? "preenchido" : "pendente";
+      orcamento.status_operacional_atualizado_em = new Date().toISOString();
+    }
+
+    return {
+      registradas: itens.length,
+      pendentes: itens.filter((item) => item.status_custeio !== "disponivel").length,
+      orcamento_id: orcamento?.id ?? null,
+    };
+  } catch (error) {
+    store.demanda_analises = backup.demanda_analises;
+    store.orcamento_itens = backup.orcamento_itens;
+    store.orcamentos = backup.orcamentos;
+    throw error;
+  }
+}
+
 export function createMockSupabaseClient() {
   return {
     auth: {
@@ -430,6 +592,13 @@ export function createMockSupabaseClient() {
       if (fn === "descartar_lote") setLotStatus(Number(args.p_lote_id), "descartado");
       if (fn === "baixa_manual_lote") baixarManualLote(args);
       if (fn === "ajustar_saldo_lote") ajustarSaldoLote(args);
+      if (fn === "sincronizar_demanda_analises") {
+        try {
+          return { data: sincronizarDemandaAnalises(args), error: null };
+        } catch (error) {
+          return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
+        }
+      }
       return { data: null, error: null };
     },
   };

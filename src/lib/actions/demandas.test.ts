@@ -5,6 +5,9 @@ const redirect = vi.fn((url: string) => {
 });
 const demandaSingle = vi.fn();
 const insert = vi.fn();
+const demandaAnalisesSelect = vi.fn(() => ({
+  eq: vi.fn(async () => ({ data: [], error: null })),
+}));
 const from = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -27,6 +30,9 @@ function mockDemanda(demanda: Record<string, unknown>) {
         })),
       };
     }
+    if (table === "demanda_analises") {
+      return { select: demandaAnalisesSelect };
+    }
     return { insert };
   });
 }
@@ -36,6 +42,7 @@ describe("actions de demandas/propostas", () => {
     redirect.mockClear();
     demandaSingle.mockReset();
     insert.mockReset();
+    demandaAnalisesSelect.mockClear();
     from.mockReset();
   });
 

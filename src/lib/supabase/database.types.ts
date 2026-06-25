@@ -306,6 +306,57 @@ export type Database = {
           },
         ]
       }
+      demanda_analises: {
+        Row: {
+          codigo_analise: string
+          created_at: string
+          demanda_id: number
+          id: number
+          observacao: string | null
+          origem_quantidade: string
+          quantidade_amostras: number
+          status_custeio: string
+          updated_at: string
+        }
+        Insert: {
+          codigo_analise: string
+          created_at?: string
+          demanda_id: number
+          id?: never
+          observacao?: string | null
+          origem_quantidade?: string
+          quantidade_amostras: number
+          status_custeio?: string
+          updated_at?: string
+        }
+        Update: {
+          codigo_analise?: string
+          created_at?: string
+          demanda_id?: number
+          id?: never
+          observacao?: string | null
+          origem_quantidade?: string
+          quantidade_amostras?: number
+          status_custeio?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demanda_analises_codigo_analise_fkey"
+            columns: ["codigo_analise"]
+            isOneToOne: false
+            referencedRelation: "analises"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "demanda_analises_demanda_id_fkey"
+            columns: ["demanda_id"]
+            isOneToOne: false
+            referencedRelation: "demandas_propostas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       equipamentos: {
         Row: {
           custo_unitario: number
@@ -929,6 +980,7 @@ export type Database = {
           n_amostras: number
           orcamento_id: number
           preco_unitario: number
+          valor_snapshot: Json
         }
         Insert: {
           codigo_analise: string
@@ -937,6 +989,7 @@ export type Database = {
           n_amostras?: number
           orcamento_id: number
           preco_unitario?: number
+          valor_snapshot?: Json
         }
         Update: {
           codigo_analise?: string
@@ -945,6 +998,7 @@ export type Database = {
           n_amostras?: number
           orcamento_id?: number
           preco_unitario?: number
+          valor_snapshot?: Json
         }
         Relationships: [
           {
@@ -971,6 +1025,7 @@ export type Database = {
           n_amostras: number
           orcamento_projeto_id: number
           preco_unitario: number
+          valor_snapshot: Json
         }
         Insert: {
           codigo_analise: string
@@ -979,6 +1034,7 @@ export type Database = {
           n_amostras?: number
           orcamento_projeto_id: number
           preco_unitario?: number
+          valor_snapshot?: Json
         }
         Update: {
           codigo_analise?: string
@@ -987,6 +1043,7 @@ export type Database = {
           n_amostras?: number
           orcamento_projeto_id?: number
           preco_unitario?: number
+          valor_snapshot?: Json
         }
         Relationships: [
           {
@@ -1107,6 +1164,7 @@ export type Database = {
           quantidade: number
           rubrica: string | null
           unidade: string | null
+          valor_snapshot: Json
         }
         Insert: {
           catalogo_item_id?: string | null
@@ -1126,6 +1184,7 @@ export type Database = {
           quantidade?: number
           rubrica?: string | null
           unidade?: string | null
+          valor_snapshot?: Json
         }
         Update: {
           catalogo_item_id?: string | null
@@ -1145,6 +1204,7 @@ export type Database = {
           quantidade?: number
           rubrica?: string | null
           unidade?: string | null
+          valor_snapshot?: Json
         }
         Relationships: [
           {
@@ -2626,6 +2686,14 @@ export type Database = {
           p_validade?: string
         }
         Returns: number
+      }
+      sincronizar_demanda_analises: {
+        Args: {
+          p_demanda_id: number
+          p_exige_laboratorio?: boolean
+          p_itens: Json
+        }
+        Returns: Json
       }
       reservar_plano: {
         Args: { p_itens: Json; p_planejamento_id: number }

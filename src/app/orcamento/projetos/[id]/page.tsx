@@ -5,13 +5,14 @@ import { createClient } from "@/lib/supabase/server";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { PrintButton } from "@/components/orcamento/PrintButton";
+import { FluxoProposta } from "@/components/orcamento/FluxoProposta";
 import { ExportProjetoButtons } from "@/components/orcamento/ExportProjetoButtons";
 import type { ProjetoExportItem } from "@/lib/project-budget/exporters";
 import {
-  adicionarAnaliseProjeto,
-  adicionarCustoCatalogoProjeto,
   adicionarAnexoProjeto,
   adicionarCustoProjeto,
+  alternarCustoCatalogoProjeto,
+  atualizarCustoCatalogoProjeto,
   cancelarOrcamentoProjeto,
   criarLinkPublico,
   excluirOrcamentoProjeto,
@@ -20,9 +21,9 @@ import {
   removerCustoProjeto,
   revogarLinkPublico,
   salvarComoTemplate,
-  salvarParametrosEconomicosProjeto,
   salvarOrcamentoProjeto,
   salvarViagensProjeto,
+  selecionarRubricaCatalogoProjeto,
 } from "@/lib/actions/orcamento-projetos";
 import { headers } from "next/headers";
 import { normalizarViagemInputs, type ViagemInputs } from "@/lib/project-budget/travel";
@@ -69,6 +70,17 @@ type Custo = {
   preco_unitario: number;
   meses_selecionados: number[];
   catalogo_item_id: string | null;
+  valor_snapshot?: unknown;
+};
+
+type CatalogoProjetoItem = {
+  id: string;
+  rubrica: string;
+  descricao: string;
+  unidade: string | null;
+  preco_unitario: number;
+  categoria: string | null;
+  origem?: string | null;
 };
 
 export default async function OrcamentoProjetoDetalhe({
@@ -76,10 +88,10 @@ export default async function OrcamentoProjetoDetalhe({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ novo_link?: string; erro_parametros?: string; erro_exclusao?: string }>;
+  searchParams: Promise<{ novo_link?: string; erro_exclusao?: string }>;
 }) {
   const { id } = await params;
-  const { novo_link: novoLink, erro_parametros: erroParametros, erro_exclusao: erroExclusao } = await searchParams;
+  const { novo_link: novoLink, erro_exclusao: erroExclusao } = await searchParams;
   const orcId = Number(id);
   const supabase = await createClient();
 
@@ -90,7 +102,7 @@ export default async function OrcamentoProjetoDetalhe({
     .single();
   if (!orc) notFound();
 
-  const [{ data: analisesItens }, { data: custosItens }, { data: analises }, { data: clientes }, { data: projetos }, { data: catalogo }] =
+  const [{ data: analisesItens }, { data: custosItens }, { data: clientes }, { data: projetos }, { data: catalogo }] =
     await Promise.all([
       supabase
         .from("orcamento_projeto_analises")
@@ -99,7 +111,7 @@ export default async function OrcamentoProjetoDetalhe({
         .order("id"),
       supabase
         .from("orcamento_projeto_custos")
-        .select("id, categoria, rubrica, descricao, etapa, atividade, entrega, categoria_institucional, nomenclatura_origem, quantidade, unidade, custo_unitario, preco_unitario, meses_selecionados, catalogo_item_id")
+        .select("id, categoria, rubrica, descricao, etapa, atividade, entrega, categoria_institucional, nomenclatura_origem, quantidade, unidade, custo_unitario, preco_unitario, meses_selecionados, catalogo_item_id, valor_snapshot")
         .eq("orcamento_projeto_id", orcId)
         .order("etapa")
         .order("atividade")
@@ -107,12 +119,11 @@ export default async function OrcamentoProjetoDetalhe({
         .order("rubrica")
         .order("categoria")
         .order("id"),
-      supabase.from("analises").select("codigo").eq("ativo", true).order("codigo"),
       supabase.from("clientes").select("id, nome").eq("ativo", true).order("nome"),
       supabase.from("projetos").select("id, nome").order("nome"),
       supabase
         .from("orcamento_projeto_catalogo")
-        .select("id, rubrica, descricao, unidade, preco_unitario, categoria")
+        .select("id, rubrica, descricao, unidade, preco_unitario, categoria, origem")
         .eq("ativo", true)
         .order("rubrica")
         .order("descricao"),
@@ -153,7 +164,6 @@ export default async function OrcamentoProjetoDetalhe({
     investimentos: Number(orc.investimentos ?? 0),
     lucro: Number(orc.lucro ?? orc.margem_lucro ?? 0),
   });
-  const totalFinal = calculoProjeto.grossTotal;
   const temCustosProjeto = analisesProjeto.length > 0 || custosProjeto.length > 0;
 
   // Itens consolidados para export (mesma base mostrada na tela).
@@ -273,7 +283,7 @@ export default async function OrcamentoProjetoDetalhe({
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="print-area mx-auto max-w-6xl px-6 py-10">
         <div className="no-print flex flex-wrap items-center justify-between gap-3">
-          <Breadcrumbs items={[{ label: "Projetos", href: "/orcamento/projetos" }, { label: orc.titulo }]} />
+          <Breadcrumbs items={[{ label: "Orçamento de projeto", href: "/orcamento/projetos" }, { label: orc.titulo }]} />
           <div className="flex items-center gap-2">
             {orc.status === "aprovado" && analisesProjeto.length > 0 && (
               <form action={gerarPlanejamentoDeOrcamentoProjeto}>
@@ -292,11 +302,11 @@ export default async function OrcamentoProjetoDetalhe({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
-                Custos de projeto
+                Orçamento de projeto
               </p>
               <h1 className="mt-1 text-2xl font-semibold tracking-tight">{orc.titulo}</h1>
               <p className="mt-1 text-sm text-zinc-500">
-                Proposta integrada: laboratório, equipe, logística, terceiros e cronograma.
+                Levantamento técnico de rubricas, quantidades, prazos, equipe, logística e entregáveis.
               </p>
             </div>
             <div className="text-right text-sm">
@@ -349,12 +359,13 @@ export default async function OrcamentoProjetoDetalhe({
             </div>
           </dl>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-4">
-            <Resumo titulo="Laboratório" valor={totalLabCusto} subtitulo="custo das análises (sem markup)" />
+          <div className="mt-6 grid gap-3 md:grid-cols-3">
             <Resumo titulo="Custos do projeto" valor={totalExtraPreco} subtitulo="rubricas PE, MC, MP, ST, VD e OU" />
-            <Resumo titulo="Gross-up" valor={totalFinal - calculoProjeto.subtotal} subtitulo={`${calculoProjeto.markupRate.toLocaleString("pt-BR")}% · fator ${calculoProjeto.grossUpFactor.toFixed(4).replace(".", ",")}x`} />
-            <Resumo titulo="Total final" valor={totalFinal} subtitulo={`subtotal base ${brl(calculoProjeto.subtotal)}`} destaque />
+            <Resumo titulo="Análises do projeto" valor={totalLabCusto} subtitulo="somente quando a modalidade não usa etapa laboratorial separada" />
+            <Resumo titulo="Subtotal técnico" valor={calculoProjeto.subtotal} subtitulo="sem impostos, fundos, lucro ou gross-up" destaque />
           </div>
+
+          {demanda && <FluxoProposta modalidade={demanda.modalidade} atual="projeto" />}
 
           <nav className="no-print sticky top-0 z-10 mt-6 overflow-x-auto border-y border-zinc-200 bg-white/95 py-2 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
             <div className="flex min-w-max gap-2">
@@ -450,7 +461,16 @@ export default async function OrcamentoProjetoDetalhe({
           <TabelaAnalises itens={analisesProjeto} orcId={orcId} />
 
           <h2 id="rubricas-projeto" className="mt-8 scroll-mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500">Custos próprios do projeto</h2>
-          <TabelaCustos itens={custosProjeto} orcId={orcId} />
+          <TabelaCatalogoProjeto
+            catalogo={(catalogo ?? []) as CatalogoProjetoItem[]}
+            itens={custosProjeto}
+            orcId={orcId}
+            projectMonths={Number(orc.project_months ?? 12)}
+          />
+          <div className="mt-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Itens selecionados e manuais</p>
+            <TabelaCustos itens={custosProjeto} orcId={orcId} />
+          </div>
         </section>
 
         {erroExclusao && (
@@ -459,32 +479,12 @@ export default async function OrcamentoProjetoDetalhe({
           </p>
         )}
 
-        <section className="no-print mt-6 grid gap-6 lg:grid-cols-2">
+        <section className="no-print mt-6 grid gap-6">
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 className="text-sm font-semibold">Adicionar análise do laboratório</h2>
-            <form action={adicionarAnaliseProjeto} className="mt-3 flex flex-wrap items-end gap-2">
-              <input type="hidden" name="orcamento_projeto_id" value={orcId} />
-              <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Análise</label>
-                <select name="codigo_analise" defaultValue="" className={inp}>
-                  <option value="" disabled>Selecione…</option>
-                  {(analises ?? []).map((a) => (
-                    <option key={a.codigo} value={a.codigo}>{a.codigo}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Amostras</label>
-                <input name="n_amostras" type="number" min="1" step="1" defaultValue="1" className={`${inp} w-28`} />
-              </div>
-              <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
-                Adicionar
-              </button>
-            </form>
-          </div>
-
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 className="text-sm font-semibold">Adicionar custo do projeto</h2>
+            <h2 className="text-sm font-semibold">Adicionar custo manual do projeto</h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Use apenas para custos que não existem no catálogo institucional acima.
+            </p>
             <form action={adicionarCustoProjeto} className="mt-3 grid grid-cols-2 gap-2">
               <input type="hidden" name="orcamento_projeto_id" value={orcId} />
               <input name="etapa" placeholder="Etapa" className={inp} />
@@ -510,43 +510,6 @@ export default async function OrcamentoProjetoDetalhe({
               </button>
             </form>
           </div>
-        </section>
-
-        <section id="catalogo-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="text-sm font-semibold">Adicionar item do catálogo institucional</h2>
-          <form action={adicionarCustoCatalogoProjeto} className="mt-3 grid gap-3 md:grid-cols-[1fr_8rem_auto] md:items-end">
-            <input type="hidden" name="orcamento_projeto_id" value={orcId} />
-            <input type="hidden" name="entrega" value="Entrega principal" />
-            <div>
-              <label className={lbl}>Item de catálogo</label>
-              <select name="catalogo_item_id" defaultValue="" className={`${inp} mt-1 w-full`}>
-                <option value="" disabled>Selecione...</option>
-                {(catalogo ?? []).map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.rubrica} · {item.descricao} · {brl(Number(item.preco_unitario))}/{item.unidade ?? "un"}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={lbl}>Quantidade</label>
-              <input name="quantidade" type="number" min="0.01" step="0.01" defaultValue="1" className={`${inp} mt-1 w-full`} />
-            </div>
-            <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
-              Adicionar
-            </button>
-            <div className="md:col-span-3">
-              <p className="text-xs font-medium text-zinc-500">Meses para itens de Pessoal (PE)</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {Array.from({ length: Math.max(1, Number(orc.project_months ?? 12)) }, (_, index) => index + 1).map((mes) => (
-                  <label key={mes} className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2 py-1 text-xs dark:border-zinc-700">
-                    <input type="checkbox" name="meses_selecionados" value={mes} className="h-3.5 w-3.5" />
-                    {mes}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </form>
         </section>
 
         <section id="modelos-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -685,10 +648,9 @@ export default async function OrcamentoProjetoDetalhe({
         </section>
 
         <section id="revisao-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="text-sm font-semibold">Parâmetros econômicos do projeto</h2>
+          <h2 className="text-sm font-semibold">Revisão do orçamento de projeto</h2>
           <p className="mt-1 text-xs text-zinc-500">
-            Aplicados somente depois do levantamento de custos. No gross-up, a soma de impostos,
-            incubação, reserva, investimentos e lucro precisa ficar abaixo de 100%.
+            Conferência dos dados técnicos antes de seguir para a proposta final.
           </p>
           <div className={`mt-4 rounded-md px-3 py-2 text-xs leading-5 ${revisaoPendencias.length === 0 ? "bg-brand-50 text-brand-900 dark:bg-brand-950/40 dark:text-brand-200" : "bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"}`}>
             <p className="font-medium">
@@ -701,48 +663,17 @@ export default async function OrcamentoProjetoDetalhe({
                 ))}
               </ul>
             ) : (
-              <p className="mt-1">Escopo, cliente, responsável, custos e parâmetros estão coerentes para seguir no fluxo.</p>
+              <p className="mt-1">Escopo, cliente, responsável e custos estão coerentes para seguir no fluxo.</p>
             )}
           </div>
-          {erroParametros && (
-            <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
-              {erroParametros}
-            </p>
-          )}
-          <form action={salvarParametrosEconomicosProjeto} className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <input type="hidden" name="orcamento_projeto_id" value={orcId} />
-            <div>
-              <label className={lbl}>Meses do projeto</label>
-              <input name="project_months" type="number" min="1" step="1" defaultValue={orc.project_months ?? 12} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className={lbl}>Impostos legacy (%)</label>
-              <input name="impostos_legacy" type="number" min="0" step="0.01" defaultValue={orc.impostos_legacy ?? 0} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className={lbl}>Incubação (%)</label>
-              <input name="incubacao" type="number" min="0" step="0.01" defaultValue={orc.incubacao ?? 0} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className={lbl}>Reserva (%)</label>
-              <input name="reserva" type="number" min="0" step="0.01" defaultValue={orc.reserva ?? 0} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className={lbl}>Investimentos (%)</label>
-              <input name="investimentos" type="number" min="0" step="0.01" defaultValue={orc.investimentos ?? 0} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className={lbl}>Lucro (%)</label>
-              <input name="lucro" type="number" min="0" step="0.01" defaultValue={orc.lucro ?? 0} className={`${inp} mt-1 w-full`} />
-            </div>
-            <input type="hidden" name="margem_lucro" value={orc.margem_lucro ?? 0} />
-            <input type="hidden" name="impostos" value={orc.impostos ?? 0} />
-            <div className="col-span-2 sm:col-span-3">
-              <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
-                Salvar parâmetros econômicos
-              </button>
-            </div>
-          </form>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs dark:border-zinc-800 dark:bg-zinc-950/40">
+            <span className="text-zinc-600 dark:text-zinc-300">
+              Impostos, fundos, margens, lucro e gross-up são tratados na Proposta final.
+            </span>
+            <Link href={demanda ? `/orcamento/demandas/${demanda.id}?etapa=final` : "/orcamento/revisao"} className="rounded-md border border-zinc-300 px-3 py-2 font-medium hover:bg-white dark:border-zinc-700 dark:hover:bg-zinc-900">
+              Abrir proposta final
+            </Link>
+          </div>
         </section>
 
         <section id="viagens-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -803,6 +734,67 @@ export default async function OrcamentoProjetoDetalhe({
           </form>
         </section>
 
+        {demanda ? (
+        <section id="escopo-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Dados herdados da demanda</h2>
+              <p className="mt-1 text-xs text-zinc-500">
+                Identificação, cliente, modalidade e escopo são mantidos na Demanda. Esta etapa registra somente controles operacionais do orçamento de projeto.
+              </p>
+            </div>
+            <Link href={`/orcamento/demandas/${demanda.id}?etapa=demanda`} className="rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+              Editar demanda
+            </Link>
+          </div>
+          <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <div><dt className="text-xs text-zinc-500">Demanda</dt><dd className="font-medium">{demanda.titulo ?? `#${demanda.id}`}</dd></div>
+            <div><dt className="text-xs text-zinc-500">Cliente</dt><dd>{orc.cliente_nome ?? demanda.cliente_nome ?? "—"}</dd></div>
+            <div><dt className="text-xs text-zinc-500">Projeto</dt><dd>{projetoVinculado?.nome ?? "—"}</dd></div>
+            <div><dt className="text-xs text-zinc-500">Modalidade</dt><dd>{demanda.modalidade ?? "—"}</dd></div>
+          </dl>
+          <form action={salvarOrcamentoProjeto} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+            <div>
+              <label className={lbl}>Status</label>
+              <select name="status" defaultValue={orc.status ?? "rascunho"} className={`${inp} mt-1 w-full`}>
+                <option value="rascunho">Rascunho</option>
+                <option value="enviado">Enviado</option>
+                <option value="aprovado">Aprovado</option>
+                <option value="recusado">Recusado</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
+            </div>
+            <div>
+              <label className={lbl}>Coordenador do orçamento de projeto</label>
+              <input name="coordenador" defaultValue={orc.coordenador ?? ""} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div>
+              <label className={lbl}>Proprietário técnico</label>
+              <input name="proprietario" defaultValue={orc.proprietario ?? ""} className={`${inp} mt-1 w-full`} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={lbl}>Justificativa formal para projeto sem custo</label>
+              <textarea
+                name="projeto_sem_custo_justificativa"
+                rows={3}
+                defaultValue={orc.projeto_sem_custo_justificativa ?? ""}
+                className={`${inp} mt-1 w-full`}
+              />
+              {!temCustosProjeto && (
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                  Sem custos ou análises vinculadas. Registre a justificativa antes de revisar esta etapa.
+                </p>
+              )}
+            </div>
+            <div className="sm:col-span-2">
+              <button className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900">
+                Salvar etapa de projeto
+              </button>
+            </div>
+          </form>
+        </section>
+        ) : (
         <section id="escopo-projeto" className="no-print mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-semibold">Dados do orçamento de projeto</h2>
           <form action={salvarOrcamentoProjeto} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -924,6 +916,7 @@ export default async function OrcamentoProjetoDetalhe({
             </div>
           </form>
         </section>
+        )}
 
         <div id="acoes-sensiveis-projeto" className="no-print mt-6 flex scroll-mt-8 flex-wrap gap-3">
           {["enviado", "aprovado"].includes(orc.status) ? (
@@ -1074,6 +1067,182 @@ function TextoBloco({ titulo, texto }: { titulo: string; texto: string | null })
     <div>
       <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{titulo}</h3>
       <p className="mt-1 whitespace-pre-wrap leading-6 text-zinc-700 dark:text-zinc-300">{texto || "—"}</p>
+    </div>
+  );
+}
+
+function TabelaCatalogoProjeto({
+  catalogo,
+  itens,
+  orcId,
+  projectMonths,
+}: {
+  catalogo: CatalogoProjetoItem[];
+  itens: Custo[];
+  orcId: number;
+  projectMonths: number;
+}) {
+  const itensPorCatalogo = new Map(itens.filter((item) => item.catalogo_item_id).map((item) => [item.catalogo_item_id, item]));
+  const meses = Array.from({ length: Math.max(1, Math.min(60, projectMonths)) }, (_, index) => index + 1);
+  const inputClass =
+    "w-24 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-right text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300";
+
+  return (
+    <div className="mt-3 space-y-5">
+      {(Object.keys(RUBRICAS_PROJETO) as Array<keyof typeof RUBRICAS_PROJETO>).map((rubrica) => {
+        const itensRubrica = catalogo.filter((item) => item.rubrica === rubrica);
+        if (itensRubrica.length === 0) return null;
+        const selecionados = itensRubrica.filter((item) => itensPorCatalogo.has(item.id)).length;
+        return (
+          <section key={rubrica} className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-3 py-3 dark:border-zinc-800">
+              <div>
+                <h3 className="text-sm font-semibold">{rubrica} · {RUBRICAS_PROJETO[rubrica]}</h3>
+                <p className="text-xs text-zinc-500">{selecionados}/{itensRubrica.length} item(ns) selecionados</p>
+              </div>
+              <div className="flex gap-2">
+                <form action={selecionarRubricaCatalogoProjeto}>
+                  <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+                  <input type="hidden" name="rubrica" value={rubrica} />
+                  <input type="hidden" name="incluir" value="true" />
+                  <button className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                    Selecionar todos
+                  </button>
+                </form>
+                <form action={selecionarRubricaCatalogoProjeto}>
+                  <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+                  <input type="hidden" name="rubrica" value={rubrica} />
+                  <input type="hidden" name="incluir" value="false" />
+                  <button className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                    Desmarcar todos
+                  </button>
+                </form>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[980px] text-right text-sm">
+                <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-950/60">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Incluir</th>
+                    <th className="px-3 py-2 text-left">Categoria</th>
+                    <th className="px-3 py-2 text-left">Descrição</th>
+                    <th className="px-3 py-2">Un.</th>
+                    <th className="px-3 py-2">Valor catálogo</th>
+                    <th className="px-3 py-2">{rubrica === "PE" ? "Meses" : "Quantidade"}</th>
+                    <th className="px-3 py-2">Valor usado</th>
+                    <th className="px-3 py-2">Total</th>
+                    <th className="px-3 py-2 text-left">Snapshot</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  {itensRubrica.map((catalogoItem) => {
+                    const item = itensPorCatalogo.get(catalogoItem.id);
+                    const selecionado = Boolean(item);
+                    const mesesSelecionados = new Set(item?.meses_selecionados ?? []);
+                    const quantidade = Number(item?.quantidade ?? (rubrica === "PE" ? 0 : 1));
+                    const valorUsado = Number(item?.custo_unitario ?? catalogoItem.preco_unitario ?? 0);
+                    const total = selecionado ? itemProjetoTotal({
+                      rubrica,
+                      quantidade,
+                      preco_unitario: valorUsado,
+                      meses_selecionados: item?.meses_selecionados ?? [],
+                    }) : 0;
+                    const divergente = selecionado && Math.abs(Number(catalogoItem.preco_unitario ?? 0) - valorUsado) > 0.005;
+
+                    return (
+                      <tr key={catalogoItem.id} className={selecionado ? "bg-brand-50/40 dark:bg-brand-950/10" : ""}>
+                        <td className="px-3 py-2 text-left">
+                          <form action={alternarCustoCatalogoProjeto}>
+                            <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+                            <input type="hidden" name="catalogo_item_id" value={catalogoItem.id} />
+                            <input type="hidden" name="quantidade" value={quantidade || 1} />
+                            <input type="hidden" name="incluir" value={selecionado ? "false" : "true"} />
+                            <button
+                              className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
+                                selecionado
+                                  ? "border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300"
+                                  : "border-brand-200 text-brand-700 hover:bg-brand-50 dark:border-brand-900 dark:text-brand-300"
+                              }`}
+                            >
+                              {selecionado ? "Remover" : "Incluir"}
+                            </button>
+                          </form>
+                        </td>
+                        <td className="px-3 py-2 text-left text-zinc-600 dark:text-zinc-300">{catalogoItem.categoria ?? "—"}</td>
+                        <td className="max-w-sm px-3 py-2 text-left font-medium">{catalogoItem.descricao}</td>
+                        <td className="px-3 py-2">{catalogoItem.unidade ?? "—"}</td>
+                        <td className="px-3 py-2 tabular-nums">{brl(Number(catalogoItem.preco_unitario ?? 0))}</td>
+                        <td className="px-3 py-2">
+                          {selecionado && item ? (
+                            <form action={atualizarCustoCatalogoProjeto} className="flex flex-wrap justify-end gap-2">
+                              <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+                              <input type="hidden" name="item_id" value={item.id} />
+                              <input type="hidden" name="custo_unitario" value={valorUsado} />
+                              {rubrica === "PE" ? (
+                                <div className="flex max-w-sm flex-wrap justify-end gap-1">
+                                  {meses.map((mes) => (
+                                    <label key={mes} className="inline-flex items-center gap-1 rounded border border-zinc-200 px-1.5 py-1 text-[11px] dark:border-zinc-700">
+                                      <input
+                                        type="checkbox"
+                                        name="meses_selecionados"
+                                        value={mes}
+                                        defaultChecked={mesesSelecionados.has(mes)}
+                                      />
+                                      M{mes}
+                                    </label>
+                                  ))}
+                                  <input type="hidden" name="quantidade" value={mesesSelecionados.size || 0} />
+                                </div>
+                              ) : (
+                                <input name="quantidade" type="number" min="0.01" step="0.01" defaultValue={quantidade} className={inputClass} />
+                              )}
+                              <button className="rounded-md border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                                Salvar
+                              </button>
+                            </form>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {selecionado && item ? (
+                            <form action={atualizarCustoCatalogoProjeto} className="flex justify-end gap-2">
+                              <input type="hidden" name="orcamento_projeto_id" value={orcId} />
+                              <input type="hidden" name="item_id" value={item.id} />
+                              <input type="hidden" name="quantidade" value={quantidade || 1} />
+                              {(item.meses_selecionados ?? []).map((mes) => (
+                                <input key={mes} type="hidden" name="meses_selecionados" value={mes} />
+                              ))}
+                              <input name="custo_unitario" type="number" min="0" step="0.01" defaultValue={valorUsado} className={inputClass} />
+                              <button className="rounded-md border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                                Salvar
+                              </button>
+                            </form>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 font-semibold tabular-nums">{brl(total)}</td>
+                        <td className="px-3 py-2 text-left text-xs">
+                          {selecionado ? (
+                            divergente ? (
+                              <span className="text-amber-700 dark:text-amber-300">Valor do catálogo divergiu</span>
+                            ) : (
+                              <span className="text-zinc-500">Valor preservado</span>
+                            )
+                          ) : (
+                            <span className="text-zinc-400">Visível, fora do subtotal</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

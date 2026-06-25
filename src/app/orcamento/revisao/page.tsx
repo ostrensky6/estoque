@@ -4,15 +4,23 @@ import { carregarLinhasOrcamentos } from "@/lib/orcamento/orcamentos-listagem";
 export const dynamic = "force-dynamic";
 
 export default async function OrcamentosRevisaoPage() {
-  const linhas = (await carregarLinhasOrcamentos()).filter((linha) => linha.grupo === "revisao");
+  const linhas = (await carregarLinhasOrcamentos())
+    .filter((linha) => linha.grupo === "revisao")
+    // Cada linha abre direto a etapa "Proposta final" da demanda de origem,
+    // em vez do documento isolado de laboratório/projeto.
+    .map((linha) =>
+      linha.demandaId
+        ? { ...linha, href: `/orcamento/demandas/${linha.demandaId}?etapa=final` }
+        : linha,
+    );
 
   return (
     <OrcamentoSubarea
-      titulo="Prontos para revisão"
-      descricao="Orçamentos laboratoriais e de projeto com custos preenchidos, enviados ou aguardando conferência técnico-financeira."
+      titulo="Proposta final"
+      descricao="Orçamentos com custos preenchidos, prontos para parametrizar, consolidar e emitir a proposta final."
       rows={linhas}
-      acaoHref="/orcamento/parametros"
-      acaoLabel="Parâmetros"
+      acaoHref="/orcamento/demandas"
+      acaoLabel="Orçamentos não finalizados"
     />
   );
 }

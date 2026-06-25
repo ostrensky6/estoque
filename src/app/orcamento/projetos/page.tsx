@@ -99,20 +99,20 @@ export default async function OrcamentoProjetosPage() {
             <Link href="/orcamento" className="text-xs text-zinc-500 hover:underline">
               Orçamentos
             </Link>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight">Projetos</h1>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight">Orçamento de projeto</h1>
             <p className="mt-1 max-w-3xl text-sm text-zinc-500">
-              Histórico de custos de projeto vinculados a demandas. A criação de novos registros começa em Demandas/Propostas.
+              Histórico de custos de projeto vinculados a orçamentos. A criação de novos registros começa em Orçamentos não finalizados.
             </p>
           </div>
-          <Link href="/orcamento/demandas" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
-            Nova demanda
+          <Link href="/orcamento/demandas/nova" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
+            + Novo Orçamento
           </Link>
         </div>
 
         <section className="mt-6 grid gap-3 md:grid-cols-3">
           {[
             ["1. Demanda", "0% faltante quando a modalidade e o cliente estao definidos"],
-            ["2. Custos de projeto", "100% faltante ate haver rubricas, etapas ou atividades cadastradas"],
+            ["2. Orçamento de projeto", "100% faltante ate haver rubricas, etapas ou atividades cadastradas"],
             ["3. Parametros e emissao", "aplicados somente depois do levantamento de custos"],
           ].map(([titulo, desc]) => (
             <div key={titulo} className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

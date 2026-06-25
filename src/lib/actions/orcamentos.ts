@@ -69,6 +69,29 @@ const PARAMETROS_META: Record<
   },
 };
 
+function snapshotAnaliseLaboratorio(args: {
+  codigo: string;
+  nome?: string | null;
+  custoUnitario: number;
+  nAmostras: number;
+  lote?: number | null;
+  composicao?: Record<string, number>;
+}) {
+  return {
+    tipo: "analise_laboratorial",
+    codigo_analise: args.codigo,
+    descricao: args.nome ?? args.codigo,
+    rubrica: "Laboratório",
+    unidade: "amostra",
+    valor_unitario_utilizado: args.custoUnitario,
+    quantidade: args.nAmostras,
+    lote_padrao: args.lote ?? null,
+    composicao: args.composicao ?? {},
+    data_snapshot: new Date().toISOString(),
+    origem_valor: "breakdown.custoTotal",
+  };
+}
+
 async function atualizarOperacionalLaboratorio(
   supabase: Awaited<ReturnType<typeof createClient>>,
   id: number,
@@ -209,15 +232,63 @@ export async function adicionarItemOrcamento(formData: FormData) {
   const b = breakdowns.find((x) => x.codigo === codigo);
 
   const supabase = await createClient();
-  await supabase.from("orcamento_itens").insert({
+  const { data: analise } = await supabase
+    .from("analises")
+    .select("nome")
+    .eq("codigo", codigo)
+    .maybeSingle();
+  const { data: existente } = await supabase
+    .from("orcamento_itens")
+    .select("id")
+    .eq("orcamento_id", id)
+    .eq("codigo_analise", codigo)
+    .maybeSingle();
+  const payload = {
     orcamento_id: id,
     codigo_analise: codigo,
     n_amostras: n,
     custo_unitario: b?.custoTotal ?? 0,
     preco_unitario: b?.preco ?? 0,
-  });
+    valor_snapshot: snapshotAnaliseLaboratorio({
+      codigo,
+      nome: analise?.nome,
+      custoUnitario: b?.custoTotal ?? 0,
+      nAmostras: n,
+      lote: b?.lote ?? null,
+      composicao: {
+        reagentes: b?.reagentes ?? 0,
+        equipamento: b?.equipamento ?? 0,
+        pessoal: b?.pessoal ?? 0,
+        overhead: b?.overhead ?? 0,
+      },
+    }),
+  };
+  if (existente) {
+    await supabase.from("orcamento_itens").update({ n_amostras: n }).eq("id", existente.id);
+  } else {
+    await supabase.from("orcamento_itens").insert(payload);
+  }
   await atualizarOperacionalLaboratorio(supabase, id);
   revalidatePath(`/orcamento/${id}`);
+}
+
+export async function alternarAnaliseOrcamento(formData: FormData) {
+  const id = Number(formData.get("orcamento_id"));
+  const codigo = String(formData.get("codigo_analise") ?? "");
+  const incluir = String(formData.get("incluir") ?? "") === "true";
+  if (!id || !codigo) return;
+  if (!incluir) {
+    const supabase = await createClient();
+    await supabase
+      .from("orcamento_itens")
+      .delete()
+      .eq("orcamento_id", id)
+      .eq("codigo_analise", codigo);
+    await atualizarOperacionalLaboratorio(supabase, id);
+    revalidatePath(`/orcamento/${id}`);
+    return;
+  }
+  await adicionarItemOrcamento(formData);
 }
 
 export async function removerItemOrcamento(formData: FormData) {
@@ -287,6 +358,52 @@ export async function excluirOrcamento(formData: FormData) {
   await supabase.from("orcamentos").delete().eq("id", id);
   revalidatePath("/orcamento");
   redirect("/orcamento");
+}
+
+export async function excluirOrcamentosEmElaboracaoSelecionados(formData: FormData) {
+  const selecionados = formData
+    .getAll("selecionados")
+    .map((valor) => String(valor))
+    .map((valor) => {
+      const [origem, id] = valor.split(":");
+      return { origem, id: Number(id) };
+    })
+    .filter((item) => ["laboratorio", "projeto"].includes(item.origem) && Number.isInteger(item.id) && item.id > 0);
+
+  if (selecionados.length === 0) return;
+
+  const supabase = await createClient();
+  const laboratorioIds = selecionados.filter((item) => item.origem === "laboratorio").map((item) => item.id);
+  const projetoIds = selecionados.filter((item) => item.origem === "projeto").map((item) => item.id);
+
+  if (laboratorioIds.length > 0) {
+    const { data: orcamentos } = await supabase
+      .from("orcamentos")
+      .select("id, status")
+      .in("id", laboratorioIds);
+    const deletaveis = (orcamentos ?? [])
+      .filter((orcamento) => !["enviado", "aprovado"].includes(orcamento.status))
+      .map((orcamento) => orcamento.id);
+    if (deletaveis.length > 0) {
+      await supabase.from("orcamentos").delete().in("id", deletaveis);
+    }
+  }
+
+  if (projetoIds.length > 0) {
+    const { data: orcamentosProjeto } = await supabase
+      .from("orcamento_projetos")
+      .select("id, status")
+      .in("id", projetoIds);
+    const deletaveis = (orcamentosProjeto ?? [])
+      .filter((orcamento) => !["enviado", "aprovado"].includes(orcamento.status))
+      .map((orcamento) => orcamento.id);
+    if (deletaveis.length > 0) {
+      await supabase.from("orcamento_projetos").delete().in("id", deletaveis);
+    }
+  }
+
+  revalidatePath("/orcamento/demandas");
+  revalidatePath("/orcamento");
 }
 
 export async function cancelarOrcamento(formData: FormData) {

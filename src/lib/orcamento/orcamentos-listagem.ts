@@ -22,6 +22,7 @@ const TIPO = {
 const MODALIDADE_TIPO: Record<string, keyof typeof TIPO> = {
   analises: "analises",
   projeto: "projeto",
+  projeto_com_analises: "analises_projeto",
   analises_projeto: "analises_projeto",
   projeto_analises_custos: "analises_projeto",
 };
@@ -47,6 +48,7 @@ export type OrcamentoFila = OrcamentoRow & {
   origem: "laboratorio" | "projeto" | "final";
   grupo: "em_elaboracao" | "revisao" | "emitidos" | "decididos";
   criadoEm: string;
+  demandaId: number | null;
 };
 
 export async function carregarLinhasOrcamentos(): Promise<OrcamentoFila[]> {
@@ -103,6 +105,7 @@ export async function carregarLinhasOrcamentos(): Promise<OrcamentoFila[]> {
       origem: "laboratorio",
       grupo: grupoDocumento(o.status, etapaLaboratorio(o.status, statusOperacional)),
       criadoEm: o.criado_em,
+      demandaId: o.demanda_id ?? null,
     };
   });
 
@@ -149,6 +152,7 @@ export async function carregarLinhasOrcamentos(): Promise<OrcamentoFila[]> {
       origem: "projeto",
       grupo: grupoDocumento(o.status, etapaAtual),
       criadoEm: o.criado_em,
+      demandaId: o.demanda_id ?? null,
     };
   });
 
@@ -175,6 +179,7 @@ export async function carregarLinhasOrcamentos(): Promise<OrcamentoFila[]> {
       origem: "final",
       grupo: ["emitido", "vencido"].includes(v.status) ? "emitidos" : "decididos",
       criadoEm: v.criado_em,
+      demandaId: v.demanda_id ?? null,
     };
   });
 

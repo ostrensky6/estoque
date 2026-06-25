@@ -24,48 +24,28 @@ type DemandaFunil = {
 const SUBAREAS = [
   {
     href: "/orcamento/demandas",
-    titulo: "Demandas/Propostas",
-    detalhe: "Entrada obrigatória antes de qualquer orçamento formal.",
+    titulo: "Orçamentos não finalizados",
+    detalhe: "Entrada e continuação de orçamentos pendentes.",
   },
   {
-    href: "/orcamento/em-elaboracao",
+    href: "/orcamento/demandas?filtro=em_elaboracao",
     titulo: "Em elaboração",
-    detalhe: "Custos pendentes ou ainda em preenchimento.",
+    detalhe: "Orçamentos com custos pendentes ou ainda em preenchimento.",
+  },
+  {
+    href: "/orcamento/projetos",
+    titulo: "Orçamento de projeto",
+    detalhe: "Rubricas, custos próprios e análises dentro do projeto.",
   },
   {
     href: "/orcamento/revisao",
-    titulo: "Prontos para revisão",
-    detalhe: "Módulos preenchidos, enviados ou aguardando conferência.",
-  },
-  {
-    href: "/orcamento/emitidos",
-    titulo: "Emitidos/enviados",
-    detalhe: "Versões finais ativas, vencidas e documentos enviados.",
-  },
-  {
-    href: "/orcamento/decididos",
-    titulo: "Aprovados/recusados",
-    detalhe: "Resultados comerciais e documentos cancelados.",
+    titulo: "Proposta final",
+    detalhe: "Parâmetros econômicos, dashboard e revisão antes da emissão.",
   },
   {
     href: "/orcamento/historico",
-    titulo: "Histórico de Orçamentos",
-    detalhe: "Versões, validade, duplicações e comparação.",
-  },
-  {
-    href: "/orcamento/parametros",
-    titulo: "Parâmetros Econômicos",
-    detalhe: "Percentuais, gross-up, versões e snapshots.",
-  },
-  {
-    href: "/orcamento/modelos",
-    titulo: "Modelos/Templates",
-    detalhe: "Templates e catálogo institucional de custos.",
-  },
-  {
-    href: "/orcamento/governanca",
-    titulo: "Governança",
-    detalhe: "Permissões, eventos sensíveis e auditoria por campo.",
+    titulo: "Histórico de orçamentos",
+    detalhe: "Consulta de registros fechados, status e versões anteriores.",
   },
 ];
 
@@ -97,17 +77,17 @@ export default async function OrcamentosPage({
   const aprovadosPeriodo = linhasPeriodo.filter((linha) => linha.status === "aprovado");
   const custosPendentes = linhas.filter((linha) => linha.etapaAtual === "Custos pendentes");
   const custosRevisados = linhas.filter((linha) => ["Custos preenchidos", "Pronto para revisão"].includes(linha.etapaAtual ?? ""));
-  const aguardandoParametros = linhas.filter((linha) => linha.grupo === "revisao" && linha.origem !== "final");
+  const aguardandoPropostaFinal = linhas.filter((linha) => linha.grupo === "revisao" && linha.origem !== "final");
   const prontosEmissao = linhas.filter((linha) => linha.grupo === "revisao");
   const receitaPotencial = emitidosAtivos.reduce((acc, linha) => acc + Number(linha.total ?? 0), 0);
   const totalMonitorado = linhas.reduce((acc, linha) => acc + Number(linha.total ?? 0), 0);
 
   const funil = [
-    { label: "Demanda", valor: demandasPeriodo.length, href: "/orcamento/demandas" },
-    { label: "Custos", valor: custosRevisados.length, href: "/orcamento/em-elaboracao" },
-    { label: "Parâmetros", valor: aguardandoParametros.length, href: "/orcamento/parametros" },
-    { label: "Final", valor: finaisPeriodo.length, href: "/orcamento/emitidos" },
-    { label: "Aprovado", valor: aprovadosPeriodo.length, href: "/orcamento/decididos" },
+    { label: "Não finalizados", valor: demandasPeriodo.length, href: "/orcamento/demandas" },
+    { label: "Custos", valor: custosRevisados.length, href: "/orcamento/demandas?filtro=em_elaboracao" },
+    { label: "Proposta final", valor: aguardandoPropostaFinal.length, href: "/orcamento/revisao" },
+    { label: "Final", valor: finaisPeriodo.length, href: "/orcamento/historico" },
+    { label: "Aprovado", valor: aprovadosPeriodo.length, href: "/orcamento/historico?status=aprovado" },
   ];
   const maxFunil = Math.max(...funil.map((item) => item.valor), 1);
   const valorPorStatus = agruparValorPor(linhas, (linha) => linha.statusLabel || linha.status);
@@ -129,7 +109,7 @@ export default async function OrcamentosPage({
   const aguardandoRevisao = linhas
     .filter((linha) => linha.grupo === "revisao")
     .slice(0, 6);
-  const parametrosAtencao = linhas
+  const propostasAtencao = linhas
     .filter((linha) => linha.origem !== "final" && linha.grupo === "revisao")
     .slice(0, 6);
 
@@ -157,21 +137,21 @@ export default async function OrcamentosPage({
                 {dias}d
               </Link>
             ))}
-            <Link href="/orcamento/demandas" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
-              Nova demanda
+            <Link href="/orcamento/demandas/nova" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
+              + Novo Orçamento
             </Link>
           </div>
         </div>
 
         <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Resumo titulo="Demandas novas" valor={demandasPeriodo.length.toLocaleString("pt-BR")} href="/orcamento/demandas" />
-          <Resumo titulo="Custos pendentes" valor={custosPendentes.length.toLocaleString("pt-BR")} href="/orcamento/em-elaboracao" />
-          <Resumo titulo="Aguardando parâmetros" valor={aguardandoParametros.length.toLocaleString("pt-BR")} href="/orcamento/parametros" />
+          <Resumo titulo="Orçamentos não finalizados" valor={demandasPeriodo.length.toLocaleString("pt-BR")} href="/orcamento/demandas" />
+          <Resumo titulo="Custos pendentes" valor={custosPendentes.length.toLocaleString("pt-BR")} href="/orcamento/demandas?filtro=em_elaboracao" />
+          <Resumo titulo="Aguardando proposta final" valor={aguardandoPropostaFinal.length.toLocaleString("pt-BR")} href="/orcamento/revisao" />
           <Resumo titulo="Prontos para emissão" valor={prontosEmissao.length.toLocaleString("pt-BR")} href="/orcamento/revisao" />
-          <Resumo titulo="Emitidos" valor={finaisPeriodo.length.toLocaleString("pt-BR")} href="/orcamento/emitidos" />
-          <Resumo titulo="Aprovados" valor={aprovadosPeriodo.length.toLocaleString("pt-BR")} href="/orcamento/decididos" />
-          <Resumo titulo="Vencidos" valor={vencidos.length.toLocaleString("pt-BR")} href="/orcamento/emitidos" />
-          <Resumo titulo="Receita potencial" valor={brl(receitaPotencial)} href="/orcamento/emitidos" />
+          <Resumo titulo="Concluídos" valor={finaisPeriodo.length.toLocaleString("pt-BR")} href="/orcamento/historico" />
+          <Resumo titulo="Aprovados" valor={aprovadosPeriodo.length.toLocaleString("pt-BR")} href="/orcamento/historico?status=aprovado" />
+          <Resumo titulo="Vencidos" valor={vencidos.length.toLocaleString("pt-BR")} href="/orcamento/historico?status=vencido" />
+          <Resumo titulo="Receita potencial" valor={brl(receitaPotencial)} href="/orcamento/historico?status=emitido" />
         </section>
 
         <section className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
@@ -213,7 +193,7 @@ export default async function OrcamentosPage({
           <TabelaAcao titulo="Paradas há mais de 7 dias" linhas={paradas} detalhe={(linha) => `${linha.etapaAtual ?? "Sem etapa"} · ${idadeDias(linha.atualizadoEm ?? linha.criadoEm, agora)} dias`} />
           <TabelaAcao titulo="Vencendo em até 30 dias" linhas={vencendo} detalhe={(linha) => `${formatDate(linha.data)} · ${diasAte(linha.data, agora)} dias`} />
           <TabelaAcao titulo="Custos aguardando revisão" linhas={aguardandoRevisao} detalhe={(linha) => `${linha.etapaAtual} · ${linha.responsavel}`} />
-          <TabelaAcao titulo="Parâmetros pendentes ou antigos" linhas={parametrosAtencao} detalhe={(linha) => `${linha.proximaAcao ?? "Revisar"} · atualizado ${formatDate(linha.atualizadoEm ?? linha.criadoEm)}`} />
+          <TabelaAcao titulo="Propostas finais pendentes" linhas={propostasAtencao} detalhe={(linha) => `${linha.proximaAcao ?? "Revisar"} · atualizado ${formatDate(linha.atualizadoEm ?? linha.criadoEm)}`} />
         </section>
 
         <section className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">

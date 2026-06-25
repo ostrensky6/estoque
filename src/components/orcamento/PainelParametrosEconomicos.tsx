@@ -13,7 +13,7 @@ import {
  *   - subtotais, valores em R$ e total (calculados) em NEUTRO (ValorCalculado).
  *
  * Componente de apresentação puro — recebe os números já consolidados pela
- * engine (aplicarParametrosEconomicos / consolidarOrcamentoFinal) no servidor.
+ * engine (consolidarEconomiaOrcamento / consolidarOrcamentoFinal) no servidor.
  */
 
 export type ParametroAplicadoView = {
@@ -74,7 +74,7 @@ export function PainelParametrosEconomicos({
   parametros: ParametroAplicadoView[];
   alertas?: string[];
 }) {
-  const subtotalCustos = precoLaboratorio + custoProjeto;
+  const subtotalCustos = custoLaboratorio + custoProjeto;
   const totalParametros = parametros.reduce((acc, p) => acc + p.amount, 0);
 
   return (
@@ -85,7 +85,7 @@ export function PainelParametrosEconomicos({
           <Linha rotulo="Custo laboratório">
             <ValorCalculado>{brl(custoLaboratorio)}</ValorCalculado>
           </Linha>
-          <Linha rotulo="Preço laboratório">
+          <Linha rotulo="Preço laboratório histórico">
             <ValorCalculado estado="snapshot">{brl(precoLaboratorio)}</ValorCalculado>
           </Linha>
           <Linha rotulo="Custo projeto">
@@ -125,8 +125,8 @@ export function PainelParametrosEconomicos({
           <Linha rotulo="Projeto após parâmetros">
             <ValorCalculado>{brl(projetoFinal)}</ValorCalculado>
           </Linha>
-          <Linha rotulo="Laboratório (preço formado)">
-            <ValorCalculado estado="snapshot">{brl(precoLaboratorio)}</ValorCalculado>
+          <Linha rotulo="Custo direto técnico">
+            <ValorCalculado estado="snapshot">{brl(subtotalCustos)}</ValorCalculado>
           </Linha>
           <Linha rotulo="Total final" forte>
             <ValorCalculado estado="bloqueado" className="text-base">
@@ -145,9 +145,9 @@ export function PainelParametrosEconomicos({
       )}
 
       <p className="mt-3 text-[11px] leading-5 text-zinc-400">
-        Total = laboratório (preço já formado) + projeto após parâmetros. Os
-        percentuais são valores de entrada; os valores em R$ e o total são
-        calculados pelo servidor e não devem ser editados diretamente.
+        Total = custo técnico do laboratório + custos próprios do projeto, com
+        gross-up único aplicado no servidor. O preço laboratorial histórico é
+        exibido apenas para compatibilidade.
       </p>
     </div>
   );

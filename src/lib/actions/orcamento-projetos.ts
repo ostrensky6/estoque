@@ -87,6 +87,30 @@ function categoriaInstitucionalPorRubrica(rubrica: string) {
   }
 }
 
+function snapshotCatalogoProjeto(item: {
+  id: string;
+  rubrica: string;
+  descricao: string;
+  unidade: string | null;
+  preco_unitario: number | null;
+  categoria: string | null;
+  origem?: string | null;
+}, quantidade: number, mesesSelecionados: number[]) {
+  return {
+    tipo: "catalogo_projeto",
+    catalogo_item_id: item.id,
+    descricao: item.descricao,
+    rubrica: item.rubrica,
+    categoria: item.categoria,
+    unidade: item.unidade,
+    valor_unitario_utilizado: Number(item.preco_unitario ?? 0),
+    quantidade,
+    meses_selecionados: mesesSelecionados,
+    data_snapshot: new Date().toISOString(),
+    origem_valor: item.origem ?? "orcamento_projeto_catalogo",
+  } satisfies Json;
+}
+
 async function carregarCliente(clienteId: number | null) {
   if (!clienteId) return null;
   const supabase = await createClient();
@@ -241,13 +265,36 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
   const { breakdowns } = await calcularTodas();
   const breakdown = breakdowns.find((x) => x.codigo === codigo);
   const supabase = await createClient();
-  const { error } = await supabase.from("orcamento_projeto_analises").insert({
+  const { data: existente } = await supabase
+    .from("orcamento_projeto_analises")
+    .select("id")
+    .eq("orcamento_projeto_id", id)
+    .eq("codigo_analise", codigo)
+    .maybeSingle();
+  const snapshot = {
+    tipo: "analise_projeto_historica",
+    codigo_analise: codigo,
+    descricao: codigo,
+    rubrica: "Laboratório",
+    unidade: "amostra",
+    valor_unitario_utilizado: breakdown?.custoTotal ?? 0,
+    quantidade: nAmostras,
+    data_snapshot: new Date().toISOString(),
+    origem_valor: "breakdown.custoTotal",
+  } satisfies Json;
+  const payload = {
     orcamento_projeto_id: id,
     codigo_analise: codigo,
     n_amostras: nAmostras,
     custo_unitario: breakdown?.custoTotal ?? 0,
     preco_unitario: breakdown?.preco ?? 0,
-  });
+    valor_snapshot: snapshot,
+  };
+  const { error } = existente
+    ? await supabase.from("orcamento_projeto_analises").update({
+        n_amostras: nAmostras,
+      }).eq("id", existente.id)
+    : await supabase.from("orcamento_projeto_analises").insert(payload);
   if (error) throw new Error(error.message);
   revalidatePath(`${pathLista}/${id}`);
 }
@@ -279,6 +326,18 @@ export async function adicionarCustoProjeto(formData: FormData) {
     entrega: texto(formData, "entrega") || "Entrega principal",
     categoria_institucional: texto(formData, "categoria_institucional") || categoriaInstitucionalPorRubrica(rubrica),
     nomenclatura_origem: "kontrol",
+    valor_snapshot: {
+      tipo: "manual",
+      descricao,
+      rubrica,
+      categoria,
+      unidade: texto(formData, "unidade"),
+      valor_unitario_utilizado: custoUnitario,
+      quantidade,
+      meses_selecionados: inteiroArray(formData, "meses_selecionados"),
+      data_snapshot: new Date().toISOString(),
+      origem_valor: "entrada_manual",
+    } satisfies Json,
   });
   if (error) throw new Error(error.message);
   revalidatePath(`${pathLista}/${id}`);
@@ -292,7 +351,7 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
   const supabase = await createClient();
   const { data: item, error: itemError } = await supabase
     .from("orcamento_projeto_catalogo")
-    .select("id, rubrica, descricao, unidade, preco_unitario, categoria")
+    .select("id, rubrica, descricao, unidade, preco_unitario, categoria, origem")
     .eq("id", catalogoId)
     .single();
   if (itemError) throw new Error(itemError.message);
@@ -300,7 +359,13 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
 
   const quantidade = numero(formData, "quantidade", 1);
   const mesesSelecionados = inteiroArray(formData, "meses_selecionados");
-  const { error } = await supabase.from("orcamento_projeto_custos").insert({
+  const { data: existente } = await supabase
+    .from("orcamento_projeto_custos")
+    .select("id")
+    .eq("orcamento_projeto_id", id)
+    .eq("catalogo_item_id", item.id)
+    .maybeSingle();
+  const payload = {
     orcamento_projeto_id: id,
     categoria: categoriaPorRubrica(item.rubrica),
     rubrica: item.rubrica,
@@ -317,8 +382,123 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
     entrega: texto(formData, "entrega") || "Entrega principal",
     categoria_institucional: texto(formData, "categoria_institucional") || categoriaInstitucionalPorRubrica(item.rubrica),
     nomenclatura_origem: item.id.includes("-") ? "orcamento_projetos_antigo" : "catalogo_institucional",
-  });
+    valor_snapshot: snapshotCatalogoProjeto(item, quantidade, mesesSelecionados),
+  };
+  const { error } = existente
+    ? await supabase.from("orcamento_projeto_custos").update({
+        quantidade,
+        meses_selecionados: mesesSelecionados,
+      }).eq("id", existente.id)
+    : await supabase.from("orcamento_projeto_custos").insert(payload);
   if (error) throw new Error(error.message);
+  revalidatePath(`${pathLista}/${id}`);
+}
+
+export async function alternarCustoCatalogoProjeto(formData: FormData) {
+  const id = numero(formData, "orcamento_projeto_id");
+  const catalogoId = texto(formData, "catalogo_item_id");
+  const incluir = texto(formData, "incluir") === "true";
+  if (!id || !catalogoId) return;
+  if (!incluir) {
+    const supabase = await createClient();
+    await supabase
+      .from("orcamento_projeto_custos")
+      .delete()
+      .eq("orcamento_projeto_id", id)
+      .eq("catalogo_item_id", catalogoId);
+    revalidatePath(`${pathLista}/${id}`);
+    return;
+  }
+  await adicionarCustoCatalogoProjeto(formData);
+}
+
+export async function atualizarCustoCatalogoProjeto(formData: FormData) {
+  const id = numero(formData, "orcamento_projeto_id");
+  const itemId = numero(formData, "item_id");
+  if (!id || !itemId) return;
+  const quantidade = numero(formData, "quantidade", 1);
+  const custoUnitario = numero(formData, "custo_unitario");
+  const mesesSelecionados = inteiroArray(formData, "meses_selecionados");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("orcamento_projeto_custos")
+    .update({
+      quantidade,
+      custo_unitario: custoUnitario,
+      preco_unitario: custoUnitario,
+      meses_selecionados: mesesSelecionados,
+    })
+    .eq("id", itemId)
+    .eq("orcamento_projeto_id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`${pathLista}/${id}`);
+}
+
+export async function selecionarRubricaCatalogoProjeto(formData: FormData) {
+  const id = numero(formData, "orcamento_projeto_id");
+  const rubrica = texto(formData, "rubrica") || "OU";
+  const incluir = texto(formData, "incluir") === "true";
+  if (!id) return;
+  const supabase = await createClient();
+  if (!incluir) {
+    const { data: catalogo } = await supabase
+      .from("orcamento_projeto_catalogo")
+      .select("id")
+      .eq("ativo", true)
+      .eq("rubrica", rubrica);
+    const ids = (catalogo ?? []).map((item) => item.id);
+    if (ids.length > 0) {
+      await supabase
+        .from("orcamento_projeto_custos")
+        .delete()
+        .eq("orcamento_projeto_id", id)
+        .in("catalogo_item_id", ids);
+    }
+    revalidatePath(`${pathLista}/${id}`);
+    return;
+  }
+
+  const [{ data: catalogo }, { data: existentes }] = await Promise.all([
+    supabase
+      .from("orcamento_projeto_catalogo")
+      .select("id, rubrica, descricao, unidade, preco_unitario, categoria, origem")
+      .eq("ativo", true)
+      .eq("rubrica", rubrica),
+    supabase
+      .from("orcamento_projeto_custos")
+      .select("catalogo_item_id")
+      .eq("orcamento_projeto_id", id),
+  ]);
+  const existentesSet = new Set((existentes ?? []).map((item) => item.catalogo_item_id).filter(Boolean));
+  const linhas = (catalogo ?? [])
+    .filter((item) => !existentesSet.has(item.id))
+    .map((item) => {
+      const quantidade = item.rubrica === "PE" ? 0 : 1;
+      const mesesSelecionados: number[] = [];
+      return {
+        orcamento_projeto_id: id,
+        categoria: categoriaPorRubrica(item.rubrica),
+        rubrica: item.rubrica,
+        catalogo_item_id: item.id,
+        descricao: item.descricao,
+        quantidade,
+        unidade: item.unidade,
+        custo_unitario: Number(item.preco_unitario ?? 0),
+        preco_unitario: Number(item.preco_unitario ?? 0),
+        meses_selecionados: mesesSelecionados,
+        origem: "catalogo",
+        etapa: etapaPorRubrica(item.rubrica),
+        atividade: item.categoria || categoriaPorRubrica(item.rubrica),
+        entrega: "Entrega principal",
+        categoria_institucional: categoriaInstitucionalPorRubrica(item.rubrica),
+        nomenclatura_origem: item.id.includes("-") ? "orcamento_projetos_antigo" : "catalogo_institucional",
+        valor_snapshot: snapshotCatalogoProjeto(item, quantidade, mesesSelecionados),
+      };
+    });
+  if (linhas.length > 0) {
+    const { error } = await supabase.from("orcamento_projeto_custos").insert(linhas);
+    if (error) throw new Error(error.message);
+  }
   revalidatePath(`${pathLista}/${id}`);
 }
 

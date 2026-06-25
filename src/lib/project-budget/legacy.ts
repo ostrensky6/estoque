@@ -25,11 +25,11 @@ export type ProjetoBudgetRates = {
 };
 
 const PARAMETROS_ECONOMICOS_PROJETO = [
-  { key: "impostos_legacy", label: "Impostos" },
-  { key: "incubacao", label: "Incubação" },
-  { key: "reserva", label: "Reserva" },
-  { key: "investimentos", label: "Investimentos" },
-  { key: "lucro", label: "Lucro" },
+  { key: "impostos_legacy", label: "Impostos", base: "final" },
+  { key: "incubacao", label: "Incubação", base: "final" },
+  { key: "reserva", label: "Reserva", base: "custo" },
+  { key: "investimentos", label: "Investimentos", base: "custo" },
+  { key: "lucro", label: "Lucro", base: "custo" },
 ] as const;
 
 export function roundMoney(value: number) {
@@ -54,7 +54,7 @@ export function validarParametrosProjetoGrossUp(rates: ProjetoBudgetRates) {
     };
   }
 
-  const soma = PARAMETROS_ECONOMICOS_PROJETO.reduce(
+  const soma = PARAMETROS_ECONOMICOS_PROJETO.filter((param) => param.base === "final").reduce(
     (acc, param) => acc + Math.max(0, Number(rates[param.key] ?? 0)),
     0,
   );
@@ -63,7 +63,7 @@ export function validarParametrosProjetoGrossUp(rates: ProjetoBudgetRates) {
     return {
       ok: false,
       soma,
-      message: "A soma dos parâmetros econômicos deve ser menor que 100%.",
+      message: "Impostos e incubação devem somar menos de 100%.",
     };
   }
 
@@ -90,15 +90,22 @@ export function calcularOrcamentoProjetoLegacy(
   });
   const subtotal = roundMoney(summaries.reduce((acc, item) => acc + item.total, 0));
   const economicParameters = PARAMETROS_ECONOMICOS_PROJETO;
-  const rateSum =
-    economicParameters.reduce((acc, param) => acc + Math.max(0, Number(rates[param.key] ?? 0)), 0) /
+  const finalRateSum =
+    economicParameters
+      .filter((param) => param.base === "final")
+      .reduce((acc, param) => acc + Math.max(0, Number(rates[param.key] ?? 0)), 0) /
+    100;
+  const costRateSum =
+    economicParameters
+      .filter((param) => param.base === "custo")
+      .reduce((acc, param) => acc + Math.max(0, Number(rates[param.key] ?? 0)), 0) /
     100;
 
-  if (rateSum >= 1) {
+  if (finalRateSum >= 1) {
     return {
       subtotal,
       grossTotal: 0,
-      markupRate: roundMoney(rateSum * 100),
+      markupRate: roundMoney((finalRateSum + costRateSum) * 100),
       grossUpFactor: 0,
       taxesTotal: 0,
       legalTaxes: 0,
@@ -116,15 +123,16 @@ export function calcularOrcamentoProjetoLegacy(
         effectiveRate: 0,
         amount: 0,
       })),
-      validationError: "A soma dos parâmetros econômicos deve ser menor que 100%.",
+      validationError: "Impostos e incubação devem somar menos de 100%.",
     };
   }
 
-  const grossUpFactor = rateSum > 0 ? 1 / (1 - rateSum) : 1;
-  const grossTotal = roundMoney(subtotal * grossUpFactor);
+  const subtotalComMarkup = roundMoney(subtotal * (1 + costRateSum));
+  const grossUpFactor = finalRateSum > 0 ? 1 / (1 - finalRateSum) : 1;
+  const grossTotal = roundMoney(subtotalComMarkup * grossUpFactor);
   const params = economicParameters.map((param) => {
     const nominalRate = Math.max(0, Number(rates[param.key] ?? 0));
-    const amount = roundMoney((nominalRate / 100) * grossTotal);
+    const amount = roundMoney((nominalRate / 100) * (param.base === "final" ? grossTotal : subtotal));
     return {
       key: param.key,
       label: param.label,
@@ -146,7 +154,7 @@ export function calcularOrcamentoProjetoLegacy(
   return {
     subtotal,
     grossTotal,
-    markupRate: roundMoney(rateSum * 100),
+    markupRate: roundMoney((finalRateSum + costRateSum) * 100),
     grossUpFactor,
     taxesTotal,
     legalTaxes,

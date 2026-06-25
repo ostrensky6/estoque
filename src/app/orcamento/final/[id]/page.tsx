@@ -45,9 +45,17 @@ type SnapshotFinal = {
     cliente_nome?: string | null;
     cliente_cnpj?: string | null;
     cliente_contato?: string | null;
+    instituicao?: string | null;
+    responsavel_interno?: string | null;
+    data_solicitacao?: string | null;
+    prazo_esperado?: string | null;
     modalidade?: string | null;
+    matriz_amostra?: string | null;
+    quantidade_amostras_estimada?: number | null;
+    prazo_tecnico_dias?: number | null;
     escopo_preliminar?: string | null;
     descricao?: string | null;
+    observacoes?: string | null;
   };
   orcamentos_analises?: SnapshotOrcamentoAnalises[];
   orcamentos_projeto?: SnapshotOrcamentoProjeto[];
@@ -113,11 +121,11 @@ export default async function OrcamentoFinalPage({
   const snapshot = normalizarSnapshot(versao.snapshot);
   const { data: demandaAtual } = await supabase
     .from("demandas_propostas")
-    .select("id, titulo, cliente_nome, cliente_cnpj, cliente_contato, modalidade, escopo_preliminar, descricao")
+    .select("id, titulo, cliente_nome, cliente_cnpj, cliente_contato, instituicao, responsavel_interno, data_solicitacao, prazo_esperado, modalidade, matriz_amostra, quantidade_amostras_estimada, prazo_tecnico_dias, escopo_preliminar, descricao, observacoes")
     .eq("id", versao.demanda_id)
     .single();
 
-  const demanda = snapshot.demanda ?? demandaAtual;
+  const demanda = { ...(demandaAtual ?? {}), ...(snapshot.demanda ?? {}) };
   const consolidado = snapshot.consolidado ?? {};
   const origens = normalizarOrigens(consolidado, versao);
   const itensLaboratorio = (snapshot.orcamentos_analises ?? []).flatMap((orcamento) =>
@@ -213,8 +221,8 @@ export default async function OrcamentoFinalPage({
         <div className="no-print flex flex-wrap items-center justify-between gap-3">
           <Breadcrumbs
             items={[
-              { label: "Demandas/Propostas", href: "/orcamento/demandas" },
-              { label: demanda?.titulo ?? `Demanda #${versao.demanda_id}`, href: `/orcamento/demandas/${versao.demanda_id}` },
+              { label: "Orçamentos não finalizados", href: "/orcamento/demandas" },
+              { label: demanda?.titulo ?? `Orçamento #${versao.demanda_id}`, href: `/orcamento/demandas/${versao.demanda_id}` },
               { label: versao.numero },
             ]}
           />
@@ -235,7 +243,7 @@ export default async function OrcamentoFinalPage({
               href={`/orcamento/demandas/${versao.demanda_id}`}
               className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
             >
-              Voltar à demanda
+              Voltar ao orçamento
             </Link>
             <PrintButton />
           </div>
@@ -249,7 +257,7 @@ export default async function OrcamentoFinalPage({
                   ATGC Genética Ambiental
                 </p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight">Proposta comercial</h1>
-                <p className="mt-1 text-sm text-zinc-300">{demanda?.titulo ?? `Demanda #${versao.demanda_id}`}</p>
+                <p className="mt-1 text-sm text-zinc-300">{demanda?.titulo ?? `Orçamento #${versao.demanda_id}`}</p>
               </div>
               <div className="text-right text-sm">
                 <p className="text-xs uppercase tracking-wide text-zinc-400">Número</p>
@@ -267,7 +275,11 @@ export default async function OrcamentoFinalPage({
                   <Campo titulo="Cliente" valor={demanda?.cliente_nome ?? "—"} />
                   <Campo titulo="CNPJ/CPF" valor={demanda?.cliente_cnpj ?? "—"} />
                   <Campo titulo="Contato" valor={demanda?.cliente_contato ?? "—"} />
+                  <Campo titulo="Instituição" valor={demanda?.instituicao ?? "—"} />
+                  <Campo titulo="Responsável interno" valor={demanda?.responsavel_interno ?? "—"} />
+                  <Campo titulo="Data da solicitação" valor={formatDate(demanda?.data_solicitacao ?? null)} />
                   <Campo titulo="Modalidade" valor={demanda?.modalidade ?? "—"} />
+                  <Campo titulo="Prazo esperado" valor={formatDate(demanda?.prazo_esperado ?? null)} />
                   <Campo titulo="Emitido em" valor={formatDateTime(versao.criado_em)} />
                   <Campo titulo="Válido até" valor={formatDate(versao.valido_ate)} />
                 </dl>
@@ -286,9 +298,24 @@ export default async function OrcamentoFinalPage({
 
             <section className="mt-6 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Escopo resumido</h2>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-                {demanda?.escopo_preliminar || demanda?.descricao || "—"}
-              </p>
+              <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+                <Campo titulo="Matriz/amostra" valor={demanda?.matriz_amostra ?? "—"} />
+                <Campo
+                  titulo="Qtd. amostras"
+                  valor={demanda?.quantidade_amostras_estimada ? String(demanda.quantidade_amostras_estimada) : "—"}
+                />
+                <Campo
+                  titulo="Prazo técnico"
+                  valor={demanda?.prazo_tecnico_dias ? `${demanda.prazo_tecnico_dias} dias` : "—"}
+                />
+              </dl>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <TextoDemanda titulo="Escopo preliminar" valor={demanda?.escopo_preliminar} />
+                <TextoDemanda titulo="Descrição do orçamento" valor={demanda?.descricao} />
+              </div>
+              {demanda?.observacoes && (
+                <TextoDemanda titulo="Observações gerais" valor={demanda.observacoes} className="mt-4" />
+              )}
             </section>
 
             <section className="mt-6 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
@@ -647,6 +674,15 @@ function Campo({ titulo, valor }: { titulo: string; valor: string }) {
     <div className="rounded-md bg-zinc-50 p-3 dark:bg-zinc-950/50">
       <dt className="text-xs font-medium text-zinc-500">{titulo}</dt>
       <dd className="mt-1 font-medium">{valor}</dd>
+    </div>
+  );
+}
+
+function TextoDemanda({ titulo, valor, className = "" }: { titulo: string; valor?: string | null; className?: string }) {
+  return (
+    <div className={`rounded-md bg-zinc-50 p-3 dark:bg-zinc-950/50 ${className}`}>
+      <h3 className="text-xs font-medium text-zinc-500">{titulo}</h3>
+      <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-zinc-700 dark:text-zinc-300">{valor || "—"}</p>
     </div>
   );
 }

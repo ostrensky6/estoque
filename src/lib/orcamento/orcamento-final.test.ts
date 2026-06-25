@@ -15,10 +15,10 @@ describe("consolidarOrcamentoFinal", () => {
 
     expect(resultado.pronto).toBe(false);
     expect(resultado.pendencias).toEqual(["revisar custos laboratoriais"]);
-    expect(resultado.totalFinal).toBe(30);
+    expect(resultado.totalFinal).toBe(20);
   });
 
-  it("consolida laboratorio e projeto quando modulos exigidos estao revisados", () => {
+  it("consolida laboratorio e projeto com lucro sobre custo direto", () => {
     const resultado = consolidarOrcamentoFinal({
       laboratorioExigido: true,
       projetoExigido: true,
@@ -34,21 +34,22 @@ describe("consolidarOrcamentoFinal", () => {
     expect(resultado.totalLaboratorioCusto).toBe(20);
     expect(resultado.totalLaboratorioPreco).toBe(30);
     expect(resultado.totalProjetoCusto).toBe(70);
-    expect(resultado.totalProjetoFinal).toBe(100);
-    expect(resultado.totalFinal).toBe(130);
+    expect(resultado.subtotalTecnico).toBe(90);
+    expect(resultado.totalProjetoFinal).toBe(70);
+    expect(resultado.totalFinal).toBe(117);
     expect(resultado.origens).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          campo: "totalLaboratorioPreco",
-          valor: 30,
+          campo: "totalLaboratorioCusto",
+          valor: 20,
         }),
         expect.objectContaining({
           campo: "totalProjetoFinal",
-          valor: 100,
+          valor: 70,
         }),
         expect.objectContaining({
           campo: "totalFinal",
-          valor: 130,
+          valor: 117,
         }),
       ]),
     );

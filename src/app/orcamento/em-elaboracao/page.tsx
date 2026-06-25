@@ -1,18 +1,5 @@
-import { OrcamentoSubarea } from "@/components/orcamento/OrcamentoSubarea";
-import { carregarLinhasOrcamentos } from "@/lib/orcamento/orcamentos-listagem";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function OrcamentosEmElaboracaoPage() {
-  const linhas = (await carregarLinhasOrcamentos()).filter((linha) => linha.grupo === "em_elaboracao");
-
-  return (
-    <OrcamentoSubarea
-      titulo="Orçamentos em elaboração"
-      descricao="Demandas e módulos com custos pendentes ou em preenchimento, antes de revisão e emissão formal."
-      rows={linhas}
-      acaoHref="/orcamento/demandas"
-      acaoLabel="Nova demanda"
-    />
-  );
+export default function OrcamentosEmElaboracaoPage() {
+  redirect("/orcamento/demandas?filtro=em_elaboracao");
 }

@@ -15,6 +15,10 @@ $Expected = @{
   SupabaseUrl = "https://hhxwdcwphitfxywbgtju.supabase.co"
 }
 
+$ForbiddenVercelScopes = @(
+  "ostrenskys-projects-17ce406b"
+)
+
 $Failures = New-Object System.Collections.Generic.List[string]
 $Warnings = New-Object System.Collections.Generic.List[string]
 
@@ -48,6 +52,12 @@ try {
     Add-Failure "Branch atual '$branch' nao e 'main'. Use main para producao ou rode com -AllowNonMain conscientemente."
   }
 
+  foreach ($forbiddenScope in $ForbiddenVercelScopes) {
+    if ($Expected.VercelScope -eq $forbiddenScope) {
+      Add-Failure "Configuracao de producao aponta para o scope proibido '$forbiddenScope'. Use '$($Expected.VercelScope)'."
+    }
+  }
+
   $vercelProjectPath = Join-Path $repoRoot ".vercel/project.json"
   if (!(Test-Path $vercelProjectPath)) {
     Add-Failure "Projeto Vercel nao esta linkado: .vercel/project.json ausente."
@@ -58,6 +68,11 @@ try {
     }
     if ($vercelProject.projectId -ne $Expected.VercelProjectId) {
       Add-Failure ".vercel/project.json projectId='$($vercelProject.projectId)', esperado '$($Expected.VercelProjectId)'."
+    }
+    foreach ($forbiddenScope in $ForbiddenVercelScopes) {
+      if (($vercelProject | ConvertTo-Json -Compress) -match [regex]::Escape($forbiddenScope)) {
+        Add-Failure ".vercel/project.json contem o scope proibido '$forbiddenScope'."
+      }
     }
   }
 
@@ -107,6 +122,12 @@ try {
       Add-Failure "Token Vercel nao acessa $($Expected.VercelScope)/$($Expected.VercelProject)."
     } elseif ($inspectText -notmatch [regex]::Escape($Expected.VercelProjectId)) {
       Add-Failure "Vercel project inspect nao confirmou o Project ID esperado '$($Expected.VercelProjectId)'."
+    } else {
+      foreach ($forbiddenScope in $ForbiddenVercelScopes) {
+        if ($inspectText -match [regex]::Escape($forbiddenScope)) {
+          Add-Failure "Vercel project inspect retornou o scope proibido '$forbiddenScope'."
+        }
+      }
     }
   } else {
     Add-Warning "VERCEL_TOKEN nao definido; validacao remota da Vercel foi pulada."
