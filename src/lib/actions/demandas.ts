@@ -11,7 +11,6 @@ import { detectarCustosZero } from "@/lib/orcamento/proposta-final";
 import { planejarModulosProposta, type PlanoModulos } from "@/lib/orcamento/garantir-modulos";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
 import type { Json } from "@/lib/supabase/database.types";
-import { registrarEvento } from "./eventos";
 
 const listaPath = "/orcamento/demandas";
 
@@ -337,25 +336,29 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
     redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent("Complete a demanda antes de emitir o orçamento final.")}`);
   }
 
-  const [{ data: orcamentos }, { data: orcProjetos }, { data: ultimaVersao }] = await Promise.all([
+  const [{ data: orcamentos }, { data: orcProjetos }] = await Promise.all([
     supabase
       .from("orcamentos")
-      .select("id, status, orcamento_itens(id, n_amostras, custo_unitario, preco_unitario)")
+      .select("id, status, status_operacional, orcamento_itens(id, n_amostras, custo_unitario, preco_unitario)")
       .eq("demanda_id", id)
       .order("id"),
-      supabase
-        .from("orcamento_projetos")
-        .select("id, status, projeto_sem_custo_justificativa, impostos, margem_lucro, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(id, n_amostras, custo_unitario, preco_unitario), orcamento_projeto_custos(id, rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados)")
-        .eq("demanda_id", id)
-        .order("id"),
     supabase
-      .from("orcamento_final_versoes")
-      .select("versao")
+      .from("orcamento_projetos")
+      .select("id, status, projeto_sem_custo_justificativa, impostos, margem_lucro, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(id, n_amostras, custo_unitario, preco_unitario), orcamento_projeto_custos(id, rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados)")
       .eq("demanda_id", id)
-      .order("versao", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .order("id"),
   ]);
+
+  // Integridade: não emitir com duplicidade ativa (também travado na RPC sob lock).
+  const labAtivos = (orcamentos ?? [])
+    .filter((o) => o.status !== "cancelado" && o.status_operacional !== "cancelado")
+    .map((o) => o.id);
+  const projAtivos = (orcProjetos ?? []).filter((o) => o.status !== "cancelado").map((o) => o.id);
+  if (labAtivos.length > 1 || projAtivos.length > 1) {
+    redirect(
+      `${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent("Duplicidade ativa de módulos na demanda; saneamento necessário antes de emitir.")}`,
+    );
+  }
 
   const exigeAnalises = modalidadeExigeLaboratorio(demanda.modalidade);
   const exigeProjeto = modalidadeExigeProjeto(demanda.modalidade);
@@ -433,18 +436,12 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
     redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent(msg)}`);
   }
 
-  const versao = Number(ultimaVersao?.versao ?? 0) + 1;
-  const numero = `OF-${new Date().getFullYear()}-${String(id).padStart(4, "0")}-v${versao}`;
-  const validoAte = new Date(Date.now() + validadeDias * 86400000).toISOString().slice(0, 10);
+  // Snapshot completo (engine autoritativa) e payload de parâmetros aplicados.
+  // O cálculo já foi feito/validado em TS; a RPC só PERSISTE atomicamente.
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  await supabase
-    .from("orcamento_final_versoes")
-    .update({ status: "substituido" })
-    .eq("demanda_id", id)
-    .eq("status", "emitido");
+  const economia = consolidado.economia;
 
   const snapshot = {
     demanda,
@@ -453,37 +450,10 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
     consolidado,
   } satisfies Json;
 
-  const { data: versaoFinal, error } = await supabase
-    .from("orcamento_final_versoes")
-    .insert({
-      demanda_id: id,
-      versao,
-      numero,
-      validade_dias: validadeDias,
-      valido_ate: validoAte,
-      total_laboratorio_custo: consolidado.totalLaboratorioCusto,
-      total_laboratorio_preco: consolidado.totalLaboratorioPreco,
-      total_projeto_custo: consolidado.totalProjetoCusto,
-      total_projeto_final: consolidado.totalProjetoFinal,
-      total_final: consolidado.totalFinal,
-      snapshot,
-      criado_por: user?.id ?? null,
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(error.message);
-
-  if (consolidado.economia.valido) {
-    const economia = consolidado.economia;
-    const { error: parametrosError } = await supabase
-      .from("orcamento_parametros_aplicados")
-      .insert({
-        demanda_id: id,
+  const parametrosPayload: Json | null = economia.valido
+    ? {
         orcamento_laboratorial_id: orcamentos?.at(-1)?.id ?? null,
         orcamento_projeto_id: projetoReferencia?.id ?? null,
-        orcamento_final_versao_id: versaoFinal.id,
-        versao,
-        // Política A (DEC-ORC-001): gross-up único sobre o subtotal técnico.
         metodo_calculo: "GROSS_UP",
         laboratorio_modo: "CUSTO_TECNICO",
         subtotal_laboratorio: economia.custoLaboratorioTecnico,
@@ -491,32 +461,38 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
         subtotal_custos: economia.subtotal,
         total_parametros: economia.totalParametros,
         total_final: economia.totalFinal,
-        parametros_snapshot: economia.parametros satisfies Json,
+        parametros_snapshot: economia.parametros,
         formula_snapshot: {
           politica: economia.politica,
           formula: economia.formula,
           somaPercentual: economia.somaPercentual,
           fatorGrossUp: economia.fatorGrossUp,
           origens: consolidado.origens,
-        } satisfies Json,
+        },
         alertas_snapshot: economia.alertas,
-        criado_por: user?.id ?? null,
-      });
-    if (parametrosError) throw new Error(parametrosError.message);
-  }
-  // "orcada" só é aplicado APÓS a emissão bem-sucedida de uma versão final
-  // (regra Fase 5). Não sobrescreve estados decididos (aprovada/recusada/cancelada).
-  if (["nova", "em_analise"].includes(demanda.status)) {
-    await supabase.from("demandas_propostas").update({ status: "orcada" }).eq("id", id);
-  }
+      }
+    : null;
 
-  await registrarEvento(
-    "orcamento_final",
-    id,
-    ultimaVersao?.versao ? `v${ultimaVersao.versao}` : null,
-    `v${versao}`,
-    `Orçamento final ${numero} emitido para demanda #${id}.`,
-  );
+  // Persistência ATÔMICA: substituição da versão anterior, nova versão,
+  // parâmetros, status da demanda e auditoria — tudo em uma transação com lock
+  // por demanda (próxima versão calculada dentro da RPC).
+  const { data: resultado, error } = await supabase.rpc("emitir_orcamento_final_transacional", {
+    p_demanda_id: id,
+    p_validade_dias: validadeDias,
+    p_total_laboratorio_custo: consolidado.totalLaboratorioCusto,
+    p_total_laboratorio_preco: consolidado.totalLaboratorioPreco,
+    p_total_projeto_custo: consolidado.totalProjetoCusto,
+    p_total_projeto_final: consolidado.totalProjetoFinal,
+    p_total_final: consolidado.totalFinal,
+    p_snapshot: snapshot,
+    p_parametros: parametrosPayload,
+    p_criado_por: user?.id ?? null,
+    p_usuario_email: user?.email ?? null,
+  });
+  if (error) {
+    redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent(`Falha ao emitir: ${error.message}`)}`);
+  }
+  void resultado;
 
   revalidatePath(listaPath);
   revalidatePath(`${listaPath}/${id}`);
