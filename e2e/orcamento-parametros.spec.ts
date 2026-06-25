@@ -7,16 +7,16 @@ import { test, expect } from "@playwright/test";
  * projeto) em /orcamento/demandas/1.
  */
 test("etapa de parâmetros econômicos renderiza densa no fluxo da demanda", async ({ page }) => {
-  await page.goto("/orcamento/demandas/1");
+  await page.goto("/orcamento/demandas/1?etapa=parametros");
 
   const secao = page.locator("#parametros");
   await expect(secao).toBeVisible();
 
   // Três blocos densos (§8.1): base de custos -> parâmetros aplicados -> resultado.
-  await expect(secao.getByText("Base de cálculo")).toBeVisible();
+  await expect(secao.getByText("Base de cálculo").first()).toBeVisible();
   await expect(secao.getByText(/Parâmetros aplicados/)).toBeVisible();
   await expect(secao.getByText("Resultado final")).toBeVisible();
-  await expect(secao.getByText("Subtotal de custos")).toBeVisible();
+  await expect(secao.getByText("Subtotal técnico").first()).toBeVisible();
   // "Total final" aparece no painel e na tabela de memória; basta existir no painel.
   await expect(secao.getByText("Total final").first()).toBeVisible();
 
@@ -27,6 +27,7 @@ test("etapa de parâmetros econômicos renderiza densa no fluxo da demanda", asy
   await secao.screenshot({ path: "output/parametros-economicos.png" });
 
   // §8.2 nos inputs: o form da demanda mostra valores digitados em azul (entrada).
+  await page.goto("/orcamento/demandas/1?etapa=demanda");
   const formDemanda = page.locator("#demanda");
   await expect(formDemanda.locator('input[name="cliente_nome"]')).toHaveValue("Cliente Demo");
   await formDemanda.scrollIntoViewIfNeeded();

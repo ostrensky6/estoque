@@ -79,6 +79,7 @@ async function clienteSnapshot(clienteId: number | null) {
 }
 
 export async function criarDemanda(formData: FormData) {
+  await exigirPapelOrcamento("criar_demanda");
   const supabase = await createClient();
   const clienteId = numeroOuNull(formData, "cliente_id");
   const cliente = await clienteSnapshot(clienteId);
@@ -117,6 +118,7 @@ export async function criarDemanda(formData: FormData) {
 }
 
 export async function salvarDemanda(formData: FormData) {
+  await exigirPapelOrcamento("criar_demanda");
   const id = Number(formData.get("demanda_id"));
   if (!id) return;
 
@@ -162,6 +164,7 @@ export async function salvarDemanda(formData: FormData) {
 }
 
 export async function gerarOrcamentoAnalisesDaDemanda(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = Number(formData.get("demanda_id"));
   if (!id) return;
 
@@ -211,6 +214,7 @@ export async function gerarOrcamentoAnalisesDaDemanda(formData: FormData) {
 }
 
 export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = Number(formData.get("demanda_id"));
   if (!id) return;
 
@@ -266,6 +270,7 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
  * execução). Não marca a demanda como "orcada".
  */
 export async function garantirModulosDaProposta(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = Number(formData.get("demanda_id"));
   if (!id) return;
   const supabase = await createClient();

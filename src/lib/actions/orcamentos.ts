@@ -114,6 +114,7 @@ async function atualizarOperacionalLaboratorio(
 
 /** Cria um orçamento em rascunho e abre a tela de edição. */
 export async function criarOrcamento(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const demandaId = formData.get("demanda_id") ? Number(formData.get("demanda_id")) : null;
   if (!demandaId) {
     redirect("/orcamento/demandas");
@@ -216,6 +217,7 @@ export async function salvarCabecalho(formData: FormData) {
 
 /** Adiciona uma análise solicitada, gravando o snapshot de custo/preço atual. */
 export async function adicionarItemOrcamento(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = Number(formData.get("orcamento_id"));
   const codigo = String(formData.get("codigo_analise") ?? "");
   const n = Number(formData.get("n_amostras"));
@@ -238,6 +240,7 @@ export async function adicionarItemOrcamento(formData: FormData) {
 }
 
 export async function removerItemOrcamento(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = Number(formData.get("orcamento_id"));
   const itemId = Number(formData.get("item_id"));
   if (!itemId) return;
@@ -290,6 +293,7 @@ export async function recalcularOrcamento(formData: FormData) {
 }
 
 export async function excluirOrcamento(formData: FormData) {
+  await exigirPapelOrcamento("cancelar_documento");
   const id = Number(formData.get("orcamento_id"));
   const supabase = await createClient();
   const { data: atual } = await supabase

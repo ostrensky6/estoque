@@ -9,7 +9,7 @@ export type CatalogoAnaliseRow = {
 
 const inp =
   "w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"; // §8.2: entrada em azul
-const lbl = "mb-1 block text-[10px] uppercase tracking-wide text-zinc-400 sm:hidden";
+const lbl = "mb-1 block text-[10px] uppercase tracking-wide text-zinc-400 sm:sr-only";
 
 export function CatalogoAnalisesTable({ rows }: { rows: CatalogoAnaliseRow[] }) {
   return (
@@ -35,8 +35,8 @@ export function CatalogoAnalisesTable({ rows }: { rows: CatalogoAnaliseRow[] }) 
         >
           <input type="hidden" name="codigo" value={r.codigo} />
           <div className="sm:col-span-3">
-            <label className={lbl}>Nome simplificado</label>
-            <input name="nome_simplificado" defaultValue={r.nomeSimplificado} className={inp} />
+            <label htmlFor={`nome_simplificado-${r.codigo}`} className={lbl}>Nome simplificado</label>
+            <input id={`nome_simplificado-${r.codigo}`} name="nome_simplificado" defaultValue={r.nomeSimplificado} className={inp} />
           </div>
           <div className="sm:col-span-2">
             <label className={lbl}>Variável</label>
@@ -45,12 +45,12 @@ export function CatalogoAnalisesTable({ rows }: { rows: CatalogoAnaliseRow[] }) 
             </code>
           </div>
           <div className="sm:col-span-4">
-            <label className={lbl}>Descrição</label>
-            <input name="descricao" defaultValue={r.descricao} className={inp} />
+            <label htmlFor={`descricao-${r.codigo}`} className={lbl}>Descrição</label>
+            <input id={`descricao-${r.codigo}`} name="descricao" defaultValue={r.descricao} className={inp} />
           </div>
           <div className="sm:col-span-2">
-            <label className={lbl}>Status</label>
-            <input name="status" defaultValue={r.status} className={inp} />
+            <label htmlFor={`status-${r.codigo}`} className={lbl}>Status</label>
+            <input id={`status-${r.codigo}`} name="status" defaultValue={r.status} className={inp} />
           </div>
           <div className="sm:col-span-1 sm:text-right">
             <button className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium hover:bg-zinc-100 sm:w-auto dark:border-zinc-700 dark:hover:bg-zinc-800">

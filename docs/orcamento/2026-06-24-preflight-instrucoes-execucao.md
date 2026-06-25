@@ -187,3 +187,15 @@ Cole tudo no modelo:
   a execução real depende de acesso que **você** controla.
 - O operador JSON `?` (consulta A14) pode ser interpretado como placeholder por
   alguns drivers; em `psql` e no SQL Editor funciona normalmente.
+
+---
+
+## 10. Segurança e Confidencialidade dos Artifacts
+
+> [!WARNING]
+> Os artifacts gerados pelo preflight automatizado (tanto no GitHub Actions quanto localmente) contêm listagens detalhadas de tabelas que podem conter IDs, referências e outros dados de diagnóstico do ambiente de produção.
+>
+> 1. **Armazenamento Seguro**: Trate os arquivos baixados (`preflight-resultados.json`, CSVs de detalhe, etc.) como confidenciais. Não os compartilhe em canais públicos ou fóruns abertos.
+> 2. **Retenção Curta**: O workflow do GitHub está configurado com retenção máxima de 14 dias para expiração automática dos artifacts.
+> 3. **Exclusão de Segredos**: Nunca altere os scripts ou o workflow para imprimir variáveis como `DATABASE_URL` nos logs de build. Os logs de execução devem conter apenas contagens resumidas e severidades, sem expor dados específicos.
+

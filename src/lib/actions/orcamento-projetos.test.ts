@@ -62,6 +62,7 @@ describe("actions de orcamento de projetos", () => {
 
     await salvarOrcamentoProjeto(formData);
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(update).toHaveBeenCalledWith(expect.objectContaining({
       titulo: "Projeto sem custo",
       status: "enviado",
@@ -87,6 +88,7 @@ describe("actions de orcamento de projetos", () => {
 
     await adicionarCustoProjeto(formData);
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(insert).toHaveBeenCalledWith({
       orcamento_projeto_id: 77,
       categoria: "materiais",
@@ -121,6 +123,7 @@ describe("actions de orcamento de projetos", () => {
       "NEXT_REDIRECT:/orcamento/projetos/77?erro_parametros=",
     );
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("editar_parametros");
     expect(createClient).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
   });
@@ -140,6 +143,7 @@ describe("actions de orcamento de projetos", () => {
 
     await salvarParametrosEconomicosProjeto(formData);
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("editar_parametros");
     expect(update).toHaveBeenCalledWith({
       margem_lucro: 0,
       impostos: 0,
@@ -180,6 +184,7 @@ describe("actions de orcamento de projetos", () => {
       "NEXT_REDIRECT:/orcamento/projetos/77?erro_exclusao=",
     );
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("cancelar_documento");
     expect(deleteRow).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith(expect.stringContaining("/orcamento/projetos/77?erro_exclusao="));
   });
@@ -192,6 +197,7 @@ describe("actions de orcamento de projetos", () => {
 
     await expect(excluirOrcamentoProjeto(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/projetos");
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("cancelar_documento");
     expect(deleteRow).toHaveBeenCalled();
     expect(eq).toHaveBeenCalledWith("id", 77);
     expect(revalidatePath).toHaveBeenCalledWith("/orcamento/projetos");
@@ -210,6 +216,7 @@ describe("actions de orcamento de projetos", () => {
       "NEXT_REDIRECT:/orcamento/projetos/77",
     );
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("cancelar_documento");
     expect(update).toHaveBeenCalledWith({ status: "cancelado" });
     expect(registrarEvento).toHaveBeenCalledWith(
       "orcamento_projeto",
@@ -230,6 +237,7 @@ describe("actions de orcamento de projetos", () => {
 
     await excluirTemplate(formData);
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("gerir_modelos");
     expect(deleteRow).not.toHaveBeenCalled();
     expect(update).toHaveBeenCalledWith(expect.objectContaining({
       nome: "[ARQUIVADO] Monitoramento padrão",

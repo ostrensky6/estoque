@@ -6,9 +6,11 @@ const redirect = vi.fn((url: string) => {
 const demandaSingle = vi.fn();
 const insert = vi.fn();
 const from = vi.fn();
+const exigirPapelOrcamento = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect }));
+vi.mock("@/lib/orcamento/governanca", () => ({ exigirPapelOrcamento }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
     from,
@@ -37,6 +39,7 @@ describe("actions de demandas/propostas", () => {
     demandaSingle.mockReset();
     insert.mockReset();
     from.mockReset();
+    exigirPapelOrcamento.mockClear();
   });
 
   it("bloqueia modulo laboratorial quando a modalidade e somente projeto", async () => {
@@ -56,6 +59,7 @@ describe("actions de demandas/propostas", () => {
       "NEXT_REDIRECT:/orcamento/demandas/11",
     );
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(insert).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith("/orcamento/demandas/11");
   });
@@ -78,6 +82,7 @@ describe("actions de demandas/propostas", () => {
       "NEXT_REDIRECT:/orcamento/demandas/12",
     );
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(insert).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith("/orcamento/demandas/12");
   });
@@ -92,6 +97,7 @@ describe("actions de demandas/propostas", () => {
       "NEXT_REDIRECT:/orcamento/demandas/13",
     );
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(insert).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith("/orcamento/demandas/13");
   });
