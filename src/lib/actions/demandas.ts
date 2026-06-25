@@ -78,27 +78,41 @@ async function clienteSnapshot(clienteId: number | null) {
   return data;
 }
 
-export async function criarDemanda(formData: FormData) {
+export type DemandaFormState = {
+  ok: boolean;
+  message?: string;
+  savedAt?: string;
+  errors?: Record<string, string>;
+};
+
+export async function criarDemanda(prevState: any, formData?: FormData) {
+  let actualFormData: FormData;
+  if (formData === undefined && prevState instanceof FormData) {
+    actualFormData = prevState;
+  } else {
+    actualFormData = formData!;
+  }
+
   await exigirPapelOrcamento("criar_demanda");
   const supabase = await createClient();
-  const clienteId = numeroOuNull(formData, "cliente_id");
+  const clienteId = numeroOuNull(actualFormData, "cliente_id");
   const cliente = await clienteSnapshot(clienteId);
   const demanda = {
     cliente_id: clienteId,
-    projeto_id: numeroOuNull(formData, "projeto_id"),
-    titulo: texto(formData, "titulo") || "Nova demanda",
-    cliente_nome: cliente?.nome ?? texto(formData, "cliente_nome"),
-    cliente_cnpj: cliente?.cnpj ?? texto(formData, "cliente_cnpj"),
-    cliente_contato: cliente?.contato || cliente?.email || cliente?.telefone || texto(formData, "cliente_contato"),
-    modalidade: texto(formData, "modalidade") || "analises",
-    origem: texto(formData, "origem"),
-    prioridade: texto(formData, "prioridade") || "normal",
-    descricao: texto(formData, "descricao"),
-    escopo_preliminar: texto(formData, "escopo_preliminar"),
-    matriz_amostra: texto(formData, "matriz_amostra"),
-    quantidade_amostras_estimada: numeroOuNull(formData, "quantidade_amostras_estimada"),
-    prazo_tecnico_dias: numeroOuNull(formData, "prazo_tecnico_dias"),
-    observacoes: texto(formData, "observacoes"),
+    projeto_id: numeroOuNull(actualFormData, "projeto_id"),
+    titulo: texto(actualFormData, "titulo") || "Nova demanda",
+    cliente_nome: cliente?.nome ?? texto(actualFormData, "cliente_nome"),
+    cliente_cnpj: cliente?.cnpj ?? texto(actualFormData, "cliente_cnpj"),
+    cliente_contato: cliente?.contato || cliente?.email || cliente?.telefone || texto(actualFormData, "cliente_contato"),
+    modalidade: texto(actualFormData, "modalidade") || "analises",
+    origem: texto(actualFormData, "origem"),
+    prioridade: texto(actualFormData, "prioridade") || "normal",
+    descricao: texto(actualFormData, "descricao"),
+    escopo_preliminar: texto(actualFormData, "escopo_preliminar"),
+    matriz_amostra: texto(actualFormData, "matriz_amostra"),
+    quantidade_amostras_estimada: numeroOuNull(actualFormData, "quantidade_amostras_estimada"),
+    prazo_tecnico_dias: numeroOuNull(actualFormData, "prazo_tecnico_dias"),
+    observacoes: texto(actualFormData, "observacoes"),
   };
   const completude = snapshotCompletude(demanda);
 
@@ -117,50 +131,189 @@ export async function criarDemanda(formData: FormData) {
   redirect(`${listaPath}/${data.id}`);
 }
 
-export async function salvarDemanda(formData: FormData) {
-  await exigirPapelOrcamento("criar_demanda");
-  const id = Number(formData.get("demanda_id"));
-  if (!id) return;
+export async function criarDemandaCompleta(prevState: any, formData: FormData): Promise<DemandaFormState> {
+  try {
+    await exigirPapelOrcamento("criar_demanda");
+    const supabase = await createClient();
+    const clienteId = numeroOuNull(formData, "cliente_id");
+    const cliente = await clienteSnapshot(clienteId);
+    const demanda = {
+      cliente_id: clienteId,
+      projeto_id: numeroOuNull(formData, "projeto_id"),
+      titulo: texto(formData, "titulo") || "Nova demanda",
+      cliente_nome: cliente?.nome ?? texto(formData, "cliente_nome"),
+      cliente_cnpj: cliente?.cnpj ?? texto(formData, "cliente_cnpj"),
+      cliente_contato: cliente?.contato || cliente?.email || cliente?.telefone || texto(formData, "cliente_contato"),
+      modalidade: texto(formData, "modalidade") || "analises",
+      origem: texto(formData, "origem"),
+      prioridade: texto(formData, "prioridade") || "normal",
+      descricao: texto(formData, "descricao"),
+      escopo_preliminar: texto(formData, "escopo_preliminar"),
+      matriz_amostra: texto(formData, "matriz_amostra"),
+      quantidade_amostras_estimada: numeroOuNull(formData, "quantidade_amostras_estimada"),
+      prazo_tecnico_dias: numeroOuNull(formData, "prazo_tecnico_dias"),
+      observacoes: texto(formData, "observacoes"),
+    };
+    const completude = snapshotCompletude(demanda);
+
+    const { data, error } = await supabase
+      .from("demandas_propostas")
+      .insert({
+        ...demanda,
+        completude_snapshot: completude,
+        completude_atualizada_em: completude.atualizado_em,
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      return { ok: false, message: error.message };
+    }
+    revalidatePath(listaPath);
+    redirect(`${listaPath}/${data.id}`);
+  } catch (e: any) {
+    if (e.message && e.message.startsWith("NEXT_REDIRECT")) throw e;
+    return { ok: false, message: e.message || "Erro desconhecido." };
+  }
+}
+
+export async function salvarDemanda(prevState: any, formData?: FormData): Promise<DemandaFormState> {
+  let actualFormData: FormData;
+  if (formData === undefined && prevState instanceof FormData) {
+    actualFormData = prevState;
+    prevState = { ok: false };
+  } else {
+    actualFormData = formData!;
+  }
+
+  try {
+    await exigirPapelOrcamento("criar_demanda");
+    const id = Number(actualFormData.get("demanda_id"));
+    if (!id) {
+      return { ok: false, message: "ID da demanda não fornecido." };
+    }
+
+    const supabase = await createClient();
+    const clienteId = numeroOuNull(actualFormData, "cliente_id");
+    const cliente = await clienteSnapshot(clienteId);
+
+    const patch = {
+      cliente_id: clienteId,
+      projeto_id: numeroOuNull(actualFormData, "projeto_id"),
+      titulo: texto(actualFormData, "titulo") || "Demanda sem titulo",
+      cliente_nome: cliente?.nome ?? texto(actualFormData, "cliente_nome"),
+      cliente_cnpj: cliente?.cnpj ?? texto(actualFormData, "cliente_cnpj"),
+      cliente_contato: cliente?.contato || cliente?.email || cliente?.telefone || texto(actualFormData, "cliente_contato"),
+      instituicao: texto(actualFormData, "instituicao"),
+      responsavel_interno: texto(actualFormData, "responsavel_interno"),
+      data_solicitacao: texto(actualFormData, "data_solicitacao") ?? undefined,
+      prazo_esperado: texto(actualFormData, "prazo_esperado"),
+      modalidade: texto(actualFormData, "modalidade") || "analises",
+      status: texto(actualFormData, "status") || "nova",
+      origem: texto(actualFormData, "origem"),
+      prioridade: texto(actualFormData, "prioridade") || "normal",
+      descricao: texto(actualFormData, "descricao"),
+      escopo_preliminar: texto(actualFormData, "escopo_preliminar"),
+      matriz_amostra: texto(actualFormData, "matriz_amostra"),
+      quantidade_amostras_estimada: numeroOuNull(actualFormData, "quantidade_amostras_estimada"),
+      prazo_tecnico_dias: numeroOuNull(actualFormData, "prazo_tecnico_dias"),
+      observacoes: texto(actualFormData, "observacoes"),
+    };
+    const completude = snapshotCompletude(patch);
+
+    const { error } = await supabase
+      .from("demandas_propostas")
+      .update({
+        ...patch,
+        completude_snapshot: completude,
+        completude_atualizada_em: completude.atualizado_em,
+      })
+      .eq("id", id);
+
+    if (error) {
+      return { ok: false, message: error.message };
+    }
+
+    revalidatePath(listaPath);
+    revalidatePath(`${listaPath}/${id}`);
+    return { ok: true, savedAt: new Date().toISOString() };
+  } catch (e: any) {
+    return { ok: false, message: e.message || "Erro desconhecido." };
+  }
+}
+
+export async function salvarParametrosEconomicosDaDemanda(formData: FormData) {
+  await exigirPapelOrcamento("editar_parametros");
+  const demandaId = Number(formData.get("demanda_id"));
+  if (!demandaId) return;
 
   const supabase = await createClient();
-  const clienteId = numeroOuNull(formData, "cliente_id");
-  const cliente = await clienteSnapshot(clienteId);
+  const { data: proj } = await supabase
+    .from("orcamento_projetos")
+    .select("id")
+    .eq("demanda_id", demandaId)
+    .neq("status", "cancelado")
+    .maybeSingle();
+
+  if (!proj) {
+    throw new Error(`Orçamento de projeto ativo não encontrado para a demanda #${demandaId}`);
+  }
+
+  const num = (fd: FormData, key: string, fallback = 0) => {
+    const v = fd.get(key);
+    if (v == null || v === "") return fallback;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
+  const lucroVal = num(formData, "lucro");
+  const impostosLegacyVal = num(formData, "impostos_legacy");
 
   const patch = {
-    cliente_id: clienteId,
-    projeto_id: numeroOuNull(formData, "projeto_id"),
-    titulo: texto(formData, "titulo") || "Demanda sem titulo",
-    cliente_nome: cliente?.nome ?? texto(formData, "cliente_nome"),
-    cliente_cnpj: cliente?.cnpj ?? texto(formData, "cliente_cnpj"),
-    cliente_contato: cliente?.contato || cliente?.email || cliente?.telefone || texto(formData, "cliente_contato"),
-    instituicao: texto(formData, "instituicao"),
-    responsavel_interno: texto(formData, "responsavel_interno"),
-    data_solicitacao: texto(formData, "data_solicitacao") ?? undefined,
-    prazo_esperado: texto(formData, "prazo_esperado"),
-    modalidade: texto(formData, "modalidade") || "analises",
-    status: texto(formData, "status") || "nova",
-    origem: texto(formData, "origem"),
-    prioridade: texto(formData, "prioridade") || "normal",
-    descricao: texto(formData, "descricao"),
-    escopo_preliminar: texto(formData, "escopo_preliminar"),
-    matriz_amostra: texto(formData, "matriz_amostra"),
-    quantidade_amostras_estimada: numeroOuNull(formData, "quantidade_amostras_estimada"),
-    prazo_tecnico_dias: numeroOuNull(formData, "prazo_tecnico_dias"),
-    observacoes: texto(formData, "observacoes"),
+    margem_lucro: lucroVal,
+    impostos: impostosLegacyVal,
+    project_months: 12,
+    impostos_legacy: impostosLegacyVal,
+    incubacao: num(formData, "incubacao"),
+    reserva: num(formData, "reserva"),
+    investimentos: num(formData, "investimentos"),
+    lucro: lucroVal,
   };
-  const completude = snapshotCompletude(patch);
 
-  const { error } = await supabase
-    .from("demandas_propostas")
-    .update({
-      ...patch,
-      completude_snapshot: completude,
-      completude_atualizada_em: completude.atualizado_em,
-    })
-    .eq("id", id);
+  const { moduloBloqueadoParaEdicao } = await import("@/lib/orcamento/ciclo-vida-modulo");
+  const { data: projectData } = await supabase
+    .from("orcamento_projetos")
+    .select("status")
+    .eq("id", proj.id)
+    .single();
+
+  const bloqueio = moduloBloqueadoParaEdicao({ status: projectData?.status });
+  if (bloqueio.bloqueado) {
+    throw new Error(bloqueio.motivo ?? "Edição bloqueada.");
+  }
+
+  const { error } = await supabase.from("orcamento_projetos").update(patch).eq("id", proj.id);
   if (error) throw new Error(error.message);
-  revalidatePath(listaPath);
-  revalidatePath(`${listaPath}/${id}`);
+
+  const { registrarVersaoParametrosEconomicos } = await import("@/lib/orcamento/parametros-versionamento");
+  await registrarVersaoParametrosEconomicos(supabase, {
+    escopo: "projeto",
+    orcamentoProjetoId: proj.id,
+    parametros: patch,
+    origem: "orcamento/projetos",
+  });
+
+  const { registrarEvento } = await import("./eventos");
+  await registrarEvento(
+    "orcamento_parametros",
+    proj.id,
+    "projeto",
+    "alterado",
+    "Parâmetros econômicos do orçamento de projeto atualizados com nova versão.",
+  );
+
+  revalidatePath(`/orcamento/demandas/${demandaId}`);
+  redirect(`/orcamento/demandas/${demandaId}?etapa=final`);
 }
 
 export async function gerarOrcamentoAnalisesDaDemanda(formData: FormData) {
