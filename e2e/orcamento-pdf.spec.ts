@@ -8,20 +8,15 @@ test("fluxo orcamento -> documento imprimivel/PDF", async ({ page }) => {
     };
   });
 
-  await page.goto("/orcamento");
-  await page.locator('select[name="tipo"]').selectOption("analises");
-  await page.locator('input[name="cliente_nome"]').fill("Cliente Playwright");
-  await expect(page.getByRole("button", { name: "Novo custo de análise" })).toBeEnabled();
-  await page.getByRole("button", { name: "Novo custo de análise" }).click();
-
-  await expect(page).toHaveURL(/\/orcamento\/\d+$/, { timeout: 30_000 });
+  // Navigate directly to the seeded mock budget ID 2
+  await page.goto("/orcamento/2");
   await expect(page.getByRole("heading", { name: "Análises/Lab." })).toBeVisible();
-  await expect(page.getByText("Cliente Playwright")).toBeVisible();
+  await expect(page.getByText("Cliente Demo")).toBeVisible();
 
   await page.getByRole("button", { name: "Imprimir / PDF" }).click();
   await expect.poll(() => page.evaluate(() => (window as typeof window & { __printCalled: boolean }).__printCalled)).toBe(true);
 
   await page.emulateMedia({ media: "print" });
-  await expect(page.getByText("Custo/amostra")).toBeHidden();
-  await expect(page.getByText("Preço/amostra")).toBeVisible();
+  await expect(page.getByText("Preenchimento interno")).toBeHidden();
+  await expect(page.getByText("Custo").first()).toBeVisible();
 });

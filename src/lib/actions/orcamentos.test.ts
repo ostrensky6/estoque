@@ -58,6 +58,7 @@ describe("actions de orcamentos", () => {
 
     await expect(criarOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/42");
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(insert).toHaveBeenCalledWith({
       demanda_id: 7,
       cliente_nome: "Cliente Teste",
@@ -76,15 +77,16 @@ describe("actions de orcamentos", () => {
     formData.set("projeto_id", "5");
     formData.set("titulo", "Proposta Completa");
 
-    await expect(criarOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/projetos/42");
+    await expect(criarOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/demandas/9?etapa=projeto");
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(insert).toHaveBeenCalledWith({
       demanda_id: 9,
       projeto_id: 5,
       titulo: "Proposta Completa",
       cliente_nome: "Cliente Projeto",
     });
-    expect(redirect).toHaveBeenCalledWith("/orcamento/projetos/42");
+    expect(redirect).toHaveBeenCalledWith("/orcamento/demandas/9?etapa=projeto");
   });
 
   it("bloqueia criacao direta sem demanda vinculada", async () => {
@@ -94,6 +96,7 @@ describe("actions de orcamentos", () => {
 
     await expect(criarOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/demandas");
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(insert).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith("/orcamento/demandas");
   });
@@ -106,6 +109,7 @@ describe("actions de orcamentos", () => {
 
     await expect(excluirOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/42?erro_exclusao=");
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("cancelar_documento");
     expect(deleteRow).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith(expect.stringContaining("/orcamento/42?erro_exclusao="));
   });
@@ -118,6 +122,7 @@ describe("actions de orcamentos", () => {
 
     await expect(excluirOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento");
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("cancelar_documento");
     expect(deleteRow).toHaveBeenCalled();
     expect(eq).toHaveBeenCalledWith("id", 42);
     expect(revalidatePath).toHaveBeenCalledWith("/orcamento");
@@ -134,6 +139,7 @@ describe("actions de orcamentos", () => {
 
     await expect(cancelarOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/42");
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("cancelar_documento");
     expect(update).toHaveBeenCalledWith({ status: "cancelado" });
     expect(registrarEvento).toHaveBeenCalledWith(
       "orcamento",

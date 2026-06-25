@@ -74,6 +74,12 @@ export function parametrosProjetoParaPricing(
   }));
 }
 
+/**
+ * @deprecated ADAPTER LEGADO (Alternativa C — laboratório como preço já formado,
+ * gross-up só no projeto). **Não é o fechamento autoritativo.** Novas propostas
+ * usam a Política A em `engine-economica.ts`. Mantido apenas para compatibilidade
+ * histórica e testes; `consolidarOrcamentoFinal` não o usa mais.
+ */
 export function adaptarOrcamentoParaEntradaParametros(
   args: AdaptarOrcamentoParaParametrosArgs,
 ): EntradaParametros {
@@ -96,6 +102,10 @@ export function adaptarOrcamentoParaEntradaParametros(
   };
 }
 
+/**
+ * @deprecated LEGADO (Alternativa C). Não é o fechamento autoritativo. Ver
+ * `engine-economica.ts` (Política A). Mantido para compatibilidade/testes.
+ */
 export function aplicarParametrosDoOrcamento(
   args: AdaptarOrcamentoParaParametrosArgs,
 ) {

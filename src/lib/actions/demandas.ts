@@ -6,9 +6,11 @@ import { createClient } from "@/lib/supabase/server";
 import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
 import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
+import { modalidadeExigeLaboratorio, modalidadeExigeProjeto } from "@/lib/orcamento/orcamento-economico";
+import { detectarCustosZero } from "@/lib/orcamento/proposta-final";
+import { planejarModulosProposta, type PlanoModulos } from "@/lib/orcamento/garantir-modulos";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
 import type { Json } from "@/lib/supabase/database.types";
-import { registrarEvento } from "./eventos";
 
 const listaPath = "/orcamento/demandas";
 
@@ -32,8 +34,38 @@ function snapshotCompletude(demanda: Parameters<typeof avaliarCompletudeDemanda>
   };
 }
 
-const MODALIDADES_COM_ANALISES = new Set(["analises", "analises_projeto", "projeto_analises_custos"]);
-const MODALIDADES_COM_PROJETO = new Set(["projeto", "analises_projeto", "projeto_analises_custos"]);
+// Carrega os IDs de módulos ATIVOS (não cancelados) de uma demanda e devolve o
+// plano idempotente (criar/abrir/bloquear).
+async function planoModulos(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  demanda: { id: number; modalidade?: string | null; projeto_id?: number | null },
+): Promise<PlanoModulos> {
+  const [{ data: labs }, { data: projs }] = await Promise.all([
+    supabase.from("orcamentos").select("id, status, status_operacional").eq("demanda_id", demanda.id),
+    supabase.from("orcamento_projetos").select("id, status").eq("demanda_id", demanda.id),
+  ]);
+  const laboratorioAtivos = (labs ?? [])
+    .filter((o) => o.status !== "cancelado" && o.status_operacional !== "cancelado")
+    .map((o) => o.id);
+  const projetoAtivos = (projs ?? []).filter((o) => o.status !== "cancelado").map((o) => o.id);
+  return planejarModulosProposta({
+    modalidade: demanda.modalidade,
+    projetoAssociado: Boolean(demanda.projeto_id),
+    laboratorioAtivos,
+    projetoAtivos,
+  });
+}
+
+// Criar módulo NÃO torna a proposta "orcada". Apenas tira de "nova" para o estado
+// transitório "em_analise" (status já existente no banco). "orcada" só após emissão.
+async function marcarEmAnalise(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  demanda: { id: number; status?: string | null },
+) {
+  if (demanda.status === "nova") {
+    await supabase.from("demandas_propostas").update({ status: "em_analise" }).eq("id", demanda.id);
+  }
+}
 
 async function clienteSnapshot(clienteId: number | null) {
   if (!clienteId) return null;
@@ -47,6 +79,7 @@ async function clienteSnapshot(clienteId: number | null) {
 }
 
 export async function criarDemanda(formData: FormData) {
+  await exigirPapelOrcamento("criar_demanda");
   const supabase = await createClient();
   const clienteId = numeroOuNull(formData, "cliente_id");
   const cliente = await clienteSnapshot(clienteId);
@@ -85,6 +118,7 @@ export async function criarDemanda(formData: FormData) {
 }
 
 export async function salvarDemanda(formData: FormData) {
+  await exigirPapelOrcamento("criar_demanda");
   const id = Number(formData.get("demanda_id"));
   if (!id) return;
 
@@ -130,6 +164,7 @@ export async function salvarDemanda(formData: FormData) {
 }
 
 export async function gerarOrcamentoAnalisesDaDemanda(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = Number(formData.get("demanda_id"));
   if (!id) return;
 
@@ -143,8 +178,18 @@ export async function gerarOrcamentoAnalisesDaDemanda(formData: FormData) {
   if (!avaliarCompletudeDemanda(demanda).completa) {
     redirect(`${listaPath}/${id}`);
   }
-  if (!MODALIDADES_COM_ANALISES.has(demanda.modalidade)) {
+  if (!modalidadeExigeLaboratorio(demanda.modalidade)) {
     redirect(`${listaPath}/${id}`);
+  }
+
+  // Idempotência: nunca duplicar; abrir o existente; bloquear se houver >1 ativo.
+  const plano = await planoModulos(supabase, demanda);
+  const lab = plano.laboratorio;
+  if (lab.acao === "bloqueado") {
+    redirect(`${listaPath}/${id}?etapa=demanda&erro_integridade=${encodeURIComponent(plano.erros.join("; "))}`);
+  }
+  if (lab.acao === "abrir" && lab.moduloId) {
+    redirect(`/orcamento/${lab.moduloId}`);
   }
 
   const { data, error } = await supabase
@@ -163,12 +208,13 @@ export async function gerarOrcamentoAnalisesDaDemanda(formData: FormData) {
     .single();
 
   if (error) throw new Error(error.message);
-  await supabase.from("demandas_propostas").update({ status: "orcada" }).eq("id", id);
+  await marcarEmAnalise(supabase, demanda);
   revalidatePath(listaPath);
   redirect(`/orcamento/${data.id}`);
 }
 
 export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = Number(formData.get("demanda_id"));
   if (!id) return;
 
@@ -182,11 +228,21 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
   if (!avaliarCompletudeDemanda(demanda).completa) {
     redirect(`${listaPath}/${id}`);
   }
-  if (!MODALIDADES_COM_PROJETO.has(demanda.modalidade)) {
+  if (!modalidadeExigeProjeto(demanda.modalidade)) {
     redirect(`${listaPath}/${id}`);
   }
 
-  const { data, error } = await supabase
+  // Idempotência: nunca duplicar; abrir o existente; bloquear se houver >1 ativo.
+  const plano = await planoModulos(supabase, demanda);
+  const projeto = plano.projeto;
+  if (projeto.acao === "bloqueado") {
+    redirect(`${listaPath}/${id}?etapa=demanda&erro_integridade=${encodeURIComponent(plano.erros.join("; "))}`);
+  }
+  if (projeto.acao === "abrir" && projeto.moduloId) {
+    redirect(`/orcamento/projetos/${projeto.moduloId}`);
+  }
+
+  const { error } = await supabase
     .from("orcamento_projetos")
     .insert({
       demanda_id: id,
@@ -199,14 +255,70 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
       responsavel: demanda.responsavel_interno,
       escopo: demanda.escopo_preliminar || demanda.descricao,
       observacoes: demanda.observacoes,
-    })
-    .select("id")
-    .single();
+    });
 
   if (error) throw new Error(error.message);
-  await supabase.from("demandas_propostas").update({ status: "orcada" }).eq("id", id);
+  await marcarEmAnalise(supabase, demanda);
   revalidatePath(listaPath);
-  redirect(`/orcamento/projetos/${data.id}`);
+  redirect(`/orcamento/demandas/${id}?etapa=projeto`);
+}
+
+/**
+ * Rotina ÚNICA e idempotente: garante os módulos aplicáveis da proposta.
+ * Cria somente o que falta, abre o existente, bloqueia se houver duplicidade
+ * histórica. Tolera cliques/chamadas repetidas (re-consulta os ativos a cada
+ * execução). Não marca a demanda como "orcada".
+ */
+export async function garantirModulosDaProposta(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
+  const id = Number(formData.get("demanda_id"));
+  if (!id) return;
+  const supabase = await createClient();
+  const { data: demanda } = await supabase.from("demandas_propostas").select("*").eq("id", id).single();
+  if (!demanda) return;
+  if (!avaliarCompletudeDemanda(demanda).completa) {
+    redirect(`${listaPath}/${id}`);
+  }
+
+  const plano = await planoModulos(supabase, demanda);
+  if (plano.bloqueadoPorDuplicidade) {
+    redirect(`${listaPath}/${id}?etapa=demanda&erro_integridade=${encodeURIComponent(plano.erros.join("; "))}`);
+  }
+
+  let criou = false;
+  if (plano.laboratorio.acao === "criar") {
+    const { error } = await supabase.from("orcamentos").insert({
+      demanda_id: id,
+      cliente_id: demanda.cliente_id,
+      projeto_id: demanda.projeto_id,
+      cliente_nome: demanda.cliente_nome || demanda.titulo,
+      cliente_cnpj: demanda.cliente_cnpj,
+      cliente_contato: demanda.cliente_contato,
+      responsavel: demanda.responsavel_interno,
+      observacoes: demanda.escopo_preliminar || demanda.descricao || demanda.observacoes,
+    });
+    if (error) throw new Error(error.message);
+    criou = true;
+  }
+  if (plano.projeto.acao === "criar") {
+    const { error } = await supabase.from("orcamento_projetos").insert({
+      demanda_id: id,
+      projeto_id: demanda.projeto_id,
+      cliente_id: demanda.cliente_id,
+      titulo: demanda.titulo,
+      cliente_nome: demanda.cliente_nome,
+      cliente_cnpj: demanda.cliente_cnpj,
+      cliente_contato: demanda.cliente_contato,
+      responsavel: demanda.responsavel_interno,
+      escopo: demanda.escopo_preliminar || demanda.descricao,
+      observacoes: demanda.observacoes,
+    });
+    if (error) throw new Error(error.message);
+    criou = true;
+  }
+  if (criou) await marcarEmAnalise(supabase, demanda);
+  revalidatePath(listaPath);
+  redirect(`${listaPath}/${id}?etapa=demanda`);
 }
 
 export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
@@ -226,31 +338,35 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
 
   const completude = avaliarCompletudeDemanda(demanda);
   if (!completude.completa) {
-    redirect(`${listaPath}/${id}?erro_emissao=${encodeURIComponent("Complete a demanda antes de emitir o orçamento final.")}`);
+    redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent("Complete a demanda antes de emitir o orçamento final.")}`);
   }
 
-  const [{ data: orcamentos }, { data: orcProjetos }, { data: ultimaVersao }] = await Promise.all([
+  const [{ data: orcamentos }, { data: orcProjetos }] = await Promise.all([
     supabase
       .from("orcamentos")
-      .select("id, status, orcamento_itens(id, n_amostras, custo_unitario, preco_unitario)")
+      .select("id, status, status_operacional, orcamento_itens(id, n_amostras, custo_unitario, preco_unitario)")
       .eq("demanda_id", id)
       .order("id"),
-      supabase
-        .from("orcamento_projetos")
-        .select("id, status, projeto_sem_custo_justificativa, impostos, margem_lucro, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(id, n_amostras, custo_unitario, preco_unitario), orcamento_projeto_custos(id, rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados)")
-        .eq("demanda_id", id)
-        .order("id"),
     supabase
-      .from("orcamento_final_versoes")
-      .select("versao")
+      .from("orcamento_projetos")
+      .select("id, status, projeto_sem_custo_justificativa, impostos, margem_lucro, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(id, n_amostras, custo_unitario, preco_unitario), orcamento_projeto_custos(id, rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados)")
       .eq("demanda_id", id)
-      .order("versao", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .order("id"),
   ]);
 
-  const exigeAnalises = MODALIDADES_COM_ANALISES.has(demanda.modalidade);
-  const exigeProjeto = MODALIDADES_COM_PROJETO.has(demanda.modalidade);
+  // Integridade: não emitir com duplicidade ativa (também travado na RPC sob lock).
+  const labAtivos = (orcamentos ?? [])
+    .filter((o) => o.status !== "cancelado" && o.status_operacional !== "cancelado")
+    .map((o) => o.id);
+  const projAtivos = (orcProjetos ?? []).filter((o) => o.status !== "cancelado").map((o) => o.id);
+  if (labAtivos.length > 1 || projAtivos.length > 1) {
+    redirect(
+      `${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent("Duplicidade ativa de módulos na demanda; saneamento necessário antes de emitir.")}`,
+    );
+  }
+
+  const exigeAnalises = modalidadeExigeLaboratorio(demanda.modalidade);
+  const exigeProjeto = modalidadeExigeProjeto(demanda.modalidade);
   const itensAnalises = (orcamentos ?? []).reduce((total, orcamento) => (
     total + (orcamento.orcamento_itens?.length ?? 0)
   ), 0);
@@ -309,21 +425,28 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
   });
 
   if (!consolidado.pronto) {
-    redirect(`${listaPath}/${id}?erro_emissao=${encodeURIComponent(consolidado.pendencias.join("; "))}`);
+    redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent(consolidado.pendencias.join("; "))}`);
   }
 
-  const versao = Number(ultimaVersao?.versao ?? 0) + 1;
-  const numero = `OF-${new Date().getFullYear()}-${String(id).padStart(4, "0")}-v${versao}`;
-  const validoAte = new Date(Date.now() + validadeDias * 86400000).toISOString().slice(0, 10);
+  // Validação defensiva (Fase 10): bloqueia emissão com custo técnico <= 0 sem
+  // justificativa de isenção. Não altera dados — apenas impede a emissão.
+  const custosZero = detectarCustosZero({
+    itensLaboratorio: (orcamentos ?? []).flatMap((o) => o.orcamento_itens ?? []),
+    custosProjeto: (orcProjetos ?? []).flatMap((o) => o.orcamento_projeto_custos ?? []),
+    analisesProjeto: (orcProjetos ?? []).flatMap((o) => o.orcamento_projeto_analises ?? []),
+    projetoTemJustificativa: (orcProjetos ?? []).some((o) => Boolean(o.projeto_sem_custo_justificativa)),
+  });
+  if (custosZero.length > 0) {
+    const msg = `Itens com custo técnico zero sem justificativa: ${custosZero.map((c) => c.descricao).join(", ")}.`;
+    redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent(msg)}`);
+  }
+
+  // Snapshot completo (engine autoritativa) e payload de parâmetros aplicados.
+  // O cálculo já foi feito/validado em TS; a RPC só PERSISTE atomicamente.
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  await supabase
-    .from("orcamento_final_versoes")
-    .update({ status: "substituido" })
-    .eq("demanda_id", id)
-    .eq("status", "emitido");
+  const economia = consolidado.economia;
 
   const snapshot = {
     demanda,
@@ -332,62 +455,52 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
     consolidado,
   } satisfies Json;
 
-  const { data: versaoFinal, error } = await supabase
-    .from("orcamento_final_versoes")
-    .insert({
-      demanda_id: id,
-      versao,
-      numero,
-      validade_dias: validadeDias,
-      valido_ate: validoAte,
-      total_laboratorio_custo: consolidado.totalLaboratorioCusto,
-      total_laboratorio_preco: consolidado.totalLaboratorioPreco,
-      total_projeto_custo: consolidado.totalProjetoCusto,
-      total_projeto_final: consolidado.totalProjetoFinal,
-      total_final: consolidado.totalFinal,
-      snapshot,
-      criado_por: user?.id ?? null,
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(error.message);
-
-  if (consolidado.parametrosAplicados) {
-    const { error: parametrosError } = await supabase
-      .from("orcamento_parametros_aplicados")
-      .insert({
-        demanda_id: id,
+  const parametrosPayload: Json | null = economia.valido
+    ? {
         orcamento_laboratorial_id: orcamentos?.at(-1)?.id ?? null,
         orcamento_projeto_id: projetoReferencia?.id ?? null,
-        orcamento_final_versao_id: versaoFinal.id,
-        versao,
-        metodo_calculo: consolidado.parametrosAplicados.metodo,
-        laboratorio_modo: consolidado.parametrosAplicados.laboratorio.modo,
-        subtotal_laboratorio: consolidado.parametrosAplicados.laboratorio.total,
-        subtotal_projeto: consolidado.parametrosAplicados.projeto.total,
-        subtotal_custos: consolidado.parametrosAplicados.subtotalCustos,
-        total_parametros: consolidado.parametrosAplicados.totalParametros,
-        total_final: consolidado.parametrosAplicados.totalFinal,
-        parametros_snapshot: consolidado.parametrosAplicados.parametros,
+        metodo_calculo: "GROSS_UP",
+        laboratorio_modo: "CUSTO_TECNICO",
+        subtotal_laboratorio: economia.custoLaboratorioTecnico,
+        subtotal_projeto: economia.custoDiretoProjeto,
+        subtotal_custos: economia.subtotal,
+        total_parametros: economia.totalParametros,
+        total_final: economia.totalFinal,
+        parametros_snapshot: economia.parametros,
         formula_snapshot: {
-          entrada: consolidado.entradaParametros,
+          politica: economia.politica,
+          formula: economia.formula,
+          somaPercentual: economia.somaPercentual,
+          fatorGrossUp: economia.fatorGrossUp,
           origens: consolidado.origens,
-        } satisfies Json,
-        alertas_snapshot: consolidado.parametrosAplicados.alertas,
-        criado_por: user?.id ?? null,
-      });
-    if (parametrosError) throw new Error(parametrosError.message);
+        },
+        alertas_snapshot: economia.alertas,
+      }
+    : null;
+
+  // Persistência ATÔMICA: substituição da versão anterior, nova versão,
+  // parâmetros, status da demanda e auditoria — tudo em uma transação com lock
+  // por demanda (próxima versão calculada dentro da RPC).
+  const { data: resultado, error } = await supabase.rpc("emitir_orcamento_final_transacional", {
+    p_demanda_id: id,
+    p_validade_dias: validadeDias,
+    p_total_laboratorio_custo: consolidado.totalLaboratorioCusto,
+    p_total_laboratorio_preco: consolidado.totalLaboratorioPreco,
+    p_total_projeto_custo: consolidado.totalProjetoCusto,
+    p_total_projeto_final: consolidado.totalProjetoFinal,
+    p_total_final: consolidado.totalFinal,
+    p_snapshot: snapshot,
+    p_parametros: parametrosPayload,
+    p_criado_por: user?.id ?? null,
+    p_usuario_email: user?.email ?? null,
+  });
+  if (error) {
+    redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent(`Falha ao emitir: ${error.message}`)}`);
   }
-  await registrarEvento(
-    "orcamento_final",
-    id,
-    ultimaVersao?.versao ? `v${ultimaVersao.versao}` : null,
-    `v${versao}`,
-    `Orçamento final ${numero} emitido para demanda #${id}.`,
-  );
+  void resultado;
 
   revalidatePath(listaPath);
   revalidatePath(`${listaPath}/${id}`);
   revalidatePath("/orcamento");
-  redirect(`${listaPath}/${id}`);
+  redirect(`${listaPath}/${id}?etapa=final`);
 }

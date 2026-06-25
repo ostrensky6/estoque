@@ -13,7 +13,7 @@ const WCAG_AA = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const PAGINAS: { nome: string; url: string }[] = [
   { nome: "Home / dashboard", url: "/" },
   { nome: "Custeio", url: "/custeio" },
-  { nome: "Análises/Lab.", url: "/orcamento" },
+  { nome: "Análises/Lab.", url: "/orcamento/demandas" },
   { nome: "Orçamento (detalhe)", url: "/orcamento/1" },
   { nome: "Estoque", url: "/estoque" },
   { nome: "Compras", url: "/compras" },

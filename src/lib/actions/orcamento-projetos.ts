@@ -16,8 +16,26 @@ import {
 import { validarParametrosProjetoGrossUp } from "@/lib/project-budget/legacy";
 import { registrarVersaoParametrosEconomicos } from "@/lib/orcamento/parametros-versionamento";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
+import { moduloBloqueadoParaEdicao } from "@/lib/orcamento/ciclo-vida-modulo";
 
 const pathLista = "/orcamento/projetos";
+
+// Validação defensiva de servidor: impede edição direta de orçamento de projeto
+// revisado/enviado/aprovado/cancelado (Fase 5). Não confiar só no botão da UI.
+async function assegurarProjetoEditavel(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orcamentoProjetoId: number,
+) {
+  const { data } = await supabase
+    .from("orcamento_projetos")
+    .select("status")
+    .eq("id", orcamentoProjetoId)
+    .single();
+  const bloqueio = moduloBloqueadoParaEdicao({ status: data?.status });
+  if (bloqueio.bloqueado) {
+    throw new Error(bloqueio.motivo ?? "Edição bloqueada.");
+  }
+}
 
 function texto(formData: FormData, chave: string) {
   const valor = String(formData.get(chave) ?? "").trim();
@@ -99,6 +117,7 @@ async function carregarCliente(clienteId: number | null) {
 }
 
 export async function criarOrcamentoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const demandaId = formData.get("demanda_id") ? Number(formData.get("demanda_id")) : null;
   if (!demandaId) {
     redirect("/orcamento/demandas");
@@ -141,6 +160,7 @@ export async function criarOrcamentoProjeto(formData: FormData) {
 }
 
 export async function salvarOrcamentoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
 
@@ -192,6 +212,7 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
 }
 
 export async function salvarParametrosEconomicosProjeto(formData: FormData) {
+  await exigirPapelOrcamento("editar_parametros");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
 
@@ -210,9 +231,8 @@ export async function salvarParametrosEconomicosProjeto(formData: FormData) {
   if (!validacao.ok) {
     redirect(`${pathLista}/${id}?erro_parametros=${encodeURIComponent(validacao.message)}`);
   }
-
-  await exigirPapelOrcamento("editar_parametros");
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   const { error } = await supabase.from("orcamento_projetos").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
   await registrarVersaoParametrosEconomicos(supabase, {
@@ -233,6 +253,7 @@ export async function salvarParametrosEconomicosProjeto(formData: FormData) {
 }
 
 export async function adicionarAnaliseProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const codigo = texto(formData, "codigo_analise");
   const nAmostras = numero(formData, "n_amostras", 1);
@@ -241,6 +262,7 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
   const { breakdowns } = await calcularTodas();
   const breakdown = breakdowns.find((x) => x.codigo === codigo);
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   const { error } = await supabase.from("orcamento_projeto_analises").insert({
     orcamento_projeto_id: id,
     codigo_analise: codigo,
@@ -253,6 +275,7 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
 }
 
 export async function adicionarCustoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const descricao = texto(formData, "descricao");
   if (!id || !descricao) return;
@@ -263,6 +286,7 @@ export async function adicionarCustoProjeto(formData: FormData) {
   const categoria = texto(formData, "categoria") || categoriaPorRubrica(rubrica);
 
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   const { error } = await supabase.from("orcamento_projeto_custos").insert({
     orcamento_projeto_id: id,
     categoria,
@@ -285,6 +309,7 @@ export async function adicionarCustoProjeto(formData: FormData) {
 }
 
 export async function adicionarCustoCatalogoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const catalogoId = texto(formData, "catalogo_item_id");
   if (!id || !catalogoId) return;
@@ -298,6 +323,7 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
   if (itemError) throw new Error(itemError.message);
   if (!item) return;
 
+  await assegurarProjetoEditavel(supabase, id);
   const quantidade = numero(formData, "quantidade", 1);
   const mesesSelecionados = inteiroArray(formData, "meses_selecionados");
   const { error } = await supabase.from("orcamento_projeto_custos").insert({
@@ -323,6 +349,7 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
 }
 
 export async function salvarViagensProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
 
@@ -340,6 +367,7 @@ export async function salvarViagensProjeto(formData: FormData) {
   });
 
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   await supabase.from("orcamento_projetos").update({ travel_inputs: inputs }).eq("id", id);
 
   // Recalcula a quantidade das linhas VD automatizáveis a partir dos parâmetros.
@@ -362,19 +390,23 @@ export async function salvarViagensProjeto(formData: FormData) {
 }
 
 export async function removerAnaliseProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const itemId = numero(formData, "item_id");
   if (!id || !itemId) return;
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   await supabase.from("orcamento_projeto_analises").delete().eq("id", itemId);
   revalidatePath(`${pathLista}/${id}`);
 }
 
 export async function removerCustoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const itemId = numero(formData, "item_id");
   if (!id || !itemId) return;
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   await supabase.from("orcamento_projeto_custos").delete().eq("id", itemId);
   revalidatePath(`${pathLista}/${id}`);
 }
@@ -384,6 +416,7 @@ const hashToken = (token: string) => createHash("sha256").update(token).digest("
 /** Gera um link público read-only de aprovação. O token bruto é mostrado uma
  *  única vez (via query param); o banco guarda só o hash SHA-256. */
 export async function criarLinkPublico(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
 
@@ -405,6 +438,7 @@ export async function criarLinkPublico(formData: FormData) {
 }
 
 export async function revogarLinkPublico(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const linkId = numero(formData, "link_id");
   if (!id || !linkId) return;
@@ -458,6 +492,7 @@ type ParametrosTemplate = {
  *  Análises de laboratório não entram (são específicas de cada cotação).
  *  Usa o schema existente (0012): parâmetros e itens em colunas jsonb. */
 export async function salvarComoTemplate(formData: FormData) {
+  await exigirPapelOrcamento("gerir_modelos");
   const id = numero(formData, "orcamento_projeto_id");
   const nome = texto(formData, "nome");
   if (!id || !nome) return;
@@ -502,6 +537,7 @@ export async function salvarComoTemplate(formData: FormData) {
 
 /** Cria um novo orçamento de projeto a partir de um template. */
 export async function criarProjetoDeTemplate(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const templateId = numero(formData, "template_id");
   if (!templateId) return;
 
@@ -649,6 +685,7 @@ const BUCKET_ANEXOS = "orcamento-anexos";
 
 /** Faz upload de um anexo do orçamento de projeto para o bucket privado. */
 export async function adicionarAnexoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const arquivo = formData.get("arquivo");
   if (!id || !(arquivo instanceof File) || arquivo.size === 0) return;
@@ -683,6 +720,7 @@ export async function adicionarAnexoProjeto(formData: FormData) {
 }
 
 export async function removerAnexoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const anexoId = numero(formData, "anexo_id");
   if (!id || !anexoId) return;
@@ -701,6 +739,7 @@ export async function removerAnexoProjeto(formData: FormData) {
 }
 
 export async function excluirOrcamentoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("cancelar_documento");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
   const supabase = await createClient();

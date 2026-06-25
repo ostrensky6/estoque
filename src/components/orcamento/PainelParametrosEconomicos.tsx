@@ -7,13 +7,17 @@ import {
 /**
  * Etapa "Parâmetros Econômicos" dentro do fluxo do orçamento (plano §6.5).
  *
- * Layout denso de 3 blocos (§8.1): base de custos → parâmetros aplicados →
+ * Layout denso de 3 blocos (§8.1): base técnica → parâmetros aplicados →
  * resultado final, na mesma tela. Convenção visual §8.2:
  *   - percentuais (escolhidos pelo usuário) em AZUL (ValorEntrada);
  *   - subtotais, valores em R$ e total (calculados) em NEUTRO (ValorCalculado).
  *
+ * Política A (DEC-ORC-001): laboratório entra como CUSTO TÉCNICO, projeto como
+ * CUSTO DIRETO, e o gross-up é único sobre o subtotal técnico. O preço
+ * laboratorial já formado aparece apenas como REFERÊNCIA.
+ *
  * Componente de apresentação puro — recebe os números já consolidados pela
- * engine (aplicarParametrosEconomicos / consolidarOrcamentoFinal) no servidor.
+ * engine autoritativa (`consolidarOrcamentoFinal` → `calcularPropostaEconomica`).
  */
 
 export type ParametroAplicadoView = {
@@ -54,55 +58,46 @@ function Linha({
 }
 
 export function PainelParametrosEconomicos({
-  exigeProjeto,
-  metodo = "GROSS_UP",
   custoLaboratorio,
   precoLaboratorio,
   custoProjeto,
-  projetoFinal,
+  subtotalTecnico,
+  totalParametros,
   totalFinal,
   parametros,
   alertas = [],
 }: {
-  exigeProjeto: boolean;
-  metodo?: string;
   custoLaboratorio: number;
   precoLaboratorio: number;
   custoProjeto: number;
-  projetoFinal: number;
+  subtotalTecnico: number;
+  totalParametros: number;
   totalFinal: number;
   parametros: ParametroAplicadoView[];
   alertas?: string[];
 }) {
-  const subtotalCustos = precoLaboratorio + custoProjeto;
-  const totalParametros = parametros.reduce((acc, p) => acc + p.amount, 0);
-
   return (
     <div className="mt-4">
       <div className="grid gap-3 lg:grid-cols-3">
-        {/* Bloco 1 — base de custos recebidos (tudo calculado → neutro) */}
-        <Bloco titulo="Base de cálculo">
-          <Linha rotulo="Custo laboratório">
+        {/* Bloco 1 — base técnica (Política A: custo técnico + custo direto) */}
+        <Bloco titulo="Base técnica">
+          <Linha rotulo="Custo laboratório (técnico)">
             <ValorCalculado>{brl(custoLaboratorio)}</ValorCalculado>
           </Linha>
-          <Linha rotulo="Preço laboratório">
-            <ValorCalculado estado="snapshot">{brl(precoLaboratorio)}</ValorCalculado>
-          </Linha>
-          <Linha rotulo="Custo projeto">
+          <Linha rotulo="Custo projeto (direto)">
             <ValorCalculado>{brl(custoProjeto)}</ValorCalculado>
           </Linha>
-          <Linha rotulo="Subtotal de custos" forte>
-            <ValorCalculado estado="bloqueado">{brl(subtotalCustos)}</ValorCalculado>
+          <Linha rotulo="Subtotal técnico" forte>
+            <ValorCalculado estado="bloqueado">{brl(subtotalTecnico)}</ValorCalculado>
+          </Linha>
+          <Linha rotulo="Preço laboratório (referência)">
+            <ValorCalculado estado="snapshot">{brl(precoLaboratorio)}</ValorCalculado>
           </Linha>
         </Bloco>
 
         {/* Bloco 2 — parâmetros aplicados (percentual = entrada/azul, R$ = calculado) */}
-        <Bloco titulo={`Parâmetros aplicados · ${metodo === "GROSS_UP" ? "gross-up" : "markup"}`}>
-          {!exigeProjeto ? (
-            <p className="text-xs text-muted-foreground">
-              Parâmetros econômicos de projeto não se aplicam a esta modalidade.
-            </p>
-          ) : parametros.length === 0 ? (
+        <Bloco titulo="Parâmetros aplicados · gross-up">
+          {parametros.length === 0 ? (
             <p className="text-xs text-muted-foreground">Nenhum parâmetro aplicado.</p>
           ) : (
             parametros.map((p) => (
@@ -113,7 +108,7 @@ export function PainelParametrosEconomicos({
               </Linha>
             ))
           )}
-          {exigeProjeto && parametros.length > 0 && (
+          {parametros.length > 0 && (
             <Linha rotulo="Total de parâmetros" forte>
               <ValorCalculado estado="bloqueado">{brl(totalParametros)}</ValorCalculado>
             </Linha>
@@ -122,11 +117,11 @@ export function PainelParametrosEconomicos({
 
         {/* Bloco 3 — resultado final (calculado → neutro, total em destaque) */}
         <Bloco titulo="Resultado final">
-          <Linha rotulo="Projeto após parâmetros">
-            <ValorCalculado>{brl(projetoFinal)}</ValorCalculado>
+          <Linha rotulo="Subtotal técnico">
+            <ValorCalculado>{brl(subtotalTecnico)}</ValorCalculado>
           </Linha>
-          <Linha rotulo="Laboratório (preço formado)">
-            <ValorCalculado estado="snapshot">{brl(precoLaboratorio)}</ValorCalculado>
+          <Linha rotulo="Total de parâmetros">
+            <ValorCalculado>{brl(totalParametros)}</ValorCalculado>
           </Linha>
           <Linha rotulo="Total final" forte>
             <ValorCalculado estado="bloqueado" className="text-base">
@@ -145,9 +140,10 @@ export function PainelParametrosEconomicos({
       )}
 
       <p className="mt-3 text-[11px] leading-5 text-zinc-400">
-        Total = laboratório (preço já formado) + projeto após parâmetros. Os
-        percentuais são valores de entrada; os valores em R$ e o total são
-        calculados pelo servidor e não devem ser editados diretamente.
+        Total final = (custo laboratório técnico + custo projeto direto) / (1 − Σ
+        parâmetros). O preço laboratorial já formado é apenas referência e não
+        entra no fechamento. Percentuais são entrada; valores em R$ e o total são
+        calculados pelo servidor.
       </p>
     </div>
   );

@@ -12,7 +12,25 @@ import {
   type ItemLaboratorioOperacional,
 } from "@/lib/orcamento/laboratorio-operacional";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
+import { moduloBloqueadoParaEdicao } from "@/lib/orcamento/ciclo-vida-modulo";
 import { registrarEvento } from "./eventos";
+
+// Validação defensiva de servidor: impede edição direta de módulo laboratorial
+// revisado/enviado/aprovado/cancelado (Fase 5). Não confiar só no botão da UI.
+async function assegurarLaboratorioEditavel(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orcamentoId: number,
+) {
+  const { data } = await supabase
+    .from("orcamentos")
+    .select("status, status_operacional")
+    .eq("id", orcamentoId)
+    .single();
+  const bloqueio = moduloBloqueadoParaEdicao({ status: data?.status, statusOperacional: data?.status_operacional });
+  if (bloqueio.bloqueado) {
+    throw new Error(bloqueio.motivo ?? "Edição bloqueada.");
+  }
+}
 
 export type ParametrosEconomicosState = {
   ok: boolean;
@@ -96,6 +114,7 @@ async function atualizarOperacionalLaboratorio(
 
 /** Cria um orçamento em rascunho e abre a tela de edição. */
 export async function criarOrcamento(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const demandaId = formData.get("demanda_id") ? Number(formData.get("demanda_id")) : null;
   if (!demandaId) {
     redirect("/orcamento/demandas");
@@ -111,18 +130,16 @@ export async function criarOrcamento(formData: FormData) {
     const titulo =
       String(formData.get("titulo") ?? "").trim() ||
       (tipo === "analises_projeto" ? `Projeto com análises - ${cliente_nome}` : `Projeto - ${cliente_nome}`);
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("orcamento_projetos")
       .insert({
         demanda_id: demandaId,
         projeto_id,
         titulo,
         cliente_nome,
-      })
-      .select("id")
-      .single();
+      });
     if (error) throw new Error(error.message);
-    redirect(`/orcamento/projetos/${data.id}`);
+    redirect(`/orcamento/demandas/${demandaId}?etapa=projeto`);
   }
 
   const { data, error } = await supabase
@@ -200,6 +217,7 @@ export async function salvarCabecalho(formData: FormData) {
 
 /** Adiciona uma análise solicitada, gravando o snapshot de custo/preço atual. */
 export async function adicionarItemOrcamento(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = Number(formData.get("orcamento_id"));
   const codigo = String(formData.get("codigo_analise") ?? "");
   const n = Number(formData.get("n_amostras"));
@@ -209,6 +227,7 @@ export async function adicionarItemOrcamento(formData: FormData) {
   const b = breakdowns.find((x) => x.codigo === codigo);
 
   const supabase = await createClient();
+  await assegurarLaboratorioEditavel(supabase, id);
   await supabase.from("orcamento_itens").insert({
     orcamento_id: id,
     codigo_analise: codigo,
@@ -221,10 +240,12 @@ export async function adicionarItemOrcamento(formData: FormData) {
 }
 
 export async function removerItemOrcamento(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = Number(formData.get("orcamento_id"));
   const itemId = Number(formData.get("item_id"));
   if (!itemId) return;
   const supabase = await createClient();
+  await assegurarLaboratorioEditavel(supabase, id);
   await supabase.from("orcamento_itens").delete().eq("id", itemId);
   await atualizarOperacionalLaboratorio(supabase, id);
   revalidatePath(`/orcamento/${id}`);
@@ -272,6 +293,7 @@ export async function recalcularOrcamento(formData: FormData) {
 }
 
 export async function excluirOrcamento(formData: FormData) {
+  await exigirPapelOrcamento("cancelar_documento");
   const id = Number(formData.get("orcamento_id"));
   const supabase = await createClient();
   const { data: atual } = await supabase
