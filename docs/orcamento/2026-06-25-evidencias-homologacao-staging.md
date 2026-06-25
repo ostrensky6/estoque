@@ -174,6 +174,26 @@
 
 > Nenhuma correção/stash/cleanup aplicada (fora de escopo). Recomenda-se re-executar a suíte sobre um checkout **limpo** da RC para isolar o status real da pilha.
 
+### Re-validação em checkout LIMPO (clone novo, 2026-06-25)
+Clone limpo `D:/Aplicativos/estoque-rc-clean` da branch RC `claude/rls-permissoes-orcamentos-fase11` @ `ec85eac` (working tree vazio, `npm install` limpo).
+
+| Suíte | Resultado (checkout limpo) | EXIT |
+|---|---|---|
+| `npm test` | ✅ **176 passou / 0 falha** (34 arquivos) | 0 |
+| `npm run lint` | ✅ **0 erros** | 0 |
+| `npx tsc --noEmit` | ✅ **0 erros** | 0 |
+| `npm run build` | ✅ **sucesso** | 0 |
+| `npm run test:e2e` | ✅ **17 passou / 0 falha** (mock supabase, porta isolada) | 0 |
+
+**Conclusão:** as 4 falhas anteriores eram **contaminação do working tree local** (alterações não-commitadas de outro fluxo: `demandas.ts`, `demandas-sync-rpc.test.ts`). **A pilha RC commitada (PR #3→#12) está VERDE.** O teste antes falho `orcamento-parametros.spec.ts:9` passa no checkout limpo.
+
+> Nota a11y: o `a11y.spec.ts` registra (log, não-bloqueante) violações `color-contrast` [serious] em Estoque/Compras/Análises/Parâmetros e `scrollable-region-focusable` em Parâmetros econômicos. Os testes passam; são pendências de melhoria de acessibilidade, não bloqueadores.
+
+### Re-validação read-only do Staging (pós suíte limpa)
+- `supabase projects list` → `LINKED ●` em `bebeqqrrmdvqaabkqfhp`; produção `hhxwdcwphitfxywbgtju` **sem** LINKED. ✅
+- `supabase migration list --linked` → 0045/0046/0047 com Local=Remote (aplicadas no Staging). ✅
+- Produção intocada; sem preflight (não autorizado).
+
 ---
 
 ## Checklist de Retomada da Homologação Remota (executar SOMENTE após desbloquear INFRA-001)
