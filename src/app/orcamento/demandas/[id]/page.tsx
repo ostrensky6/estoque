@@ -14,6 +14,7 @@ import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
 import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
 import { PainelParametrosEconomicos } from "@/components/orcamento/PainelParametrosEconomicos";
+import { EditorCustosProjeto } from "@/components/orcamento/EditorCustosProjeto";
 import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
 import { montarEtapasProposta, ORDEM_ETAPAS, type EtapaId } from "@/lib/orcamento/etapas-proposta";
@@ -80,10 +81,12 @@ type OrcamentoProjetoResumo = {
   reserva: number | null;
   investimentos: number | null;
   lucro: number | null;
-  orcamento_projeto_analises?: { id: number; n_amostras: number; custo_unitario: number; preco_unitario: number }[] | null;
+  orcamento_projeto_analises?: { id: number; codigo_analise?: string | null; n_amostras: number; custo_unitario: number; preco_unitario: number }[] | null;
   orcamento_projeto_custos?: {
     id: number;
     rubrica: string | null;
+    descricao?: string | null;
+    unidade?: string | null;
     quantidade: number;
     custo_unitario: number;
     preco_unitario: number;
@@ -121,7 +124,7 @@ export default async function DemandaDetalhe({
         .order("id"),
       supabase
         .from("orcamento_projetos")
-        .select("id, status, data_orcamento, titulo, projeto_sem_custo_justificativa, impostos, margem_lucro, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(id, n_amostras, custo_unitario, preco_unitario), orcamento_projeto_custos(id, rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados)")
+        .select("id, status, data_orcamento, titulo, projeto_sem_custo_justificativa, impostos, margem_lucro, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(id, codigo_analise, n_amostras, custo_unitario, preco_unitario), orcamento_projeto_custos(id, rubrica, descricao, unidade, quantidade, custo_unitario, preco_unitario, meses_selecionados)")
         .eq("demanda_id", demandaId)
         .order("id"),
       supabase
@@ -566,21 +569,19 @@ export default async function DemandaDetalhe({
                 <Info titulo="Custos próprios" texto={brl(totalProjetoCustos)} />
                 <Info titulo="Análises no projeto" texto={brl(totalProjetoAnalises)} />
               </div>
-              <TabelaSimples
-                colunas={["Projeto", "Status", "Data", "Custos", "Análises", "Justificativa", "Ação"]}
-                vazio="Nenhum orçamento de projeto gerado."
-                linhas={orcamentosProjeto.map((orcamento) => [
-                  orcamento.titulo || `#${orcamento.id}`,
-                  orcamento.status,
-                  orcamento.data_orcamento ?? "—",
-                  String(orcamento.orcamento_projeto_custos?.length ?? 0),
-                  String(orcamento.orcamento_projeto_analises?.length ?? 0),
-                  orcamento.projeto_sem_custo_justificativa ? "sim" : "não",
-                  <Link key={orcamento.id} href={`/orcamento/projetos/${orcamento.id}`} className="font-medium text-primary hover:underline">
-                    Abrir
-                  </Link>,
-                ])}
-              />
+              {orcamentosProjeto.length === 0 ? (
+                <TabelaSimples
+                  colunas={["Projeto", "Status", "Data", "Custos", "Análises", "Justificativa", "Ação"]}
+                  vazio="Nenhum orçamento de projeto gerado."
+                  linhas={[]}
+                />
+              ) : (
+                <div className="mt-6 flex flex-col gap-6">
+                  {orcamentosProjeto.map((orcamento) => (
+                    <EditorCustosProjeto key={orcamento.id} orcamento={orcamento} />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </section>
