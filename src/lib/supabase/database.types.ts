@@ -629,6 +629,7 @@ export type Database = {
           base_calculo: string | null
           codigo_analise: string
           especificacao_insumo: string | null
+          etapa_id: number | null
           grupo_escolha: string | null
           id: number
           insumo_id: number | null
@@ -642,6 +643,7 @@ export type Database = {
           base_calculo?: string | null
           codigo_analise: string
           especificacao_insumo?: string | null
+          etapa_id?: number | null
           grupo_escolha?: string | null
           id?: never
           insumo_id?: number | null
@@ -655,6 +657,7 @@ export type Database = {
           base_calculo?: string | null
           codigo_analise?: string
           especificacao_insumo?: string | null
+          etapa_id?: number | null
           grupo_escolha?: string | null
           id?: never
           insumo_id?: number | null
@@ -671,6 +674,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "analises"
             referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "insumo_analise_etapa_id_fkey"
+            columns: ["etapa_id"]
+            isOneToOne: false
+            referencedRelation: "etapas"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "insumo_analise_insumo_id_fkey"
@@ -2266,31 +2276,88 @@ export type Database = {
       }
       perfis: {
         Row: {
+          assinatura_path: string | null
+          assinatura_url: string | null
           criado_em: string
           email: string | null
           id: string
           nome: string | null
           papel: string
+          permissoes: Json
           senha_provisoria: boolean
           suspenso: boolean
         }
         Insert: {
+          assinatura_path?: string | null
+          assinatura_url?: string | null
           criado_em?: string
           email?: string | null
           id: string
           nome?: string | null
           papel?: string
+          permissoes?: Json
           senha_provisoria?: boolean
           suspenso?: boolean
         }
         Update: {
+          assinatura_path?: string | null
+          assinatura_url?: string | null
           criado_em?: string
           email?: string | null
           id?: string
           nome?: string | null
           papel?: string
+          permissoes?: Json
           senha_provisoria?: boolean
           suspenso?: boolean
+        }
+        Relationships: []
+      }
+      permissoes_categorias: {
+        Row: {
+          atualizado_em: string
+          papel: string
+          permissoes: Json
+        }
+        Insert: {
+          atualizado_em?: string
+          papel: string
+          permissoes?: Json
+        }
+        Update: {
+          atualizado_em?: string
+          papel?: string
+          permissoes?: Json
+        }
+        Relationships: []
+      }
+      usuarios_pre_aprovados: {
+        Row: {
+          criado_em: string
+          email: string
+          id: number
+          nome: string
+          observacao: string | null
+          papel: string
+          permissoes: Json
+        }
+        Insert: {
+          criado_em?: string
+          email: string
+          id?: number
+          nome: string
+          observacao?: string | null
+          papel?: string
+          permissoes?: Json
+        }
+        Update: {
+          criado_em?: string
+          email?: string
+          id?: number
+          nome?: string
+          observacao?: string | null
+          papel?: string
+          permissoes?: Json
         }
         Relationships: []
       }

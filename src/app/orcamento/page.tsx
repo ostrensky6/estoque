@@ -25,27 +25,17 @@ const SUBAREAS = [
   {
     href: "/orcamento/demandas",
     titulo: "Orçamentos não finalizados",
-    detalhe: "Entrada e continuação de orçamentos pendentes.",
-  },
-  {
-    href: "/orcamento/demandas?filtro=em_elaboracao",
-    titulo: "Em elaboração",
-    detalhe: "Orçamentos com custos pendentes ou ainda em preenchimento.",
-  },
-  {
-    href: "/orcamento/projetos",
-    titulo: "Orçamento de projeto",
-    detalhe: "Rubricas, custos próprios e análises dentro do projeto.",
-  },
-  {
-    href: "/orcamento/revisao",
-    titulo: "Proposta final",
-    detalhe: "Parâmetros econômicos, dashboard e revisão antes da emissão.",
+    detalhe: "Entrada comercial e continuação de orçamentos pendentes.",
   },
   {
     href: "/orcamento/historico",
     titulo: "Histórico de orçamentos",
-    detalhe: "Consulta de registros fechados, status e versões anteriores.",
+    detalhe: "Consulta de registros concluídos, status e versões anteriores.",
+  },
+  {
+    href: "/orcamento/fundos",
+    titulo: "Fundos e taxas",
+    detalhe: "Acompanhe recebimentos, impostos e fundos liberados por orçamento.",
   },
 ];
 
@@ -72,9 +62,11 @@ export default async function OrcamentosPage({
   );
   const linhasPeriodo = linhas.filter((linha) => dentroPeriodo(linha.criadoEm, inicioPeriodo));
   const finaisPeriodo = linhasPeriodo.filter((linha) => linha.origem === "final");
-  const emitidosAtivos = linhas.filter((linha) => linha.origem === "final" && linha.status === "emitido");
+  const emitidosAtivos = linhas.filter((linha) =>
+    linha.origem === "final" && ["emitido", "enviado", "alterado_reenviado"].includes(linha.status),
+  );
   const vencidos = linhas.filter((linha) => linha.origem === "final" && linha.status === "vencido");
-  const aprovadosPeriodo = linhasPeriodo.filter((linha) => linha.status === "aprovado");
+  const aprovadosPeriodo = linhas.filter((linha) => dentroPeriodo(linha.criadoEm, inicioPeriodo) && linha.status === "aprovado");
   const custosPendentes = linhas.filter((linha) => linha.etapaAtual === "Custos pendentes");
   const custosRevisados = linhas.filter((linha) => ["Custos preenchidos", "Pronto para revisão"].includes(linha.etapaAtual ?? ""));
   const aguardandoPropostaFinal = linhas.filter((linha) => linha.grupo === "revisao" && linha.origem !== "final");
@@ -84,8 +76,8 @@ export default async function OrcamentosPage({
 
   const funil = [
     { label: "Não finalizados", valor: demandasPeriodo.length, href: "/orcamento/demandas" },
-    { label: "Custos", valor: custosRevisados.length, href: "/orcamento/demandas?filtro=em_elaboracao" },
-    { label: "Proposta final", valor: aguardandoPropostaFinal.length, href: "/orcamento/revisao" },
+    { label: "Custos", valor: custosRevisados.length, href: "/orcamento/demandas" },
+    { label: "Proposta final", valor: aguardandoPropostaFinal.length, href: "/orcamento/demandas" },
     { label: "Final", valor: finaisPeriodo.length, href: "/orcamento/historico" },
     { label: "Aprovado", valor: aprovadosPeriodo.length, href: "/orcamento/historico?status=aprovado" },
   ];
@@ -151,7 +143,7 @@ export default async function OrcamentosPage({
           <Resumo titulo="Concluídos" valor={finaisPeriodo.length.toLocaleString("pt-BR")} href="/orcamento/historico" />
           <Resumo titulo="Aprovados" valor={aprovadosPeriodo.length.toLocaleString("pt-BR")} href="/orcamento/historico?status=aprovado" />
           <Resumo titulo="Vencidos" valor={vencidos.length.toLocaleString("pt-BR")} href="/orcamento/historico?status=vencido" />
-          <Resumo titulo="Receita potencial" valor={brl(receitaPotencial)} href="/orcamento/historico?status=emitido" />
+          <Resumo titulo="Receita potencial" valor={brl(receitaPotencial)} href="/orcamento/historico?status=enviado" />
         </section>
 
         <section className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">

@@ -6,7 +6,6 @@ import { calcularTodas } from "@/lib/costing/loader";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { ParametrosDemandaGrossUp } from "@/components/orcamento/ParametrosDemandaGrossUp";
 import {
-  emitirOrcamentoFinalDaDemanda,
   gerarOrcamentoAnalisesDaDemanda,
   gerarOrcamentoProjetoDaDemanda,
 } from "@/lib/actions/demandas";
@@ -20,7 +19,6 @@ import {
   type AnaliseSelecionadaDemanda,
 } from "@/components/orcamento/DemandaForm";
 import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
-import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
 import {
   modalidadeExigeLaboratorio,
   modalidadeExigeProjeto,
@@ -28,6 +26,7 @@ import {
 } from "@/lib/orcamento/orcamento-economico";
 import { calcularPrevisaoOperacionalDemanda } from "@/lib/orcamento/previsao-operacional";
 import { calcularFluxoDemanda, type EstadoEtapaDemanda, type EtapaFluxoDemanda } from "@/lib/orcamento/fluxo-demanda";
+import { EmissaoFinalForm } from "@/components/orcamento/EmissaoFinalForm";
 
 export const dynamic = "force-dynamic";
 
@@ -75,10 +74,11 @@ type OrcamentoProjetoResumo = {
     custo_unitario: number;
     preco_unitario: number;
     meses_selecionados: number[] | null;
+    descricao?: string | null;
   }[] | null;
 };
 
-type EtapaAtivaDemanda = Extract<EtapaFluxoDemanda["id"], "demanda" | "laboratorio" | "projeto" | "final" | "historico">;
+type EtapaAtivaDemanda = Extract<EtapaFluxoDemanda["id"], "demanda" | "laboratorio" | "projeto" | "final" | "emissao" | "historico">;
 
 export default async function DemandaDetalhe({
   params,
@@ -88,7 +88,7 @@ export default async function DemandaDetalhe({
   searchParams: Promise<{ erro_emissao?: string; erro_parametros?: string; etapa?: string }>;
 }) {
   const { id } = await params;
-  const { erro_emissao: erroEmissao, erro_parametros: erroParametros, etapa: etapaSolicitada } = await searchParams;
+  const { erro_parametros: erroParametros, etapa: etapaSolicitada } = await searchParams;
   const demandaId = Number(id);
   const supabase = await createClient();
 
@@ -111,6 +111,7 @@ export default async function DemandaDetalhe({
     { data: etapasAnalises },
     { data: insumosAnalises },
     { data: saldoEstoque },
+    { data: signatarios },
     { breakdowns },
   ] =
     await Promise.all([
@@ -123,7 +124,7 @@ export default async function DemandaDetalhe({
         .order("id"),
       supabase
         .from("orcamento_projetos")
-        .select("id, status, data_orcamento, titulo, projeto_sem_custo_justificativa, impostos, margem_lucro, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(id, n_amostras, custo_unitario, preco_unitario), orcamento_projeto_custos(id, rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados)")
+        .select("id, status, data_orcamento, titulo, projeto_sem_custo_justificativa, impostos, margem_lucro, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(id, n_amostras, custo_unitario, preco_unitario), orcamento_projeto_custos(id, rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados, descricao)")
         .eq("demanda_id", demandaId)
         .order("id"),
       supabase
@@ -164,6 +165,10 @@ export default async function DemandaDetalhe({
       (supabase as never as { from: (table: string) => { select: (columns: string) => Promise<{ data: Array<{ insumo_id: number; disponivel?: number | null; especificacao?: string | null }> | null }> } })
         .from("v_estoque_saldo")
         .select("insumo_id, disponivel, especificacao"),
+      supabase
+        .from("perfis")
+        .select("id, nome, email, papel, assinatura_url")
+        .order("nome"),
       calcularTodas(),
     ]);
 
@@ -302,7 +307,7 @@ export default async function DemandaDetalhe({
     orcamentoFinalPronto: orcamentoFinal.pronto,
     versoesFinais: versoesFinais?.length ?? 0,
   });
-  const etapasAplicaveis = new Set<EtapaAtivaDemanda>(["demanda", "final", "historico"]);
+  const etapasAplicaveis = new Set<EtapaAtivaDemanda>(["demanda", "final", "emissao", "historico"]);
   if (exigeProjeto) etapasAplicaveis.add("projeto");
   const etapaPadrao: EtapaAtivaDemanda = !completudeDemanda.completa
     ? "demanda"
@@ -321,18 +326,25 @@ export default async function DemandaDetalhe({
       acao: `/orcamento/demandas/${demandaId}?etapa=demanda`,
     },
     {
-      etapa: "Projeto",
+      etapa: "Custo de projeto",
       obrigatoria: exigeProjeto,
       status: moduloProjeto.label,
       pendencia: moduloProjeto.pendencias.join("; "),
       acao: `/orcamento/demandas/${demandaId}?etapa=projeto`,
     },
     {
-      etapa: "Final",
+      etapa: "Orçamento final",
       obrigatoria: true,
       status: orcamentoFinal.pronto ? "Pronto" : "Bloqueado",
-      pendencia: orcamentoFinal.pendencias.length > 0 ? orcamentoFinal.pendencias.join("; ") : "pronto para emissao",
+      pendencia: orcamentoFinal.pendencias.length > 0 ? orcamentoFinal.pendencias.join("; ") : "pronto para consolidação",
       acao: `/orcamento/demandas/${demandaId}?etapa=final`,
+    },
+    {
+      etapa: "Proposta para o cliente",
+      obrigatoria: true,
+      status: (versoesFinais ?? []).length > 0 ? "Emitido" : "Pendente",
+      pendencia: (versoesFinais ?? []).length > 0 ? "proposta emitida" : "configurar e emitir proposta final",
+      acao: `/orcamento/demandas/${demandaId}?etapa=emissao`,
     },
   ];
   const totalAnalisesCusto = orcamentosAnalises.reduce(
@@ -363,10 +375,25 @@ export default async function DemandaDetalhe({
     itens: orcamentosAnalises.flatMap((orcamento) => orcamento.orcamento_itens ?? []),
     catalogo: analisesCatalogo ?? [],
   });
+  const rubricasIndividuais = [
+    ...orcamentosProjeto.flatMap((orcamento) =>
+      (orcamento.orcamento_projeto_custos ?? []).map((item) => ({
+        descricao: item.descricao ?? "Item de projeto",
+        rubrica: item.rubrica ?? "OU",
+        quantidade: Number(item.quantidade ?? 0),
+        preco_unitario: Number(item.preco_unitario ?? item.custo_unitario ?? 0),
+      }))
+    ),
+    ...(exigeAnalises ? [] : orcamentosProjeto.flatMap((orcamento) => (
+      orcamento.orcamento_projeto_analises ?? []
+    )).map((item) => ({
+      descricao: "Análise de Projeto",
+      rubrica: "MC",
+      quantidade: Number(item.n_amostras ?? 0),
+      preco_unitario: Number(item.preco_unitario ?? item.custo_unitario ?? 0),
+    }))),
+  ];
 
-  // §8.2: valor digitado/escolhido pelo usuário aparece em azul (TOM_ENTRADA).
-  const inp =
-    `rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950 ${TOM_ENTRADA}`;
   const hydrationSafe = { suppressHydrationWarning: true } as const;
 
   return (
@@ -378,47 +405,6 @@ export default async function DemandaDetalhe({
             { label: demanda.titulo },
           ]}
         />
-
-        {etapaAtiva !== "demanda" && etapaAtiva !== "final" && (
-        <section className="mt-4 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
-                Demanda/Proposta
-              </p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight">{demanda.titulo}</h1>
-              <p className="mt-1 text-sm text-zinc-500">
-                {MODALIDADES[modalidadeCanonica] ?? demanda.modalidade}
-              </p>
-            </div>
-            <div className="text-right text-sm">
-              <p className="font-medium">Nº {demanda.id}</p>
-              <p className="text-zinc-500">Status: {demanda.status}</p>
-              <p className="text-zinc-500">Prioridade: {demanda.prioridade}</p>
-              <p className={completudeDemanda.completa ? "text-brand-700 dark:text-brand-300" : "text-amber-700 dark:text-amber-300"}>
-                {completudeDemanda.completa ? "Demanda pronta" : `${completudeDemanda.faltante}% faltante`}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-3 md:grid-cols-4">
-            <Info titulo="Cliente" texto={demanda.cliente_nome} />
-            <Info titulo="Contato" texto={demanda.cliente_contato} />
-            <Info titulo="Solicitação" texto={demanda.data_solicitacao} />
-            <Info titulo="Prazo esperado" texto={demanda.prazo_esperado} />
-            <Info titulo="Matriz/amostra" texto={demanda.matriz_amostra} />
-            <Info titulo="Qtd. estimada" texto={demanda.quantidade_amostras_estimada ? String(demanda.quantidade_amostras_estimada) : null} />
-            <Info titulo="Prazo técnico" texto={demanda.prazo_tecnico_dias ? `${demanda.prazo_tecnico_dias} dias` : null} />
-            <Info titulo="Completude atualizada" texto={formatDateTime(demanda.completude_atualizada_em)} />
-          </div>
-
-          <div className="mt-6 grid gap-4 text-sm md:grid-cols-3">
-            <Texto titulo="Descrição" texto={demanda.descricao} />
-            <Texto titulo="Escopo preliminar" texto={demanda.escopo_preliminar} />
-            <Texto titulo="Observações" texto={demanda.observacoes} />
-          </div>
-        </section>
-        )}
 
         <div className="mt-4 grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)]">
           <aside className="lg:sticky lg:top-4 lg:self-start">
@@ -595,9 +581,9 @@ export default async function DemandaDetalhe({
         <section id="final" className="scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold">Proposta final</h2>
+              <h2 className="text-sm font-semibold">Orçamento final</h2>
               <p className="mt-1 text-xs leading-5 text-zinc-500">
-                Parâmetros econômicos, simulação de gross-up e dashboard de decisão da proposta.
+                Parâmetros econômicos, simulação de gross-up e consolidação técnica do orçamento.
               </p>
             </div>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${orcamentoFinal.pronto ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"}`}>
@@ -735,51 +721,46 @@ export default async function DemandaDetalhe({
             </div>
           </section>
 
-          {orcamentoFinal.pendencias.length > 0 ? (
-            <div className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-              <p className="font-medium">Pendências para emissão:</p>
-              <ul className="mt-1 list-disc pl-4">
-                {orcamentoFinal.pendencias.map((pendencia) => (
-                  <li key={pendencia}>{pendencia}</li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <div className="mt-4 rounded-md bg-brand-50 px-3 py-2 text-xs leading-5 text-brand-900 dark:bg-brand-950/40 dark:text-brand-200">
-              Módulos exigidos revisados. A versão final pode ser emitida e preservada no histórico.
-            </div>
-          )}
+          {/* Validadores de Emissão */}
+          {(() => {
+            const pendenciasEmissao: string[] = [];
+            if (!demanda.cliente_id && !demanda.cliente_nome) {
+              pendenciasEmissao.push("O cliente não foi definido.");
+            }
+            if (!(orcamentoFinal.totalFinal > 0)) {
+              pendenciasEmissao.push("O orçamento ainda não possui valor final calculado.");
+            }
+            if (!completudeDemanda.completa) {
+              pendenciasEmissao.push("Os módulos obrigatórios da demanda não foram preenchidos.");
+            }
+            if (!orcamentoFinal.pronto) {
+              pendenciasEmissao.push("Os parâmetros econômicos ainda não foram calculados.");
+            }
 
-          {erroEmissao && (
-            <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
-              {erroEmissao}
-            </p>
-          )}
+            return (
+              <>
+                {pendenciasEmissao.length > 0 && (
+                  <div className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                    <p className="font-semibold">Aviso: Existem pendências que devem ser preenchidas no orçamento para o cliente:</p>
+                    <ul className="mt-1 list-disc pl-4">
+                      {pendenciasEmissao.map((p, idx) => (
+                        <li key={idx}>{p}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-          <div className="mt-4 flex flex-wrap items-end gap-3">
-            <form action={emitirOrcamentoFinalDaDemanda} className="flex flex-wrap items-end gap-2">
-              <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
-              <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Validade (dias)</label>
-                <input
-                  {...hydrationSafe}
-                  name="validade_dias"
-                  type="number"
-                  min="1"
-                  step="1"
-                  defaultValue="30"
-                  className={`${inp} mt-1 w-28`}
-                  disabled={!orcamentoFinal.pronto}
-                />
-              </div>
-              <button
-                className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 dark:disabled:bg-zinc-800"
-                disabled={!orcamentoFinal.pronto}
-              >
-                Emitir versão final
-              </button>
-            </form>
-          </div>
+                <div className="mt-4 flex flex-wrap items-end gap-3">
+                  <Link
+                    href={`/orcamento/demandas/${demandaId}?etapa=emissao`}
+                    className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500"
+                  >
+                    Emitir versão final
+                  </Link>
+                </div>
+              </>
+            );
+          })()}
 
           <div className="mt-5 rounded-md border border-zinc-200 dark:border-zinc-800">
             <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2 dark:border-zinc-800">
@@ -856,6 +837,31 @@ export default async function DemandaDetalhe({
           />
         </section>
         )}
+
+        {etapaAtiva === "emissao" && (
+        <section id="emissao" className="scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Proposta para o cliente</h2>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                Configure as opções de visualização, selecione o assinante e emita a versão final em DOCX/PDF.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <EmissaoFinalForm
+              demanda={demanda}
+              orcamentosAnalises={orcamentosAnalises}
+              orcamentosProjeto={orcamentosProjeto}
+              orcamentoFinal={orcamentoFinal}
+              versoesFinais={versoesFinais ?? []}
+              analisesProposta={analisesProposta}
+              rubricasProposta={rubricasIndividuais}
+              signatarios={signatarios ?? []}
+            />
+          </div>
+        </section>
+        )}
           </div>
         </div>
       </main>
@@ -875,12 +881,10 @@ function FluxoEtapas({
   return (
     <nav className="rounded-lg border border-zinc-200 bg-white p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-900" aria-label="Etapas da demanda">
       <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Fluxo da proposta</p>
-      <div className="space-y-1">
+      <div className="space-y-4">
         {etapas.filter((etapa) => etapa.id !== "laboratorio" && etapa.id !== "parametros").map((etapa, index) => {
           const ativa = etapa.id === etapaAtiva;
-          const classes = `grid grid-cols-[1.5rem_minmax(0,1fr)] gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition ${
-            ativa ? "ring-2 ring-brand-500 ring-offset-1 ring-offset-white dark:ring-offset-zinc-900" : ""
-          } ${classeEtapa(etapa.estado)}`;
+          const classes = `grid grid-cols-[1.5rem_minmax(0,1fr)] gap-2 rounded-md px-2.5 py-1.5 text-left text-xs transition ${classeEtapa(etapa.estado, ativa)}`;
 
           if (etapa.estado === "pulado") {
             return (
@@ -889,11 +893,11 @@ function FluxoEtapas({
                   {index + 1}
                 </span>
                 <span className="min-w-0">
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="truncate font-semibold">{etapa.label}</span>
+                  <span className="flex items-start justify-between gap-2">
+                    <span className="font-semibold text-[11px] leading-tight">{etapa.label}</span>
                     <span className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium">{rotuloEstado(etapa.estado)}</span>
                   </span>
-                  <span className="mt-0.5 block truncate text-[10px] opacity-75">{etapa.status} · {etapa.detalhe}</span>
+                  <span className="mt-0.5 block text-[10px] opacity-75">{etapa.status} · {etapa.detalhe}</span>
                 </span>
               </span>
             );
@@ -910,11 +914,11 @@ function FluxoEtapas({
                 {index + 1}
               </span>
               <span className="min-w-0">
-                <span className="flex items-center justify-between gap-2">
-                  <span className="truncate font-semibold">{etapa.label}</span>
+                <span className="flex items-start justify-between gap-2">
+                  <span className="font-semibold text-[11px] leading-tight">{etapa.label}</span>
                   <span className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium">{rotuloEstado(etapa.estado)}</span>
                 </span>
-                <span className="mt-0.5 block truncate text-[10px] opacity-75">{etapa.status} · {etapa.detalhe}</span>
+                <span className="mt-0.5 block text-[10px] opacity-75">{etapa.status} · {etapa.detalhe}</span>
               </span>
             </Link>
           );
@@ -1007,12 +1011,19 @@ function Info({ titulo, texto }: { titulo: string; texto: string | null }) {
   );
 }
 
-function classeEtapa(estado: EstadoEtapaDemanda) {
-  if (estado === "concluido") return "border-brand-200 bg-brand-50 text-brand-950 dark:border-brand-900 dark:bg-brand-950/30 dark:text-brand-100";
-  if (estado === "ativo") return "border-zinc-900 bg-white text-zinc-950 shadow-sm dark:border-zinc-100 dark:bg-zinc-950 dark:text-zinc-50";
-  if (estado === "bloqueado") return "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100";
-  if (estado === "pulado") return "border-zinc-200 bg-zinc-50 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-950/40";
-  return "border-zinc-200 bg-white text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200";
+function classeEtapa(estado: EstadoEtapaDemanda, isPrincipal: boolean) {
+  // Etapa principal (a que o usuário está visualizando): destaque forte
+  if (isPrincipal) return "border-2 border-blue-600 bg-blue-50 text-blue-950 shadow-md dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-50";
+  // Etapas concluídas (relacionadas): destaque suave, cor mais clara
+  if (estado === "concluido") return "border border-brand-200 bg-brand-50/60 text-brand-800 dark:border-brand-800 dark:bg-brand-950/20 dark:text-brand-200";
+  // Bloqueadas: mantém visual de alerta
+  if (estado === "bloqueado") return "border border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100";
+  // Puladas: visual desabilitado
+  if (estado === "pulado") return "border border-zinc-200 bg-zinc-50 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-950/40";
+  // Ativo (não selecionado como principal): borda média
+  if (estado === "ativo") return "border border-zinc-400 bg-white text-zinc-900 dark:border-zinc-500 dark:bg-zinc-950 dark:text-zinc-100";
+  // Pendente (padrão): neutro
+  return "border border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300";
 }
 
 function rotuloEstado(estado: EstadoEtapaDemanda) {
@@ -1021,15 +1032,6 @@ function rotuloEstado(estado: EstadoEtapaDemanda) {
   if (estado === "bloqueado") return "Bloqueado";
   if (estado === "pulado") return "Pulado";
   return "Pendente";
-}
-
-function Texto({ titulo, texto }: { titulo: string; texto: string | null }) {
-  return (
-    <div>
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{titulo}</h3>
-      <p className="mt-1 whitespace-pre-wrap leading-6 text-zinc-700 dark:text-zinc-300">{texto || "—"}</p>
-    </div>
-  );
 }
 
 function TabelaSimples({
@@ -1176,13 +1178,14 @@ function resumirAnalisesLaboratorio({
   catalogo: Array<{ codigo: string; nome?: string | null; nome_simplificado?: string | null }>;
 }) {
   const nomes = new Map(catalogo.map((analise) => [analise.codigo, analise.nome_simplificado ?? analise.nome ?? analise.codigo]));
-  const mapa = new Map<string, { codigo: string; nome: string; amostras: number; custo: number }>();
+  const mapa = new Map<string, { codigo: string; nome: string; amostras: number; custo: number; preco: number }>();
 
   for (const item of itens) {
     const codigo = item.codigo_analise ?? `Item #${item.id}`;
-    const atual = mapa.get(codigo) ?? { codigo, nome: nomes.get(codigo) ?? codigo, amostras: 0, custo: 0 };
+    const atual = mapa.get(codigo) ?? { codigo, nome: nomes.get(codigo) ?? codigo, amostras: 0, custo: 0, preco: 0 };
     atual.amostras += Number(item.n_amostras ?? 0);
     atual.custo += Number(item.custo_unitario ?? 0) * Number(item.n_amostras ?? 0);
+    atual.preco += Number(item.preco_unitario ?? 0) * Number(item.n_amostras ?? 0);
     mapa.set(codigo, atual);
   }
 
@@ -1190,6 +1193,7 @@ function resumirAnalisesLaboratorio({
     .map((item) => ({
       ...item,
       custoUnitarioMedio: item.amostras > 0 ? item.custo / item.amostras : 0,
+      precoUnitarioMedio: item.amostras > 0 ? item.preco / item.amostras : 0,
     }))
     .sort((a, b) => b.custo - a.custo);
 }

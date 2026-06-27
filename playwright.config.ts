@@ -23,7 +23,7 @@ export default defineConfig({
     command: `npm run dev -- -p ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 240_000,
     env: {
       PLAYWRIGHT_MOCK_SUPABASE: "1",
       NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",

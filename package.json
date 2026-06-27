@@ -1,6 +1,6 @@
 {
   "name": "kontrol-app",
-  "version": "0.1.0",
+  "version": "1.0.4",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "lab:import": "node scripts/import-laboratorio1.mjs",
+    "version:bump": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bump-app-version.ps1",
     "prod:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-production-target.ps1",
     "prod:deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-production.ps1"
   },

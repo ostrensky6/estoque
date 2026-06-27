@@ -20,6 +20,7 @@ import { listarEventos } from "@/lib/actions/eventos";
 import { Timeline } from "@/components/common/Timeline";
 import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
 import { montarSnapshotLaboratorio } from "@/lib/orcamento/laboratorio-operacional";
+import type { Json } from "@/lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ type Item = {
   n_amostras: number;
   custo_unitario: number;
   preco_unitario: number;
-  valor_snapshot?: unknown;
+  valor_snapshot?: Json | null;
 };
 
 type SnapshotLaboratorio = {
@@ -49,6 +50,11 @@ type SnapshotLaboratorio = {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function numberFrom(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 export default async function OrcamentoDetalhe({
@@ -122,10 +128,12 @@ export default async function OrcamentoDetalhe({
   const linhasTecnicas = itens.map((item) => {
     const quantidade = Number(item.n_amostras);
     const breakdown = breakdownPorCodigo.get(item.codigo_analise);
-    const reagentes = Number(breakdown?.reagentes ?? 0) * quantidade;
-    const equipamentos = Number(breakdown?.equipamento ?? 0) * quantidade;
-    const maoObra = Number(breakdown?.pessoal ?? 0) * quantidade;
-    const overhead = Number(breakdown?.overhead ?? 0) * quantidade;
+    const snapshot = isRecord(item.valor_snapshot) ? item.valor_snapshot : {};
+    const composicaoTotais = isRecord(snapshot.composicao_totais) ? snapshot.composicao_totais : {};
+    const reagentes = numberFrom(composicaoTotais.reagentes, Number(breakdown?.reagentes ?? 0) * quantidade);
+    const equipamentos = numberFrom(composicaoTotais.equipamento, Number(breakdown?.equipamento ?? 0) * quantidade);
+    const maoObra = numberFrom(composicaoTotais.pessoal, Number(breakdown?.pessoal ?? 0) * quantidade);
+    const overhead = numberFrom(composicaoTotais.overhead, Number(breakdown?.overhead ?? 0) * quantidade);
     const custo = Number(item.custo_unitario) * quantidade;
     const preco = Number(item.preco_unitario) * quantidade;
     return {
@@ -133,7 +141,8 @@ export default async function OrcamentoDetalhe({
       codigo: item.codigo_analise,
       nome: nomeAnalise.get(item.codigo_analise),
       quantidade,
-      lote: breakdown?.lote ?? null,
+      lote: numberFrom(snapshot.lote_padrao, Number(breakdown?.lote ?? 0)) || null,
+      numeroExecucoes: numberFrom(snapshot.numero_execucoes, 0) || null,
       reagentes,
       materiais: reagentes,
       equipamentos,
@@ -144,7 +153,7 @@ export default async function OrcamentoDetalhe({
       preco,
       custoUnitario: Number(item.custo_unitario),
       precoUnitario: Number(item.preco_unitario),
-      origem: breakdown ? "Snapshot de custeio" : "Snapshot preservado no item",
+      origem: snapshot.composicao_totais ? "Snapshot preservado no item" : breakdown ? "Snapshot de custeio" : "Snapshot preservado no item",
     };
   });
 

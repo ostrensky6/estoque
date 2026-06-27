@@ -14,14 +14,7 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
   const nivel = nivelDoPapel(perfil?.papel);
   const ehGestor = nivel >= ORDEM_PAPEIS.indexOf("gestor");
   const ehAdmin = perfil?.papel === "admin";
-  const linksGovernanca: NavLink[] = [
-    {
-      href: "/ajuda",
-      label: "Ajuda",
-      desc: "orientações de todos os módulos do app",
-      icon: "LifeBuoy",
-    },
-  ];
+  const linksGovernanca: NavLink[] = [];
 
   if (ehGestor) {
     linksGovernanca.push({
@@ -43,7 +36,7 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
       {
         href: "/usuarios",
         label: "Usuários e permissões",
-        desc: "papéis técnico, coordenador, gestor e admin",
+        desc: "acessos, assinaturas e matriz de permissões",
         icon: "UserCog",
       },
     );
@@ -156,22 +149,29 @@ export function getNavigationGroups(perfil: NavigationProfile): NavGroup[] {
           shortcut: "O",
         },
         {
-          href: "/orcamento/projetos",
-          label: "Orçamento de projeto",
-          desc: "custos próprios por projeto",
-          icon: "DollarSign",
-        },
-        {
-          href: "/orcamento/revisao",
-          label: "Proposta final",
-          desc: "parâmetros, dashboard e emissão",
-          icon: "FileText",
-        },
-        {
           href: "/orcamento/historico",
           label: "Histórico de orçamentos",
           desc: "consulta de versões concluídas",
           icon: "History",
+        },
+        {
+          href: "/orcamento/fundos",
+          label: "Fundos e taxas",
+          desc: "recebimentos, impostos e fundos",
+          icon: "DollarSign",
+        },
+      ],
+    },
+    {
+      title: "Ajuda",
+      accent: "blue",
+      icon: "LifeBuoy",
+      links: [
+        {
+          href: "/ajuda",
+          label: "Central de Ajuda",
+          desc: "orientações de todos os módulos do app",
+          icon: "LifeBuoy",
         },
       ],
     },

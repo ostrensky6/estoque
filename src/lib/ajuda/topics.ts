@@ -518,12 +518,12 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
     titulo: "Usuários e permissões",
     grupo: "Governança",
     href: "/usuarios",
-    resumo: "Papéis técnico, coordenador, gestor e admin (admin).",
+    resumo: "Categorias técnico, coordenador, gestor e administrador, com permissões ajustáveis.",
     intro:
-      "Aqui você gerencia quem acessa o sistema e o que cada um pode fazer. O papel atribuído define o nível de permissão, numa hierarquia crescente. Ações sensíveis — como excluir registros ou aprovar etapas — exigem papel de coordenador ou superior.",
+      "Aqui você gerencia quem acessa o sistema, assinaturas e o que cada pessoa pode fazer. A categoria define a matriz inicial de permissões, e cada usuário pode ter ajustes individuais.",
     secoes: [
       {
-        titulo: "Hierarquia de papéis",
+        titulo: "Categorias de permissão",
         itens: [
           "Técnico: operação do dia a dia (registrar, adicionar itens, executar tarefas básicas).",
           "Coordenador: valida, aprova e pode editar/excluir em mais situações.",
@@ -534,13 +534,13 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
       {
         titulo: "Como usar",
         itens: [
-          "Crie o usuário e atribua o papel adequado à função dele.",
-          "Revise os papéis quando alguém mudar de responsabilidade.",
-          "Lembre-se de que muitas ações sensíveis exigem coordenador ou superior.",
+          "Crie o usuário e atribua a categoria adequada à função dele.",
+          "Use os três pontinhos para editar permissões, fazer upload de assinatura, resetar senha inicial ou apagar.",
+          "Confira a tabela de permissões abaixo da lista de usuários.",
         ],
       },
     ],
-    termos: ["usuário", "papel", "permissão", "perfil", "acesso", "rls"],
+    termos: ["usuário", "categoria", "permissão", "perfil", "acesso", "assinatura", "rls"],
   },
 
   // ─────────────────────────────── Geral ───────────────────────────────

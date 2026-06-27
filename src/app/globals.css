@@ -132,6 +132,21 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+html:not(.dark) .text-zinc-400,
+html:not(.dark) .text-slate-400 {
+  color: #52525b;
+}
+
+html:not(.dark) .text-zinc-500,
+html:not(.dark) .text-slate-500 {
+  color: #475569;
+}
+
+html:not(.dark) .text-brand-400,
+html:not(.dark) .text-brand-500 {
+  color: #013a80;
+}
+
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 3px solid color-mix(in srgb, var(--ring) 80%, white);
   outline-offset: 3px;
@@ -171,15 +186,41 @@ body {
 /* Impressão de orçamentos: esconde navegação e controles de edição,
    mostra só o documento (.print-area). */
 @media print {
+  @page {
+    size: A4;
+    margin: 15mm 15mm 15mm 15mm;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
   aside,
+  nav,
+  header,
+  footer:not(.proposal-footer),
+  button,
+  a.no-print,
   .no-print {
     display: none !important;
   }
-  body {
-    background: #fff;
-    color: #000;
-  }
   .print-area {
     padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+  .page-break-before {
+    page-break-before: always;
+    break-before: page;
+  }
+  .page-break-inside-avoid,
+  table,
+  tr,
+  blockquote,
+  .page-break-inside-avoid {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 }

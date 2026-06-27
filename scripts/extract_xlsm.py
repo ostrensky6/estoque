@@ -53,6 +53,32 @@ def code_norm(v):
     cv = s(v)
     return canon.get(cv.lower(), cv) if cv else None
 
+INSUMO_ALIASES = {
+    "QuantiNova® SYBR®Green RT-PCR Kit": "QuantiNova® SYBR®Green RT-PCR Kit (2500 reações)",
+    "QuantiNovaŽ SYBRŽGreen RT-PCR Kit": "QuantiNova® SYBR®Green RT-PCR Kit (2500 reações)",
+    "dNTP mix 10 mM. Kit c/ 800 uL (4 x 200 uL)": "dNTP mix 10 mM - 1 mL",
+}
+
+ANALISE_META = {
+    "Eletrof_vir_hem": ("Eletroforese hemolinfa", "Gel para hemolinfa", "Ainda é feito", True),
+    "Eletrof_vir_tec": ("Eletroforese tecido", "Gel para tecido", "Ainda é feito", True),
+    "Illumina_16S_AC": ("16S alta cobertura", "Sequenciamento focado em microbioma, com alta cobertura", "Nunca feito; pode ser oferecido", True),
+    "Illumina_16S_BC": ("16S baixa cobertura", "Sequenciamento focado em microbioma, com baixa cobertura", "Nunca feito; revisar oferta", True),
+    "Illumina_DNA_P_AC": ("DNA parasito alta cobertura", "Sequenciamento de DNA de parasito com alta cobertura", "Nunca feito; revisar oferta", True),
+    "Illumina_DNA_P_BC": ("DNA parasito baixa cobertura", "Sequenciamento de DNA de parasito com baixa cobertura", "Nunca feito; revisar oferta", True),
+    "Illumina_Sh": ("Shotgun", "Sequenciamento shotgun, com qualquer marcador", "Revisar", True),
+    "Illumina_Sh_qPCR": ("Shotgun com qPCR", "Shotgun substituindo algumas etapas por qPCR para otimização de tempo e custo", "Ainda não testado", True),
+    "qPCR_F": ("qPCR com filtração", "PCR em tempo real com filtração", "Ativo", True),
+    "qPCR_SF": ("qPCR sem filtração", "PCR em tempo real sem filtração", "Ativo", True),
+    "RTqPCR_RNA_virus_H": ("RT-qPCR vírus hemolinfa", "PCR em tempo real de vírus 1", "Ativo", True),
+    "RTqPCR_RNA_virus_T": ("RT-qPCR vírus tecidos", "PCR em tempo real de vírus 2", "Ativo", True),
+    "Sanger": ("Sanger", "Sequenciamento Sanger", "Ainda pode ser oferecido", True),
+}
+
+def spec_lookup(v):
+    sv = s(v)
+    return INSUMO_ALIASES.get(sv, sv)
+
 def sqlstr(v):
     if v is None:
         return "null"
@@ -72,6 +98,10 @@ def emit(f, table, cols, data):
 
 # ---------------- coleta ----------------
 analises = sorted(set(canon.values()))
+analises_rows = [
+    (codigo, *(ANALISE_META.get(codigo) or (codigo, None, "Revisar", True)))
+    for codigo in analises
+]
 
 etapas = []
 for r in rows("Tempo"):
@@ -144,7 +174,7 @@ def write_csv(name, header, data):
     with open(OUT / f"{name}.csv", "w", newline="", encoding="utf-8") as fp:
         w = csv.writer(fp); w.writerow(header); w.writerows(data)
 
-write_csv("analises", ["codigo"], [[a] for a in analises])
+write_csv("analises", ["codigo","nome_simplificado","descricao","status","ativo"], analises_rows)
 write_csv("etapas", ["codigo_analise","nome_etapa","nome_atividade","execucoes_por_dia",
     "amostras_por_execucao","tempo_maquina_h","tempo_bancada_h","atividade_opcional",
     "tipo_limitacao","dia_inicio","dia_fim_max"], etapas)
@@ -162,7 +192,7 @@ write_csv("insumo_analise", ["codigo_analise","nome_etapa","nome_atividade","esp
 with open(OUT / "seed.sql", "w", encoding="utf-8") as f:
     f.write("-- Seed gerado por scripts/extract_xlsm.py\nbegin;\n")
     emit(f, "parametros", ["chave","valor","unidade","descricao"], parametros)
-    emit(f, "analises", ["codigo"], [[a] for a in analises])
+    emit(f, "analises", ["codigo","nome_simplificado","descricao","status","ativo"], analises_rows)
     emit(f, "etapas", ["codigo_analise","nome_etapa","nome_atividade","execucoes_por_dia",
         "amostras_por_execucao","tempo_maquina_h","tempo_bancada_h","atividade_opcional",
         "tipo_limitacao","dia_inicio","dia_fim_max"], etapas)
@@ -184,12 +214,12 @@ with open(OUT / "seed.sql", "w", encoding="utf-8") as f:
                 "especificacao_insumo, unidade, grupo_escolha, quantidade_por_amostra, modo_cobranca, insumo_id) "
                 f"select {sqlstr(code)}, {sqlstr(et)}, {sqlstr(at)}, {sqlstr(spec)}, {sqlstr(un)}, "
                 f"{sqlstr(grp)}, {sqlstr(qpa)}, {sqlstr(modo)}, "
-                f"(select id from insumos where especificacao = {sqlstr(spec)});\n")
+                f"(select id from insumos where especificacao = {sqlstr(spec_lookup(spec))});\n")
     f.write("\ncommit;\n")
 
 # ---------------- relatório ----------------
 specs_mc = seen_spec
-specs_mca = {s(r[5]) for r in rows("MCA") if s(r[5])}
+specs_mca = {spec_lookup(r[5]) for r in rows("MCA") if s(r[5])}
 faltam = sorted(specs_mca - specs_mc)
 print(f"analises={len(analises)} etapas={len(etapas)} equipamentos={len(equip)} "
       f"equip_analise={len(equip_analise)} tecnicos={len(tecnicos)} overhead={len(overhead)} "

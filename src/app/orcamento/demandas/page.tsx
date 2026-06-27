@@ -91,9 +91,12 @@ export default async function DemandasPage({
       totalEmAberto: estado.totalEmAberto,
     };
   });
-  const linhas = filtro === "em_elaboracao"
-    ? linhasTodas.filter((linha) => linha.fluxoStatus !== "Proposta concluída" && linha.fluxoStatus !== "Proposta em revisão")
-    : linhasTodas;
+  const linhas = linhasTodas.filter((linha) => {
+    if (filtro === "concluidas") return linha.fluxoStatus === "Proposta concluída";
+    if (filtro === "emissao") return linha.fluxoStatus === "Aguardando emissão";
+    if (filtro === "ativas") return linha.fluxoStatus !== "Proposta concluída";
+    return linha.fluxoStatus !== "Proposta concluída";
+  });
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <main className="mx-auto max-w-6xl px-6 py-10">

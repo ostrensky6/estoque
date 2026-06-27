@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { calcularTodas } from "@/lib/costing/loader";
+import { calcularItemAnaliseOrcamento, calcularTodas } from "@/lib/costing/loader";
 import { registrarVersaoParametrosEconomicos } from "@/lib/orcamento/parametros-versionamento";
 import {
   montarSnapshotLaboratorio,
@@ -73,9 +73,12 @@ function snapshotAnaliseLaboratorio(args: {
   codigo: string;
   nome?: string | null;
   custoUnitario: number;
+  precoUnitario: number;
   nAmostras: number;
   lote?: number | null;
+  numeroExecucoes?: number | null;
   composicao?: Record<string, number>;
+  composicaoTotais?: Record<string, number>;
 }) {
   return {
     tipo: "analise_laboratorial",
@@ -84,9 +87,12 @@ function snapshotAnaliseLaboratorio(args: {
     rubrica: "Laboratório",
     unidade: "amostra",
     valor_unitario_utilizado: args.custoUnitario,
+    preco_unitario_utilizado: args.precoUnitario,
     quantidade: args.nAmostras,
     lote_padrao: args.lote ?? null,
+    numero_execucoes: args.numeroExecucoes ?? null,
     composicao: args.composicao ?? {},
+    composicao_totais: args.composicaoTotais ?? {},
     data_snapshot: new Date().toISOString(),
     origem_valor: "breakdown.custoTotal",
   };
@@ -101,7 +107,7 @@ async function atualizarOperacionalLaboratorio(
     supabase.from("orcamentos").select("status").eq("id", id).single(),
     supabase
       .from("orcamento_itens")
-      .select("codigo_analise, n_amostras, custo_unitario, preco_unitario")
+      .select("codigo_analise, n_amostras, custo_unitario, preco_unitario, valor_snapshot")
       .eq("orcamento_id", id),
     calcularTodas(),
   ]);
@@ -228,8 +234,7 @@ export async function adicionarItemOrcamento(formData: FormData) {
   const n = Number(formData.get("n_amostras"));
   if (!id || !codigo || !(n > 0)) return;
 
-  const { breakdowns } = await calcularTodas();
-  const b = breakdowns.find((x) => x.codigo === codigo);
+  const b = await calcularItemAnaliseOrcamento(codigo, n);
 
   const supabase = await createClient();
   const { data: analise } = await supabase
@@ -253,18 +258,31 @@ export async function adicionarItemOrcamento(formData: FormData) {
       codigo,
       nome: analise?.nome,
       custoUnitario: b?.custoTotal ?? 0,
+      precoUnitario: b?.preco ?? 0,
       nAmostras: n,
       lote: b?.lote ?? null,
+      numeroExecucoes: b?.numeroExecucoes ?? null,
       composicao: {
         reagentes: b?.reagentes ?? 0,
         equipamento: b?.equipamento ?? 0,
         pessoal: b?.pessoal ?? 0,
         overhead: b?.overhead ?? 0,
       },
+      composicaoTotais: {
+        reagentes: b?.totais.reagentes ?? 0,
+        equipamento: b?.totais.equipamento ?? 0,
+        pessoal: b?.totais.pessoal ?? 0,
+        overhead: b?.totais.overhead ?? 0,
+      },
     }),
   };
   if (existente) {
-    await supabase.from("orcamento_itens").update({ n_amostras: n }).eq("id", existente.id);
+    await supabase.from("orcamento_itens").update({
+      n_amostras: n,
+      custo_unitario: payload.custo_unitario,
+      preco_unitario: payload.preco_unitario,
+      valor_snapshot: payload.valor_snapshot,
+    }).eq("id", existente.id);
   } else {
     await supabase.from("orcamento_itens").insert(payload);
   }
@@ -320,15 +338,37 @@ export async function recalcularOrcamento(formData: FormData) {
   }
   const { data: itens } = await supabase
     .from("orcamento_itens")
-    .select("id, codigo_analise")
+    .select("id, codigo_analise, n_amostras")
     .eq("orcamento_id", id);
-  const { breakdowns } = await calcularTodas();
   for (const it of itens ?? []) {
-    const b = breakdowns.find((x) => x.codigo === it.codigo_analise);
+    const b = await calcularItemAnaliseOrcamento(it.codigo_analise, Number(it.n_amostras ?? 1));
     if (!b) continue;
     await supabase
       .from("orcamento_itens")
-      .update({ custo_unitario: b.custoTotal, preco_unitario: b.preco })
+      .update({
+        custo_unitario: b.custoTotal,
+        preco_unitario: b.preco,
+        valor_snapshot: snapshotAnaliseLaboratorio({
+          codigo: it.codigo_analise,
+          custoUnitario: b.custoTotal,
+          precoUnitario: b.preco,
+          nAmostras: Number(it.n_amostras ?? 1),
+          lote: b.lote,
+          numeroExecucoes: b.numeroExecucoes,
+          composicao: {
+            reagentes: b.reagentes,
+            equipamento: b.equipamento,
+            pessoal: b.pessoal,
+            overhead: b.overhead,
+          },
+          composicaoTotais: {
+            reagentes: b.totais.reagentes,
+            equipamento: b.totais.equipamento,
+            pessoal: b.totais.pessoal,
+            overhead: b.totais.overhead,
+          },
+        }),
+      })
       .eq("id", it.id);
   }
   await atualizarOperacionalLaboratorio(supabase, id);

@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import {
   calcularAnalise,
+  calcularAnaliseOrcamento,
   equipCustoDia,
   type Breakdown,
+  type BreakdownOrcamento,
   type Cenario,
   type EquipAlloc,
   type Etapa,
@@ -194,4 +196,26 @@ export async function carregarSimuladorCusteio(): Promise<{
       };
     }),
   };
+}
+
+export async function calcularItemAnaliseOrcamento(
+  codigo: string,
+  numeroAmostras: number,
+  cenario?: Cenario,
+): Promise<BreakdownOrcamento | null> {
+  const dados = await carregarSimuladorCusteio();
+  const analise = dados.analises.find((item) => item.codigo === codigo);
+  if (!analise) return null;
+
+  return calcularAnaliseOrcamento({
+    codigo,
+    etapas: analise.etapas,
+    equip: analise.equip,
+    insumos: analise.insumos,
+    valorHoraPessoal: dados.valorHoraPessoal,
+    custoHoraOverhead: dados.custoHoraOverhead,
+    params: dados.params,
+    numeroAmostras,
+    cenario,
+  });
 }

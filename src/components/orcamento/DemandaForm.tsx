@@ -373,7 +373,7 @@ export function DemandaForm({
                   </button>
                 </div>
                 {selecionadasDoGrupo.length > 0 ? (
-                  <div className="mt-3 overflow-x-auto">
+                  <div tabIndex={0} aria-label="Análises selecionadas do grupo" className="mt-3 overflow-x-auto">
                     <table className="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
                       <thead className="text-left text-xs text-zinc-500">
                         <tr><th className="py-2">Código da análise</th><th>Nome da análise</th><th>Quantidade de amostras para esta análise</th><th className="w-10 text-right"></th></tr>
@@ -418,7 +418,7 @@ export function DemandaForm({
                 {seletorAberto === grupo.key && (
                   <div className="mt-3 rounded-md border border-brand-200 bg-brand-50/40 p-3 dark:border-brand-900 dark:bg-brand-950/20">
                     <input value={busca} onChange={(event) => setBusca(event.target.value)} placeholder="Buscar por código, nome ou método" className={`${inp} w-full`} />
-                    <div className="mt-3 max-h-[56rem] overflow-y-auto rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+                    <div tabIndex={0} aria-label="Catálogo de análises filtradas" className="mt-3 max-h-[56rem] overflow-y-auto rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
                       {filtradas.length === 0 ? (
                         <p className="px-3 py-4 text-xs text-zinc-500">
                           {analises.length === 0 ? "Não existem análises ativas cadastradas ou você não possui permissão para visualizar este catálogo." : "Nenhuma análise corresponde à busca ou à matriz informada."}
@@ -466,7 +466,7 @@ export function DemandaForm({
           <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
             Compatibilidade por matriz ainda não possui relação oficial no banco. A matriz da demanda é informativa; confirme tecnicamente antes de emitir.
           </div>
-          <div className="mt-3 overflow-x-auto">
+          <div tabIndex={0} aria-label="Resumo de análises por grupo" className="mt-3 overflow-x-auto">
             <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
               <thead className="text-left text-xs text-zinc-500">
                 <tr><th className="py-2">Grupo</th><th>Tipo/matriz da amostra</th><th>Código da análise</th><th>Nome da análise</th><th>Quantidade de amostras para esta análise</th><th>Prazo técnico calculated</th><th>Lotes previstos</th><th>Status do custeio</th><th>Status dos insumos</th><th className="w-16 text-right"></th></tr>

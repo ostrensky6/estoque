@@ -1,21 +1,17 @@
+param(
+  [switch]$AllowNonMain
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $ProductionAlias = "kontrol-gia.vercel.app"
-$VercelScope = "ostrensky-s-projects"
+$VercelScope = "team_HYxJGUZ1QLz2P0H2U4l9Ayn8"
+$VercelTeamName = "Ostrensky's projects"
 $ExpectedVercelOrgId = "team_HYxJGUZ1QLz2P0H2U4l9Ayn8"
 $ExpectedVercelProjectId = "prj_EnHPskP6CjuCv8UCzC6iXjQpcwQi"
-$ForbiddenVercelScopes = @(
-  "ostrenskys-projects-17ce406b"
-)
 
 function Assert-ProductionVercelTarget([string]$RepoRoot) {
-  foreach ($forbiddenScope in $ForbiddenVercelScopes) {
-    if ($VercelScope -eq $forbiddenScope) {
-      throw "Scope Vercel proibido '$forbiddenScope'. Use '$VercelScope'."
-    }
-  }
-
   $projectPath = Join-Path $RepoRoot ".vercel/project.json"
   if (!(Test-Path $projectPath)) {
     throw "Projeto Vercel nao esta linkado: .vercel/project.json ausente."
@@ -38,9 +34,17 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Push-Location $repoRoot
 try {
   Assert-ProductionVercelTarget $repoRoot
-  & (Join-Path $PSScriptRoot "verify-production-target.ps1")
+  if ($AllowNonMain) {
+    & (Join-Path $PSScriptRoot "verify-production-target.ps1") -AllowNonMain
+  } else {
+    & (Join-Path $PSScriptRoot "verify-production-target.ps1")
+  }
+  if ($LASTEXITCODE -ne 0) {
+    throw "Validacao de producao falhou; deploy cancelado antes de incrementar versao."
+  }
+  & (Join-Path $PSScriptRoot "bump-app-version.ps1")
 
-  Write-Host "Publicando producao Vercel em $VercelScope..."
+  Write-Host "Publicando producao Vercel em $VercelTeamName [$VercelScope]..."
   $oldEap = $ErrorActionPreference
   $ErrorActionPreference = "Continue"
   $deployOutput = & vercel deploy . --prod -y --scope $VercelScope --token $env:VERCEL_TOKEN 2>&1
