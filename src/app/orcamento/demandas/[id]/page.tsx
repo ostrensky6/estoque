@@ -379,7 +379,7 @@ export default async function DemandaDetalhe({
           ]}
         />
 
-        {etapaAtiva !== "final" && (
+        {etapaAtiva !== "demanda" && etapaAtiva !== "final" && (
         <section className="mt-4 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -446,7 +446,7 @@ export default async function DemandaDetalhe({
             analises={analisesFormulario}
             gruposAmostras={gruposFormulario}
             analisesSelecionadas={analisesSelecionadasFormulario}
-            modo="demanda"
+            modo="completo"
           />
         </section>
         )}
@@ -683,47 +683,54 @@ export default async function DemandaDetalhe({
               </div>
               </div>
 
-              <div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-4">
-                <PainelComposicao
-                  titulo="Mapa de custo laboratorial"
-                  itens={analisesProposta.map((analise) => ({
-                    chave: analise.codigo,
-                    label: analise.nome,
-                    detalhe: `${analise.amostras} amostra(s)`,
-                    valor: analise.custo,
-                  }))}
-                  total={orcamentoFinal.totalLaboratorioCusto}
-                />
-                <TabelaSimples
-                  colunas={["Análise", "Amostras", "Custo/amostra", "Custo total"]}
-                  vazio="Nenhuma análise laboratorial vinculada."
-                  linhas={orcamentosAnalises.flatMap((orcamento) => (orcamento.orcamento_itens ?? []).map((item) => [
-                    item.codigo_analise ?? `Item #${item.id}`,
-                    String(item.n_amostras ?? 0),
-                    brl(Number(item.custo_unitario ?? 0)),
-                    brl(Number(item.custo_unitario ?? 0) * Number(item.n_amostras ?? 0)),
-                  ]))}
-                />
-                <PainelComposicao
-                  titulo="Mapa de custo do projeto"
-                  itens={rubricasProposta.map((rubrica) => ({
-                    chave: rubrica.codigo,
-                    label: rubrica.nome,
-                    detalhe: `${rubrica.itens} item(ns)`,
-                    valor: rubrica.custo,
-                  }))}
-                  total={Math.max(orcamentoFinal.totalProjetoCusto, totalProjetoCustos + totalProjetoAnalises)}
-                />
-                <TabelaSimples
-                  colunas={["Custo de projeto", "Rubrica", "Qtd.", "Custo total"]}
-                  vazio="Nenhum custo próprio de projeto vinculado."
-                  linhas={orcamentosProjeto.flatMap((orcamento) => (orcamento.orcamento_projeto_custos ?? []).map((item) => [
-                    `Projeto #${orcamento.id}`,
-                    item.rubrica ?? "OU",
-                    String(item.quantidade ?? 0),
-                    brl(Number(item.custo_unitario ?? 0) * Number(item.quantidade ?? 0)),
-                  ]))}
-                />
+              <div className="grid gap-6 xl:grid-cols-2">
+                {/* Coluna 1: Laboratório */}
+                <div className="space-y-4">
+                  <PainelComposicao
+                    titulo="Mapa de custo laboratorial"
+                    itens={analisesProposta.map((analise) => ({
+                      chave: analise.codigo,
+                      label: analise.nome,
+                      detalhe: `${analise.amostras} amostra(s)`,
+                      valor: analise.custo,
+                    }))}
+                    total={orcamentoFinal.totalLaboratorioCusto}
+                  />
+                  <TabelaSimples
+                    colunas={["Análise", "Amostras", "Custo/amostra", "Custo total"]}
+                    vazio="Nenhuma análise laboratorial vinculada."
+                    linhas={orcamentosAnalises.flatMap((orcamento) => (orcamento.orcamento_itens ?? []).map((item) => [
+                      item.codigo_analise ?? `Item #${item.id}`,
+                      String(item.n_amostras ?? 0),
+                      brl(Number(item.custo_unitario ?? 0)),
+                      brl(Number(item.custo_unitario ?? 0) * Number(item.n_amostras ?? 0)),
+                    ]))}
+                  />
+                </div>
+
+                {/* Coluna 2: Projeto */}
+                <div className="space-y-4">
+                  <PainelComposicao
+                    titulo="Mapa de custo do projeto"
+                    itens={rubricasProposta.map((rubrica) => ({
+                      chave: rubrica.codigo,
+                      label: rubrica.nome,
+                      detalhe: `${rubrica.itens} item(ns)`,
+                      valor: rubrica.custo,
+                    }))}
+                    total={Math.max(orcamentoFinal.totalProjetoCusto, totalProjetoCustos + totalProjetoAnalises)}
+                  />
+                  <TabelaSimples
+                    colunas={["Custo de projeto", "Rubrica", "Qtd.", "Custo total"]}
+                    vazio="Nenhum custo próprio de projeto vinculado."
+                    linhas={orcamentosProjeto.flatMap((orcamento) => (orcamento.orcamento_projeto_custos ?? []).map((item) => [
+                      `Projeto #${orcamento.id}`,
+                      item.rubrica ?? "OU",
+                      String(item.quantidade ?? 0),
+                      brl(Number(item.custo_unitario ?? 0) * Number(item.quantidade ?? 0)),
+                    ]))}
+                  />
+                </div>
               </div>
             </div>
           </section>
