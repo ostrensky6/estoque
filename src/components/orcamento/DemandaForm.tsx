@@ -5,6 +5,7 @@ import type { DemandaFormState } from "@/lib/actions/demandas";
 import { criarDemandaCompleta, salvarDemanda } from "@/lib/actions/demandas";
 import { modalidadeExigeLaboratorio } from "@/lib/orcamento/orcamento-economico";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
+import { Pencil, Trash2 } from "lucide-react";
 
 type Option = { id: number; nome: string };
 type Demanda = {
@@ -347,7 +348,7 @@ export function DemandaForm({
           {grupos.map((grupo) => {
             const selecionadasDoGrupo = selecionadas.filter((item) => item.grupoKey === grupo.key);
             return (
-            <div key={grupo.key} className="grid gap-2 rounded-md bg-zinc-50 p-3 dark:bg-zinc-950/50 sm:grid-cols-5">
+            <div key={grupo.key} id={`grupo-card-${grupo.key}`} className="grid gap-2 rounded-md bg-zinc-50 p-3 dark:bg-zinc-950/50 sm:grid-cols-5">
               <input type="hidden" name="grupo_key" value={grupo.key} />
               <div><label className={lbl}>Grupo</label><input name="grupo_identificacao" value={grupo.identificacao} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, identificacao: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
               <div className="sm:col-span-2"><label className={lbl}>Tipo/matriz</label><input name="grupo_tipo_matriz" value={grupo.tipo_matriz ?? ""} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, tipo_matriz: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
@@ -375,7 +376,7 @@ export function DemandaForm({
                   <div className="mt-3 overflow-x-auto">
                     <table className="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
                       <thead className="text-left text-xs text-zinc-500">
-                        <tr><th className="py-2">Código da análise</th><th>Nome da análise</th><th>Quantidade de amostras para esta análise</th><th>Remover</th></tr>
+                        <tr><th className="py-2">Código da análise</th><th>Nome da análise</th><th>Quantidade de amostras para esta análise</th><th className="w-10 text-right"></th></tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                         {selecionadasDoGrupo.map((item) => {
@@ -401,7 +402,9 @@ export function DemandaForm({
                                 />
                               </td>
                               <td className="text-right">
-                                <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-xs font-medium text-red-600">Remover</button>
+                                <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" title="Remover análise">
+                                  <Trash2 className="h-4 w-4 inline" />
+                                </button>
                               </td>
                             </tr>
                           );
@@ -466,7 +469,7 @@ export function DemandaForm({
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
               <thead className="text-left text-xs text-zinc-500">
-                <tr><th className="py-2">Grupo</th><th>Tipo/matriz da amostra</th><th>Código da análise</th><th>Nome da análise</th><th>Quantidade de amostras para esta análise</th><th>Prazo técnico calculado</th><th>Lotes previstos</th><th>Status do custeio</th><th>Status dos insumos</th><th>Remover</th></tr>
+                <tr><th className="py-2">Grupo</th><th>Tipo/matriz da amostra</th><th>Código da análise</th><th>Nome da análise</th><th>Quantidade de amostras para esta análise</th><th>Prazo técnico calculated</th><th>Lotes previstos</th><th>Status do custeio</th><th>Status dos insumos</th><th className="w-16 text-right"></th></tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {selecionadas.map((item) => {
@@ -487,8 +490,21 @@ export function DemandaForm({
                         {analise?.custeio_disponivel ? "Disponível" : "Pendente"}
                       </td>
                       <td className={statusInsumos === "Mapeados" ? "pr-3 text-brand-700 dark:text-brand-300" : "pr-3 text-amber-700 dark:text-amber-300"}>{statusInsumos}</td>
-                      <td className="text-right">
-                        <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-xs font-medium text-red-600">Remover</button>
+                      <td className="text-right space-x-2 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSeletorAberto(item.grupoKey);
+                            document.getElementById(`grupo-card-${item.grupoKey}`)?.scrollIntoView({ behavior: "smooth" });
+                          }}
+                          className="text-zinc-600 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
+                          title="Editar análises do grupo"
+                        >
+                          <Pencil className="h-4 w-4 inline" />
+                        </button>
+                        <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" title="Remover análise">
+                          <Trash2 className="h-4 w-4 inline" />
+                        </button>
                       </td>
                     </tr>
                   );
