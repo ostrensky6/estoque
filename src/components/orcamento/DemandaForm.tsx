@@ -215,16 +215,61 @@ export function DemandaForm({
       {mostraDemanda && (
       <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
         <h3 className="text-sm font-semibold">Identificação do orçamento</h3>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2"><label className={lbl}>Título <Obrigatorio /></label><input name="titulo" defaultValue={demanda.titulo ?? ""} className={`${inp} mt-1 w-full`} /></div>
-          <div><label className={lbl}>Número do orçamento <Selo texto="Calculado" /></label><div className="mt-1 rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950">{demanda.id > 0 ? `#${demanda.id}` : "Gerado ao salvar"}</div></div>
-          <div><label className={lbl}>Status</label><select name="status" defaultValue={demanda.status ?? "nova"} className={`${inp} mt-1 w-full`}><option value="nova">Nova</option><option value="em_analise">Em análise</option><option value="orcada">Orçada</option><option value="enviada">Enviada</option><option value="aprovada">Aprovada</option><option value="cancelada">Cancelada</option></select></div>
-          <div><label className={lbl}>Data da solicitação</label><input name="data_solicitacao" type="date" defaultValue={demanda.data_solicitacao ?? ""} className={`${inp} mt-1 w-full`} /></div>
-          <div><label className={lbl}>Prazo esperado</label><input name="prazo_esperado" type="date" defaultValue={demanda.prazo_esperado ?? ""} className={`${inp} mt-1 w-full`} /></div>
-          <div><label className={lbl}>Modalidade <Obrigatorio /></label><select name="modalidade" value={modalidade} onChange={(event) => setModalidade(event.target.value)} className={`${inp} mt-1 w-full`}><option value="analises">Análises laboratoriais</option><option value="projeto">Projeto sem análises</option><option value="projeto_com_analises">Projeto com análises</option></select></div>
-          <div><label className={lbl}>Prioridade</label><select name="prioridade" defaultValue={demanda.prioridade ?? "normal"} className={`${inp} mt-1 w-full`}><option value="baixa">Baixa</option><option value="normal">Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
-          <div><label className={lbl}>Responsável interno</label><input name="responsavel_interno" defaultValue={demanda.responsavel_interno ?? ""} className={`${inp} mt-1 w-full`} /></div>
-          <div><label className={lbl}>Origem</label><input name="origem" defaultValue={demanda.origem ?? ""} className={`${inp} mt-1 w-full`} /></div>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <div className="sm:col-span-2">
+            <label className={lbl}>Título <Obrigatorio /></label>
+            <input name="titulo" defaultValue={demanda.titulo ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={lbl}>Modalidade <Obrigatorio /></label>
+            <select name="modalidade" value={modalidade} onChange={(event) => setModalidade(event.target.value)} className={`${inp} mt-1 w-full`}>
+              <option value="analises">Análises laboratoriais</option>
+              <option value="projeto">Projeto sem análises</option>
+              <option value="projeto_com_analises">Projeto com análises</option>
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Número do orçamento <Selo texto="Calculado" /></label>
+            <div className="mt-1 rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950">
+              {demanda.id > 0 ? `#${demanda.id}` : "Gerado ao salvar"}
+            </div>
+          </div>
+          <div>
+            <label className={lbl}>Status</label>
+            <select name="status" defaultValue={demanda.status ?? "nova"} className={`${inp} mt-1 w-full`}>
+              <option value="nova">Nova</option>
+              <option value="em_analise">Em análise</option>
+              <option value="orcada">Orçada</option>
+              <option value="enviada">Enviada</option>
+              <option value="aprovada">Aprovada</option>
+              <option value="cancelada">Cancelada</option>
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Prioridade</label>
+            <select name="prioridade" defaultValue={demanda.prioridade ?? "normal"} className={`${inp} mt-1 w-full`}>
+              <option value="baixa">Baixa</option>
+              <option value="normal">Normal</option>
+              <option value="alta">Alta</option>
+              <option value="urgente">Urgente</option>
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Responsável interno</label>
+            <input name="responsavel_interno" defaultValue={demanda.responsavel_interno ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
+          <div>
+            <label className={lbl}>Data da solicitação</label>
+            <input name="data_solicitacao" type="date" defaultValue={demanda.data_solicitacao ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
+          <div>
+            <label className={lbl}>Prazo esperado</label>
+            <input name="prazo_esperado" type="date" defaultValue={demanda.prazo_esperado ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={lbl}>Origem</label>
+            <input name="origem" defaultValue={demanda.origem ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
           <input name="prazo_tecnico_dias" type="hidden" value={demanda.prazo_tecnico_dias ?? ""} />
           <input name="quantidade_amostras_estimada" type="hidden" value={grupos.reduce((total, grupo) => total + Number(grupo.quantidade_amostras || 0), 0) || quantidadeInicial} />
           <input name="matriz_amostra" type="hidden" value={grupos.map((grupo) => grupo.tipo_matriz).filter(Boolean).join("; ") || (demanda.matriz_amostra ?? "")} />
@@ -235,13 +280,37 @@ export function DemandaForm({
       {mostraDemanda && (
       <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
         <h3 className="text-sm font-semibold">Cliente</h3>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div><label className={lbl}>Cliente <Obrigatorio /></label><select name="cliente_id" defaultValue={demanda.cliente_id ?? ""} className={`${inp} mt-1 w-full`}><option value="">Cliente avulso</option>{clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></div>
-          <div><label className={lbl}>Projeto <Selo texto="Quando aplicável" /></label><select name="projeto_id" defaultValue={demanda.projeto_id ?? ""} className={`${inp} mt-1 w-full`}><option value="">Sem projeto vinculado</option>{projetos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></div>
-          <div><label className={lbl}>Cliente avulso <Selo texto="Editável" /></label><input name="cliente_nome" defaultValue={demanda.cliente_nome ?? ""} className={`${inp} mt-1 w-full`} /></div>
-          <div><label className={lbl}>CNPJ/CPF</label><input name="cliente_cnpj" defaultValue={demanda.cliente_cnpj ?? ""} className={`${inp} mt-1 w-full`} /></div>
-          <div><label className={lbl}>Instituição</label><input name="instituicao" defaultValue={demanda.instituicao ?? ""} className={`${inp} mt-1 w-full`} /></div>
-          <div><label className={lbl}>Contato <Selo texto="Herdado do cliente quando selecionado" /></label><input name="cliente_contato" defaultValue={demanda.cliente_contato ?? ""} className={`${inheritedInp} mt-1 w-full`} /></div>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <div className="sm:col-span-2">
+            <label className={lbl}>Cliente <Obrigatorio /></label>
+            <select name="cliente_id" defaultValue={demanda.cliente_id ?? ""} className={`${inp} mt-1 w-full`}>
+              <option value="">Cliente avulso</option>
+              {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className={lbl}>Projeto <Selo texto="Quando aplicável" /></label>
+            <select name="projeto_id" defaultValue={demanda.projeto_id ?? ""} className={`${inp} mt-1 w-full`}>
+              <option value="">Sem projeto vinculado</option>
+              {projetos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className={lbl}>Cliente avulso <Selo texto="Editável" /></label>
+            <input name="cliente_nome" defaultValue={demanda.cliente_nome ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
+          <div>
+            <label className={lbl}>CNPJ/CPF</label>
+            <input name="cliente_cnpj" defaultValue={demanda.cliente_cnpj ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
+          <div>
+            <label className={lbl}>Instituição</label>
+            <input name="instituicao" defaultValue={demanda.instituicao ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={lbl}>Contato <Selo texto="Herdado do cliente quando selecionado" /></label>
+            <input name="cliente_contato" defaultValue={demanda.cliente_contato ?? ""} className={`${inheritedInp} mt-1 w-full`} />
+          </div>
         </div>
       </section>
       )}
@@ -249,10 +318,15 @@ export function DemandaForm({
       {mostraDemanda && (
       <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
         <h3 className="text-sm font-semibold">Escopo inicial</h3>
-        <div className="mt-3 grid gap-3">
-          <div><label className={lbl}>Descrição do orçamento</label><textarea id="descricao" name="descricao" rows={3} defaultValue={demanda.descricao ?? ""} className={`${inp} mt-1 w-full ${state.errors?.descricao ? "border-amber-400" : ""}`} /></div>
-          <div><label className={lbl}>Escopo preliminar</label><textarea name="escopo_preliminar" rows={3} defaultValue={demanda.escopo_preliminar ?? ""} className={`${inp} mt-1 w-full ${state.errors?.escopo_preliminar ? "border-amber-400" : ""}`} /></div>
-          <div><label className={lbl}>Observações gerais</label><textarea name="observacoes" rows={3} defaultValue={demanda.observacoes ?? ""} className={`${inp} mt-1 w-full`} /></div>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className={lbl}>Descrição do orçamento <Obrigatorio /></label>
+            <textarea id="descricao" name="descricao" rows={3} defaultValue={demanda.descricao ?? ""} className={`${inp} mt-1 w-full ${state.errors?.descricao ? "border-red-400 focus:border-red-600 focus:ring-red-200" : ""}`} />
+          </div>
+          <div>
+            <label className={lbl}>Observações gerais</label>
+            <textarea name="observacoes" rows={3} defaultValue={demanda.observacoes ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
         </div>
       </section>
       )}
@@ -469,7 +543,7 @@ export function DemandaForm({
         <button disabled={pending} className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-wait disabled:bg-zinc-400 dark:bg-white dark:text-zinc-900">
           {pending ? "Salvando..." : demanda.id > 0 ? (modo === "laboratorio" ? "Salvar análises laboratoriais" : "Salvar demanda") : "Criar demanda"}
         </button>
-        {state.errors?.descricao ? <a href="#descricao" className="text-sm font-medium text-amber-700">Corrigir descrição ou escopo</a> : null}
+        {state.errors?.descricao ? <a href="#descricao" className="text-sm font-medium text-red-600">Corrigir descrição</a> : null}
       </div>
     </form>
   );

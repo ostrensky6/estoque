@@ -555,12 +555,11 @@ export async function criarDemandaCompleta(
     analises_solicitadas: analisesSolicitadas.length,
   });
   const erros: Record<string, string> = {};
-  if (!demanda.descricao && !demanda.escopo_preliminar) {
-    erros.descricao = "Preencha a descrição da demanda ou o escopo preliminar.";
-    erros.escopo_preliminar = "Preencha o escopo preliminar ou a descrição da demanda.";
+  if (!demanda.descricao) {
+    erros.descricao = "Preencha a descrição do orçamento.";
   }
   if (Object.keys(erros).length > 0) {
-    return { ok: false, message: "Complete os campos obrigatórios antes de criar a demanda.", errors: erros };
+    return { ok: false, message: "Complete os campos obrigatórios antes de criar o orçamento.", errors: erros };
   }
 
   const { data, error } = await supabase
@@ -630,9 +629,8 @@ export async function salvarDemanda(
     analises_solicitadas: analisesSolicitadas.length,
   });
   const erros: Record<string, string> = {};
-  if (!patch.descricao && !patch.escopo_preliminar) {
-    erros.descricao = "Preencha a descrição da demanda ou o escopo preliminar.";
-    erros.escopo_preliminar = "Preencha o escopo preliminar ou a descrição da demanda.";
+  if (!patch.descricao) {
+    erros.descricao = "Preencha a descrição do orçamento.";
   }
 
   const { error } = await supabase
@@ -658,7 +656,7 @@ export async function salvarDemanda(
   if (erros.descricao) {
     return {
       ok: true,
-      message: `Dados salvos.${complementoAnalises} Para concluir esta etapa, preencha a descrição da demanda ou o escopo preliminar.`,
+      message: `Dados salvos.${complementoAnalises} Para concluir esta etapa, preencha a descrição do orçamento.`,
       errors: erros,
       savedAt,
     };

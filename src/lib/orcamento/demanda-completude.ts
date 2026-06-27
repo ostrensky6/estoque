@@ -39,9 +39,9 @@ export function avaliarCompletudeDemanda(demanda: DemandaCompletudeInput) {
     pendencias.push("confirmar a modalidade");
   }
 
-  criterios.push(Boolean(preenchido(demanda.escopo_preliminar) || preenchido(demanda.descricao)));
+  criterios.push(preenchido(demanda.descricao));
   if (!criterios.at(-1)) {
-    pendencias.push("descrever escopo preliminar ou descricao da demanda");
+    pendencias.push("informar a descrição do orçamento");
   }
 
   if (MODALIDADES_COM_PROJETO.has(modalidade)) {
