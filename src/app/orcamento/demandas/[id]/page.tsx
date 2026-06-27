@@ -694,19 +694,6 @@ export default async function DemandaDetalhe({
                   }))}
                   total={orcamentoFinal.totalLaboratorioCusto}
                 />
-                <PainelComposicao
-                  titulo="Mapa de custo do projeto"
-                  itens={rubricasProposta.map((rubrica) => ({
-                    chave: rubrica.codigo,
-                    label: rubrica.nome,
-                    detalhe: `${rubrica.itens} item(ns)`,
-                    valor: rubrica.custo,
-                  }))}
-                  total={Math.max(orcamentoFinal.totalProjetoCusto, totalProjetoCustos + totalProjetoAnalises)}
-                />
-              </div>
-
-              <div className="grid gap-3 xl:grid-cols-2">
                 <TabelaSimples
                   colunas={["Análise", "Amostras", "Custo/amostra", "Custo total"]}
                   vazio="Nenhuma análise laboratorial vinculada."
@@ -716,6 +703,16 @@ export default async function DemandaDetalhe({
                     brl(Number(item.custo_unitario ?? 0)),
                     brl(Number(item.custo_unitario ?? 0) * Number(item.n_amostras ?? 0)),
                   ]))}
+                />
+                <PainelComposicao
+                  titulo="Mapa de custo do projeto"
+                  itens={rubricasProposta.map((rubrica) => ({
+                    chave: rubrica.codigo,
+                    label: rubrica.nome,
+                    detalhe: `${rubrica.itens} item(ns)`,
+                    valor: rubrica.custo,
+                  }))}
+                  total={Math.max(orcamentoFinal.totalProjetoCusto, totalProjetoCustos + totalProjetoAnalises)}
                 />
                 <TabelaSimples
                   colunas={["Custo de projeto", "Rubrica", "Qtd.", "Custo total"]}
