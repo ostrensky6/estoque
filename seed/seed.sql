@@ -1231,4 +1231,20 @@ insert into insumo_analise (codigo_analise, nome_etapa, nome_atividade, especifi
 insert into insumo_analise (codigo_analise, nome_etapa, nome_atividade, especificacao_insumo, unidade, grupo_escolha, quantidade_por_amostra, modo_cobranca, insumo_id) select 'Eletrof_vir_hem', 'Eletroforese', 'Montagem do gel', '6X DNA Loading Dye Buffer 2x1,5 ml', 'ul', null, 19, null, (select id from insumos where especificacao = '6X DNA Loading Dye Buffer 2x1,5 ml');
 insert into insumo_analise (codigo_analise, nome_etapa, nome_atividade, especificacao_insumo, unidade, grupo_escolha, quantidade_por_amostra, modo_cobranca, insumo_id) select 'Eletrof_vir_hem', 'Eletroforese', 'Montagem do gel', 'Ladder 1 KB - Ludwig', 'ul', null, 5, null, (select id from insumos where especificacao = 'Ladder 1 KB - Ludwig');
 
+-- Normalizacao cadastral: cria tipos tecnicos a partir das categorias curtas
+-- importadas e vincula cada SKU/item especifico ao seu tipo generico.
+insert into tipo_insumos (nome, classe, unidade_referencia)
+select distinct btrim(nome_item), 'insumo', max(unidade)
+from insumos
+where nullif(btrim(coalesce(nome_item, '')), '') is not null
+group by btrim(nome_item)
+on conflict (nome) do nothing;
+
+update insumos i
+   set tipo_insumo_id = t.id
+  from tipo_insumos t
+ where i.tipo_insumo_id is null
+   and nullif(btrim(coalesce(i.nome_item, '')), '') is not null
+   and t.nome = btrim(i.nome_item);
+
 commit;

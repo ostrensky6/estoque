@@ -36,6 +36,32 @@ const optStr = z.preprocess(
 );
 const optDate = optStr;
 
+function dateFromInput(value: unknown): Date | null {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function dateToInput(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(dateText: unknown, days: unknown): string | null {
+  const base = dateFromInput(dateText);
+  const n = Number(days);
+  if (!base || !Number.isFinite(n) || n <= 0) return null;
+  const result = new Date(base);
+  result.setUTCDate(result.getUTCDate() + Math.round(n));
+  return dateToInput(result);
+}
+
+function addYears(dateText: unknown, years: unknown): string | null {
+  const n = Number(years);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return addDays(dateText, n * 365.2425);
+}
+
 const SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
   clientes: z.object({
     nome: reqStr,
@@ -64,13 +90,18 @@ const SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
     quantidade: reqNum({ min: 0 }),
     custo_unitario: reqNum({ min: 0 }),
     data_aquisicao: optDate,
+    data_validade: optDate,
     vida_util_anos: optNum({ min: 0 }),
     percentual_manutencao_anual: optNum({ min: 0, max: 1 }),
     manutencao_anual_fixa: optNum({ min: 0 }),
     possui: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
-  }),
+  }).transform((d) => ({
+    ...d,
+    data_validade: addYears(d.data_aquisicao, d.vida_util_anos) ?? d.data_validade,
+  })),
   insumos: z
     .object({
+      tipo_insumo_id: optNum({ min: 0 }),
       nome_item: optStr,
       especificacao: reqStr,
       fabricante: optStr,
@@ -80,6 +111,9 @@ const SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
       quantidade_embalagem: reqNum({ min: 0 }),
       unidade: optStr,
       data_aquisicao: optDate,
+      data_fabricacao: optDate,
+      validade_dias: optNum({ min: 0 }),
+      data_validade: optDate,
       fornecedor_id: optNum({ min: 0 }),
       fornecedor_alt_id: optNum({ min: 0 }),
       categoria_compra: optStr,
@@ -96,12 +130,26 @@ const SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
       ...d,
       ponto_reposicao: d.ponto_reposicao ?? 0,
       estoque_seguranca: d.estoque_seguranca ?? 0,
+      data_validade:
+        d.data_validade ??
+        addDays(d.data_fabricacao ?? d.data_aquisicao, d.validade_dias),
       // custo unitário derivado da embalagem
       custo_unitario:
         Number(d.quantidade_embalagem) > 0
           ? Number(d.custo_total_embalagem) / Number(d.quantidade_embalagem)
           : null,
     })),
+  tipo_insumos: z.object({
+    nome: reqStr,
+    classe: z.preprocess(
+      (v) => (v === "" || v == null ? "insumo" : v),
+      z.enum(["reagente", "consumivel", "material", "equipamento_consumivel", "servico", "insumo"]),
+    ),
+    unidade_referencia: optStr,
+    finalidade: optStr,
+    observacoes: optStr,
+    ativo: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
+  }),
   tecnicos: z.object({
     nome: reqStr,
     processo: optStr,
@@ -136,6 +184,7 @@ const TABELAS: Record<string, string> = {
   projetos: "projetos",
   equipamentos: "equipamentos",
   insumos: "insumos",
+  tipo_insumos: "tipo_insumos",
   tecnicos: "tecnicos",
   overhead: "overhead",
   fornecedores: "fornecedores",
@@ -181,6 +230,7 @@ export async function salvarRegistro(
   // checkbox ausente não vem no FormData
   const obj = formToObject(formData);
   if (slug === "equipamentos" && !("possui" in obj)) obj.possui = "false";
+  if (slug === "tipo_insumos" && !("ativo" in obj)) obj.ativo = "false";
 
   const parsed = schema.safeParse(obj);
   if (!parsed.success) {
