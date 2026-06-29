@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { QrCode } from "@/components/common/QrCode";
+import { gerarUrlCurtaKontrol } from "@/lib/scanner/urls";
 import { createClientUntyped } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -101,6 +103,7 @@ export default async function EquipamentosPage({
                 <th className="px-4 py-3 text-left">Fabricante/modelo</th>
                 <th className="px-4 py-3 text-left">Local</th>
                 <th className="px-4 py-3 text-left">Situação</th>
+                <th className="px-4 py-3 text-left">QR interno</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -109,6 +112,7 @@ export default async function EquipamentosPage({
                 const local = asOne(unidade.locais);
                 const meta = statusMeta(unidade.status_operacional, unidade.ativo);
                 const destacado = scanId === unidade.id;
+                const urlCurta = gerarUrlCurtaKontrol("equipamento_unidade", unidade.id);
 
                 return (
                   <tr
@@ -136,12 +140,41 @@ export default async function EquipamentosPage({
                         {meta.label}
                       </span>
                     </td>
+                    <td className="px-4 py-3">
+                      <div className="inline-grid max-w-48 gap-2 rounded-md border border-zinc-200 bg-white p-2 text-xs shadow-sm dark:border-zinc-700 dark:bg-zinc-950">
+                        <QrCode
+                          value={urlCurta}
+                          label={`QR da unidade ${unidade.id}`}
+                          size={84}
+                          className="rounded bg-white"
+                        />
+                        <div className="space-y-0.5">
+                          <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                            ID Kontrol #{unidade.id}
+                          </p>
+                          <p className="truncate text-zinc-500" title={equipamento?.nome ?? undefined}>
+                            {equipamento?.nome ?? `Equipamento #${unidade.equipamento_id}`}
+                          </p>
+                          <p className="font-mono text-[11px] text-zinc-500">
+                            {unidade.codigo_patrimonio ?? "Sem patrimonio"}
+                          </p>
+                          {unidade.numero_serie && (
+                            <p className="font-mono text-[11px] text-zinc-500">
+                              Série {unidade.numero_serie}
+                            </p>
+                          )}
+                          <p className="break-all font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
+                            {urlCurta}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
               {unidades.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-zinc-400">
+                  <td colSpan={8} className="px-4 py-10 text-center text-zinc-400">
                     {scanId ? `Nenhuma unidade encontrada para #${scanId}.` : "Nenhuma unidade patrimonial cadastrada."}
                   </td>
                 </tr>
