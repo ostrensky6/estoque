@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { QrCode } from "@/components/common/QrCode";
+import { formatDate } from "@/lib/formatters";
 import { gerarUrlCurtaKontrol } from "@/lib/scanner/urls";
 import { createClientUntyped } from "@/lib/supabase/server";
 
@@ -24,6 +25,44 @@ type UnidadeEquipamento = {
   locais: { nome: string | null } | { nome: string | null }[] | null;
 };
 
+type ManutencaoEquipamento = {
+  id: number;
+  equipamento_unidade_id: number;
+  tipo: string;
+  data_programada: string;
+  data_inicio: string | null;
+  data_conclusao: string | null;
+  proxima_data: string | null;
+  status: string;
+  bloqueia_operacao: boolean;
+  tecnico_responsavel: string | null;
+  descricao: string | null;
+  resultado: string | null;
+  ordem_servico: string | null;
+  numero_documento: string | null;
+};
+
+type PlanoManutencao = {
+  id: number;
+  equipamento_id: number | null;
+  equipamento_unidade_id: number | null;
+  tipo: string;
+  periodicidade_dias: number;
+  tolerancia_dias: number;
+  obrigatorio: boolean;
+  descricao: string | null;
+  ativo: boolean;
+};
+
+type StatusLogEquipamento = {
+  id: number;
+  equipamento_unidade_id: number;
+  status_anterior: string | null;
+  status_novo: string;
+  motivo: string | null;
+  criado_em: string;
+};
+
 const STATUS: Record<string, { label: string; cls: string }> = {
   operacional: { label: "Operacional", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
   em_manutencao: { label: "Em manutencao", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
@@ -43,6 +82,42 @@ function statusMeta(status: string, ativo: boolean) {
   return STATUS[status] ?? { label: status, cls: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200" };
 }
 
+function labelTipo(value: string | null | undefined) {
+  if (!value) return "—";
+  return value.replaceAll("_", " ");
+}
+
+function dateTime(value: string | null | undefined) {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function byUnit<T extends { equipamento_unidade_id: number }>(items: T[]) {
+  return items.reduce<Record<number, T[]>>((acc, item) => {
+    acc[item.equipamento_unidade_id] = [...(acc[item.equipamento_unidade_id] ?? []), item];
+    return acc;
+  }, {});
+}
+
+function ultimaManutencao(items: ManutencaoEquipamento[]) {
+  return [...items]
+    .filter((item) => item.status === "concluida")
+    .sort((a, b) => dateTime(b.data_conclusao ?? b.data_programada) - dateTime(a.data_conclusao ?? a.data_programada))[0] ?? null;
+}
+
+function proximaManutencao(items: ManutencaoEquipamento[]) {
+  return [...items]
+    .filter((item) => ["agendada", "em_execucao", "vencida"].includes(item.status))
+    .sort((a, b) => dateTime(a.data_programada) - dateTime(b.data_programada))[0] ?? null;
+}
+
+function planoAplicavel(unidade: UnidadeEquipamento, planos: PlanoManutencao[]) {
+  return planos.find((plano) => plano.equipamento_unidade_id === unidade.id)
+    ?? planos.find((plano) => plano.equipamento_id === unidade.equipamento_id)
+    ?? null;
+}
+
 export default async function EquipamentosPage({
   searchParams,
 }: {
@@ -59,6 +134,33 @@ export default async function EquipamentosPage({
 
   const { data } = scanId ? await query.eq("id", scanId) : await query;
   const unidades = (data ?? []) as unknown as UnidadeEquipamento[];
+  const unidadeIds = unidades.map((unidade) => unidade.id);
+
+  const [manutencoesResult, planosResult, logsResult] = unidadeIds.length > 0
+    ? await Promise.all([
+        supabase
+          .from("equipamento_manutencoes")
+          .select("id, equipamento_unidade_id, tipo, data_programada, data_inicio, data_conclusao, proxima_data, status, bloqueia_operacao, tecnico_responsavel, descricao, resultado, ordem_servico, numero_documento")
+          .in("equipamento_unidade_id", unidadeIds)
+          .order("data_programada", { ascending: false })
+          .limit(200),
+        supabase
+          .from("equipamento_planos_manutencao")
+          .select("id, equipamento_id, equipamento_unidade_id, tipo, periodicidade_dias, tolerancia_dias, obrigatorio, descricao, ativo")
+          .eq("ativo", true)
+          .limit(200),
+        supabase
+          .from("equipamento_status_log")
+          .select("id, equipamento_unidade_id, status_anterior, status_novo, motivo, criado_em")
+          .in("equipamento_unidade_id", unidadeIds)
+          .order("criado_em", { ascending: false })
+          .limit(200),
+      ])
+    : [{ data: [] }, { data: [] }, { data: [] }];
+
+  const manutencoesPorUnidade = byUnit((manutencoesResult.data ?? []) as unknown as ManutencaoEquipamento[]);
+  const logsPorUnidade = byUnit((logsResult.data ?? []) as unknown as StatusLogEquipamento[]);
+  const planos = (planosResult.data ?? []) as unknown as PlanoManutencao[];
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-slate-900 dark:text-slate-100">
@@ -182,6 +284,103 @@ export default async function EquipamentosPage({
             </tbody>
           </table>
         </div>
+
+        <section className="mt-8">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Operação básica</h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Leitura operacional mínima das unidades. Esta visão não registra manutenção, calibração ou mudança de status.
+              </p>
+            </div>
+            <Link
+              href="/cadastros/equipamentos"
+              className="text-sm font-medium text-brand-700 underline-offset-4 hover:underline dark:text-brand-300"
+            >
+              Gerenciar cadastro de equipamentos
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            {unidades.map((unidade) => {
+              const equipamento = asOne(unidade.equipamentos);
+              const meta = statusMeta(unidade.status_operacional, unidade.ativo);
+              const manutencoes = manutencoesPorUnidade[unidade.id] ?? [];
+              const ultima = ultimaManutencao(manutencoes);
+              const proxima = proximaManutencao(manutencoes);
+              const plano = planoAplicavel(unidade, planos);
+              const historico = (logsPorUnidade[unidade.id] ?? []).slice(0, 3);
+
+              return (
+                <article
+                  key={`operacao-${unidade.id}`}
+                  className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-xs text-zinc-500">Unidade #{unidade.id}</p>
+                      <h3 className="mt-1 text-base font-semibold">
+                        {equipamento?.nome ?? `Equipamento #${unidade.equipamento_id}`}
+                      </h3>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Patrimônio {unidade.codigo_patrimonio ?? "não informado"} · Série {unidade.numero_serie ?? "não informada"}
+                      </p>
+                    </div>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${meta.cls}`}>
+                      {meta.label}
+                    </span>
+                  </div>
+
+                  <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-md border border-zinc-100 p-3 dark:border-zinc-800">
+                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Última manutenção</dt>
+                      <dd className="mt-1 text-sm font-medium">
+                        {ultima ? `${labelTipo(ultima.tipo)} · ${formatDate(ultima.data_conclusao ?? ultima.data_programada)}` : "Sem registro concluído"}
+                      </dd>
+                      {ultima?.resultado && (
+                        <p className="mt-1 line-clamp-2 text-xs text-zinc-500">{ultima.resultado}</p>
+                      )}
+                    </div>
+                    <div className="rounded-md border border-zinc-100 p-3 dark:border-zinc-800">
+                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Próxima ação</dt>
+                      <dd className="mt-1 text-sm font-medium">
+                        {proxima
+                          ? `${labelTipo(proxima.tipo)} · ${formatDate(proxima.data_programada)}`
+                          : plano
+                            ? `${labelTipo(plano.tipo)} · a cada ${plano.periodicidade_dias} dias`
+                            : "Sem agenda/plano ativo"}
+                      </dd>
+                      {proxima?.bloqueia_operacao && (
+                        <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-300">Bloqueia operação</p>
+                      )}
+                    </div>
+                    <div className="rounded-md border border-zinc-100 p-3 dark:border-zinc-800">
+                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Plano ativo</dt>
+                      <dd className="mt-1 text-sm font-medium">
+                        {plano ? `${labelTipo(plano.tipo)} · tolerância ${plano.tolerancia_dias} dias` : "Nenhum plano aplicável"}
+                      </dd>
+                      {plano?.descricao && (
+                        <p className="mt-1 line-clamp-2 text-xs text-zinc-500">{plano.descricao}</p>
+                      )}
+                    </div>
+                    <div className="rounded-md border border-zinc-100 p-3 dark:border-zinc-800">
+                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Histórico de status</dt>
+                      <dd className="mt-1 space-y-1 text-xs text-zinc-500">
+                        {historico.length > 0 ? historico.map((item) => (
+                          <p key={item.id}>
+                            <span className="font-medium text-zinc-700 dark:text-zinc-200">{statusMeta(item.status_novo, true).label}</span>
+                            {" · "}
+                            {formatDate(item.criado_em)}
+                          </p>
+                        )) : "Sem transições registradas"}
+                      </dd>
+                    </div>
+                  </dl>
+                </article>
+              );
+            })}
+          </div>
+        </section>
       </main>
     </div>
   );
