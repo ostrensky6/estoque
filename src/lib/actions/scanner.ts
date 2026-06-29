@@ -60,6 +60,43 @@ export type ResultadoScannerRecebimento =
       message: string;
     };
 
+export type ResultadoScannerInventario =
+  | {
+      ok: true;
+      encontrado: true;
+      codigo: string;
+      tipo: "local";
+      id: number;
+      nome: string | null;
+      message: string;
+    }
+  | {
+      ok: true;
+      encontrado: true;
+      codigo: string;
+      tipo: "lote";
+      id: number;
+      loteCodigo: string | null;
+      validade: string | null;
+      quantidadeAtual: number;
+      localId: number | null;
+      localNome: string | null;
+      insumoDescricao: string | null;
+      unidade: string | null;
+      message: string;
+    }
+  | {
+      ok: true;
+      encontrado: false;
+      codigo: string;
+      triagemUrl: string;
+      message: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
 async function registrarEventoScan(args: {
   codigo: string;
   formato?: string | null;
@@ -194,6 +231,58 @@ async function detalheRecebimento(tipo: EntidadeScanner, id: number) {
   return null;
 }
 
+async function detalheInventario(tipo: EntidadeScanner, id: number) {
+  const supabase = await createClientUntyped();
+
+  if (tipo === "local") {
+    const { data } = await supabase
+      .from("locais")
+      .select("id, nome")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (!data?.id) return null;
+
+    return {
+      tipo: "local" as const,
+      id: Number(data.id),
+      nome: data.nome ? String(data.nome) : null,
+    };
+  }
+
+  if (tipo === "lote") {
+    const { data } = await supabase
+      .from("lotes_estoque")
+      .select("id, codigo_lote, validade, quantidade_atual, local_id, locais(nome), insumos(especificacao, unidade)")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (!data?.id) return null;
+
+    const localRaw = data.locais as { nome: string | null } | { nome: string | null }[] | null;
+    const local = Array.isArray(localRaw) ? (localRaw[0] ?? null) : localRaw;
+    const insumoRaw = data.insumos as
+      | { especificacao: string | null; unidade: string | null }
+      | { especificacao: string | null; unidade: string | null }[]
+      | null;
+    const insumo = Array.isArray(insumoRaw) ? (insumoRaw[0] ?? null) : insumoRaw;
+
+    return {
+      tipo: "lote" as const,
+      id: Number(data.id),
+      loteCodigo: data.codigo_lote ? String(data.codigo_lote) : null,
+      validade: data.validade ? String(data.validade) : null,
+      quantidadeAtual: Number(data.quantidade_atual ?? 0),
+      localId: data.local_id == null ? null : Number(data.local_id),
+      localNome: local?.nome ?? null,
+      insumoDescricao: insumo?.especificacao ?? null,
+      unidade: insumo?.unidade ?? null,
+    };
+  }
+
+  return null;
+}
+
 export async function resolverCodigoRecebimentoInterno(
   codigoRaw: string,
 ): Promise<ResultadoScannerRecebimento> {
@@ -253,6 +342,68 @@ export async function resolverCodigoRecebimentoInterno(
       detalhe.tipo === "lote"
         ? "Lote identificado. Confira os campos antes de confirmar."
         : "Insumo identificado. Confira os campos antes de confirmar.",
+  };
+}
+
+export async function resolverCodigoInventario(
+  codigoRaw: string,
+): Promise<ResultadoScannerInventario> {
+  const parsed = resolverSchema.safeParse({ codigo: codigoRaw });
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Codigo invalido." };
+  }
+
+  const { codigo } = parsed.data;
+  const resolvido = await resolverCodigo(codigo);
+  if (!resolvido) {
+    await registrarEventoScan({
+      codigo,
+      resultado: "nao_encontrado",
+      acao: "inventario",
+      contexto: { origem: "inventario" },
+    });
+    return {
+      ok: true,
+      encontrado: false,
+      codigo,
+      triagemUrl: `/scanner/desconhecido?codigo=${encodeURIComponent(codigo)}`,
+      message: "Codigo nao encontrado. Encaminhe para triagem antes de contar.",
+    };
+  }
+
+  const detalhe = await detalheInventario(resolvido.tipo, resolvido.id);
+  await registrarEventoScan({
+    codigo,
+    formato: resolvido.formato,
+    tipo: resolvido.tipo,
+    id: resolvido.id,
+    resultado: detalhe ? "encontrado" : "nao_encontrado",
+    acao: "inventario",
+    contexto: { origem: "inventario" },
+  });
+
+  if (!detalhe) {
+    return {
+      ok: true,
+      encontrado: false,
+      codigo,
+      triagemUrl: `/scanner/desconhecido?codigo=${encodeURIComponent(codigo)}`,
+      message:
+        resolvido.tipo === "local" || resolvido.tipo === "lote"
+          ? "Entidade escaneada nao esta disponivel para inventario."
+          : "Este codigo nao aponta para local ou lote contavel.",
+    };
+  }
+
+  return {
+    ok: true,
+    encontrado: true,
+    codigo,
+    ...detalhe,
+    message:
+      detalhe.tipo === "local"
+        ? "Local identificado para a contagem."
+        : "Lote identificado. Informe a quantidade contada antes de salvar.",
   };
 }
 
