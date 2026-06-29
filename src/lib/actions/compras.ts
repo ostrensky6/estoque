@@ -223,57 +223,36 @@ export async function receberItemPedido(formData: FormData) {
     ? Number(formData.get("quantidade_recebida"))
     : null;
   const supabase = await createClient();
+  const u = await usuarioAtual();
+  const responsavel = u?.nome ?? u?.email ?? null;
 
   const { data: item } = await supabase
     .from("pedidos_compra_itens")
-    .select("insumo_id, quantidade, custo_unitario_estimado, pedido_id, lote_id, insumos(categoria_compra), pedidos_compra(projeto, fornecedores(nome))")
+    .select("insumos(categoria_compra)")
     .eq("id", item_id)
+    .eq("pedido_id", pedido_id)
     .single();
-  if (!item || item.lote_id) return;
-  const quantidade = quantidadeRecebida && quantidadeRecebida > 0 ? quantidadeRecebida : Number(item.quantidade);
-  const insumo = item.insumos as { categoria_compra: string | null } | null;
+  const insumo = item?.insumos as { categoria_compra: string | null } | null | undefined;
   if (insumo?.categoria_compra === "critico" && !validade) {
     throw new Error("Validade é obrigatória para receber insumo crítico.");
   }
 
-  const ped = item.pedidos_compra as unknown as {
-    projeto: string | null;
-    fornecedores: { nome: string | null } | null;
-  } | null;
-  const fornecedor = ped?.fornecedores?.nome ?? null;
-  const projeto = ped?.projeto ?? null;
-
-  const { data: loteId, error } = await supabase.rpc("receber_lote", {
-    p_insumo_id: item.insumo_id,
-    p_quantidade: quantidade,
+  const { error } = await supabase.rpc("receber_item_pedido_compra" as never, {
+    p_pedido_id: pedido_id,
+    p_item_id: item_id,
+    p_quantidade: quantidadeRecebida ?? undefined,
     p_validade: validade ?? undefined,
-    p_custo: item.custo_unitario_estimado ?? undefined,
     p_codigo: codigo ?? undefined,
-    p_fornecedor: fornecedor ?? undefined,
-    p_projeto: projeto ?? undefined,
-  });
+    p_responsavel: responsavel ?? undefined,
+  } as never);
   if (error) throw new Error(error.message);
 
-  await supabase
-    .from("pedidos_compra_itens")
-    .update({
-      lote_id: loteId,
-      quantidade_recebida: quantidade,
-      divergencia_recebimento:
-        quantidade !== Number(item.quantidade)
-          ? `Pedido: ${item.quantidade}; recebido: ${quantidade}`
-          : null,
-    } as never)
-    .eq("id", item_id);
-
-  // se todos os itens foram recebidos, marca o pedido como recebido
-  const { data: pendentes } = await supabase
-    .from("pedidos_compra_itens")
-    .select("id")
-    .eq("pedido_id", pedido_id)
-    .is("lote_id", null);
-  if (!pendentes || pendentes.length === 0) {
-    await supabase.from("pedidos_compra").update({ status: "recebido" }).eq("id", pedido_id);
+  const { data: pedido } = await supabase
+    .from("pedidos_compra")
+    .select("status")
+    .eq("id", pedido_id)
+    .single();
+  if (pedido?.status === "recebido") {
     await registrarEvento("pedido_compra", pedido_id, null, "recebido", "Todos os itens recebidos");
   }
 
