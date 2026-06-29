@@ -4,9 +4,9 @@ import { temPapel } from "@/lib/auth/roles";
 import {
   adicionarItemPedido,
   removerItemPedido,
-  receberItemPedido,
 } from "@/lib/actions/compras";
 import { PedidoAcoes } from "@/components/compras/PedidoAcoes";
+import { ScannerRecebimentoCompra } from "@/components/compras/ScannerRecebimentoCompra";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { listarEventos } from "@/lib/actions/eventos";
 import { Timeline } from "@/components/common/Timeline";
@@ -29,6 +29,7 @@ type PedidoCompraItemRow = {
   divergencia_recebimento: string | null;
   custo_unitario_estimado: number | null;
   lote_id: number | null;
+  insumo_id: number | null;
   insumos: { especificacao: string | null; unidade: string | null } | null;
 };
 
@@ -54,7 +55,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
 
   const [{ data: itens }, { data: insumos }, podeGerir] = await Promise.all([
     (supabase.from("pedidos_compra_itens") as unknown as PedidoCompraItensQuery)
-      .select("id, quantidade, quantidade_recebida, divergencia_recebimento, custo_unitario_estimado, lote_id, insumos(especificacao, unidade)")
+      .select("id, quantidade, quantidade_recebida, divergencia_recebimento, custo_unitario_estimado, lote_id, insumo_id, insumos(especificacao, unidade)")
       .eq("pedido_id", pedidoId)
       .order("id"),
     supabase.from("insumos").select("id, especificacao").order("especificacao"),
@@ -135,14 +136,16 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                             </form>
                           )}
                           {recebivel && !it.lote_id && (
-                            <form action={receberItemPedido} className="inline-flex items-center gap-1">
-                              <input type="hidden" name="item_id" value={it.id} />
-                              <input type="hidden" name="pedido_id" value={pedidoId} />
-                              <input name="quantidade_recebida" type="number" step="any" min="0" defaultValue={it.quantidade} className={`${inp} w-20`} title="Quantidade recebida" />
-                              <input name="validade" type="date" className={inp} title="Validade do lote" />
-                              <input name="codigo" placeholder="lote" className={`${inp} w-20`} />
-                              <button className="rounded bg-brand-600 px-2 py-1 text-xs font-medium text-white hover:bg-brand-500">Receber</button>
-                            </form>
+                            <ScannerRecebimentoCompra
+                              item={{
+                                id: it.id,
+                                pedidoId,
+                                quantidade: Number(it.quantidade),
+                                insumoId: it.insumo_id,
+                                insumoDescricao: ins?.especificacao ?? null,
+                                unidade: ins?.unidade ?? null,
+                              }}
+                            />
                           )}
                         </td>
                       )}
