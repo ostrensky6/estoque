@@ -28,6 +28,19 @@ const resolverExistenteSchema = z.object({
   entidade_id: z.coerce.number().int().positive("Entidade obrigatoria."),
 });
 
+const novoInsumoSchema = z.object({
+  triagem_id: z.coerce.number().int().positive("Triagem invalida."),
+  especificacao: z.string().trim().min(1, "Especificacao obrigatoria."),
+  unidade: z.string().trim().min(1, "Unidade de estoque obrigatoria."),
+  unidade_consumo: z.string().trim().min(1, "Unidade de consumo obrigatoria."),
+  fator_conversao: z.coerce.number().positive("Fator de conversao deve ser > 0."),
+  quantidade_embalagem: z.coerce.number().positive("Quantidade da embalagem deve ser > 0."),
+  custo_total_embalagem: z.preprocess(
+    (value) => (value === "" || value == null ? null : Number(value)),
+    z.number().min(0).nullable(),
+  ),
+});
+
 const arquivarSchema = z.object({
   triagem_id: z.coerce.number().int().positive("Triagem invalida."),
 });
@@ -257,6 +270,49 @@ export async function resolverTriagemComEntidadeExistente(
   if (erro) return erro;
 
   redirect("/scanner/triagem?status=resolvido");
+}
+
+export async function criarInsumoMinimoDaTriagem(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = novoInsumoSchema.safeParse({
+    triagem_id: formData.get("triagem_id"),
+    especificacao: formData.get("especificacao"),
+    unidade: formData.get("unidade"),
+    unidade_consumo: formData.get("unidade_consumo"),
+    fator_conversao: formData.get("fator_conversao"),
+    quantidade_embalagem: formData.get("quantidade_embalagem"),
+    custo_total_embalagem: formData.get("custo_total_embalagem"),
+  });
+  if (!parsed.success) {
+    return { ok: false, message: "Verifique os campos.", errors: formErrors(parsed.error) };
+  }
+
+  const usuario = await usuarioAtual();
+  const supabase = await createClientUntyped();
+  const { error } = await supabase.rpc("resolver_triagem_criando_insumo" as never, {
+    p_triagem_id: parsed.data.triagem_id,
+    p_especificacao: parsed.data.especificacao,
+    p_unidade: parsed.data.unidade,
+    p_unidade_consumo: parsed.data.unidade_consumo,
+    p_fator_conversao: parsed.data.fator_conversao,
+    p_quantidade_embalagem: parsed.data.quantidade_embalagem,
+    p_custo_total_embalagem: parsed.data.custo_total_embalagem,
+    p_criado_por: usuario?.email ?? usuario?.id ?? null,
+  } as never);
+
+  if (error) {
+    return {
+      ok: false,
+      message: error.message || "Nao foi possivel criar o insumo pela triagem.",
+    };
+  }
+
+  revalidarTriagem();
+  revalidatePath("/cadastros/insumos");
+  revalidatePath("/insumos");
+  redirect("/scanner/triagem?status=insumo_criado");
 }
 
 export async function arquivarTriagemCodigoDesconhecido(

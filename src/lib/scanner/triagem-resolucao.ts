@@ -18,3 +18,11 @@ export function entidadeTipoParaResolucao(
   }
   return tipo;
 }
+
+export function calcularCustoUnitarioMinimo(
+  custoTotal: number | null,
+  quantidadeEmbalagem: number,
+) {
+  if (custoTotal == null || quantidadeEmbalagem <= 0) return null;
+  return custoTotal / quantidadeEmbalagem;
+}

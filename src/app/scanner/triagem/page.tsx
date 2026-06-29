@@ -15,6 +15,8 @@ function statusMessage(status?: string) {
   switch (status) {
     case "resolvido":
       return "Triagem resolvida e identificador vinculado.";
+    case "insumo_criado":
+      return "Insumo criado por transacao e identificador vinculado.";
     case "arquivado":
       return "Triagem arquivada.";
     default:
@@ -76,8 +78,9 @@ export default async function ScannerTriagemPage({
             Triagem de codigos desconhecidos
           </h1>
           <p className="mt-1 max-w-3xl text-sm text-slate-500 dark:text-slate-400">
-            Resolva leituras pendentes vinculando o codigo a uma entidade existente ou arquivando a
-            triagem. Nenhum cadastro mestre ou fluxo operacional e criado aqui.
+            Resolva leituras pendentes vinculando o codigo a uma entidade existente, criando um
+            insumo minimo por transacao segura ou arquivando a triagem. Nenhum lote recebido ou
+            fluxo operacional e criado aqui.
           </p>
         </div>
         <Link
