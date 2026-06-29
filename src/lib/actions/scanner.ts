@@ -154,10 +154,3 @@ export async function resolverCodigoEscaneado(
   if (!existe) return { ok: false, message: "Entidade nao encontrada." };
   redirect(destinoScanner(resolvido.tipo, resolvido.id));
 }
-
-export async function abrirLeituraGlobal(formData: FormData): Promise<void> {
-  const valor = texto(formData, "valor_lido");
-  if (!valor) return;
-
-  await resolverCodigoEscaneado({ ok: false }, formData);
-}

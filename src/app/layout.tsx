@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { ContextHelp } from "@/components/layout/ContextHelp";
+import { ScannerModal } from "@/components/scanner/ScannerModal";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { getNavigationGroups } from "@/config/navigation";
@@ -73,6 +74,7 @@ export default async function RootLayout({
               </div>
               <CommandPalette groups={grupos} />
               <ContextHelp />
+              <ScannerModal />
             </div>
           ) : (
             <div id="conteudo-principal" tabIndex={-1} className="outline-none">
