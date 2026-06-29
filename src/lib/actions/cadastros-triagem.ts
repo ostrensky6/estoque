@@ -1,9 +1,16 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { usuarioAtual } from "@/lib/auth/roles";
 import { createClientUntyped } from "@/lib/supabase/server";
+import { normalizarCodigo } from "@/lib/scanner/identificadores";
+import {
+  entidadeTipoParaResolucao,
+  isTipoResolucaoTriagem,
+  type TipoResolucaoTriagem,
+} from "@/lib/scanner/triagem-resolucao";
 import { prepararTriagemCadastro } from "@/lib/scanner/triagem";
 import type { FormState } from "./cadastros";
 
@@ -14,6 +21,145 @@ function texto(formData: FormData, chave: string) {
 const triagemSchema = z.object({
   codigo: z.string().trim().min(1, "Codigo obrigatorio."),
 });
+
+const resolverExistenteSchema = z.object({
+  triagem_id: z.coerce.number().int().positive("Triagem invalida."),
+  entidade_tipo: z.string().refine(isTipoResolucaoTriagem, "Tipo de resolucao invalido."),
+  entidade_id: z.coerce.number().int().positive("Entidade obrigatoria."),
+});
+
+const arquivarSchema = z.object({
+  triagem_id: z.coerce.number().int().positive("Triagem invalida."),
+});
+
+type TriagemPendente = {
+  id: number;
+  codigo: string;
+  codigo_normalizado: string;
+  formato: string | null;
+};
+
+const TABELAS_RESOLUCAO: Record<TipoResolucaoTriagem, string> = {
+  insumo: "insumos",
+  lote: "lotes_estoque",
+  local: "locais",
+};
+
+function formErrors(error: z.ZodError): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const issue of error.issues) {
+    const path = String(issue.path[0] ?? "");
+    if (path && !errors[path]) errors[path] = issue.message;
+  }
+  return errors;
+}
+
+function revalidarTriagem() {
+  revalidatePath("/scanner/triagem");
+  revalidatePath("/scanner/desconhecido");
+}
+
+async function carregarTriagemPendente(
+  supabase: Awaited<ReturnType<typeof createClientUntyped>>,
+  triagemId: number,
+): Promise<TriagemPendente | null> {
+  const { data } = await supabase
+    .from("cadastros_triagem")
+    .select("id, codigo, codigo_normalizado, formato")
+    .eq("id", triagemId)
+    .in("status", ["pendente", "em_analise"])
+    .maybeSingle();
+
+  return data as TriagemPendente | null;
+}
+
+async function entidadeExiste(
+  supabase: Awaited<ReturnType<typeof createClientUntyped>>,
+  tipo: TipoResolucaoTriagem,
+  id: number,
+) {
+  const { data } = await supabase
+    .from(TABELAS_RESOLUCAO[tipo])
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+
+  return Boolean(data);
+}
+
+async function vincularCodigoTriagem(args: {
+  supabase: Awaited<ReturnType<typeof createClientUntyped>>;
+  triagem: TriagemPendente;
+  tipo: TipoResolucaoTriagem;
+  entidadeId: number;
+  criadoPor: string | null;
+}): Promise<FormState | null> {
+  const entidadeTipo = entidadeTipoParaResolucao(args.tipo);
+  const codigoNormalizado = normalizarCodigo(args.triagem.codigo);
+  let identificadorCriadoId: number | null = null;
+  const { data: existente } = await args.supabase
+    .from("identificadores")
+    .select("id, entidade_tipo, entidade_id")
+    .eq("codigo_normalizado", codigoNormalizado)
+    .eq("ativo", true)
+    .maybeSingle();
+
+  if (existente) {
+    const mesmoDestino =
+      String(existente.entidade_tipo) === entidadeTipo &&
+      Number(existente.entidade_id) === args.entidadeId;
+    if (!mesmoDestino) {
+      return {
+        ok: false,
+        message: "Este codigo ja esta vinculado a outra entidade ativa.",
+      };
+    }
+  } else {
+    const { data: criado, error } = await args.supabase
+      .from("identificadores")
+      .insert({
+        codigo: args.triagem.codigo,
+        codigo_normalizado: codigoNormalizado,
+        formato: args.triagem.formato ?? "manual",
+        entidade_tipo: entidadeTipo,
+        entidade_id: args.entidadeId,
+        origem: "manual",
+        metadata: { triagem_id: args.triagem.id },
+        ativo: true,
+        criado_por: args.criadoPor,
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      return { ok: false, message: error.message };
+    }
+    identificadorCriadoId = Number(criado.id);
+  }
+
+  const { error: updateError } = await args.supabase
+    .from("cadastros_triagem")
+    .update({
+      status: "resolvido",
+      entidade_tipo: entidadeTipo,
+      entidade_id: args.entidadeId,
+      resolvido_em: new Date().toISOString(),
+    })
+    .eq("id", args.triagem.id);
+
+  if (updateError) {
+    if (identificadorCriadoId != null) {
+      await args.supabase
+        .from("identificadores")
+        .update({ ativo: false })
+        .eq("id", identificadorCriadoId);
+    }
+    return { ok: false, message: updateError.message };
+  }
+
+  revalidarTriagem();
+  return null;
+}
 
 export async function criarTriagemCodigoDesconhecido(
   _prev: FormState,
@@ -77,4 +223,63 @@ export async function criarTriagemCodigoDesconhecido(
   redirect(
     `/scanner/desconhecido?codigo=${encodeURIComponent(triagem.codigo)}&triagem=${destino}`,
   );
+}
+
+export async function resolverTriagemComEntidadeExistente(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = resolverExistenteSchema.safeParse({
+    triagem_id: formData.get("triagem_id"),
+    entidade_tipo: formData.get("entidade_tipo"),
+    entidade_id: formData.get("entidade_id"),
+  });
+  if (!parsed.success) {
+    return { ok: false, message: "Verifique os campos.", errors: formErrors(parsed.error) };
+  }
+
+  const supabase = await createClientUntyped();
+  const tipo = parsed.data.entidade_tipo;
+  const triagem = await carregarTriagemPendente(supabase, parsed.data.triagem_id);
+  if (!triagem) return { ok: false, message: "Triagem pendente nao encontrada." };
+  if (!(await entidadeExiste(supabase, tipo, parsed.data.entidade_id))) {
+    return { ok: false, message: "Entidade selecionada nao existe." };
+  }
+
+  const usuario = await usuarioAtual();
+  const erro = await vincularCodigoTriagem({
+    supabase,
+    triagem,
+    tipo,
+    entidadeId: parsed.data.entidade_id,
+    criadoPor: usuario?.email ?? usuario?.id ?? null,
+  });
+  if (erro) return erro;
+
+  redirect("/scanner/triagem?status=resolvido");
+}
+
+export async function arquivarTriagemCodigoDesconhecido(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = arquivarSchema.safeParse({
+    triagem_id: formData.get("triagem_id"),
+  });
+  if (!parsed.success) return { ok: false, message: "Triagem invalida." };
+
+  const supabase = await createClientUntyped();
+  const { error } = await supabase
+    .from("cadastros_triagem")
+    .update({
+      status: "descartado",
+      resolvido_em: new Date().toISOString(),
+    })
+    .eq("id", parsed.data.triagem_id)
+    .in("status", ["pendente", "em_analise"]);
+
+  if (error) return { ok: false, message: error.message };
+
+  revalidarTriagem();
+  redirect("/scanner/triagem?status=arquivado");
 }

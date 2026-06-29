@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { TriagemCodigoDesconhecidoForm } from "@/components/scanner/TriagemCodigoDesconhecidoForm";
 import { prepararTriagemCadastro } from "@/lib/scanner/triagem";
 
@@ -63,6 +64,12 @@ export default async function CodigoDesconhecidoPage({
             </p>
           )}
           <TriagemCodigoDesconhecidoForm codigo={codigo} />
+          <Link
+            href="/scanner/triagem"
+            className="mt-3 inline-flex text-sm font-medium text-brand-700 hover:text-brand-600 dark:text-brand-300"
+          >
+            Ver triagens pendentes
+          </Link>
         </>
       ) : (
         <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-300">
