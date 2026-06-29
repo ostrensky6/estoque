@@ -8,6 +8,7 @@ import { createClientUntyped } from "@/lib/supabase/server";
 import { usuarioAtual } from "@/lib/auth/roles";
 import { normalizarCodigo } from "@/lib/scanner/identificadores";
 import { entidadeEscaneavelExiste } from "@/lib/actions/scanner";
+import { TriagemCodigoDesconhecidoForm } from "@/components/scanner/TriagemCodigoDesconhecidoForm";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,7 @@ function EstadoDesconhecido({ codigo }: { codigo: string }) {
       <p className="mt-4 rounded-md bg-slate-100 px-3 py-2 font-mono text-xs text-slate-700 dark:bg-zinc-900 dark:text-zinc-300">
         {codigo}
       </p>
+      <TriagemCodigoDesconhecidoForm codigo={codigo} />
     </main>
   );
 }

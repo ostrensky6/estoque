@@ -138,7 +138,7 @@ export async function resolverCodigoEscaneado(
       resultado: "nao_encontrado",
       contexto: { origem: "resolver_codigo" },
     });
-    return { ok: false, message: "Codigo desconhecido." };
+    redirect(`/scanner/desconhecido?codigo=${encodeURIComponent(codigo)}`);
   }
 
   const existe = await entidadeEscaneavelExiste(resolvido.tipo, resolvido.id);
@@ -151,6 +151,8 @@ export async function resolverCodigoEscaneado(
     contexto: { origem: "resolver_codigo" },
   });
 
-  if (!existe) return { ok: false, message: "Entidade nao encontrada." };
+  if (!existe) {
+    redirect(`/scanner/desconhecido?codigo=${encodeURIComponent(codigo)}`);
+  }
   redirect(destinoScanner(resolvido.tipo, resolvido.id));
 }
