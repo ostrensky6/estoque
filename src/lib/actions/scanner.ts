@@ -97,6 +97,35 @@ export type ResultadoScannerInventario =
       message: string;
     };
 
+export type ResultadoScannerPlanejamento =
+  | {
+      ok: true;
+      encontrado: true;
+      codigo: string;
+      tipo: "lote";
+      id: number;
+      insumoId: number;
+      loteCodigo: string | null;
+      validade: string | null;
+      validadeAposAbertura: string | null;
+      quantidadeAtual: number;
+      status: string;
+      insumoDescricao: string | null;
+      unidade: string | null;
+      message: string;
+    }
+  | {
+      ok: true;
+      encontrado: false;
+      codigo: string;
+      triagemUrl: string;
+      message: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
 async function registrarEventoScan(args: {
   codigo: string;
   formato?: string | null;
@@ -283,6 +312,38 @@ async function detalheInventario(tipo: EntidadeScanner, id: number) {
   return null;
 }
 
+async function detalhePlanejamento(tipo: EntidadeScanner, id: number) {
+  if (tipo !== "lote") return null;
+  const supabase = await createClientUntyped();
+  const { data } = await supabase
+    .from("lotes_estoque")
+    .select("id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status, insumo_id, insumos(especificacao, unidade)")
+    .eq("id", id)
+    .maybeSingle();
+
+  const insumoId = Number(data?.insumo_id);
+  if (!data?.id || !Number.isInteger(insumoId) || insumoId <= 0) return null;
+
+  const insumoRaw = data.insumos as
+    | { especificacao: string | null; unidade: string | null }
+    | { especificacao: string | null; unidade: string | null }[]
+    | null;
+  const insumo = Array.isArray(insumoRaw) ? (insumoRaw[0] ?? null) : insumoRaw;
+
+  return {
+    tipo: "lote" as const,
+    id: Number(data.id),
+    insumoId,
+    loteCodigo: data.codigo_lote ? String(data.codigo_lote) : null,
+    validade: data.validade ? String(data.validade) : null,
+    validadeAposAbertura: data.validade_apos_abertura ? String(data.validade_apos_abertura) : null,
+    quantidadeAtual: Number(data.quantidade_atual ?? 0),
+    status: String(data.status ?? ""),
+    insumoDescricao: insumo?.especificacao ?? null,
+    unidade: insumo?.unidade ?? null,
+  };
+}
+
 export async function resolverCodigoRecebimentoInterno(
   codigoRaw: string,
 ): Promise<ResultadoScannerRecebimento> {
@@ -404,6 +465,65 @@ export async function resolverCodigoInventario(
       detalhe.tipo === "local"
         ? "Local identificado para a contagem."
         : "Lote identificado. Informe a quantidade contada antes de salvar.",
+  };
+}
+
+export async function resolverCodigoPlanejamento(
+  codigoRaw: string,
+): Promise<ResultadoScannerPlanejamento> {
+  const parsed = resolverSchema.safeParse({ codigo: codigoRaw });
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Codigo invalido." };
+  }
+
+  const { codigo } = parsed.data;
+  const resolvido = await resolverCodigo(codigo);
+  if (!resolvido) {
+    await registrarEventoScan({
+      codigo,
+      resultado: "nao_encontrado",
+      acao: "planejamento_conferencia",
+      contexto: { origem: "planejamento_conferencia" },
+    });
+    return {
+      ok: true,
+      encontrado: false,
+      codigo,
+      triagemUrl: `/scanner/desconhecido?codigo=${encodeURIComponent(codigo)}`,
+      message: "Codigo nao encontrado. Encaminhe para triagem antes da baixa.",
+    };
+  }
+
+  const detalhe = await detalhePlanejamento(resolvido.tipo, resolvido.id);
+  await registrarEventoScan({
+    codigo,
+    formato: resolvido.formato,
+    tipo: resolvido.tipo,
+    id: resolvido.id,
+    resultado: detalhe ? "encontrado" : "nao_encontrado",
+    acao: "planejamento_conferencia",
+    contexto: { origem: "planejamento_conferencia" },
+  });
+
+  if (!detalhe) {
+    return {
+      ok: true,
+      encontrado: false,
+      codigo,
+      triagemUrl: `/scanner/desconhecido?codigo=${encodeURIComponent(codigo)}`,
+      message:
+        resolvido.tipo === "lote"
+          ? "Lote escaneado nao esta disponivel para conferencia."
+          : "Este codigo nao aponta para um lote fisico.",
+    };
+  }
+
+  return {
+    ok: true,
+    encontrado: true,
+    codigo,
+    ...detalhe,
+    message: "Lote identificado. Confira se corresponde ao insumo esperado antes de registrar.",
   };
 }
 
