@@ -110,10 +110,41 @@ export function ReceberItemPedidoInterno({
                     name="novo_insumo"
                     defaultValue={item.especificacao}
                     placeholder="Especificação do novo insumo"
+                    required
                     className={inp}
                   />
                 )}
               </div>
+
+              {modo === "novo" && (
+                <>
+                  <div className="col-span-1">
+                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                      Categoria de compra <span className="text-red-500">*</span>
+                    </label>
+                    <select name="categoria_compra" defaultValue="" required className={inp}>
+                      <option value="">Selecione</option>
+                      <option value="critico">Crítico</option>
+                      <option value="operacional">Operacional</option>
+                      <option value="eventual">Eventual</option>
+                    </select>
+                  </div>
+                  <div className="col-span-1">
+                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                      Fator de conversão <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      name="fator_conversao"
+                      type="number"
+                      step="any"
+                      min="0.000001"
+                      defaultValue="1"
+                      required
+                      className={inp}
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="col-span-1">
                 <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
@@ -129,8 +160,10 @@ export function ReceberItemPedidoInterno({
                 />
               </div>
               <div className="col-span-1">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Unidade</label>
-                <input name="unidade" defaultValue={item.unidade ?? ""} className={inp} />
+                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                  Unidade {modo === "novo" && <span className="text-red-500">*</span>}
+                </label>
+                <input name="unidade" defaultValue={item.unidade ?? ""} required={modo === "novo"} className={inp} />
               </div>
               <div className="col-span-1">
                 <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Validade</label>
@@ -141,13 +174,16 @@ export function ReceberItemPedidoInterno({
                 <input name="codigo" type="text" className={inp} />
               </div>
               <div className="col-span-1">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Custo unitário (R$)</label>
+                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                  Custo unitário (R$) {modo === "novo" && <span className="text-red-500">*</span>}
+                </label>
                 <input
                   name="custo"
                   type="number"
                   step="0.0001"
-                  min="0"
+                  min={modo === "novo" ? "0.0001" : "0"}
                   defaultValue={item.orcamentoPrevio ?? ""}
+                  required={modo === "novo"}
                   className={inp}
                 />
               </div>
