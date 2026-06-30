@@ -748,10 +748,10 @@ export async function gerarOrcamentoAnalisesDaDemanda(formData: FormData) {
     .eq("id", id)
     .single();
   if (!demanda) return;
-  if (!(await avaliarCompletudePersistida(supabase, demanda)).completa) {
+  if (!MODALIDADES_COM_ANALISES.has(demanda.modalidade)) {
     redirect(`${listaPath}/${id}`);
   }
-  if (!MODALIDADES_COM_ANALISES.has(demanda.modalidade)) {
+  if (!(await avaliarCompletudePersistida(supabase, demanda)).completa) {
     redirect(`${listaPath}/${id}`);
   }
 
@@ -798,10 +798,10 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
     .eq("id", id)
     .single();
   if (!demanda) return;
-  if (!(await avaliarCompletudePersistida(supabase, demanda)).completa) {
+  if (!MODALIDADES_COM_PROJETO.has(demanda.modalidade) && !demanda.projeto_id) {
     redirect(`${listaPath}/${id}`);
   }
-  if (!MODALIDADES_COM_PROJETO.has(demanda.modalidade) && !demanda.projeto_id) {
+  if (!(await avaliarCompletudePersistida(supabase, demanda)).completa) {
     redirect(`${listaPath}/${id}`);
   }
 
