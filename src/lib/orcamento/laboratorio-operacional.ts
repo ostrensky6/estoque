@@ -6,6 +6,7 @@ export type ItemLaboratorioOperacional = {
   n_amostras: number | string | null;
   custo_unitario: number | string | null;
   preco_unitario: number | string | null;
+  valor_snapshot?: Json | null;
 };
 
 export type StatusLaboratorioOperacional = "pendente" | "preenchido" | "revisado" | "cancelado";
@@ -38,10 +39,13 @@ export function montarSnapshotLaboratorio(
   const linhas = itens.map((item) => {
     const quantidade = Number(item.n_amostras ?? 0);
     const breakdown = porCodigo.get(item.codigo_analise);
-    const reagentes = Number(breakdown?.reagentes ?? 0) * quantidade;
-    const equipamentos = Number(breakdown?.equipamento ?? 0) * quantidade;
-    const maoObra = Number(breakdown?.pessoal ?? 0) * quantidade;
-    const overhead = Number(breakdown?.overhead ?? 0) * quantidade;
+    const snap = snapshotRecord(item.valor_snapshot);
+    const composicaoTotais = snapshotRecord(snap?.composicao_totais);
+    const composicaoUnit = numberRecord(snap?.composicao);
+    const reagentes = numberFrom(composicaoTotais?.reagentes, Number(breakdown?.reagentes ?? 0) * quantidade);
+    const equipamentos = numberFrom(composicaoTotais?.equipamento, Number(breakdown?.equipamento ?? 0) * quantidade);
+    const maoObra = numberFrom(composicaoTotais?.pessoal, Number(breakdown?.pessoal ?? 0) * quantidade);
+    const overhead = numberFrom(composicaoTotais?.overhead, Number(breakdown?.overhead ?? 0) * quantidade);
     const custo = Number(item.custo_unitario ?? breakdown?.custoTotal ?? 0) * quantidade;
     const preco = Number(item.preco_unitario ?? breakdown?.preco ?? 0) * quantidade;
     totais.reagentes += reagentes;
@@ -63,6 +67,9 @@ export function montarSnapshotLaboratorio(
       overhead,
       custo,
       preco,
+      lote: numberFrom(snap?.lote_padrao, null),
+      numero_execucoes: numberFrom(snap?.numero_execucoes, null),
+      composicao_unitaria: composicaoUnit,
     };
   });
 
@@ -71,4 +78,27 @@ export function montarSnapshotLaboratorio(
     totais,
     linhas,
   };
+}
+
+function snapshotRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function numberRecord(value: unknown): Record<string, number> {
+  const record = snapshotRecord(value);
+  if (!record) return {};
+  return Object.fromEntries(
+    Object.entries(record)
+      .map(([key, raw]) => [key, Number(raw)] as const)
+      .filter(([, raw]) => Number.isFinite(raw)),
+  );
+}
+
+function numberFrom(value: unknown, fallback: number): number;
+function numberFrom(value: unknown, fallback: null): number | null;
+function numberFrom(value: unknown, fallback: number | null) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
 }

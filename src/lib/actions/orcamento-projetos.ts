@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
-import { calcularTodas } from "@/lib/costing/loader";
+import { calcularItemAnaliseOrcamento } from "@/lib/costing/loader";
 import { registrarEvento } from "./eventos";
 import {
   calcularQuantidadeViagem,
@@ -262,8 +262,7 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
   const nAmostras = numero(formData, "n_amostras", 1);
   if (!id || !codigo || nAmostras <= 0) return;
 
-  const { breakdowns } = await calcularTodas();
-  const breakdown = breakdowns.find((x) => x.codigo === codigo);
+  const breakdown = await calcularItemAnaliseOrcamento(codigo, nAmostras);
   const supabase = await createClient();
   const { data: existente } = await supabase
     .from("orcamento_projeto_analises")
@@ -278,7 +277,22 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
     rubrica: "Laboratório",
     unidade: "amostra",
     valor_unitario_utilizado: breakdown?.custoTotal ?? 0,
+    preco_unitario_utilizado: breakdown?.preco ?? 0,
     quantidade: nAmostras,
+    lote_padrao: breakdown?.lote ?? null,
+    numero_execucoes: breakdown?.numeroExecucoes ?? null,
+    composicao: {
+      reagentes: breakdown?.reagentes ?? 0,
+      equipamento: breakdown?.equipamento ?? 0,
+      pessoal: breakdown?.pessoal ?? 0,
+      overhead: breakdown?.overhead ?? 0,
+    },
+    composicao_totais: {
+      reagentes: breakdown?.totais.reagentes ?? 0,
+      equipamento: breakdown?.totais.equipamento ?? 0,
+      pessoal: breakdown?.totais.pessoal ?? 0,
+      overhead: breakdown?.totais.overhead ?? 0,
+    },
     data_snapshot: new Date().toISOString(),
     origem_valor: "breakdown.custoTotal",
   } satisfies Json;
@@ -293,6 +307,9 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
   const { error } = existente
     ? await supabase.from("orcamento_projeto_analises").update({
         n_amostras: nAmostras,
+        custo_unitario: payload.custo_unitario,
+        preco_unitario: payload.preco_unitario,
+        valor_snapshot: payload.valor_snapshot,
       }).eq("id", existente.id)
     : await supabase.from("orcamento_projeto_analises").insert(payload);
   if (error) throw new Error(error.message);

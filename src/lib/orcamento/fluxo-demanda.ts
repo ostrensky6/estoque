@@ -3,7 +3,7 @@ import { modalidadeExigeLaboratorio, modalidadeExigeProjeto } from "./orcamento-
 export type EstadoEtapaDemanda = "ativo" | "concluido" | "pendente" | "bloqueado" | "pulado";
 
 export type EtapaFluxoDemanda = {
-  id: "demanda" | "laboratorio" | "projeto" | "parametros" | "final" | "historico";
+  id: "demanda" | "laboratorio" | "projeto" | "parametros" | "final" | "emissao" | "historico";
   numero: number;
   label: string;
   detalhe: string;
@@ -61,7 +61,7 @@ export function calcularFluxoDemanda(args: {
     {
       id: "projeto",
       numero: 3,
-      label: "Orçamento de projeto",
+      label: "Custo de projeto",
       detalhe: exigeProjeto ? "Custos próprios do projeto" : "Pulado pela modalidade",
       status: exigeProjeto ? args.projetoLabel : "Pulado",
       estado: !exigeProjeto
@@ -87,15 +87,28 @@ export function calcularFluxoDemanda(args: {
     {
       id: "final",
       numero: 5,
-      label: "Proposta final",
-      detalhe: "Consolidação e emissão",
+      label: "Orçamento final",
+      detalhe: "Consolidação técnica",
       status: args.orcamentoFinalPronto ? "Pronto" : "Bloqueado",
-      estado: args.orcamentoFinalPronto ? "pendente" : "bloqueado",
+      estado: args.orcamentoFinalPronto ? "concluido" : "bloqueado",
+      obrigatoria: true,
+    },
+    {
+      id: "emissao",
+      numero: 6,
+      label: "Proposta para o cliente",
+      detalhe: "Configuração do documento",
+      status: args.versoesFinais > 0 ? "Emitida" : "Pendente",
+      estado: !args.orcamentoFinalPronto
+        ? "bloqueado"
+        : args.versoesFinais > 0
+          ? "concluido"
+          : "ativo",
       obrigatoria: true,
     },
     {
       id: "historico",
-      numero: 6,
+      numero: 7,
       label: "Histórico e auditoria",
       detalhe: "Registros preservados",
       status: `${args.versoesFinais} versão(ões)`,

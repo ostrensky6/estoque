@@ -5,6 +5,7 @@ import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import {
   atualizarOrcamentosFinaisVencidos,
   cancelarVersaoFinal,
+  classificarVersaoFinal,
   duplicarVersaoFinal,
 } from "@/lib/actions/orcamento-historico";
 import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
@@ -82,6 +83,8 @@ type VersaoFinal = {
   duplicada_de_id: number | null;
   cancelado_em: string | null;
   cancelado_motivo: string | null;
+  classificado_em: string | null;
+  classificacao_motivo: string | null;
   snapshot: Json;
   demandas_propostas?: DemandaHistorico | null;
 };
@@ -91,7 +94,8 @@ type VersaoComAnterior = VersaoFinal & { anterior: VersaoFinal | null };
 const statusOptions = [
   ["", "Todos"],
   ["emitido", "Emitido"],
-  ["enviado", "Enviado ao cliente"],
+  ["enviado", "Enviado"],
+  ["alterado_reenviado", "Alterado e reenviado"],
   ["aprovado", "Aprovado"],
   ["rejeitado", "Rejeitado"],
   ["recusado", "Recusado"],
@@ -104,12 +108,20 @@ const statusOptions = [
 const atalhosStatus = [
   ["", "Todos"],
   ["emitido", "Emitidos"],
-  ["enviado", "Enviados ao cliente"],
+  ["enviado", "Enviados"],
+  ["alterado_reenviado", "Alterados e reenviados"],
   ["aprovado", "Aprovados"],
   ["rejeitado", "Rejeitados"],
   ["cancelado", "Cancelados"],
   ["substituido", "Substituídos"],
   ["convertido_projeto", "Convertidos em projeto"],
+] as const;
+
+const classificacaoOptions = [
+  ["enviado", "Enviado"],
+  ["alterado_reenviado", "Alterado e reenviado"],
+  ["aprovado", "Aprovado"],
+  ["recusado", "Recusado"],
 ] as const;
 
 export default async function HistoricoOrcamentosPage({
@@ -121,22 +133,30 @@ export default async function HistoricoOrcamentosPage({
 
   const filtros = await searchParams;
   const supabase = await createClient();
-  const { data } = await supabase
+  const db = supabase as unknown as {
+    from: (table: "orcamento_final_versoes") => {
+      select: (columns: string) => {
+        order: (column: string, options?: { ascending?: boolean }) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+      };
+    };
+  };
+  const { data, error } = await db
     .from("orcamento_final_versoes")
     .select(
-      "id, demanda_id, versao, numero, status, validade_dias, valido_ate, total_final, total_laboratorio_custo, total_laboratorio_preco, total_projeto_custo, total_projeto_final, criado_por, criado_em, duplicada_de_id, cancelado_em, cancelado_motivo, snapshot, demandas_propostas(id, titulo, cliente_nome, responsavel_interno, modalidade)",
+      "id, demanda_id, versao, numero, status, validade_dias, valido_ate, total_final, total_laboratorio_custo, total_laboratorio_preco, total_projeto_custo, total_projeto_final, criado_por, criado_em, duplicada_de_id, cancelado_em, cancelado_motivo, classificado_em, classificacao_motivo, snapshot, demandas_propostas(id, titulo, cliente_nome, responsavel_interno, modalidade)",
     )
     .order("criado_em", { ascending: false });
+  if (error) throw new Error(error.message);
 
-  const todas = ((data ?? []) as VersaoFinal[]).map((versao) => ({
+  const todas = ((data ?? []) as unknown as VersaoFinal[]).map((versao) => ({
     ...versao,
-    anterior: encontrarAnterior((data ?? []) as VersaoFinal[], versao),
+    anterior: encontrarAnterior((data ?? []) as unknown as VersaoFinal[], versao),
   }));
   const versoes = filtrarVersoes(todas, filtros);
   const comparada = todas.find((item) => item.id === Number(filtros.comparar));
   const exportHref = `/orcamento/historico/export?${new URLSearchParams(limparFiltros(filtros)).toString()}`;
 
-  const emitidos = versoes.filter((item) => ["emitido", "enviado"].includes(item.status)).length;
+  const emitidos = versoes.filter((item) => ["emitido", "enviado", "alterado_reenviado"].includes(item.status)).length;
   const aprovados = versoes.filter((item) => item.status === "aprovado").length;
   const cancelados = versoes.filter((item) => item.status === "cancelado").length;
   const totalHistorico = versoes.reduce((total, item) => total + Number(item.total_final ?? 0), 0);
@@ -296,6 +316,10 @@ export default async function HistoricoOrcamentosPage({
                     <td className="px-3 py-3">
                       <Status status={item.status} />
                       {item.cancelado_motivo && <p className="mt-1 max-w-40 text-xs text-zinc-500">{item.cancelado_motivo}</p>}
+                      {item.classificacao_motivo && <p className="mt-1 max-w-48 text-xs text-zinc-500">{item.classificacao_motivo}</p>}
+                      {!["cancelado", "substituido", "vencido"].includes(item.status) && (
+                        <ClassificacaoForm versaoId={item.id} statusAtual={item.status} />
+                      )}
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums">{brl(composicao.custoAnalises)}</td>
                     <td className="px-3 py-3 text-right tabular-nums">{brl(composicao.custoProjeto)}</td>
@@ -578,10 +602,29 @@ function Badge({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{children}</span>;
 }
 
+function ClassificacaoForm({ versaoId, statusAtual }: { versaoId: number; statusAtual: string }) {
+  const valorAtual = classificacaoOptions.some(([value]) => value === statusAtual) ? statusAtual : "enviado";
+  return (
+    <form action={classificarVersaoFinal} className="mt-2 grid min-w-44 gap-1">
+      <input type="hidden" name="versao_id" value={versaoId} />
+      <select name="status" defaultValue={valorAtual} className="h-8 rounded-md border border-zinc-300 bg-white px-2 text-xs dark:border-zinc-700 dark:bg-zinc-950">
+        {classificacaoOptions.map(([value, label]) => (
+          <option key={value} value={value}>{label}</option>
+        ))}
+      </select>
+      <input name="motivo" placeholder="Observação opcional" className="h-8 rounded-md border border-zinc-300 bg-white px-2 text-xs dark:border-zinc-700 dark:bg-zinc-950" />
+      <button className="h-8 rounded-md bg-brand-600 px-2 text-xs font-medium text-white hover:bg-brand-500">
+        Classificar
+      </button>
+    </form>
+  );
+}
+
 function Status({ status }: { status: string }) {
   const labels: Record<string, string> = {
     emitido: "Emitido",
-    enviado: "Enviado ao cliente",
+    enviado: "Enviado",
+    alterado_reenviado: "Alterado e reenviado",
     aprovado: "Aprovado",
     rejeitado: "Rejeitado",
     recusado: "Recusado",
@@ -591,7 +634,7 @@ function Status({ status }: { status: string }) {
     convertido_projeto: "Convertido em projeto",
   };
   const cls =
-    ["emitido", "enviado"].includes(status)
+    ["emitido", "enviado", "alterado_reenviado"].includes(status)
       ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
       : status === "aprovado" || status === "convertido_projeto"
         ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"

@@ -3,10 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { calcularTodas } from "@/lib/costing/loader";
+import { calcularItemAnaliseOrcamento, calcularTodas } from "@/lib/costing/loader";
 import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
 import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
+import { calcularValidadeDiasProposta } from "@/lib/orcamento/validade-proposta";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
 import { validarParametrosProjetoGrossUp } from "@/lib/project-budget/legacy";
 import { registrarVersaoParametrosEconomicos } from "@/lib/orcamento/parametros-versionamento";
@@ -162,6 +163,10 @@ function snapshotAnaliseDemanda(args: {
   custoUnitario: number;
   precoUnitario: number;
   nAmostras: number;
+  lote?: number | null;
+  numeroExecucoes?: number | null;
+  composicao?: Record<string, number>;
+  composicaoTotais?: Record<string, number>;
 }) {
   return {
     tipo: "analise_laboratorial_demanda",
@@ -174,6 +179,10 @@ function snapshotAnaliseDemanda(args: {
     valor_unitario_utilizado: args.custoUnitario,
     preco_unitario_utilizado: args.precoUnitario,
     quantidade: args.nAmostras,
+    lote_padrao: args.lote ?? null,
+    numero_execucoes: args.numeroExecucoes ?? null,
+    composicao: args.composicao ?? {},
+    composicao_totais: args.composicaoTotais ?? {},
     data_snapshot: new Date().toISOString(),
     origem_valor: "breakdown.custoTotal",
   } satisfies Json;
@@ -308,9 +317,11 @@ async function sincronizarAnalisesDaDemanda(
     .single();
   if (!demanda) return { message: "Demanda não encontrada para sincronizar análises.", pendentes: 0, registradas: 0 };
 
-  const { breakdowns } = await calcularTodas();
-  const itensComCusteio = itens.map((item) => {
-    const breakdown = breakdowns.find((b) => b.codigo === item.codigo_analise);
+  const breakdownsPorItem = await Promise.all(
+    itens.map((item) => calcularItemAnaliseOrcamento(item.codigo_analise, item.quantidade_amostras)),
+  );
+  const itensComCusteio = itens.map((item, index) => {
+    const breakdown = breakdownsPorItem[index];
     return {
       ...item,
       status_custeio: breakdown && Number(breakdown.custoTotal) > 0 ? "disponivel" : "pendente",
@@ -331,8 +342,8 @@ async function sincronizarAnalisesDaDemanda(
     (etapasSnapshot ?? []).map((etapa) => [etapa.codigo_analise, etapa.nome_etapa ?? etapa.nome_atividade ?? null]),
   );
 
-  const itensSincronizados = itensComCusteio.map((item) => {
-    const breakdown = breakdowns.find((b) => b.codigo === item.codigo_analise);
+  const itensSincronizados = itensComCusteio.map((item, index) => {
+    const breakdown = breakdownsPorItem[index];
     const custeioDisponivel = item.status_custeio === "disponivel" && breakdown;
     return {
       grupo_key: item.grupo_key,
@@ -352,6 +363,20 @@ async function sincronizarAnalisesDaDemanda(
             custoUnitario: breakdown.custoTotal,
             precoUnitario: breakdown.preco,
             nAmostras: item.quantidade_amostras,
+            lote: breakdown.lote,
+            numeroExecucoes: breakdown.numeroExecucoes,
+            composicao: {
+              reagentes: breakdown.reagentes,
+              equipamento: breakdown.equipamento,
+              pessoal: breakdown.pessoal,
+              overhead: breakdown.overhead,
+            },
+            composicaoTotais: {
+              reagentes: breakdown.totais.reagentes,
+              equipamento: breakdown.totais.equipamento,
+              pessoal: breakdown.totais.pessoal,
+              overhead: breakdown.totais.overhead,
+            },
           })
         : ({
             tipo: "analise_laboratorial_demanda",
@@ -555,12 +580,11 @@ export async function criarDemandaCompleta(
     analises_solicitadas: analisesSolicitadas.length,
   });
   const erros: Record<string, string> = {};
-  if (!demanda.descricao && !demanda.escopo_preliminar) {
-    erros.descricao = "Preencha a descrição da demanda ou o escopo preliminar.";
-    erros.escopo_preliminar = "Preencha o escopo preliminar ou a descrição da demanda.";
+  if (!demanda.descricao) {
+    erros.descricao = "Preencha a descrição do orçamento.";
   }
   if (Object.keys(erros).length > 0) {
-    return { ok: false, message: "Complete os campos obrigatórios antes de criar a demanda.", errors: erros };
+    return { ok: false, message: "Complete os campos obrigatórios antes de criar o orçamento.", errors: erros };
   }
 
   const { data, error } = await supabase
@@ -630,9 +654,8 @@ export async function salvarDemanda(
     analises_solicitadas: analisesSolicitadas.length,
   });
   const erros: Record<string, string> = {};
-  if (!patch.descricao && !patch.escopo_preliminar) {
-    erros.descricao = "Preencha a descrição da demanda ou o escopo preliminar.";
-    erros.escopo_preliminar = "Preencha o escopo preliminar ou a descrição da demanda.";
+  if (!patch.descricao) {
+    erros.descricao = "Preencha a descrição do orçamento.";
   }
 
   const { error } = await supabase
@@ -658,7 +681,7 @@ export async function salvarDemanda(
   if (erros.descricao) {
     return {
       ok: true,
-      message: `Dados salvos.${complementoAnalises} Para concluir esta etapa, preencha a descrição da demanda ou o escopo preliminar.`,
+      message: `Dados salvos.${complementoAnalises} Para concluir esta etapa, preencha a descrição do orçamento.`,
       errors: erros,
       savedAt,
     };
@@ -972,12 +995,6 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  await supabase
-    .from("orcamento_final_versoes")
-    .update({ status: "substituido" })
-    .eq("demanda_id", id)
-    .eq("status", "emitido");
-
   const snapshot = {
     demanda,
     analises_solicitadas: analisesDaDemanda ?? [],
@@ -1044,4 +1061,225 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
   revalidatePath(`${listaPath}/${id}`);
   revalidatePath("/orcamento");
   redirect(`${listaPath}/${id}`);
+}
+
+export async function emitirPropostaCliente(
+  _prevState: DemandaFormState,
+  formData: FormData,
+): Promise<DemandaFormState> {
+  const id = Number(formData.get("demanda_id"));
+  if (!id) return { ok: false, message: "Identificador de demanda inválido." };
+  await exigirPapelOrcamento("emitir_final");
+
+  let validadeDias = Number(formData.get("validade_dias")) || 30;
+  const supabase = await createClient();
+
+  const { data: demanda } = await supabase
+    .from("demandas_propostas")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (!demanda) return { ok: false, message: "Demanda não encontrada." };
+
+  const completude = await avaliarCompletudePersistida(supabase, demanda);
+  if (!completude.completa) {
+    return { ok: false, message: "Complete a demanda antes de emitir o orçamento final." };
+  }
+  const analisesPendentes = await pendenciasCusteioAtuais(supabase, id);
+  if (analisesPendentes.length > 0) {
+    return { ok: false, message: `Complete o custeio das análises antes da emissão: ${analisesPendentes.join(", ")}.` };
+  }
+
+  const [{ data: orcamentos }, { data: orcProjetos }, { data: analisesDaDemanda }, { data: ultimaVersao }] = await Promise.all([
+    supabase
+      .from("orcamentos")
+      .select("id, status, orcamento_itens(id, codigo_analise, n_amostras, custo_unitario, preco_unitario, valor_snapshot)")
+      .eq("demanda_id", id)
+      .order("id"),
+    supabase
+      .from("orcamento_projetos")
+      .select("id, status, projeto_sem_custo_justificativa, impostos, margem_lucro, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(id, codigo_analise, n_amostras, custo_unitario, preco_unitario, valor_snapshot), orcamento_projeto_custos(id, rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados, valor_snapshot)")
+      .eq("demanda_id", id)
+      .order("id"),
+    supabase
+      .from("demanda_analises")
+      .select("codigo_analise, quantidade_amostras, origem_quantidade")
+      .eq("demanda_id", id)
+      .order("codigo_analise"),
+    supabase
+      .from("orcamento_final_versoes")
+      .select("versao")
+      .eq("demanda_id", id)
+      .order("versao", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const exigeAnalises = MODALIDADES_COM_ANALISES.has(demanda.modalidade);
+  const exigeProjeto = MODALIDADES_COM_PROJETO.has(demanda.modalidade) || Boolean(demanda.projeto_id);
+  const itensProjeto = (orcProjetos ?? []).reduce((total, orcamento) => (
+    total +
+    (orcamento.orcamento_projeto_custos?.length ?? 0) +
+    (exigeAnalises ? 0 : (orcamento.orcamento_projeto_analises?.length ?? 0)) +
+    (orcamento.projeto_sem_custo_justificativa ? 1 : 0)
+  ), 0);
+  const statusProjeto = (orcProjetos ?? []).some((orcamento) => orcamento.status === "aprovado")
+    ? "aprovado"
+    : (orcProjetos ?? []).some((orcamento) => orcamento.status === "enviado")
+      ? "enviado"
+      : orcProjetos?.[0]?.status;
+  const moduloProjeto = avaliarModuloOperacional({
+    exigido: exigeProjeto,
+    quantidadeItens: itensProjeto,
+    statusDocumento: statusProjeto,
+    pendenciaSemItens: "adicionar ao menos um custo, análise de projeto ou justificativa",
+  });
+  const projetoReferencia = orcProjetos?.at(-1);
+  const consolidado = consolidarOrcamentoFinal({
+    laboratorioExigido: exigeAnalises,
+    projetoExigido: exigeProjeto,
+    laboratorioRevisado: true,
+    projetoRevisado: moduloProjeto.status === "revisado" || moduloProjeto.status === "nao_exigido",
+    itensLaboratorio: (orcamentos ?? []).flatMap((orcamento) => orcamento.orcamento_itens ?? []),
+    itensProjeto: [
+      ...(orcProjetos ?? []).flatMap((orcamento) => orcamento.orcamento_projeto_custos ?? []),
+      ...(exigeAnalises ? [] : (orcProjetos ?? []).flatMap((orcamento) => orcamento.orcamento_projeto_analises ?? []).map((item) => ({
+        rubrica: "MC",
+        quantidade: Number(item.n_amostras),
+        custo_unitario: Number(item.custo_unitario),
+        preco_unitario: Number(item.preco_unitario),
+        meses_selecionados: [],
+      }))),
+    ],
+    parametrosProjeto: {
+      impostos_legacy: Number(projetoReferencia?.impostos_legacy ?? projetoReferencia?.impostos ?? 0),
+      incubacao: Number(projetoReferencia?.incubacao ?? 0),
+      reserva: Number(projetoReferencia?.reserva ?? 0),
+      investimentos: Number(projetoReferencia?.investimentos ?? 0),
+      lucro: Number(projetoReferencia?.lucro ?? projetoReferencia?.margem_lucro ?? 0),
+    },
+  });
+
+  // Permitir gravação mesmo com pendências de acordo com a escolha do operador
+  /*
+  if (!consolidado.pronto) {
+    return { ok: false, message: `Orçamento incompleto: ${consolidado.pendencias.join("; ")}` };
+  }
+  */
+
+  const versao = Number(ultimaVersao?.versao ?? 0) + 1;
+  const numero = texto(formData, "dados_codigo") || `OF-${new Date().getFullYear()}-${String(id).padStart(4, "0")}-v${versao}`;
+  const validoAte = texto(formData, "dados_validade") || new Date(Date.now() + validadeDias * 86400000).toISOString().slice(0, 10);
+  const dataEmissao = texto(formData, "dados_data_emissao") || new Date().toISOString().slice(0, 10);
+  validadeDias = calcularValidadeDiasProposta({ dataEmissao, validoAte, fallbackDias: validadeDias });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  await supabase
+    .from("orcamento_final_versoes")
+    .update({ status: "substituido" })
+    .eq("demanda_id", id)
+    .eq("status", "emitido");
+
+  const snapshot = {
+    demanda,
+    analises_solicitadas: analisesDaDemanda ?? [],
+    orcamentos_analises: orcamentos ?? [],
+    orcamentos_projeto: orcProjetos ?? [],
+    consolidado,
+    config_emissao: {
+      tipo_emissao: texto(formData, "tipo_emissao") || "GIA / UFPR",
+      assinante: {
+        nome: texto(formData, "assinante_nome") ?? "",
+        cargo: texto(formData, "assinante_cargo") ?? "",
+        instituicao: texto(formData, "assinante_instituicao") ?? "",
+        email: texto(formData, "assinante_email") ?? "",
+        telefone: texto(formData, "assinante_telefone") ?? "",
+        bloco: texto(formData, "assinante_bloco") ?? "",
+        assinatura_url: texto(formData, "assinante_assinatura_url") ?? "",
+      },
+      dados_proposta: {
+        codigo: numero,
+        data_emissao: dataEmissao,
+        validade: validoAte,
+        cliente: texto(formData, "dados_cliente") ?? "",
+        cliente_contato: texto(formData, "dados_cliente_contato") ?? "",
+        demanda_titulo: texto(formData, "dados_demanda_titulo") ?? "",
+        objeto: texto(formData, "dados_objeto") ?? "",
+        condicoes: texto(formData, "dados_condicoes") ?? "",
+        prazo: texto(formData, "dados_prazo") ?? "",
+        forma_pagamento: texto(formData, "dados_forma_pagamento") ?? "",
+        observacoes: texto(formData, "dados_observacoes") ?? "",
+      },
+      opcoes_conteudo: formData.getAll("opcoes_conteudo").map(String),
+    }
+  } satisfies Json;
+
+  const { data: versaoFinal, error } = await supabase
+    .from("orcamento_final_versoes")
+    .insert({
+      demanda_id: id,
+      versao,
+      numero,
+      validade_dias: validadeDias,
+      valido_ate: validoAte,
+      total_laboratorio_custo: consolidado.totalLaboratorioCusto,
+      total_laboratorio_preco: consolidado.totalLaboratorioPreco,
+      total_projeto_custo: consolidado.totalProjetoCusto,
+      total_projeto_final: consolidado.totalProjetoFinal,
+      total_final: consolidado.totalFinal,
+      snapshot,
+      criado_por: user?.id ?? null,
+    })
+    .select("id")
+    .single();
+  if (error) return { ok: false, message: error.message };
+
+  await supabase
+    .from("orcamento_final_versoes")
+    .update({ status: "substituido" })
+    .eq("demanda_id", id)
+    .eq("status", "emitido")
+    .neq("id", versaoFinal.id);
+
+  if (consolidado.parametrosAplicados) {
+    const { error: parametrosError } = await supabase
+      .from("orcamento_parametros_aplicados")
+      .insert({
+        demanda_id: id,
+        orcamento_laboratorial_id: orcamentos?.at(-1)?.id ?? null,
+        orcamento_projeto_id: projetoReferencia?.id ?? null,
+        orcamento_final_versao_id: versaoFinal.id,
+        versao,
+        metodo_calculo: consolidado.parametrosAplicados.metodo,
+        laboratorio_modo: consolidado.parametrosAplicados.laboratorio.modo,
+        subtotal_laboratorio: consolidado.parametrosAplicados.laboratorio.total,
+        subtotal_projeto: consolidado.parametrosAplicados.projeto.total,
+        subtotal_custos: consolidado.parametrosAplicados.subtotalCustos,
+        total_parametros: consolidado.parametrosAplicados.totalParametros,
+        total_final: consolidado.parametrosAplicados.totalFinal,
+        parametros_snapshot: consolidado.parametrosAplicados.parametros,
+        formula_snapshot: {
+          entrada: consolidado.entradaParametros,
+          origens: consolidado.origens,
+        } satisfies Json,
+        alertas_snapshot: consolidado.parametrosAplicados.alertas,
+        criado_por: user?.id ?? null,
+      });
+    if (parametrosError) return { ok: false, message: parametrosError.message };
+  }
+  await registrarEvento(
+    "orcamento_final",
+    id,
+    ultimaVersao?.versao ? `v${ultimaVersao.versao}` : null,
+    `v${versao}`,
+    `Orçamento final ${numero} emitido com opções configuradas para demanda #${id}.`,
+  );
+
+  revalidatePath(listaPath);
+  revalidatePath(`${listaPath}/${id}`);
+  revalidatePath("/orcamento");
+
+  return { ok: true, message: `Orçamento final emitido com sucesso!`, savedAt: new Date().toISOString() };
 }

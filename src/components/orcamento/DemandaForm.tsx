@@ -5,6 +5,7 @@ import type { DemandaFormState } from "@/lib/actions/demandas";
 import { criarDemandaCompleta, salvarDemanda } from "@/lib/actions/demandas";
 import { modalidadeExigeLaboratorio } from "@/lib/orcamento/orcamento-economico";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
+import { Pencil, Trash2 } from "lucide-react";
 
 type Option = { id: number; nome: string };
 type Demanda = {
@@ -215,16 +216,61 @@ export function DemandaForm({
       {mostraDemanda && (
       <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
         <h3 className="text-sm font-semibold">Identificação do orçamento</h3>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2"><label className={lbl}>Título <Obrigatorio /></label><input name="titulo" defaultValue={demanda.titulo ?? ""} className={`${inp} mt-1 w-full`} /></div>
-          <div><label className={lbl}>Número do orçamento <Selo texto="Calculado" /></label><div className="mt-1 rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950">{demanda.id > 0 ? `#${demanda.id}` : "Gerado ao salvar"}</div></div>
-          <div><label className={lbl}>Status</label><select name="status" defaultValue={demanda.status ?? "nova"} className={`${inp} mt-1 w-full`}><option value="nova">Nova</option><option value="em_analise">Em análise</option><option value="orcada">Orçada</option><option value="enviada">Enviada</option><option value="aprovada">Aprovada</option><option value="cancelada">Cancelada</option></select></div>
-          <div><label className={lbl}>Data da solicitação</label><input name="data_solicitacao" type="date" defaultValue={demanda.data_solicitacao ?? ""} className={`${inp} mt-1 w-full`} /></div>
-          <div><label className={lbl}>Prazo esperado</label><input name="prazo_esperado" type="date" defaultValue={demanda.prazo_esperado ?? ""} className={`${inp} mt-1 w-full`} /></div>
-          <div><label className={lbl}>Modalidade <Obrigatorio /></label><select name="modalidade" value={modalidade} onChange={(event) => setModalidade(event.target.value)} className={`${inp} mt-1 w-full`}><option value="analises">Análises laboratoriais</option><option value="projeto">Projeto sem análises</option><option value="projeto_com_analises">Projeto com análises</option></select></div>
-          <div><label className={lbl}>Prioridade</label><select name="prioridade" defaultValue={demanda.prioridade ?? "normal"} className={`${inp} mt-1 w-full`}><option value="baixa">Baixa</option><option value="normal">Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
-          <div><label className={lbl}>Responsável interno</label><input name="responsavel_interno" defaultValue={demanda.responsavel_interno ?? ""} className={`${inp} mt-1 w-full`} /></div>
-          <div><label className={lbl}>Origem</label><input name="origem" defaultValue={demanda.origem ?? ""} className={`${inp} mt-1 w-full`} /></div>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <div className="sm:col-span-2">
+            <label className={lbl}>Título <Obrigatorio /></label>
+            <input name="titulo" defaultValue={demanda.titulo ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={lbl}>Modalidade <Obrigatorio /></label>
+            <select name="modalidade" value={modalidade} onChange={(event) => setModalidade(event.target.value)} className={`${inp} mt-1 w-full`}>
+              <option value="analises">Análises laboratoriais</option>
+              <option value="projeto">Projeto sem análises</option>
+              <option value="projeto_com_analises">Projeto com análises</option>
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Número do orçamento <Selo texto="Calculado" /></label>
+            <div className="mt-1 rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950">
+              {demanda.id > 0 ? `#${demanda.id}` : "Gerado ao salvar"}
+            </div>
+          </div>
+          <div>
+            <label className={lbl}>Status</label>
+            <select name="status" defaultValue={demanda.status ?? "nova"} className={`${inp} mt-1 w-full`}>
+              <option value="nova">Nova</option>
+              <option value="em_analise">Em análise</option>
+              <option value="orcada">Orçada</option>
+              <option value="enviada">Enviada</option>
+              <option value="aprovada">Aprovada</option>
+              <option value="cancelada">Cancelada</option>
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Prioridade</label>
+            <select name="prioridade" defaultValue={demanda.prioridade ?? "normal"} className={`${inp} mt-1 w-full`}>
+              <option value="baixa">Baixa</option>
+              <option value="normal">Normal</option>
+              <option value="alta">Alta</option>
+              <option value="urgente">Urgente</option>
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Responsável interno</label>
+            <input name="responsavel_interno" defaultValue={demanda.responsavel_interno ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
+          <div>
+            <label className={lbl}>Data da solicitação</label>
+            <input name="data_solicitacao" type="date" defaultValue={demanda.data_solicitacao ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
+          <div>
+            <label className={lbl}>Prazo esperado</label>
+            <input name="prazo_esperado" type="date" defaultValue={demanda.prazo_esperado ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={lbl}>Origem</label>
+            <input name="origem" defaultValue={demanda.origem ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
           <input name="prazo_tecnico_dias" type="hidden" value={demanda.prazo_tecnico_dias ?? ""} />
           <input name="quantidade_amostras_estimada" type="hidden" value={grupos.reduce((total, grupo) => total + Number(grupo.quantidade_amostras || 0), 0) || quantidadeInicial} />
           <input name="matriz_amostra" type="hidden" value={grupos.map((grupo) => grupo.tipo_matriz).filter(Boolean).join("; ") || (demanda.matriz_amostra ?? "")} />
@@ -235,13 +281,37 @@ export function DemandaForm({
       {mostraDemanda && (
       <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
         <h3 className="text-sm font-semibold">Cliente</h3>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div><label className={lbl}>Cliente <Obrigatorio /></label><select name="cliente_id" defaultValue={demanda.cliente_id ?? ""} className={`${inp} mt-1 w-full`}><option value="">Cliente avulso</option>{clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></div>
-          <div><label className={lbl}>Projeto <Selo texto="Quando aplicável" /></label><select name="projeto_id" defaultValue={demanda.projeto_id ?? ""} className={`${inp} mt-1 w-full`}><option value="">Sem projeto vinculado</option>{projetos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></div>
-          <div><label className={lbl}>Cliente avulso <Selo texto="Editável" /></label><input name="cliente_nome" defaultValue={demanda.cliente_nome ?? ""} className={`${inp} mt-1 w-full`} /></div>
-          <div><label className={lbl}>CNPJ/CPF</label><input name="cliente_cnpj" defaultValue={demanda.cliente_cnpj ?? ""} className={`${inp} mt-1 w-full`} /></div>
-          <div><label className={lbl}>Instituição</label><input name="instituicao" defaultValue={demanda.instituicao ?? ""} className={`${inp} mt-1 w-full`} /></div>
-          <div><label className={lbl}>Contato <Selo texto="Herdado do cliente quando selecionado" /></label><input name="cliente_contato" defaultValue={demanda.cliente_contato ?? ""} className={`${inheritedInp} mt-1 w-full`} /></div>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <div className="sm:col-span-2">
+            <label className={lbl}>Cliente <Obrigatorio /></label>
+            <select name="cliente_id" defaultValue={demanda.cliente_id ?? ""} className={`${inp} mt-1 w-full`}>
+              <option value="">Cliente avulso</option>
+              {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className={lbl}>Projeto <Selo texto="Quando aplicável" /></label>
+            <select name="projeto_id" defaultValue={demanda.projeto_id ?? ""} className={`${inp} mt-1 w-full`}>
+              <option value="">Sem projeto vinculado</option>
+              {projetos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className={lbl}>Cliente avulso <Selo texto="Editável" /></label>
+            <input name="cliente_nome" defaultValue={demanda.cliente_nome ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
+          <div>
+            <label className={lbl}>CNPJ/CPF</label>
+            <input name="cliente_cnpj" defaultValue={demanda.cliente_cnpj ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
+          <div>
+            <label className={lbl}>Instituição</label>
+            <input name="instituicao" defaultValue={demanda.instituicao ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={lbl}>Contato <Selo texto="Herdado do cliente quando selecionado" /></label>
+            <input name="cliente_contato" defaultValue={demanda.cliente_contato ?? ""} className={`${inheritedInp} mt-1 w-full`} />
+          </div>
         </div>
       </section>
       )}
@@ -249,10 +319,15 @@ export function DemandaForm({
       {mostraDemanda && (
       <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
         <h3 className="text-sm font-semibold">Escopo inicial</h3>
-        <div className="mt-3 grid gap-3">
-          <div><label className={lbl}>Descrição do orçamento</label><textarea id="descricao" name="descricao" rows={3} defaultValue={demanda.descricao ?? ""} className={`${inp} mt-1 w-full ${state.errors?.descricao ? "border-amber-400" : ""}`} /></div>
-          <div><label className={lbl}>Escopo preliminar</label><textarea name="escopo_preliminar" rows={3} defaultValue={demanda.escopo_preliminar ?? ""} className={`${inp} mt-1 w-full ${state.errors?.escopo_preliminar ? "border-amber-400" : ""}`} /></div>
-          <div><label className={lbl}>Observações gerais</label><textarea name="observacoes" rows={3} defaultValue={demanda.observacoes ?? ""} className={`${inp} mt-1 w-full`} /></div>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className={lbl}>Descrição do orçamento <Obrigatorio /></label>
+            <textarea id="descricao" name="descricao" rows={3} defaultValue={demanda.descricao ?? ""} className={`${inp} mt-1 w-full ${state.errors?.descricao ? "border-red-400 focus:border-red-600 focus:ring-red-200" : ""}`} />
+          </div>
+          <div>
+            <label className={lbl}>Observações gerais</label>
+            <textarea name="observacoes" rows={3} defaultValue={demanda.observacoes ?? ""} className={`${inp} mt-1 w-full`} />
+          </div>
         </div>
       </section>
       )}
@@ -273,7 +348,7 @@ export function DemandaForm({
           {grupos.map((grupo) => {
             const selecionadasDoGrupo = selecionadas.filter((item) => item.grupoKey === grupo.key);
             return (
-            <div key={grupo.key} className="grid gap-2 rounded-md bg-zinc-50 p-3 dark:bg-zinc-950/50 sm:grid-cols-5">
+            <div key={grupo.key} id={`grupo-card-${grupo.key}`} className="grid gap-2 rounded-md bg-zinc-50 p-3 dark:bg-zinc-950/50 sm:grid-cols-5">
               <input type="hidden" name="grupo_key" value={grupo.key} />
               <div><label className={lbl}>Grupo</label><input name="grupo_identificacao" value={grupo.identificacao} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, identificacao: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
               <div className="sm:col-span-2"><label className={lbl}>Tipo/matriz</label><input name="grupo_tipo_matriz" value={grupo.tipo_matriz ?? ""} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, tipo_matriz: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
@@ -298,10 +373,10 @@ export function DemandaForm({
                   </button>
                 </div>
                 {selecionadasDoGrupo.length > 0 ? (
-                  <div className="mt-3 overflow-x-auto">
+                  <div tabIndex={0} aria-label="Análises selecionadas do grupo" className="mt-3 overflow-x-auto">
                     <table className="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
                       <thead className="text-left text-xs text-zinc-500">
-                        <tr><th className="py-2">Código da análise</th><th>Nome da análise</th><th>Quantidade de amostras para esta análise</th><th>Remover</th></tr>
+                        <tr><th className="py-2">Código da análise</th><th>Nome da análise</th><th>Quantidade de amostras para esta análise</th><th className="w-10 text-right"></th></tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                         {selecionadasDoGrupo.map((item) => {
@@ -327,7 +402,9 @@ export function DemandaForm({
                                 />
                               </td>
                               <td className="text-right">
-                                <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-xs font-medium text-red-600">Remover</button>
+                                <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" title="Remover análise">
+                                  <Trash2 className="h-4 w-4 inline" />
+                                </button>
                               </td>
                             </tr>
                           );
@@ -341,7 +418,7 @@ export function DemandaForm({
                 {seletorAberto === grupo.key && (
                   <div className="mt-3 rounded-md border border-brand-200 bg-brand-50/40 p-3 dark:border-brand-900 dark:bg-brand-950/20">
                     <input value={busca} onChange={(event) => setBusca(event.target.value)} placeholder="Buscar por código, nome ou método" className={`${inp} w-full`} />
-                    <div className="mt-3 max-h-[56rem] overflow-y-auto rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+                    <div tabIndex={0} aria-label="Catálogo de análises filtradas" className="mt-3 max-h-[56rem] overflow-y-auto rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
                       {filtradas.length === 0 ? (
                         <p className="px-3 py-4 text-xs text-zinc-500">
                           {analises.length === 0 ? "Não existem análises ativas cadastradas ou você não possui permissão para visualizar este catálogo." : "Nenhuma análise corresponde à busca ou à matriz informada."}
@@ -389,10 +466,10 @@ export function DemandaForm({
           <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
             Compatibilidade por matriz ainda não possui relação oficial no banco. A matriz da demanda é informativa; confirme tecnicamente antes de emitir.
           </div>
-          <div className="mt-3 overflow-x-auto">
+          <div tabIndex={0} aria-label="Resumo de análises por grupo" className="mt-3 overflow-x-auto">
             <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
               <thead className="text-left text-xs text-zinc-500">
-                <tr><th className="py-2">Grupo</th><th>Tipo/matriz da amostra</th><th>Código da análise</th><th>Nome da análise</th><th>Quantidade de amostras para esta análise</th><th>Prazo técnico calculado</th><th>Lotes previstos</th><th>Status do custeio</th><th>Status dos insumos</th><th>Remover</th></tr>
+                <tr><th className="py-2">Grupo</th><th>Tipo/matriz da amostra</th><th>Código da análise</th><th>Nome da análise</th><th>Quantidade de amostras para esta análise</th><th>Prazo técnico calculated</th><th>Lotes previstos</th><th>Status do custeio</th><th>Status dos insumos</th><th className="w-16 text-right"></th></tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {selecionadas.map((item) => {
@@ -413,8 +490,21 @@ export function DemandaForm({
                         {analise?.custeio_disponivel ? "Disponível" : "Pendente"}
                       </td>
                       <td className={statusInsumos === "Mapeados" ? "pr-3 text-brand-700 dark:text-brand-300" : "pr-3 text-amber-700 dark:text-amber-300"}>{statusInsumos}</td>
-                      <td className="text-right">
-                        <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-xs font-medium text-red-600">Remover</button>
+                      <td className="text-right space-x-2 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSeletorAberto(item.grupoKey);
+                            document.getElementById(`grupo-card-${item.grupoKey}`)?.scrollIntoView({ behavior: "smooth" });
+                          }}
+                          className="text-zinc-600 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
+                          title="Editar análises do grupo"
+                        >
+                          <Pencil className="h-4 w-4 inline" />
+                        </button>
+                        <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" title="Remover análise">
+                          <Trash2 className="h-4 w-4 inline" />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -469,7 +559,7 @@ export function DemandaForm({
         <button disabled={pending} className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-wait disabled:bg-zinc-400 dark:bg-white dark:text-zinc-900">
           {pending ? "Salvando..." : demanda.id > 0 ? (modo === "laboratorio" ? "Salvar análises laboratoriais" : "Salvar demanda") : "Criar demanda"}
         </button>
-        {state.errors?.descricao ? <a href="#descricao" className="text-sm font-medium text-amber-700">Corrigir descrição ou escopo</a> : null}
+        {state.errors?.descricao ? <a href="#descricao" className="text-sm font-medium text-red-600">Corrigir descrição</a> : null}
       </div>
     </form>
   );

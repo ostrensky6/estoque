@@ -52,12 +52,12 @@ export function ExecutiveCharts({
   }, []);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr]">
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)]">
+      <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Gasto por mês</h3>
-        <div className="mt-3 h-64">
+        <div className="mt-3 h-64 min-h-64 min-w-0">
           {mounted ? (
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={256}>
               <BarChart data={gastosPorMes}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="mes" fontSize={12} tickLine={false} axisLine={false} />
@@ -72,11 +72,11 @@ export function ExecutiveCharts({
         </div>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Funil de orçamentos</h3>
-        <div className="mt-3 h-64">
+        <div className="mt-3 h-64 min-h-64 min-w-0">
           {mounted ? (
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={256}>
               <PieChart>
                 <Pie data={funil} dataKey="total" nameKey="status" innerRadius={56} outerRadius={88} paddingAngle={2}>
                   {funil.map((entry, index) => (
