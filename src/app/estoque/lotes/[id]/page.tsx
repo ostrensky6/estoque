@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Barcode39 } from "@/components/common/Barcode39";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { QrCode } from "@/components/common/QrCode";
 import { formatNumber as fmt, formatDate as fdata, formatCurrency } from "@/lib/formatters";
+import { gerarUrlCurtaKontrol } from "@/lib/scanner/urls";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +74,8 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
   );
 
   const codigoEtiqueta = lote.codigo_lote || `LOTE-${lote.id}`;
+  const qrUrl = gerarUrlCurtaKontrol("lote", lote.id as number);
+  const nomeCurto = ins?.especificacao ?? ins?.nome_item ?? "Lote sem descricao";
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -96,16 +100,40 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
         {/* Etiqueta imprimível com código de barras */}
         <section className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
+            <div className="min-w-56">
               <p className="text-xs uppercase tracking-wide text-zinc-400">Etiqueta do lote</p>
-              <p className="mt-1 text-sm font-medium">{ins?.especificacao ?? ins?.nome_item ?? "—"}</p>
+              <p className="mt-1 text-sm font-medium">{nomeCurto}</p>
               <p className="text-xs text-zinc-500">
                 Validade: {fdata(lote.validade)} · Saldo: {fmt(lote.quantidade_atual)} {unidade}
               </p>
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <dt className="uppercase tracking-wide text-zinc-400">Tipo</dt>
+                  <dd className="font-medium text-zinc-700 dark:text-zinc-200">Lote</dd>
+                </div>
+                <div>
+                  <dt className="uppercase tracking-wide text-zinc-400">ID Kontrol</dt>
+                  <dd className="font-mono text-zinc-700 dark:text-zinc-200">{lote.id}</dd>
+                </div>
+                <div>
+                  <dt className="uppercase tracking-wide text-zinc-400">Codigo do lote</dt>
+                  <dd className="font-mono text-zinc-700 dark:text-zinc-200">{codigoEtiqueta}</dd>
+                </div>
+                <div>
+                  <dt className="uppercase tracking-wide text-zinc-400">URL interna</dt>
+                  <dd className="font-mono text-zinc-700 dark:text-zinc-200">{qrUrl}</dd>
+                </div>
+              </dl>
             </div>
-            <div className="text-center">
-              <Barcode39 value={codigoEtiqueta} height={52} />
-              <p className="mt-0.5 font-mono text-xs tracking-widest text-zinc-700 dark:text-zinc-300">{codigoEtiqueta}</p>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="text-center">
+                <QrCode value={qrUrl} label={`QR interno do lote ${lote.id}`} />
+                <p className="mt-1 font-mono text-xs text-zinc-700 dark:text-zinc-300">{qrUrl}</p>
+              </div>
+              <div className="text-center">
+                <Barcode39 value={codigoEtiqueta} height={52} />
+                <p className="mt-0.5 font-mono text-xs tracking-widest text-zinc-700 dark:text-zinc-300">{codigoEtiqueta}</p>
+              </div>
             </div>
           </div>
         </section>
