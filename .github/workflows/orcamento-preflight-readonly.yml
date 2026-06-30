@@ -1,0 +1,137 @@
+name: Orçamento Preflight (READ ONLY)
+
+# Execução MANUAL apenas. Roda o diagnóstico somente-leitura do módulo Orçamentos.
+# NÃO altera dados: o SQL roda em transação READ ONLY e termina em ROLLBACK.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Ambiente do banco (comece por homologacao)"
+        type: choice
+        required: true
+        default: homologacao
+        options:
+          - homologacao
+          - producao
+      confirm_readonly:
+        description: "Digite exatamente READ_ONLY_ROLLBACK para confirmar"
+        type: string
+        required: true
+      pr_number:
+        description: "PR para comentar o resultado (ex.: 5)"
+        type: string
+        required: false
+        default: "5"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirmar intenção READ ONLY
+        run: |
+          if [ "${{ inputs.confirm_readonly }}" != "READ_ONLY_ROLLBACK" ]; then
+            echo "::error::confirm_readonly inválido. Digite exatamente READ_ONLY_ROLLBACK."
+            exit 1
+          fi
+          echo "Confirmação OK."
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Garantir psql
+        run: psql --version || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+
+      - name: Validar que o SQL é somente-leitura
+        run: node scripts/sql/verify-preflight-readonly.mjs
+
+      - name: Selecionar connection string (secret) e rodar preflight
+        env:
+          DB_HOMOLOGACAO: ${{ secrets.SUPABASE_DB_URL_HOMOLOGACAO }}
+          DB_PRODUCAO: ${{ secrets.SUPABASE_DB_URL_PRODUCAO }}
+          PREFLIGHT_ENV: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.environment }}" = "producao" ]; then
+            DBURL="$DB_PRODUCAO"
+          else
+            DBURL="$DB_HOMOLOGACAO"
+          fi
+          if [ -z "${DBURL:-}" ]; then
+            echo "::error::Secret de connection string ausente para o ambiente '${{ inputs.environment }}'."
+            echo "Configure SUPABASE_DB_URL_HOMOLOGACAO (e/ou SUPABASE_DB_URL_PRODUCAO)."
+            exit 1
+          fi
+          # Nunca imprime a string; o Actions também mascara secrets automaticamente.
+          DATABASE_URL="$DBURL" node scripts/sql/run-preflight-orcamentos.mjs
+
+      - name: Gerar plano de deduplicação (dry-run, não toca no banco)
+        run: node scripts/sql/plan-dedup-orcamentos-dry-run.mjs
+
+      - name: Publicar artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: orcamento-preflight-${{ inputs.environment }}
+          path: artifacts/orcamento-preflight/**
+          retention-days: 14
+
+      - name: Comentar no PR
+        if: ${{ !cancelled() && inputs.pr_number != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const base = 'artifacts/orcamento-preflight';
+            let dir = null;
+            if (fs.existsSync(base)) {
+              const subs = fs.readdirSync(base).filter(d => fs.statSync(path.join(base, d)).isDirectory()).sort();
+              if (subs.length) dir = path.join(base, subs[subs.length - 1]);
+            }
+            let resumo = 'Sem JSON de resultados.';
+            let meta = {};
+            let porSeveridade = {};
+            if (dir && fs.existsSync(path.join(dir, 'preflight-resultados.json'))) {
+              const json = JSON.parse(fs.readFileSync(path.join(dir, 'preflight-resultados.json'), 'utf8'));
+              meta = json.meta || {};
+              const com = (json.resultados || []).filter(r => typeof r.ocorrencias === 'number' && r.ocorrencias > 0);
+              for (const r of com) porSeveridade[r.severidade] = (porSeveridade[r.severidade] || 0) + 1;
+              resumo = com.length
+                ? com.map(r => `- **${r.id}** (${r.severidade}, ${r.decisao}): ${r.ocorrencias} — ${r.descricao}`).join('\n')
+                : '_Nenhuma ocorrência > 0._';
+            }
+            const sev = Object.keys(porSeveridade).length
+              ? Object.entries(porSeveridade).map(([s, n]) => `${s}: ${n}`).join(' · ')
+              : 'nenhuma';
+            const body = [
+              '## 🔎 Preflight de Orçamentos (READ ONLY) — resultado',
+              '',
+              `- **Status:** concluído`,
+              `- **Timestamp:** ${meta.timestamp || 'n/d'}`,
+              `- **Ambiente:** ${meta.environment || '${{ inputs.environment }}'}`,
+              `- **READ ONLY confirmado:** ${meta.readOnlyConfirmado ? 'sim' : 'n/d'} · **terminou em ROLLBACK:** ${meta.rolledBack ? 'sim' : 'n/d'}`,
+              `- **Artifact:** veja "orcamento-preflight-${{ inputs.environment }}" nesta run (run #${context.runNumber}).`,
+              `- **Ocorrências por severidade:** ${sev}`,
+              '',
+              '### Checks com ocorrência > 0',
+              resumo,
+              '',
+              '> ⚠️ Nenhuma limpeza foi executada e nenhum dado real foi alterado. Toda a execução rodou em transação READ ONLY revertida com ROLLBACK.',
+            ].join('\n');
+            const pr = Number('${{ inputs.pr_number }}');
+            if (pr) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: pr, body,
+              });
+            }

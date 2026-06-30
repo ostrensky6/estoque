@@ -4,21 +4,13 @@ import { useState } from "react";
 import { FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import type {
-  OrcamentoFinalExportInfo,
-  OrcamentoFinalExportItem,
-  OrcamentoFinalExportOrigem,
-  OrcamentoFinalExportResumo,
-} from "@/lib/orcamento/final-exporters";
+import type { PropostaFinalExport } from "@/lib/orcamento/proposta-final-export";
 
 type Props = {
-  info: OrcamentoFinalExportInfo;
-  resumo: OrcamentoFinalExportResumo;
-  itens: OrcamentoFinalExportItem[];
-  origens: OrcamentoFinalExportOrigem[];
+  dados: PropostaFinalExport;
 };
 
-export function ExportOrcamentoFinalButtons({ info, resumo, itens, origens }: Props) {
+export function ExportOrcamentoFinalButtons({ dados }: Props) {
   const [carregando, setCarregando] = useState<"xlsx" | "docx" | null>(null);
 
   async function exportar(formato: "xlsx" | "docx") {
@@ -27,9 +19,9 @@ export function ExportOrcamentoFinalButtons({ info, resumo, itens, origens }: Pr
     try {
       const mod = await import("@/lib/orcamento/final-exporters");
       if (formato === "xlsx") {
-        await mod.exportOrcamentoFinalXlsx(info, resumo, itens, origens);
+        await mod.exportOrcamentoFinalXlsx(dados);
       } else {
-        await mod.exportOrcamentoFinalDocx(info, resumo, itens, origens);
+        await mod.exportOrcamentoFinalDocx(dados);
       }
       toast.success(`Orçamento final exportado em ${formato.toUpperCase()}.`);
     } catch (erro) {

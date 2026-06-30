@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
-import { calcularItemAnaliseOrcamento } from "@/lib/costing/loader";
+import { calcularTodas } from "@/lib/costing/loader";
 import { registrarEvento } from "./eventos";
 import {
   calcularQuantidadeViagem,
@@ -16,8 +16,26 @@ import {
 import { validarParametrosProjetoGrossUp } from "@/lib/project-budget/legacy";
 import { registrarVersaoParametrosEconomicos } from "@/lib/orcamento/parametros-versionamento";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
+import { moduloBloqueadoParaEdicao } from "@/lib/orcamento/ciclo-vida-modulo";
 
 const pathLista = "/orcamento/projetos";
+
+// Validação defensiva de servidor: impede edição direta de orçamento de projeto
+// revisado/enviado/aprovado/cancelado (Fase 5). Não confiar só no botão da UI.
+async function assegurarProjetoEditavel(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orcamentoProjetoId: number,
+) {
+  const { data } = await supabase
+    .from("orcamento_projetos")
+    .select("status")
+    .eq("id", orcamentoProjetoId)
+    .single();
+  const bloqueio = moduloBloqueadoParaEdicao({ status: data?.status });
+  if (bloqueio.bloqueado) {
+    throw new Error(bloqueio.motivo ?? "Edição bloqueada.");
+  }
+}
 
 function texto(formData: FormData, chave: string) {
   const valor = String(formData.get(chave) ?? "").trim();
@@ -87,30 +105,6 @@ function categoriaInstitucionalPorRubrica(rubrica: string) {
   }
 }
 
-function snapshotCatalogoProjeto(item: {
-  id: string;
-  rubrica: string;
-  descricao: string;
-  unidade: string | null;
-  preco_unitario: number | null;
-  categoria: string | null;
-  origem?: string | null;
-}, quantidade: number, mesesSelecionados: number[]) {
-  return {
-    tipo: "catalogo_projeto",
-    catalogo_item_id: item.id,
-    descricao: item.descricao,
-    rubrica: item.rubrica,
-    categoria: item.categoria,
-    unidade: item.unidade,
-    valor_unitario_utilizado: Number(item.preco_unitario ?? 0),
-    quantidade,
-    meses_selecionados: mesesSelecionados,
-    data_snapshot: new Date().toISOString(),
-    origem_valor: item.origem ?? "orcamento_projeto_catalogo",
-  } satisfies Json;
-}
-
 async function carregarCliente(clienteId: number | null) {
   if (!clienteId) return null;
   const supabase = await createClient();
@@ -123,6 +117,7 @@ async function carregarCliente(clienteId: number | null) {
 }
 
 export async function criarOrcamentoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const demandaId = formData.get("demanda_id") ? Number(formData.get("demanda_id")) : null;
   if (!demandaId) {
     redirect("/orcamento/demandas");
@@ -165,6 +160,7 @@ export async function criarOrcamentoProjeto(formData: FormData) {
 }
 
 export async function salvarOrcamentoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
 
@@ -216,6 +212,7 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
 }
 
 export async function salvarParametrosEconomicosProjeto(formData: FormData) {
+  await exigirPapelOrcamento("editar_parametros");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
 
@@ -234,9 +231,8 @@ export async function salvarParametrosEconomicosProjeto(formData: FormData) {
   if (!validacao.ok) {
     redirect(`${pathLista}/${id}?erro_parametros=${encodeURIComponent(validacao.message)}`);
   }
-
-  await exigirPapelOrcamento("editar_parametros");
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   const { error } = await supabase.from("orcamento_projetos").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
   await registrarVersaoParametrosEconomicos(supabase, {
@@ -257,66 +253,29 @@ export async function salvarParametrosEconomicosProjeto(formData: FormData) {
 }
 
 export async function adicionarAnaliseProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const codigo = texto(formData, "codigo_analise");
   const nAmostras = numero(formData, "n_amostras", 1);
   if (!id || !codigo || nAmostras <= 0) return;
 
-  const breakdown = await calcularItemAnaliseOrcamento(codigo, nAmostras);
+  const { breakdowns } = await calcularTodas();
+  const breakdown = breakdowns.find((x) => x.codigo === codigo);
   const supabase = await createClient();
-  const { data: existente } = await supabase
-    .from("orcamento_projeto_analises")
-    .select("id")
-    .eq("orcamento_projeto_id", id)
-    .eq("codigo_analise", codigo)
-    .maybeSingle();
-  const snapshot = {
-    tipo: "analise_projeto_historica",
-    codigo_analise: codigo,
-    descricao: codigo,
-    rubrica: "Laboratório",
-    unidade: "amostra",
-    valor_unitario_utilizado: breakdown?.custoTotal ?? 0,
-    preco_unitario_utilizado: breakdown?.preco ?? 0,
-    quantidade: nAmostras,
-    lote_padrao: breakdown?.lote ?? null,
-    numero_execucoes: breakdown?.numeroExecucoes ?? null,
-    composicao: {
-      reagentes: breakdown?.reagentes ?? 0,
-      equipamento: breakdown?.equipamento ?? 0,
-      pessoal: breakdown?.pessoal ?? 0,
-      overhead: breakdown?.overhead ?? 0,
-    },
-    composicao_totais: {
-      reagentes: breakdown?.totais.reagentes ?? 0,
-      equipamento: breakdown?.totais.equipamento ?? 0,
-      pessoal: breakdown?.totais.pessoal ?? 0,
-      overhead: breakdown?.totais.overhead ?? 0,
-    },
-    data_snapshot: new Date().toISOString(),
-    origem_valor: "breakdown.custoTotal",
-  } satisfies Json;
-  const payload = {
+  await assegurarProjetoEditavel(supabase, id);
+  const { error } = await supabase.from("orcamento_projeto_analises").insert({
     orcamento_projeto_id: id,
     codigo_analise: codigo,
     n_amostras: nAmostras,
     custo_unitario: breakdown?.custoTotal ?? 0,
     preco_unitario: breakdown?.preco ?? 0,
-    valor_snapshot: snapshot,
-  };
-  const { error } = existente
-    ? await supabase.from("orcamento_projeto_analises").update({
-        n_amostras: nAmostras,
-        custo_unitario: payload.custo_unitario,
-        preco_unitario: payload.preco_unitario,
-        valor_snapshot: payload.valor_snapshot,
-      }).eq("id", existente.id)
-    : await supabase.from("orcamento_projeto_analises").insert(payload);
+  });
   if (error) throw new Error(error.message);
   revalidatePath(`${pathLista}/${id}`);
 }
 
 export async function adicionarCustoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const descricao = texto(formData, "descricao");
   if (!id || !descricao) return;
@@ -327,6 +286,7 @@ export async function adicionarCustoProjeto(formData: FormData) {
   const categoria = texto(formData, "categoria") || categoriaPorRubrica(rubrica);
 
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   const { error } = await supabase.from("orcamento_projeto_custos").insert({
     orcamento_projeto_id: id,
     categoria,
@@ -343,24 +303,13 @@ export async function adicionarCustoProjeto(formData: FormData) {
     entrega: texto(formData, "entrega") || "Entrega principal",
     categoria_institucional: texto(formData, "categoria_institucional") || categoriaInstitucionalPorRubrica(rubrica),
     nomenclatura_origem: "kontrol",
-    valor_snapshot: {
-      tipo: "manual",
-      descricao,
-      rubrica,
-      categoria,
-      unidade: texto(formData, "unidade"),
-      valor_unitario_utilizado: custoUnitario,
-      quantidade,
-      meses_selecionados: inteiroArray(formData, "meses_selecionados"),
-      data_snapshot: new Date().toISOString(),
-      origem_valor: "entrada_manual",
-    } satisfies Json,
   });
   if (error) throw new Error(error.message);
   revalidatePath(`${pathLista}/${id}`);
 }
 
 export async function adicionarCustoCatalogoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const catalogoId = texto(formData, "catalogo_item_id");
   if (!id || !catalogoId) return;
@@ -368,21 +317,16 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
   const supabase = await createClient();
   const { data: item, error: itemError } = await supabase
     .from("orcamento_projeto_catalogo")
-    .select("id, rubrica, descricao, unidade, preco_unitario, categoria, origem")
+    .select("id, rubrica, descricao, unidade, preco_unitario, categoria")
     .eq("id", catalogoId)
     .single();
   if (itemError) throw new Error(itemError.message);
   if (!item) return;
 
+  await assegurarProjetoEditavel(supabase, id);
   const quantidade = numero(formData, "quantidade", 1);
   const mesesSelecionados = inteiroArray(formData, "meses_selecionados");
-  const { data: existente } = await supabase
-    .from("orcamento_projeto_custos")
-    .select("id")
-    .eq("orcamento_projeto_id", id)
-    .eq("catalogo_item_id", item.id)
-    .maybeSingle();
-  const payload = {
+  const { error } = await supabase.from("orcamento_projeto_custos").insert({
     orcamento_projeto_id: id,
     categoria: categoriaPorRubrica(item.rubrica),
     rubrica: item.rubrica,
@@ -399,127 +343,13 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
     entrega: texto(formData, "entrega") || "Entrega principal",
     categoria_institucional: texto(formData, "categoria_institucional") || categoriaInstitucionalPorRubrica(item.rubrica),
     nomenclatura_origem: item.id.includes("-") ? "orcamento_projetos_antigo" : "catalogo_institucional",
-    valor_snapshot: snapshotCatalogoProjeto(item, quantidade, mesesSelecionados),
-  };
-  const { error } = existente
-    ? await supabase.from("orcamento_projeto_custos").update({
-        quantidade,
-        meses_selecionados: mesesSelecionados,
-      }).eq("id", existente.id)
-    : await supabase.from("orcamento_projeto_custos").insert(payload);
+  });
   if (error) throw new Error(error.message);
-  revalidatePath(`${pathLista}/${id}`);
-}
-
-export async function alternarCustoCatalogoProjeto(formData: FormData) {
-  const id = numero(formData, "orcamento_projeto_id");
-  const catalogoId = texto(formData, "catalogo_item_id");
-  const incluir = texto(formData, "incluir") === "true";
-  if (!id || !catalogoId) return;
-  if (!incluir) {
-    const supabase = await createClient();
-    await supabase
-      .from("orcamento_projeto_custos")
-      .delete()
-      .eq("orcamento_projeto_id", id)
-      .eq("catalogo_item_id", catalogoId);
-    revalidatePath(`${pathLista}/${id}`);
-    return;
-  }
-  await adicionarCustoCatalogoProjeto(formData);
-}
-
-export async function atualizarCustoCatalogoProjeto(formData: FormData) {
-  const id = numero(formData, "orcamento_projeto_id");
-  const itemId = numero(formData, "item_id");
-  if (!id || !itemId) return;
-  const quantidade = numero(formData, "quantidade", 1);
-  const custoUnitario = numero(formData, "custo_unitario");
-  const mesesSelecionados = inteiroArray(formData, "meses_selecionados");
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("orcamento_projeto_custos")
-    .update({
-      quantidade,
-      custo_unitario: custoUnitario,
-      preco_unitario: custoUnitario,
-      meses_selecionados: mesesSelecionados,
-    })
-    .eq("id", itemId)
-    .eq("orcamento_projeto_id", id);
-  if (error) throw new Error(error.message);
-  revalidatePath(`${pathLista}/${id}`);
-}
-
-export async function selecionarRubricaCatalogoProjeto(formData: FormData) {
-  const id = numero(formData, "orcamento_projeto_id");
-  const rubrica = texto(formData, "rubrica") || "OU";
-  const incluir = texto(formData, "incluir") === "true";
-  if (!id) return;
-  const supabase = await createClient();
-  if (!incluir) {
-    const { data: catalogo } = await supabase
-      .from("orcamento_projeto_catalogo")
-      .select("id")
-      .eq("ativo", true)
-      .eq("rubrica", rubrica);
-    const ids = (catalogo ?? []).map((item) => item.id);
-    if (ids.length > 0) {
-      await supabase
-        .from("orcamento_projeto_custos")
-        .delete()
-        .eq("orcamento_projeto_id", id)
-        .in("catalogo_item_id", ids);
-    }
-    revalidatePath(`${pathLista}/${id}`);
-    return;
-  }
-
-  const [{ data: catalogo }, { data: existentes }] = await Promise.all([
-    supabase
-      .from("orcamento_projeto_catalogo")
-      .select("id, rubrica, descricao, unidade, preco_unitario, categoria, origem")
-      .eq("ativo", true)
-      .eq("rubrica", rubrica),
-    supabase
-      .from("orcamento_projeto_custos")
-      .select("catalogo_item_id")
-      .eq("orcamento_projeto_id", id),
-  ]);
-  const existentesSet = new Set((existentes ?? []).map((item) => item.catalogo_item_id).filter(Boolean));
-  const linhas = (catalogo ?? [])
-    .filter((item) => !existentesSet.has(item.id))
-    .map((item) => {
-      const quantidade = item.rubrica === "PE" ? 0 : 1;
-      const mesesSelecionados: number[] = [];
-      return {
-        orcamento_projeto_id: id,
-        categoria: categoriaPorRubrica(item.rubrica),
-        rubrica: item.rubrica,
-        catalogo_item_id: item.id,
-        descricao: item.descricao,
-        quantidade,
-        unidade: item.unidade,
-        custo_unitario: Number(item.preco_unitario ?? 0),
-        preco_unitario: Number(item.preco_unitario ?? 0),
-        meses_selecionados: mesesSelecionados,
-        origem: "catalogo",
-        etapa: etapaPorRubrica(item.rubrica),
-        atividade: item.categoria || categoriaPorRubrica(item.rubrica),
-        entrega: "Entrega principal",
-        categoria_institucional: categoriaInstitucionalPorRubrica(item.rubrica),
-        nomenclatura_origem: item.id.includes("-") ? "orcamento_projetos_antigo" : "catalogo_institucional",
-        valor_snapshot: snapshotCatalogoProjeto(item, quantidade, mesesSelecionados),
-      };
-    });
-  if (linhas.length > 0) {
-    const { error } = await supabase.from("orcamento_projeto_custos").insert(linhas);
-    if (error) throw new Error(error.message);
-  }
   revalidatePath(`${pathLista}/${id}`);
 }
 
 export async function salvarViagensProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
 
@@ -537,6 +367,7 @@ export async function salvarViagensProjeto(formData: FormData) {
   });
 
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   await supabase.from("orcamento_projetos").update({ travel_inputs: inputs }).eq("id", id);
 
   // Recalcula a quantidade das linhas VD automatizáveis a partir dos parâmetros.
@@ -559,19 +390,23 @@ export async function salvarViagensProjeto(formData: FormData) {
 }
 
 export async function removerAnaliseProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const itemId = numero(formData, "item_id");
   if (!id || !itemId) return;
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   await supabase.from("orcamento_projeto_analises").delete().eq("id", itemId);
   revalidatePath(`${pathLista}/${id}`);
 }
 
 export async function removerCustoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const itemId = numero(formData, "item_id");
   if (!id || !itemId) return;
   const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
   await supabase.from("orcamento_projeto_custos").delete().eq("id", itemId);
   revalidatePath(`${pathLista}/${id}`);
 }
@@ -581,6 +416,7 @@ const hashToken = (token: string) => createHash("sha256").update(token).digest("
 /** Gera um link público read-only de aprovação. O token bruto é mostrado uma
  *  única vez (via query param); o banco guarda só o hash SHA-256. */
 export async function criarLinkPublico(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
 
@@ -602,6 +438,7 @@ export async function criarLinkPublico(formData: FormData) {
 }
 
 export async function revogarLinkPublico(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const linkId = numero(formData, "link_id");
   if (!id || !linkId) return;
@@ -655,6 +492,7 @@ type ParametrosTemplate = {
  *  Análises de laboratório não entram (são específicas de cada cotação).
  *  Usa o schema existente (0012): parâmetros e itens em colunas jsonb. */
 export async function salvarComoTemplate(formData: FormData) {
+  await exigirPapelOrcamento("gerir_modelos");
   const id = numero(formData, "orcamento_projeto_id");
   const nome = texto(formData, "nome");
   if (!id || !nome) return;
@@ -699,6 +537,7 @@ export async function salvarComoTemplate(formData: FormData) {
 
 /** Cria um novo orçamento de projeto a partir de um template. */
 export async function criarProjetoDeTemplate(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const templateId = numero(formData, "template_id");
   if (!templateId) return;
 
@@ -846,6 +685,7 @@ const BUCKET_ANEXOS = "orcamento-anexos";
 
 /** Faz upload de um anexo do orçamento de projeto para o bucket privado. */
 export async function adicionarAnexoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const arquivo = formData.get("arquivo");
   if (!id || !(arquivo instanceof File) || arquivo.size === 0) return;
@@ -880,6 +720,7 @@ export async function adicionarAnexoProjeto(formData: FormData) {
 }
 
 export async function removerAnexoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
   const id = numero(formData, "orcamento_projeto_id");
   const anexoId = numero(formData, "anexo_id");
   if (!id || !anexoId) return;
@@ -898,6 +739,7 @@ export async function removerAnexoProjeto(formData: FormData) {
 }
 
 export async function excluirOrcamentoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("cancelar_documento");
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
   const supabase = await createClient();

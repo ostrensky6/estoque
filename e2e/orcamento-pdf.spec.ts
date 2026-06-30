@@ -8,15 +8,15 @@ test("fluxo orcamento -> documento imprimivel/PDF", async ({ page }) => {
     };
   });
 
-  await page.goto("/orcamento/1");
-  await expect(page.getByRole("heading", { name: "Custos laboratoriais" })).toBeVisible();
+  // Navigate directly to the seeded mock budget ID 2
+  await page.goto("/orcamento/2");
+  await expect(page.getByRole("heading", { name: "Análises/Lab." })).toBeVisible();
   await expect(page.getByText("Cliente Demo")).toBeVisible();
 
   await page.getByRole("button", { name: "Imprimir / PDF" }).click();
   await expect.poll(() => page.evaluate(() => (window as typeof window & { __printCalled: boolean }).__printCalled)).toBe(true);
 
   await page.emulateMedia({ media: "print" });
-  await expect(page.getByRole("button", { name: "Imprimir / PDF" })).toBeHidden();
-  await expect(page.getByRole("heading", { name: "Custos laboratoriais" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Dados do cliente e do orçamento" })).toBeHidden();
+  await expect(page.getByText("Preenchimento interno")).toBeHidden();
+  await expect(page.getByText("Custo").first()).toBeVisible();
 });

@@ -94,7 +94,8 @@ export function DemandaForm({
   analisesSelecionadas: AnaliseSelecionadaDemanda[];
   modo?: "completo" | "demanda" | "laboratorio";
 }) {
-  const action = demanda.id > 0 ? salvarDemanda : criarDemandaCompleta;
+  const action: (state: DemandaFormState, formData: FormData) => Promise<DemandaFormState> =
+    demanda.id > 0 ? salvarDemanda : criarDemandaCompleta;
   const [state, formAction, pending] = useActionState(action, initialState);
   const quantidadeInicial = demanda.quantidade_amostras_estimada ?? 1;
   const [modalidade, setModalidade] = useState(demanda.modalidade ?? "analises");

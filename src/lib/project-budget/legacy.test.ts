@@ -2,31 +2,31 @@ import { describe, expect, it } from "vitest";
 import { calcularOrcamentoProjetoLegacy, validarParametrosProjetoGrossUp } from "./legacy";
 
 describe("validarParametrosProjetoGrossUp", () => {
-  it("aceita parâmetros acima de 100% quando só lucro, reserva e investimento passam disso", () => {
+  it("aceita soma menor que 100%", () => {
     expect(
       validarParametrosProjetoGrossUp({
         impostos_legacy: 15,
         incubacao: 5,
-        reserva: 50,
+        reserva: 5,
         investimentos: 5,
-        lucro: 100,
+        lucro: 20,
       }),
-    ).toEqual({ ok: true, soma: 20, message: "" });
+    ).toEqual({ ok: true, soma: 50, message: "" });
   });
 
-  it("bloqueia apenas impostos e incubação maior ou igual a 100%", () => {
+  it("bloqueia soma maior ou igual a 100%", () => {
     expect(
       validarParametrosProjetoGrossUp({
-        impostos_legacy: 80,
+        impostos_legacy: 40,
         incubacao: 20,
         reserva: 20,
         investimentos: 10,
-        lucro: 100,
+        lucro: 10,
       }),
     ).toEqual({
       ok: false,
       soma: 100,
-      message: "Impostos e incubação devem somar menos de 100%.",
+      message: "A soma dos parâmetros econômicos deve ser menor que 100%.",
     });
   });
 
@@ -50,18 +50,7 @@ describe("calcularOrcamentoProjetoLegacy", () => {
       { impostos_legacy: 100 },
     );
 
-    expect(calculo.validationError).toBe("Impostos e incubação devem somar menos de 100%.");
+    expect(calculo.validationError).toBe("A soma dos parâmetros econômicos deve ser menor que 100%.");
     expect(calculo.grossTotal).toBe(0);
-  });
-
-  it("calcula lucro de 100% como markup sobre custo", () => {
-    const calculo = calcularOrcamentoProjetoLegacy(
-      [{ rubrica: "MC", quantidade: 1, preco_unitario: 100 }],
-      { impostos_legacy: 10, lucro: 100 },
-    );
-
-    expect(calculo.validationError).toBe("");
-    expect(calculo.profit).toBe(100);
-    expect(calculo.grossTotal).toBe(222.22);
   });
 });

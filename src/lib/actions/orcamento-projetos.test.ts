@@ -10,7 +10,6 @@ const update = vi.fn();
 const insert = vi.fn();
 const eq = vi.fn();
 const deleteRow = vi.fn();
-const maybeSingle = vi.fn();
 const from = vi.fn();
 const createClient = vi.fn();
 const registrarEvento = vi.fn();
@@ -36,7 +35,6 @@ describe("actions de orcamento de projetos", () => {
     insert.mockReset();
     eq.mockReset();
     deleteRow.mockReset();
-    maybeSingle.mockReset();
     from.mockReset();
     createClient.mockReset();
     registrarEvento.mockReset();
@@ -45,7 +43,6 @@ describe("actions de orcamento de projetos", () => {
     eq.mockResolvedValue({ error: null });
     select.mockReturnValue({ eq });
     single.mockResolvedValue({ data: { status: "rascunho" }, error: null });
-    maybeSingle.mockResolvedValue({ data: null, error: null });
     update.mockReturnValue({ eq });
     insert.mockResolvedValue({ error: null });
     deleteRow.mockReturnValue({ eq });
@@ -65,6 +62,7 @@ describe("actions de orcamento de projetos", () => {
 
     await salvarOrcamentoProjeto(formData);
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(update).toHaveBeenCalledWith(expect.objectContaining({
       titulo: "Projeto sem custo",
       status: "enviado",
@@ -90,7 +88,8 @@ describe("actions de orcamento de projetos", () => {
 
     await adicionarCustoProjeto(formData);
 
-    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
+    expect(insert).toHaveBeenCalledWith({
       orcamento_projeto_id: 77,
       categoria: "materiais",
       rubrica: "MC",
@@ -106,14 +105,7 @@ describe("actions de orcamento de projetos", () => {
       entrega: "Relatório técnico",
       categoria_institucional: "Material de consumo",
       nomenclatura_origem: "kontrol",
-      valor_snapshot: expect.objectContaining({
-        tipo: "manual",
-        descricao: "Kit de coleta",
-        valor_unitario_utilizado: 150,
-        quantidade: 2,
-        origem_valor: "entrada_manual",
-      }),
-    }));
+    });
     expect(revalidatePath).toHaveBeenCalledWith("/orcamento/projetos/77");
   });
 
@@ -121,7 +113,7 @@ describe("actions de orcamento de projetos", () => {
     const { salvarParametrosEconomicosProjeto } = await import("./orcamento-projetos");
     const formData = new FormData();
     formData.set("orcamento_projeto_id", "77");
-    formData.set("impostos_legacy", "80");
+    formData.set("impostos_legacy", "50");
     formData.set("incubacao", "20");
     formData.set("reserva", "10");
     formData.set("investimentos", "10");
@@ -131,6 +123,7 @@ describe("actions de orcamento de projetos", () => {
       "NEXT_REDIRECT:/orcamento/projetos/77?erro_parametros=",
     );
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("editar_parametros");
     expect(createClient).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
   });
@@ -150,6 +143,7 @@ describe("actions de orcamento de projetos", () => {
 
     await salvarParametrosEconomicosProjeto(formData);
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("editar_parametros");
     expect(update).toHaveBeenCalledWith({
       margem_lucro: 0,
       impostos: 0,
@@ -190,6 +184,7 @@ describe("actions de orcamento de projetos", () => {
       "NEXT_REDIRECT:/orcamento/projetos/77?erro_exclusao=",
     );
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("cancelar_documento");
     expect(deleteRow).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith(expect.stringContaining("/orcamento/projetos/77?erro_exclusao="));
   });
@@ -202,6 +197,7 @@ describe("actions de orcamento de projetos", () => {
 
     await expect(excluirOrcamentoProjeto(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/projetos");
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("cancelar_documento");
     expect(deleteRow).toHaveBeenCalled();
     expect(eq).toHaveBeenCalledWith("id", 77);
     expect(revalidatePath).toHaveBeenCalledWith("/orcamento/projetos");
@@ -220,6 +216,7 @@ describe("actions de orcamento de projetos", () => {
       "NEXT_REDIRECT:/orcamento/projetos/77",
     );
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("cancelar_documento");
     expect(update).toHaveBeenCalledWith({ status: "cancelado" });
     expect(registrarEvento).toHaveBeenCalledWith(
       "orcamento_projeto",
@@ -240,66 +237,12 @@ describe("actions de orcamento de projetos", () => {
 
     await excluirTemplate(formData);
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("gerir_modelos");
     expect(deleteRow).not.toHaveBeenCalled();
     expect(update).toHaveBeenCalledWith(expect.objectContaining({
       nome: "[ARQUIVADO] Monitoramento padrão",
     }));
     expect(eq).toHaveBeenCalledWith("id", 12);
     expect(revalidatePath).toHaveBeenCalledWith("/orcamento/modelos");
-  });
-
-  it("inclui item do catalogo copiando o valor vigente para snapshot sem duplicar", async () => {
-    const { adicionarCustoCatalogoProjeto } = await import("./orcamento-projetos");
-    const itemCatalogo = {
-      id: "MC-1",
-      rubrica: "MC",
-      descricao: "Reagente",
-      unidade: "un",
-      preco_unitario: 123.45,
-      categoria: "Quimicos",
-      origem: "orcamento_projetos_antigo",
-    };
-    const insertCatalogo = vi.fn().mockResolvedValue({ error: null });
-    const eqCatalogo = vi.fn();
-    const queryCatalogo = {
-      select: vi.fn(() => queryCatalogo),
-      eq: eqCatalogo.mockImplementation(() => queryCatalogo),
-      single: vi.fn().mockResolvedValue({ data: itemCatalogo, error: null }),
-      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-      insert: insertCatalogo,
-    };
-    from.mockImplementation(() => queryCatalogo);
-    const formData = new FormData();
-    formData.set("orcamento_projeto_id", "77");
-    formData.set("catalogo_item_id", "MC-1");
-    formData.set("quantidade", "2");
-
-    await adicionarCustoCatalogoProjeto(formData);
-
-    expect(insertCatalogo).toHaveBeenCalledWith(expect.objectContaining({
-      catalogo_item_id: "MC-1",
-      custo_unitario: 123.45,
-      quantidade: 2,
-      valor_snapshot: expect.objectContaining({
-        catalogo_item_id: "MC-1",
-        valor_unitario_utilizado: 123.45,
-        quantidade: 2,
-        origem_valor: "orcamento_projetos_antigo",
-      }),
-    }));
-  });
-
-  it("desmarcar item do catalogo remove o item do orcamento sem apagar catalogo", async () => {
-    const { alternarCustoCatalogoProjeto } = await import("./orcamento-projetos");
-    const deleteCatalogo = vi.fn(() => ({ eq: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) })) }));
-    from.mockReturnValue({ delete: deleteCatalogo });
-    const formData = new FormData();
-    formData.set("orcamento_projeto_id", "77");
-    formData.set("catalogo_item_id", "MC-1");
-    formData.set("incluir", "false");
-
-    await alternarCustoCatalogoProjeto(formData);
-
-    expect(deleteCatalogo).toHaveBeenCalled();
   });
 });

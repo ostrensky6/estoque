@@ -1,6 +1,6 @@
-import type { EstadoEtapaDemanda } from "@/lib/orcamento/fluxo-demanda";
+import type { EstadoEtapa } from "@/lib/orcamento/etapas-proposta";
 
-export function classeEtapaFluxo(estado: EstadoEtapaDemanda, isAtual: boolean) {
+export function classeEtapaFluxo(estado: EstadoEtapa, isAtual: boolean) {
   if (isAtual) {
     return "border-2 border-brand-500 bg-brand-100 text-brand-950 shadow-md ring-1 ring-brand-200 dark:border-brand-300 dark:bg-brand-900/70 dark:text-brand-50 dark:ring-brand-800";
   }

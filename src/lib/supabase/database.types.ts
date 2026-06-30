@@ -2794,6 +2794,22 @@ export type Database = {
         Args: { p_lote_id: number; p_motivo: string }
         Returns: undefined
       }
+      emitir_orcamento_final_transacional: {
+        Args: {
+          p_demanda_id: number
+          p_validade_dias: number
+          p_total_laboratorio_custo: number
+          p_total_laboratorio_preco: number
+          p_total_projeto_custo: number
+          p_total_projeto_final: number
+          p_total_final: number
+          p_snapshot: Json
+          p_parametros: Json
+          p_criado_por: string | null
+          p_usuario_email: string | null
+        }
+        Returns: Json
+      }
       current_papel: { Args: never; Returns: string }
       dar_baixa_plano: { Args: { p_planejamento_id: number }; Returns: Json }
       desbloquear_lote: { Args: { p_lote_id: number }; Returns: undefined }

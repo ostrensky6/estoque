@@ -7,16 +7,16 @@ import { test, expect } from "@playwright/test";
  * projeto) em /orcamento/demandas/1.
  */
 test("etapa de parâmetros econômicos renderiza densa no fluxo da demanda", async ({ page }) => {
-  await page.goto("/orcamento/demandas/1?etapa=final");
+  await page.goto("/orcamento/demandas/1?etapa=parametros");
 
-  const secao = page.locator("#final");
+  const secao = page.locator("#parametros");
   await expect(secao).toBeVisible();
 
-  // Três blocos densos (§8.1): parâmetros -> resultado -> dashboard.
-  await expect(secao.getByRole("heading", { name: "Taxas, impostos e lucro" })).toBeVisible();
-  await expect(secao.getByRole("heading", { name: "Resultado consolidado" })).toBeVisible();
-  await expect(secao.getByRole("heading", { name: "Dashboard da proposta" })).toBeVisible();
-  await expect(secao.getByText("Custo direto", { exact: true })).toBeVisible();
+  // Três blocos densos (§8.1): base de custos -> parâmetros aplicados -> resultado.
+  await expect(secao.getByText("Base de cálculo").first()).toBeVisible();
+  await expect(secao.getByText(/Parâmetros aplicados/)).toBeVisible();
+  await expect(secao.getByText("Resultado final")).toBeVisible();
+  await expect(secao.getByText("Subtotal técnico").first()).toBeVisible();
   // "Total final" aparece no painel e na tabela de memória; basta existir no painel.
   await expect(secao.getByText("Total final").first()).toBeVisible();
 

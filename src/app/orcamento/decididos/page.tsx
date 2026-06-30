@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function OrcamentosDecididosPage() {
-  redirect("/orcamento/historico");
+  redirect("/orcamento/demandas");
 }

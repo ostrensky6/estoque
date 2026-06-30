@@ -9,14 +9,18 @@ const demandaAnalisesSelect = vi.fn(() => ({
   eq: vi.fn(async () => ({ data: [], error: null })),
 }));
 const from = vi.fn();
+const exigirPapelOrcamento = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect }));
+vi.mock("@/lib/orcamento/governanca", () => ({ exigirPapelOrcamento }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
     from,
   })),
 }));
+
+const demandasActions = await import("./demandas");
 
 function mockDemanda(demanda: Record<string, unknown>) {
   demandaSingle.mockResolvedValue({ data: demanda, error: null });
@@ -44,6 +48,7 @@ describe("actions de demandas/propostas", () => {
     insert.mockReset();
     demandaAnalisesSelect.mockClear();
     from.mockReset();
+    exigirPapelOrcamento.mockClear();
   });
 
   it("bloqueia modulo laboratorial quando a modalidade e somente projeto", async () => {
@@ -55,14 +60,14 @@ describe("actions de demandas/propostas", () => {
       projeto_id: 3,
       escopo_preliminar: "Escopo",
     });
-    const { gerarOrcamentoAnalisesDaDemanda } = await import("./demandas");
     const formData = new FormData();
     formData.set("demanda_id", "11");
 
-    await expect(gerarOrcamentoAnalisesDaDemanda(formData)).rejects.toThrow(
+    await expect(demandasActions.gerarOrcamentoAnalisesDaDemanda(formData)).rejects.toThrow(
       "NEXT_REDIRECT:/orcamento/demandas/11",
     );
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(insert).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith("/orcamento/demandas/11");
   });
@@ -77,28 +82,28 @@ describe("actions de demandas/propostas", () => {
       matriz_amostra: "Água",
       quantidade_amostras_estimada: 3,
     });
-    const { gerarOrcamentoProjetoDaDemanda } = await import("./demandas");
     const formData = new FormData();
     formData.set("demanda_id", "12");
 
-    await expect(gerarOrcamentoProjetoDaDemanda(formData)).rejects.toThrow(
+    await expect(demandasActions.gerarOrcamentoProjetoDaDemanda(formData)).rejects.toThrow(
       "NEXT_REDIRECT:/orcamento/demandas/12",
     );
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(insert).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith("/orcamento/demandas/12");
   });
 
   it("bloqueia geracao de modulo quando a demanda esta incompleta", async () => {
     mockDemanda({ id: 13, modalidade: "analises" });
-    const { gerarOrcamentoAnalisesDaDemanda } = await import("./demandas");
     const formData = new FormData();
     formData.set("demanda_id", "13");
 
-    await expect(gerarOrcamentoAnalisesDaDemanda(formData)).rejects.toThrow(
+    await expect(demandasActions.gerarOrcamentoAnalisesDaDemanda(formData)).rejects.toThrow(
       "NEXT_REDIRECT:/orcamento/demandas/13",
     );
 
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(insert).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith("/orcamento/demandas/13");
   });

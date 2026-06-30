@@ -10,7 +10,6 @@ describe("avaliarCompletudeDemanda", () => {
       escopo_preliminar: "10 amostras",
       matriz_amostra: "Água",
       quantidade_amostras_estimada: 10,
-      analises_solicitadas: 1,
     });
 
     expect(resultado).toEqual({
@@ -39,14 +38,13 @@ describe("avaliarCompletudeDemanda", () => {
     });
 
     expect(resultado.completa).toBe(false);
-    expect(resultado.faltante).toBe(86);
+    expect(resultado.faltante).toBe(83);
     expect(resultado.pendencias).toEqual([
       "informar o titulo da demanda",
       "informar cliente cadastrado ou cliente livre",
       "descrever escopo preliminar ou descricao da demanda",
       "informar matriz ou tipo de amostra",
       "informar quantidade estimada de amostras",
-      "selecionar ao menos uma análise solicitada",
     ]);
   });
 
@@ -62,7 +60,6 @@ describe("avaliarCompletudeDemanda", () => {
     expect(resultado.pendencias).toEqual([
       "informar matriz ou tipo de amostra",
       "informar quantidade estimada de amostras",
-      "selecionar ao menos uma análise solicitada",
     ]);
   });
 });
