@@ -163,6 +163,8 @@ begin
   returning id into v_insumo_id;
 
   insert into public.identificadores (
+    tipo,
+    valor,
     codigo,
     codigo_normalizado,
     formato,
@@ -174,6 +176,8 @@ begin
     criado_por
   )
   values (
+    'manual',
+    v_codigo,
     v_codigo,
     v_codigo_normalizado,
     coalesce(v_triagem.formato, 'manual'),

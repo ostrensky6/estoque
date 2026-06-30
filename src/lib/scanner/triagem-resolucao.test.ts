@@ -40,4 +40,27 @@ describe("triagem-resolucao", () => {
     expect(migration).toContain("update public.cadastros_triagem");
     expect(migration).toContain("grant execute on function public.resolver_triagem_criando_insumo");
   });
+
+  it("preenche campos legados obrigatorios ao criar identificador de insumo", () => {
+    const migration = readFileSync(
+      join(process.cwd(), "supabase/migrations/0070_resolver_triagem_criando_insumo.sql"),
+      "utf8",
+    ).toLowerCase();
+
+    const insertIdentificador = migration.match(
+      /insert into public\.identificadores\s*\(([\s\S]*?)\)\s*values\s*\(([\s\S]*?)\)\s*returning id into v_identificador_id;/,
+    );
+
+    expect(insertIdentificador).not.toBeNull();
+    const [, columns, values] = insertIdentificador!;
+
+    expect(columns).toContain("tipo");
+    expect(columns).toContain("valor");
+    expect(columns).toContain("codigo");
+    expect(columns).toContain("codigo_normalizado");
+    expect(columns).toContain("entidade_tipo");
+    expect(values).toContain("'manual'");
+    expect(values).toContain("v_codigo");
+    expect(values).toContain("'insumo'");
+  });
 });
