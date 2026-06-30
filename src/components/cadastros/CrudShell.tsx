@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   type ColumnDef,
@@ -22,7 +23,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp, ChevronsUpDown, MoreHorizontal, Plus, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronsUpDown, Download, MoreHorizontal, Plus, Search } from "lucide-react";
 import type { Campo, Coluna } from "@/lib/cadastros/config";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -68,7 +69,7 @@ import {
   type FormState,
 } from "@/lib/actions/cadastros";
 import { cn } from "@/lib/utils";
-import { formatCurrency, formatNumber, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/formatters";
 
 type Registro = Record<string, unknown>;
 
@@ -81,6 +82,8 @@ function fmt(value: unknown, tipo?: Coluna["tipo"]) {
       return formatPercent(Number(value));
     case "number":
       return formatNumber(Number(value));
+    case "date":
+      return formatDate(String(value));
     case "checkbox":
       return value ? "Sim" : "Não";
     default:
@@ -92,6 +95,21 @@ type ColMeta = {
   alinhar?: "left" | "right";
   calculada?: boolean;
   tipo?: Coluna["tipo"];
+  largura?: Coluna["largura"];
+};
+
+type FiltroCategorico = {
+  fieldId: string;
+  columnId: string;
+  label: string;
+  opcoes: { value: string; label: string }[];
+};
+
+const larguraClasse: Record<NonNullable<Coluna["largura"]>, string> = {
+  xs: "max-w-20",
+  sm: "max-w-32",
+  md: "max-w-44",
+  lg: "max-w-80",
 };
 
 /** Ordena numericamente colunas de valor/percent/número (que podem vir como string do banco). */
@@ -108,6 +126,16 @@ const categoricalFilter: FilterFn<Registro> = (row, columnId, filterValue) => {
   const s = typeof v === "boolean" ? String(v) : String(v ?? "");
   return s === String(filterValue);
 };
+
+function uniqueOptions(opcoes: { value: string; label: string }[]) {
+  const seen = new Set<string>();
+  return opcoes.filter((opcao) => {
+    const value = String(opcao.value);
+    if (value === "" || seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
+}
 
 export function CrudShell({
   slug,
@@ -139,10 +167,6 @@ export function CrudShell({
     setAberto(true);
   }, []);
 
-  const campoPorKey = useMemo(
-    () => Object.fromEntries(campos.map((c) => [c.name, c])) as Record<string, Campo>,
-    [campos],
-  );
   const tipoPorKey = useMemo(
     () =>
       Object.fromEntries(colunas.map((c) => [c.key, c.tipo])) as Record<
@@ -193,8 +217,23 @@ export function CrudShell({
           ? numericSort
           : "alphanumeric",
       filterFn: categoricalFilter,
-      meta: { alinhar: c.alinhar, calculada: c.calculada, tipo: c.tipo },
+      meta: { alinhar: c.alinhar, calculada: c.calculada, tipo: c.tipo, largura: c.largura },
     }));
+    for (const campo of campos) {
+      if (
+        (campo.tipo === "checkbox" || campo.tipo === "select") &&
+        !dataCols.some((col) => col.id === campo.name)
+      ) {
+        dataCols.push({
+          id: campo.name,
+          accessorFn: (row) => row[campo.name],
+          header: campo.label,
+          cell: (ctx) => exibir(campo.name, ctx.getValue(), campo.tipo),
+          filterFn: categoricalFilter,
+          enableSorting: false,
+        });
+      }
+    }
     dataCols.push({
       id: "_acoes",
       header: "Ações",
@@ -210,7 +249,7 @@ export function CrudShell({
       ),
     });
     return dataCols;
-  }, [colunas, slug, rotulo, editar, exibir]);
+  }, [campos, colunas, slug, rotulo, editar, exibir]);
 
   // O React Compiler não memoiza componentes que usam useReactTable (a API
   // retorna funções não-memoizáveis); o TanStack faz a própria memoização e os
@@ -228,13 +267,83 @@ export function CrudShell({
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 25 } },
+    initialState: {
+      columnVisibility: Object.fromEntries(
+        campos
+          .filter((campo) => !colunas.some((coluna) => coluna.key === campo.name))
+          .map((campo) => [campo.name, false]),
+      ),
+      pagination: { pageSize: 25 },
+    },
   });
 
-  const filtrosCategoricos = colunas.filter((c) => {
-    const campo = campoPorKey[c.key];
-    return campo && (campo.tipo === "checkbox" || campo.tipo === "select");
-  });
+  const filtrosCategoricos = useMemo<FiltroCategorico[]>(() => {
+    const chavesVisiveis = new Set(colunas.map((coluna) => coluna.key));
+
+    return campos
+      .filter((campo) => campo.tipo === "checkbox" || campo.tipo === "select")
+      .map((campo) => {
+        let columnId = campo.name;
+
+        if (campo.tipo === "select" && !chavesVisiveis.has(campo.name)) {
+          const nomeVisivel = campo.name.replace(/_id$/, "_nome");
+          if (chavesVisiveis.has(nomeVisivel)) columnId = nomeVisivel;
+        }
+
+        if (campo.tipo === "checkbox") {
+          return {
+            fieldId: campo.name,
+            columnId,
+            label: campo.label,
+            opcoes: [
+              { value: "true", label: "Sim" },
+              { value: "false", label: "Não" },
+            ],
+          };
+        }
+
+        if (columnId !== campo.name) {
+          return {
+            fieldId: campo.name,
+            columnId,
+            label: campo.label,
+            opcoes: uniqueOptions(
+              rows
+                .map((row) => row[columnId])
+                .filter((value) => value != null && value !== "" && value !== "—")
+                .map((value) => ({ value: String(value), label: String(value) }))
+                .sort((a, b) => a.label.localeCompare(b.label, "pt-BR")),
+            ),
+          };
+        }
+
+        const opcoesConfiguradas = campo.opcoes?.map((opcao) => ({
+          value: String(opcao.value),
+          label: opcao.label,
+        })) ?? [];
+        const labelsPorValor = new Map(opcoesConfiguradas.map((opcao) => [opcao.value, opcao.label]));
+        const opcoesDosRegistros = rows
+          .map((row) => row[campo.name])
+          .filter((value) => value != null && value !== "")
+          .map((value) => {
+            const stringValue = String(value);
+            return {
+              value: stringValue,
+              label: labelsPorValor.get(stringValue) ?? stringValue,
+            };
+          });
+
+        return {
+          fieldId: campo.name,
+          columnId,
+          label: campo.label,
+          opcoes: uniqueOptions([...opcoesConfiguradas, ...opcoesDosRegistros]).sort((a, b) =>
+            a.label.localeCompare(b.label, "pt-BR"),
+          ),
+        };
+      })
+      .filter((filtro) => filtro.opcoes.length > 0);
+  }, [campos, colunas, rows]);
 
   const totalFiltrado = table.getFilteredRowModel().rows.length;
   const temFiltro = globalFilter !== "" || columnFilters.length > 0;
@@ -255,31 +364,23 @@ export function CrudShell({
           />
         </div>
 
-        {filtrosCategoricos.map((c) => {
-          const campo = campoPorKey[c.key];
-          const col = table.getColumn(c.key);
+        {filtrosCategoricos.map((filtro) => {
+          const col = table.getColumn(filtro.columnId);
           const val = (col?.getFilterValue() as string) ?? "";
           return (
             <Select
-              key={c.key}
+              key={filtro.fieldId}
               value={val}
               onChange={(e) => col?.setFilterValue(e.target.value || undefined)}
-              className="h-8 w-auto px-2 py-1.5 text-xs"
-              aria-label={`Filtrar por ${c.label}`}
+              className="h-8 w-auto max-w-56 px-2 py-1.5 text-xs"
+              aria-label={`Filtrar por ${filtro.label}`}
             >
-              <option value="">{c.label}: todos</option>
-              {campo.tipo === "checkbox" ? (
-                <>
-                  <option value="true">Sim</option>
-                  <option value="false">Não</option>
-                </>
-              ) : (
-                campo.opcoes?.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))
-              )}
+              <option value="">{filtro.label}: todos</option>
+              {filtro.opcoes.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </Select>
           );
         })}
@@ -288,14 +389,21 @@ export function CrudShell({
           {temFiltro ? `${totalFiltrado} de ${rows.length}` : `${rows.length} registro(s)`}
         </Badge>
 
-        <Button onClick={novo} className="ml-auto">
+        <Button asChild variant="outline" className="ml-auto">
+          <Link href={`/cadastros/${slug}/export`}>
+            <Download />
+            XLSX
+          </Link>
+        </Button>
+
+        <Button onClick={novo}>
           <Plus />
           Novo {singular}
         </Button>
       </div>
 
       {/* Tabela */}
-      <div className="mt-4 overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+      <div className="mt-4 overflow-x-auto rounded-lg border border-border bg-card text-xs shadow-sm">
         <Table>
           <TableHeader className="bg-muted/60">
             {table.getHeaderGroups().map((hg) => (
@@ -308,8 +416,10 @@ export function CrudShell({
                     <TableHead
                       key={header.id}
                       className={cn(
+                        "h-9 px-3 py-2 text-xs",
                         alinhaDir ? "text-right" : "text-left",
                         meta?.calculada && "text-primary",
+                        meta?.largura && larguraClasse[meta.largura],
                       )}
                     >
                       {header.column.getCanSort() ? (
@@ -348,14 +458,22 @@ export function CrudShell({
                   const meta = cell.column.columnDef.meta as ColMeta | undefined;
                   const cls =
                     cell.column.id === "_acoes"
-                      ? "text-right whitespace-nowrap"
+                      ? "whitespace-nowrap px-3 py-2 text-right"
                       : cn(
+                          "px-3 py-2 align-middle",
                           meta?.alinhar === "right" ? "text-right tabular-nums" : "text-left",
                           meta?.calculada && "font-medium text-primary",
+                          meta?.largura && larguraClasse[meta.largura],
                         );
+                  const rendered = flexRender(cell.column.columnDef.cell, cell.getContext());
                   return (
                     <TableCell key={cell.id} className={cls}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      <span
+                        className={cn("block truncate", meta?.alinhar === "right" && "ml-auto")}
+                        title={typeof rendered === "string" ? rendered : undefined}
+                      >
+                        {rendered}
+                      </span>
                     </TableCell>
                   );
                 })}

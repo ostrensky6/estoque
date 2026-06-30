@@ -1,13 +1,23 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createClientUntyped } from "@/lib/supabase/server";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
 import { adicionarItem, removerItem, excluirPlano } from "@/lib/actions/planejamento";
 import { comprarFaltasDoPlano } from "@/lib/actions/compras";
 import { PlanoAcoes } from "@/components/planejamento/PlanoAcoes";
+import {
+  PlanejamentoConferenciaLotes,
+  type PlanoConferenciaInsumo,
+  type PlanoConferenciaRegistro,
+} from "@/components/planejamento/PlanejamentoConferenciaLotes";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { Combobox } from "@/components/ui/combobox";
 import { formatNumber as fmt } from "@/lib/formatters";
+import {
+  loteSugeridoFefo,
+  type LoteConferencia,
+} from "@/lib/planejamento/conferencia-lotes";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +29,7 @@ export default async function PlanoDetalhe({
   const { id } = await params;
   const planId = Number(id);
   const supabase = await createClient();
+  const supabaseUntyped = await createClientUntyped();
 
   const { data: plano } = await supabase
     .from("planejamento")
@@ -34,6 +45,21 @@ export default async function PlanoDetalhe({
   ]);
 
   const demanda = await computarDemandaPlano(supabase, planId);
+  const demandaIds = demanda.map((d) => d.insumo_id);
+  const [{ data: lotesConferencia }, { data: conferenciasPlanejamento }] = demandaIds.length > 0
+    ? await Promise.all([
+        supabase
+          .from("lotes_estoque")
+          .select("id, insumo_id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status")
+          .in("insumo_id", demandaIds)
+          .gt("quantidade_atual", 0),
+        supabaseUntyped
+          .from("planejamento_lote_conferencias")
+          .select("id, insumo_id, lote_id, quantidade_conferida, status, justificativa, conferido_em")
+          .eq("planejamento_id", planId)
+          .order("conferido_em", { ascending: false }),
+      ])
+    : [{ data: [] }, { data: [] }];
 
   const rs = (reservas ?? []) as { status: string }[];
   const status = rs.some((r) => r.status === "consumido")
@@ -56,6 +82,46 @@ export default async function PlanoDetalhe({
             : status;
   const temFalta = demanda.some((d) => d.falta > 0);
   const baixaPendente = statusLabel === "Reservado";
+  const lotesPorInsumo = new Map<number, (LoteConferencia & { codigoLote: string | null })[]>();
+  for (const lote of lotesConferencia ?? []) {
+    const insumoId = Number(lote.insumo_id);
+    if (!Number.isInteger(insumoId) || insumoId <= 0) continue;
+    const linha = {
+      id: Number(lote.id),
+      insumoId,
+      codigoLote: lote.codigo_lote ? String(lote.codigo_lote) : null,
+      quantidadeAtual: Number(lote.quantidade_atual ?? 0),
+      status: String(lote.status ?? ""),
+      validade: lote.validade ? String(lote.validade) : null,
+      validadeAposAbertura: lote.validade_apos_abertura ? String(lote.validade_apos_abertura) : null,
+    };
+    lotesPorInsumo.set(insumoId, [...(lotesPorInsumo.get(insumoId) ?? []), linha]);
+  }
+  const insumosConferencia: PlanoConferenciaInsumo[] = demanda.map((d) => {
+    const loteSugerido = loteSugeridoFefo(lotesPorInsumo.get(d.insumo_id) ?? []);
+    const loteSugeridoCompleto = loteSugerido
+      ? lotesPorInsumo.get(d.insumo_id)?.find((lote) => lote.id === loteSugerido.id) ?? null
+      : null;
+
+    return {
+      insumoId: d.insumo_id,
+      especificacao: d.especificacao,
+      unidade: d.unidade,
+      quantidadePrevista: d.demanda,
+      loteSugeridoId: loteSugerido?.id ?? null,
+      loteSugeridoLabel: loteSugerido
+        ? `#${loteSugerido.id}${loteSugeridoCompleto?.codigoLote ? ` · ${loteSugeridoCompleto.codigoLote}` : ""}`
+        : null,
+    };
+  });
+  const conferencias: PlanoConferenciaRegistro[] = (conferenciasPlanejamento ?? []).map((row) => ({
+    id: Number(row.id),
+    insumoId: Number(row.insumo_id),
+    loteId: Number(row.lote_id),
+    quantidadeConferida: Number(row.quantidade_conferida ?? 0),
+    status: String(row.status ?? ""),
+    justificativa: row.justificativa ? String(row.justificativa) : null,
+  }));
 
   const inp = "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"; // §8.2: entrada em azul
 
@@ -196,6 +262,14 @@ export default async function PlanoDetalhe({
             </table>
           </div>
         </section>
+
+        {baixaPendente && insumosConferencia.length > 0 && (
+          <PlanejamentoConferenciaLotes
+            planId={planId}
+            insumos={insumosConferencia}
+            conferencias={conferencias}
+          />
+        )}
 
         {/* ações */}
         <section className="mt-8">

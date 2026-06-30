@@ -17,12 +17,20 @@ const numOrNull = (fd: FormData, k: string) => {
   return Number.isFinite(n) ? n : null;
 };
 const bool = (fd: FormData, k: string) => fd.get(k) === "on" || fd.get(k) === "true";
+const MATERIAL_SEM_INSUMO_MSG =
+  "Material com consumo informado precisa estar vinculado a um insumo de estoque.";
 
 function revalidarReceita(codigo: string) {
   revalidatePath(`/analises/${codigo}`);
   revalidatePath("/analises");
   revalidatePath("/custeio");
   revalidatePath("/insumos");
+}
+
+function validarVinculoMaterial(quantidade_por_amostra: number | null, insumo_id: number | null) {
+  if (Number(quantidade_por_amostra ?? 0) > 0 && !insumo_id) {
+    throw new Error(MATERIAL_SEM_INSUMO_MSG);
+  }
 }
 
 // =====================================================================
@@ -235,17 +243,22 @@ export async function removerEquipamento(formData: FormData) {
 
 export async function adicionarMaterial(formData: FormData) {
   const codigo = txtReq(formData, "codigo_analise");
+  const insumo_id = numOrNull(formData, "insumo_id");
+  const quantidade_por_amostra = numOrNull(formData, "quantidade_por_amostra");
+  validarVinculoMaterial(quantidade_por_amostra, insumo_id);
+  const grupo_escolha = txt(formData, "grupo_escolha");
   const supabase = await createClient();
   const { error } = await supabase.from("insumo_analise").insert({
     codigo_analise: codigo,
     nome_etapa: txtReq(formData, "nome_etapa") || "—",
     nome_atividade: txtReq(formData, "nome_atividade") || "—",
     especificacao_insumo: txt(formData, "especificacao_insumo"),
-    insumo_id: numOrNull(formData, "insumo_id"),
-    quantidade_por_amostra: numOrNull(formData, "quantidade_por_amostra"),
+    insumo_id,
+    quantidade_por_amostra,
     unidade: txt(formData, "unidade"),
     modo_cobranca: txt(formData, "modo_cobranca"),
-    grupo_escolha: txt(formData, "grupo_escolha"),
+    grupo_escolha,
+    preferencial: Boolean(grupo_escolha) && bool(formData, "preferencial"),
   });
   if (error) throw new Error(error.message);
   revalidarReceita(codigo);
@@ -255,16 +268,21 @@ export async function atualizarMaterial(formData: FormData) {
   const codigo = txtReq(formData, "codigo_analise");
   const id = Number(formData.get("id"));
   if (!id) return;
+  const insumo_id = numOrNull(formData, "insumo_id");
+  const quantidade_por_amostra = numOrNull(formData, "quantidade_por_amostra");
+  validarVinculoMaterial(quantidade_por_amostra, insumo_id);
+  const grupo_escolha = txt(formData, "grupo_escolha");
   const supabase = await createClient();
   const { error } = await supabase
     .from("insumo_analise")
     .update({
       especificacao_insumo: txt(formData, "especificacao_insumo"),
-      insumo_id: numOrNull(formData, "insumo_id"),
-      quantidade_por_amostra: numOrNull(formData, "quantidade_por_amostra"),
+      insumo_id,
+      quantidade_por_amostra,
       unidade: txt(formData, "unidade"),
       modo_cobranca: txt(formData, "modo_cobranca"),
-      grupo_escolha: txt(formData, "grupo_escolha"),
+      grupo_escolha,
+      preferencial: Boolean(grupo_escolha) && bool(formData, "preferencial"),
     })
     .eq("id", id);
   if (error) throw new Error(error.message);

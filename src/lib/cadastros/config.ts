@@ -28,7 +28,7 @@ export type Campo = {
   max?: number;
   opcoes?: { value: string; label: string }[];
   /** preenche as opções dinamicamente no servidor (ex.: lista de fornecedores) */
-  opcoesDe?: "fornecedores" | "clientes" | "projetos";
+  opcoesDe?: "fornecedores" | "clientes" | "projetos" | "tipo_insumos";
   ajuda?: string;
   colSpan?: 1 | 2;
   placeholder?: string;
@@ -43,6 +43,7 @@ export type Coluna = {
   label: string;
   tipo?: CampoTipo;
   alinhar?: "left" | "right";
+  largura?: "xs" | "sm" | "md" | "lg";
   /** coluna calculada (somente leitura, destacada) */
   calculada?: boolean;
 };
@@ -143,6 +144,8 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       { key: "quantidade", label: "Qtd", tipo: "number", alinhar: "right" },
       { key: "custo_unitario", label: "Custo un.", tipo: "currency", alinhar: "right" },
       { key: "vida_util_anos", label: "Vida útil (anos)", tipo: "number", alinhar: "right" },
+      { key: "data_validade", label: "Validade", tipo: "date" },
+      { key: "tempo_para_validade", label: "Tempo restante", calculada: true },
       { key: "custo_dia", label: "Custo/dia", tipo: "currency", alinhar: "right", calculada: true },
     ],
     campos: [
@@ -153,6 +156,12 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       { name: "custo_unitario", label: "Custo unitário (R$)", tipo: "currency", obrigatorio: true, min: 0 },
       { name: "data_aquisicao", label: "Data de aquisição", tipo: "date" },
       { name: "vida_util_anos", label: "Vida útil (anos)", tipo: "number", min: 0, step: "0.5", ajuda: "Para depreciação linear." },
+      {
+        name: "data_validade",
+        label: "Data de validade / fim da vida útil",
+        tipo: "date",
+        ajuda: "Calculada por data de aquisição + vida útil quando esses campos estiverem preenchidos.",
+      },
 
       {
         name: "percentual_manutencao_anual",
@@ -183,18 +192,25 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       "Catálogo completo de reagentes e consumíveis: marca, embalagem, fornecedor, compra, política de estoque e armazenamento. O custo unitário é derivado do valor e da quantidade da embalagem.",
     rotulo: "especificacao",
     colunas: [
-      { key: "nome_item", label: "Categoria" },
-      { key: "especificacao", label: "Especificação" },
-      { key: "fabricante", label: "Marca" },
-      { key: "custo_total_embalagem", label: "Embalagem (R$)", tipo: "currency", alinhar: "right" },
-      { key: "quantidade_embalagem", label: "Qtd emb.", tipo: "number", alinhar: "right" },
-      { key: "unidade", label: "Un." },
-      { key: "custo_unitario", label: "Custo un.", tipo: "currency", alinhar: "right", calculada: true },
-      { key: "ponto_reposicao", label: "Ponto repos.", tipo: "number", alinhar: "right" },
+      { key: "tipo_insumo_nome", label: "Tipo técnico", largura: "md" },
+      { key: "especificacao", label: "Item específico / SKU", largura: "lg" },
+      { key: "fabricante", label: "Marca", largura: "sm" },
+      { key: "unidade", label: "Un.", largura: "xs" },
+      { key: "custo_unitario", label: "Custo un.", tipo: "currency", alinhar: "right", largura: "sm", calculada: true },
+      { key: "data_validade", label: "Validade", tipo: "date", largura: "sm" },
+      { key: "ponto_reposicao", label: "Repos.", tipo: "number", alinhar: "right", largura: "xs" },
     ],
     campos: [
-      { name: "nome_item", label: "Categoria", tipo: "text", placeholder: "Ladder, Beads, Kit Illumina…", grupo: "Identificação" },
-      { name: "especificacao", label: "Especificação", tipo: "text", obrigatorio: true, colSpan: 2, ajuda: "Identificador único do insumo." },
+      {
+        name: "tipo_insumo_id",
+        label: "Tipo técnico",
+        tipo: "select",
+        opcoesDe: "tipo_insumos",
+        grupo: "Identificação",
+        ajuda: "Agrupa itens específicos equivalentes para cálculo, análise e relatórios.",
+      },
+      { name: "nome_item", label: "Categoria curta", tipo: "text", placeholder: "Ladder, Beads, Kit Illumina…" },
+      { name: "especificacao", label: "Item específico / SKU", tipo: "text", obrigatorio: true, colSpan: 2, ajuda: "Identificador operacional para compra, estoque, lote e rastreabilidade." },
       { name: "fabricante", label: "Marca / fabricante", tipo: "text", placeholder: "Qiagen, Illumina, KASVI…" },
       { name: "codigo_fabricante", label: "Código do fabricante", tipo: "text", placeholder: "Catálogo / part number" },
       { name: "codigo_interno", label: "Código interno", tipo: "text" },
@@ -224,13 +240,27 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       { name: "estoque_seguranca", label: "Estoque de segurança", tipo: "number", min: 0 },
       { name: "lead_time_dias", label: "Lead time (dias)", tipo: "number", min: 0, ajuda: "Prazo típico de reposição." },
 
+      { name: "data_fabricacao", label: "Data de fabricação", tipo: "date", grupo: "Validade" },
+      {
+        name: "validade_dias",
+        label: "Validade após fabricação/aquisição (dias)",
+        tipo: "number",
+        min: 0,
+        ajuda: "Usado para calcular a data de validade quando ela não for informada manualmente.",
+      },
+      {
+        name: "data_validade",
+        label: "Data de validade",
+        tipo: "date",
+        ajuda: "Pode ser preenchida manualmente; se vazia, usa fabricação ou última compra + validade em dias.",
+      },
       {
         name: "condicao_armazenamento",
         label: "Condição de armazenamento",
         tipo: "text",
         colSpan: 2,
         placeholder: "−20 °C, 2–8 °C, temperatura ambiente…",
-        grupo: "Armazenamento e validade",
+        grupo: "Armazenamento",
       },
       {
         name: "validade_apos_abertura_dias",
@@ -240,6 +270,44 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         ajuda: "A validade de cada lote recebido é registrada em Estoque → Lotes.",
       },
       { name: "sds_url", label: "Ficha de segurança (URL do SDS)", tipo: "text", colSpan: 2 },
+    ],
+  },
+
+  tipo_insumos: {
+    slug: "tipo_insumos",
+    tabela: "tipo_insumos",
+    titulo: "Tipos técnicos",
+    singular: "tipo técnico",
+    subtitulo:
+      "Cadastro normalizado para cálculo, análise e padronização. Cada tipo técnico pode agrupar vários itens específicos/SKUs de compra, estoque e rastreabilidade.",
+    rotulo: "nome",
+    colunas: [
+      { key: "nome", label: "Tipo técnico" },
+      { key: "classe", label: "Classe" },
+      { key: "unidade_referencia", label: "Unidade ref." },
+      { key: "finalidade", label: "Finalidade" },
+      { key: "ativo", label: "Ativo", tipo: "checkbox" },
+    ],
+    campos: [
+      { name: "nome", label: "Nome técnico", tipo: "text", obrigatorio: true, colSpan: 2, grupo: "Identificação" },
+      {
+        name: "classe",
+        label: "Classe",
+        tipo: "select",
+        opcoes: [
+          { value: "reagente", label: "Reagente" },
+          { value: "consumivel", label: "Consumível" },
+          { value: "material", label: "Material" },
+          { value: "equipamento_consumivel", label: "Consumível de equipamento" },
+          { value: "servico", label: "Serviço" },
+          { value: "insumo", label: "Insumo" },
+        ],
+        ajuda: "Classe usada em análises e relatórios.",
+      },
+      { name: "ativo", label: "Ativo", tipo: "checkbox", padraoLigado: true },
+      { name: "unidade_referencia", label: "Unidade de referência", tipo: "text", placeholder: "uL, mL, un, reação…" },
+      { name: "finalidade", label: "Finalidade técnica", tipo: "text", colSpan: 2 },
+      { name: "observacoes", label: "Observações", tipo: "textarea", colSpan: 2, grupo: "Governança" },
     ],
   },
 
@@ -381,6 +449,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
 export const ORDEM_CADASTROS = [
   "projetos",
   "clientes",
+  "tipo_insumos",
   "insumos",
   "equipamentos",
   "fornecedores",

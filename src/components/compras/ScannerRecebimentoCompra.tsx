@@ -3,57 +3,46 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Camera, Keyboard, Loader2, PackageCheck, ScanLine } from "lucide-react";
+import { AlertCircle, Camera, Keyboard, Loader2, ScanLine } from "lucide-react";
 
-import { receberItemPedidoInterno } from "@/lib/actions/pedidos-internos";
+import { receberItemPedido } from "@/lib/actions/compras";
 import {
   resolverCodigoRecebimentoInterno,
   type ResultadoScannerRecebimento,
 } from "@/lib/actions/scanner";
-import type { FormState } from "@/lib/actions/cadastros";
 import {
   iniciarLeitorCamera,
   type ScannerCameraControls,
 } from "@/components/scanner/zxing-adapter";
 
-type Insumo = { id: number; especificacao: string | null; unidade: string | null };
+type StatusCamera = "parada" | "iniciando" | "ativa" | "erro";
 
-export type ItemRecebivel = {
+export type ItemCompraRecebivel = {
   id: number;
   pedidoId: number;
-  especificacao: string;
   quantidade: number;
-  unidade: string | null;
   insumoId: number | null;
-  fornecedorSugerido: string | null;
-  orcamentoPrevio: number | null;
+  insumoDescricao: string | null;
+  unidade: string | null;
 };
 
-export function ReceberItemPedidoInterno({
-  item,
-  insumos,
-}: {
-  item: ItemRecebivel;
-  insumos: Insumo[];
-}) {
+export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }) {
   const router = useRouter();
-  const [aberto, setAberto] = useState(false);
-  const [state, setState] = useState<FormState>({ ok: false });
-  const [recebimentoPending, startRecebimentoTransition] = useTransition();
-  const [scanPending, startScanTransition] = useTransition();
-  // "" = escolher existente; "novo" = cadastrar pela especificação.
-  const [modo, setModo] = useState<"" | "novo">(item.insumoId ? "" : "");
-  const [insumoId, setInsumoId] = useState(item.insumoId ? String(item.insumoId) : "");
-  const [codigoLote, setCodigoLote] = useState("");
-  const [validade, setValidade] = useState("");
-  const [codigoScanner, setCodigoScanner] = useState("");
-  const [resultadoScanner, setResultadoScanner] = useState<ResultadoScannerRecebimento | null>(null);
-  const [cameraStatus, setCameraStatus] = useState<"parada" | "iniciando" | "ativa" | "erro">("parada");
-  const [cameraMessage, setCameraMessage] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<ScannerCameraControls | null>(null);
+  const [aberto, setAberto] = useState(false);
+  const [recebimentoPending, startRecebimentoTransition] = useTransition();
+  const [scanPending, startScanTransition] = useTransition();
+  const [codigoScanner, setCodigoScanner] = useState("");
+  const [codigoLote, setCodigoLote] = useState("");
+  const [validade, setValidade] = useState("");
+  const [resultadoScanner, setResultadoScanner] = useState<ResultadoScannerRecebimento | null>(null);
+  const [aplicacaoMessage, setAplicacaoMessage] = useState<string | null>(null);
+  const [erroRecebimento, setErroRecebimento] = useState<string | null>(null);
+  const [cameraStatus, setCameraStatus] = useState<StatusCamera>("parada");
+  const [cameraMessage, setCameraMessage] = useState<string | null>(null);
 
-  function pararCamera(status: "parada" | "erro" = "parada") {
+  function pararCamera(status: StatusCamera = "parada") {
     controlsRef.current?.stop();
     controlsRef.current = null;
     setCameraStatus(status);
@@ -66,26 +55,33 @@ export function ReceberItemPedidoInterno({
     };
   }, []);
 
-  function action(formData: FormData) {
-    startRecebimentoTransition(async () => {
-      const res = await receberItemPedidoInterno({ ok: false }, formData);
-      setState(res);
-      if (res.ok) {
-        setAberto(false);
-        pararCamera();
-        router.refresh();
-      }
-    });
+  function fechar() {
+    if (recebimentoPending || scanPending) return;
+    pararCamera();
+    setAberto(false);
   }
 
   function aplicarResultadoScan(resultado: ResultadoScannerRecebimento) {
     setResultadoScanner(resultado);
+    setAplicacaoMessage(null);
+
     if (!resultado.ok || !resultado.encontrado) return;
 
-    setModo("");
-    setInsumoId(String(resultado.insumoId));
-    if (resultado.loteCodigo) setCodigoLote(resultado.loteCodigo);
-    if (resultado.validade) setValidade(resultado.validade);
+    if (item.insumoId && resultado.insumoId !== item.insumoId) {
+      setAplicacaoMessage(
+        `Codigo aponta para o insumo #${resultado.insumoId}, mas este item do pedido e do insumo #${item.insumoId}.`,
+      );
+      return;
+    }
+
+    if (resultado.tipo === "lote") {
+      if (resultado.loteCodigo) setCodigoLote(resultado.loteCodigo);
+      if (resultado.validade) setValidade(resultado.validade);
+      setAplicacaoMessage("Lote compativel identificado. Confira os campos antes de confirmar.");
+      return;
+    }
+
+    setAplicacaoMessage("Insumo compativel identificado. Confira quantidade, validade e codigo do lote.");
   }
 
   function resolverScanner(codigo: string) {
@@ -125,47 +121,53 @@ export function ReceberItemPedidoInterno({
     }
   }
 
+  function action(formData: FormData) {
+    setErroRecebimento(null);
+    startRecebimentoTransition(async () => {
+      try {
+        await receberItemPedido(formData);
+        pararCamera();
+        setAberto(false);
+        router.refresh();
+      } catch (error) {
+        setErroRecebimento(error instanceof Error ? error.message : "Nao foi possivel receber o item.");
+      }
+    });
+  }
+
   const inp =
-    "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-leaf-500 focus:outline-none focus:ring-1 focus:ring-leaf-500 dark:border-zinc-700 dark:bg-zinc-950";
+    "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-zinc-700 dark:bg-zinc-950";
   const scanInput =
-    "h-9 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-leaf-500 focus:outline-none focus:ring-1 focus:ring-leaf-500 dark:border-zinc-700 dark:bg-zinc-950";
+    "h-9 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-zinc-700 dark:bg-zinc-950";
 
   return (
     <>
       <button
+        type="button"
         onClick={() => setAberto(true)}
-        className="inline-flex items-center gap-1.5 rounded-md bg-leaf-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-leaf-500"
+        className="inline-flex items-center gap-1.5 rounded bg-brand-600 px-2 py-1 text-xs font-medium text-white hover:bg-brand-500"
       >
-        <PackageCheck className="h-3.5 w-3.5" />
+        <ScanLine className="h-3.5 w-3.5" />
         Receber
       </button>
 
       {aberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 text-left">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => {
-              if (!recebimentoPending && !scanPending) {
-                pararCamera();
-                setAberto(false);
-              }
-            }}
-          />
+          <div className="absolute inset-0 bg-black/40" onClick={fechar} />
           <div className="relative max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:bg-zinc-900">
-            <h3 className="text-base font-semibold">Receber item</h3>
+            <h3 className="text-base font-semibold">Receber item de compra</h3>
             <p className="mt-1 text-xs text-zinc-500">
-              {item.especificacao}
+              {item.insumoDescricao ?? `Insumo #${item.insumoId ?? "-"}`}
               {item.unidade ? ` · ${item.unidade}` : ""}
             </p>
-            <p className="mt-2 rounded-md bg-leaf-50 px-3 py-2 text-xs text-leaf-800 dark:bg-leaf-950/30 dark:text-leaf-300">
-              Ao confirmar, a quantidade entra em estoque como um lote do insumo escolhido e o item sai
-              do módulo de recebimento. O lote entra no insumo escolhido.
+            <p className="mt-2 rounded-md bg-brand-50 px-3 py-2 text-xs text-brand-800 dark:bg-brand-950/30 dark:text-brand-300">
+              O scanner apenas preenche ou confere dados. O recebimento so acontece ao confirmar.
             </p>
 
             <section className="mt-4 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h4 className="inline-flex items-center gap-2 text-sm font-semibold">
-                  <ScanLine className="h-4 w-4 text-leaf-600 dark:text-leaf-300" />
+                  <ScanLine className="h-4 w-4 text-brand-600 dark:text-brand-300" />
                   Escanear codigo
                 </h4>
                 <span className="rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
@@ -226,7 +228,7 @@ export function ReceberItemPedidoInterno({
                   type="button"
                   onClick={() => resolverScanner(codigoScanner)}
                   disabled={scanPending || recebimentoPending || codigoScanner.trim().length === 0}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-leaf-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-leaf-500 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-500 disabled:opacity-50"
                 >
                   {scanPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Resolver
@@ -236,12 +238,12 @@ export function ReceberItemPedidoInterno({
               {resultadoScanner && (
                 <div
                   className={`mt-3 rounded-md px-3 py-2 text-xs ${
-                    resultadoScanner.ok && resultadoScanner.encontrado
-                      ? "bg-leaf-50 text-leaf-800 dark:bg-leaf-950/30 dark:text-leaf-300"
+                    resultadoScanner.ok && resultadoScanner.encontrado && !aplicacaoMessage?.startsWith("Codigo aponta")
+                      ? "bg-brand-50 text-brand-800 dark:bg-brand-950/30 dark:text-brand-300"
                       : "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
                   }`}
                 >
-                  <p>{resultadoScanner.message}</p>
+                  <p>{aplicacaoMessage ?? resultadoScanner.message}</p>
                   {resultadoScanner.ok && resultadoScanner.encontrado && (
                     <p className="mt-1 font-medium">
                       {resultadoScanner.insumoDescricao ?? `Insumo #${resultadoScanner.insumoId}`}
@@ -259,101 +261,17 @@ export function ReceberItemPedidoInterno({
 
             <form action={action} className="mt-4 grid grid-cols-2 gap-3">
               <input type="hidden" name="item_id" value={item.id} />
-              <input type="hidden" name="pedido_interno_id" value={item.pedidoId} />
-
-              <div className="col-span-2">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                  Insumo de estoque <span className="text-red-500">*</span>
-                </label>
-                <div className="mt-1 flex gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setModo("")}
-                    className={`rounded-md px-2 py-1 ${modo === "" ? "bg-leaf-600 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"}`}
-                  >
-                    Existente
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setModo("novo")}
-                    className={`rounded-md px-2 py-1 ${modo === "novo" ? "bg-leaf-600 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"}`}
-                  >
-                    Cadastrar novo
-                  </button>
-                </div>
-                {modo === "" ? (
-                  <select
-                    name="insumo_id"
-                    value={insumoId}
-                    onChange={(event) => setInsumoId(event.target.value)}
-                    className={inp}
-                  >
-                    <option value="">— selecione —</option>
-                    {insumos.map((insumo) => (
-                      <option key={insumo.id} value={insumo.id}>
-                        {insumo.especificacao}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    name="novo_insumo"
-                    defaultValue={item.especificacao}
-                    placeholder="Especificação do novo insumo"
-                    required
-                    className={inp}
-                  />
-                )}
-              </div>
-
-              {modo === "novo" && (
-                <>
-                  <div className="col-span-1">
-                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                      Categoria de compra <span className="text-red-500">*</span>
-                    </label>
-                    <select name="categoria_compra" defaultValue="" required className={inp}>
-                      <option value="">Selecione</option>
-                      <option value="critico">Crítico</option>
-                      <option value="operacional">Operacional</option>
-                      <option value="eventual">Eventual</option>
-                    </select>
-                  </div>
-                  <div className="col-span-1">
-                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                      Fator de conversão <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      name="fator_conversao"
-                      type="number"
-                      step="any"
-                      min="0.000001"
-                      defaultValue="1"
-                      required
-                      className={inp}
-                    />
-                  </div>
-                </>
-              )}
-
+              <input type="hidden" name="pedido_id" value={item.pedidoId} />
               <div className="col-span-1">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                  Quantidade <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Quantidade</label>
                 <input
-                  name="quantidade"
+                  name="quantidade_recebida"
                   type="number"
                   step="any"
                   min="0"
                   defaultValue={item.quantidade}
                   className={inp}
                 />
-              </div>
-              <div className="col-span-1">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                  Unidade {modo === "novo" && <span className="text-red-500">*</span>}
-                </label>
-                <input name="unidade" defaultValue={item.unidade ?? ""} required={modo === "novo"} className={inp} />
               </div>
               <div className="col-span-1">
                 <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Validade</label>
@@ -365,8 +283,8 @@ export function ReceberItemPedidoInterno({
                   className={inp}
                 />
               </div>
-              <div className="col-span-1">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Código do lote</label>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Codigo do lote</label>
                 <input
                   name="codigo"
                   type="text"
@@ -375,47 +293,27 @@ export function ReceberItemPedidoInterno({
                   className={inp}
                 />
               </div>
-              <div className="col-span-1">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                  Custo unitário (R$) {modo === "novo" && <span className="text-red-500">*</span>}
-                </label>
-                <input
-                  name="custo"
-                  type="number"
-                  step="0.0001"
-                  min={modo === "novo" ? "0.0001" : "0"}
-                  defaultValue={item.orcamentoPrevio ?? ""}
-                  required={modo === "novo"}
-                  className={inp}
-                />
-              </div>
-              <div className="col-span-1">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Fornecedor</label>
-                <input name="fornecedor" type="text" defaultValue={item.fornecedorSugerido ?? ""} className={inp} />
-              </div>
 
-              {state.message && !state.ok && (
+              {erroRecebimento && (
                 <p className="col-span-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
-                  {state.message}
+                  {erroRecebimento}
                 </p>
               )}
 
               <div className="col-span-2 mt-1 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    pararCamera();
-                    setAberto(false);
-                  }}
+                  onClick={fechar}
                   className="rounded-md px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                   Cancelar
                 </button>
                 <button
                   disabled={recebimentoPending || scanPending}
-                  className="rounded-md bg-leaf-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-leaf-500 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-500 disabled:opacity-50"
                 >
-                  {recebimentoPending ? "Recebendo…" : "Confirmar recebimento"}
+                  {recebimentoPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Confirmar recebimento
                 </button>
               </div>
             </form>
