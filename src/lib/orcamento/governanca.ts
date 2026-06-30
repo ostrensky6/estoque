@@ -9,8 +9,10 @@ export type AcaoOrcamento =
   | "revisar_modulo"
   | "editar_parametros"
   | "emitir_final"
+  | "classificar_final"
   | "duplicar_final"
   | "cancelar_documento"
+  | "acompanhar_fundos"
   | "gerir_modelos"
   | "ver_governanca";
 
@@ -80,6 +82,14 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
     eventoAuditavel: "Emissão final",
   },
   {
+    acao: "classificar_final",
+    titulo: "Classificar orçamento final",
+    descricao: "Registrar se a proposta foi enviada, reenviada, aprovada ou recusada.",
+    papelMinimo: "coordenador",
+    motivoObrigatorio: false,
+    eventoAuditavel: "Classificação comercial de versão final",
+  },
+  {
     acao: "duplicar_final",
     titulo: "Duplicar versão final",
     descricao: "Criar nova versão preservando a origem e substituindo a versão ativa.",
@@ -94,6 +104,14 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
     papelMinimo: "coordenador",
     motivoObrigatorio: true,
     eventoAuditavel: "Cancelamento com motivo",
+  },
+  {
+    acao: "acompanhar_fundos",
+    titulo: "Acompanhar fundos e taxas",
+    descricao: "Registrar recebimentos, impostos pagos e execução de fundos de orçamentos emitidos.",
+    papelMinimo: "gestor",
+    motivoObrigatorio: false,
+    eventoAuditavel: "Acompanhamento financeiro auditável",
   },
   {
     acao: "gerir_modelos",

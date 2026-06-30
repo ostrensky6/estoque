@@ -5,12 +5,15 @@ import type { OrcamentoRow } from "@/components/orcamento/OrcamentosTable";
 const STATUS: Record<string, string> = {
   rascunho: "Rascunho",
   enviado: "Enviado",
+  alterado_reenviado: "Alterado e reenviado",
   aprovado: "Aprovado",
   recusado: "Recusado",
+  rejeitado: "Rejeitado",
   cancelado: "Cancelado",
   emitido: "Emitido",
   substituido: "Substituído",
   vencido: "Vencido",
+  convertido_projeto: "Convertido em projeto",
 };
 
 const TIPO = {
@@ -48,6 +51,7 @@ export type OrcamentoFila = OrcamentoRow & {
   origem: "laboratorio" | "projeto" | "final";
   grupo: "em_elaboracao" | "revisao" | "emitidos" | "decididos";
   criadoEm: string;
+  demandaId: number | null;
 };
 
 export async function carregarLinhasOrcamentos(): Promise<OrcamentoFila[]> {
@@ -104,6 +108,7 @@ export async function carregarLinhasOrcamentos(): Promise<OrcamentoFila[]> {
       origem: "laboratorio",
       grupo: grupoDocumento(o.status, etapaLaboratorio(o.status, statusOperacional)),
       criadoEm: o.criado_em,
+      demandaId: o.demanda_id ?? null,
     };
   });
 
@@ -150,6 +155,7 @@ export async function carregarLinhasOrcamentos(): Promise<OrcamentoFila[]> {
       origem: "projeto",
       grupo: grupoDocumento(o.status, etapaAtual),
       criadoEm: o.criado_em,
+      demandaId: o.demanda_id ?? null,
     };
   });
 
@@ -169,13 +175,16 @@ export async function carregarLinhasOrcamentos(): Promise<OrcamentoFila[]> {
       total: Number(v.total_final ?? 0),
       status: v.status,
       statusLabel: STATUS[v.status] ?? v.status,
-      etapaAtual: v.status === "emitido" ? "Emitido ativo" : v.status === "vencido" ? "Vencido" : "Histórico",
+      etapaAtual: ["emitido", "enviado", "alterado_reenviado"].includes(v.status)
+        ? "Proposta ativa"
+        : v.status === "vencido" ? "Vencido" : "Histórico",
       responsavel: demanda?.responsavel_interno ?? v.criado_por ?? "—",
       atualizadoEm: v.criado_em,
-      proximaAcao: v.status === "emitido" ? "Acompanhar validade" : "Abrir histórico",
+      proximaAcao: ["emitido", "enviado", "alterado_reenviado"].includes(v.status) ? "Acompanhar retorno" : "Abrir histórico",
       origem: "final",
-      grupo: ["emitido", "vencido"].includes(v.status) ? "emitidos" : "decididos",
+      grupo: ["emitido", "enviado", "alterado_reenviado", "vencido"].includes(v.status) ? "emitidos" : "decididos",
       criadoEm: v.criado_em,
+      demandaId: v.demanda_id ?? null,
     };
   });
 

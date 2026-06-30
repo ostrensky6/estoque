@@ -5,6 +5,9 @@ const redirect = vi.fn((url: string) => {
 });
 const demandaSingle = vi.fn();
 const insert = vi.fn();
+const demandaAnalisesSelect = vi.fn(() => ({
+  eq: vi.fn(async () => ({ data: [], error: null })),
+}));
 const from = vi.fn();
 const exigirPapelOrcamento = vi.fn();
 
@@ -16,6 +19,8 @@ vi.mock("@/lib/supabase/server", () => ({
     from,
   })),
 }));
+
+const demandasActions = await import("./demandas");
 
 function mockDemanda(demanda: Record<string, unknown>) {
   demandaSingle.mockResolvedValue({ data: demanda, error: null });
@@ -29,6 +34,9 @@ function mockDemanda(demanda: Record<string, unknown>) {
         })),
       };
     }
+    if (table === "demanda_analises") {
+      return { select: demandaAnalisesSelect };
+    }
     return { insert };
   });
 }
@@ -38,6 +46,7 @@ describe("actions de demandas/propostas", () => {
     redirect.mockClear();
     demandaSingle.mockReset();
     insert.mockReset();
+    demandaAnalisesSelect.mockClear();
     from.mockReset();
     exigirPapelOrcamento.mockClear();
   });
@@ -51,11 +60,10 @@ describe("actions de demandas/propostas", () => {
       projeto_id: 3,
       escopo_preliminar: "Escopo",
     });
-    const { gerarOrcamentoAnalisesDaDemanda } = await import("./demandas");
     const formData = new FormData();
     formData.set("demanda_id", "11");
 
-    await expect(gerarOrcamentoAnalisesDaDemanda(formData)).rejects.toThrow(
+    await expect(demandasActions.gerarOrcamentoAnalisesDaDemanda(formData)).rejects.toThrow(
       "NEXT_REDIRECT:/orcamento/demandas/11",
     );
 
@@ -74,11 +82,10 @@ describe("actions de demandas/propostas", () => {
       matriz_amostra: "Água",
       quantidade_amostras_estimada: 3,
     });
-    const { gerarOrcamentoProjetoDaDemanda } = await import("./demandas");
     const formData = new FormData();
     formData.set("demanda_id", "12");
 
-    await expect(gerarOrcamentoProjetoDaDemanda(formData)).rejects.toThrow(
+    await expect(demandasActions.gerarOrcamentoProjetoDaDemanda(formData)).rejects.toThrow(
       "NEXT_REDIRECT:/orcamento/demandas/12",
     );
 
@@ -89,11 +96,10 @@ describe("actions de demandas/propostas", () => {
 
   it("bloqueia geracao de modulo quando a demanda esta incompleta", async () => {
     mockDemanda({ id: 13, modalidade: "analises" });
-    const { gerarOrcamentoAnalisesDaDemanda } = await import("./demandas");
     const formData = new FormData();
     formData.set("demanda_id", "13");
 
-    await expect(gerarOrcamentoAnalisesDaDemanda(formData)).rejects.toThrow(
+    await expect(demandasActions.gerarOrcamentoAnalisesDaDemanda(formData)).rejects.toThrow(
       "NEXT_REDIRECT:/orcamento/demandas/13",
     );
 

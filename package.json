@@ -9,6 +9,7 @@
     "lint": "eslint src e2e playwright.config.ts vitest.config.ts next.config.ts eslint.config.mjs",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "lab:import": "node scripts/import-laboratorio1.mjs",
     "prod:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-production-target.ps1",
     "prod:deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-production.ps1"
   },
@@ -21,6 +22,7 @@
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.1",
     "@tanstack/react-table": "^8.21.3",
+    "@zxing/browser": "^0.1.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

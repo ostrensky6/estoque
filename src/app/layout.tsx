@@ -7,7 +7,7 @@ import { CommandPalette } from "@/components/layout/CommandPalette";
 import { ContextHelp } from "@/components/layout/ContextHelp";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
-import { getNavigationGroups } from "@/config/navigation";
+import { getCommandGroups, getSidebarGroups } from "@/config/navigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,7 +44,8 @@ export default async function RootLayout({
     perfil = data;
   }
 
-  const grupos = getNavigationGroups(perfil);
+  const sidebarGroups = getSidebarGroups(perfil);
+  const commandGroups = getCommandGroups(perfil);
 
   return (
     <html
@@ -67,11 +68,11 @@ export default async function RootLayout({
         >
           {user ? (
             <div className="md:flex md:min-h-dvh">
-              <Sidebar groups={grupos} perfil={perfil} userEmail={user.email ?? null} />
+              <Sidebar groups={sidebarGroups} perfil={perfil} userEmail={user.email ?? null} />
               <div id="conteudo-principal" tabIndex={-1} className="min-w-0 flex-1 outline-none">
                 {children}
               </div>
-              <CommandPalette groups={grupos} />
+              <CommandPalette groups={commandGroups} />
               <ContextHelp />
             </div>
           ) : (

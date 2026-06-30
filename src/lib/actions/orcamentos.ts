@@ -239,6 +239,26 @@ export async function adicionarItemOrcamento(formData: FormData) {
   revalidatePath(`/orcamento/${id}`);
 }
 
+export async function alternarAnaliseOrcamento(formData: FormData) {
+  const id = Number(formData.get("orcamento_id"));
+  const codigo = String(formData.get("codigo_analise") ?? "");
+  const incluir = String(formData.get("incluir") ?? "") === "true";
+  if (!id || !codigo) return;
+  if (!incluir) {
+    const supabase = await createClient();
+    await assegurarLaboratorioEditavel(supabase, id);
+    await supabase
+      .from("orcamento_itens")
+      .delete()
+      .eq("orcamento_id", id)
+      .eq("codigo_analise", codigo);
+    await atualizarOperacionalLaboratorio(supabase, id);
+    revalidatePath(`/orcamento/${id}`);
+    return;
+  }
+  await adicionarItemOrcamento(formData);
+}
+
 export async function removerItemOrcamento(formData: FormData) {
   await exigirPapelOrcamento("preencher_custos");
   const id = Number(formData.get("orcamento_id"));

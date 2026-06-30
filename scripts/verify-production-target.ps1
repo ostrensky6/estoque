@@ -8,7 +8,8 @@ $ErrorActionPreference = "Stop"
 $Expected = @{
   VercelOrgId = "team_HYxJGUZ1QLz2P0H2U4l9Ayn8"
   VercelProjectId = "prj_EnHPskP6CjuCv8UCzC6iXjQpcwQi"
-  VercelScope = "ostrensky-s-projects"
+  VercelScope = "team_HYxJGUZ1QLz2P0H2U4l9Ayn8"
+  VercelTeamName = "Ostrensky's projects"
   VercelProject = "kontrol-gia"
   ProductionUrl = "https://kontrol-gia.vercel.app"
   SupabaseRef = "hhxwdcwphitfxywbgtju"
@@ -130,7 +131,7 @@ try {
   }
 
   Write-Host "Validacao de producao OK:" -ForegroundColor Green
-  Write-Host " - Vercel: $($Expected.VercelScope)/$($Expected.VercelProject) -> $($Expected.ProductionUrl)"
+  Write-Host " - Vercel: $($Expected.VercelTeamName) [$($Expected.VercelScope)]/$($Expected.VercelProject) -> $($Expected.ProductionUrl)"
   Write-Host " - Supabase: $($Expected.SupabaseRef)"
   Write-Host " - Migrations: sem versoes duplicadas"
 } finally {

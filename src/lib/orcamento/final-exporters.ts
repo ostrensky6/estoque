@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import ExcelJS from "exceljs";
 import {
   AlignmentType,
   BorderStyle,
   Document,
   HeadingLevel,
+  ImageRun,
   Packer,
   Paragraph,
   ShadingType,
@@ -22,7 +24,7 @@ const pct = (v: number) => `${v.toLocaleString("pt-BR", { maximumFractionDigits:
 
 const FONT_FAMILY = "Helvetica";
 const INK = "1B3530";
-const BLUE = "005EA8";
+const BLUE = "1A5292";
 const HEADER_FILL = "E8F4F3";
 const SOFT_FILL = "F4FBFB";
 const LINE = "D9E7E4";
@@ -284,4 +286,227 @@ function tableRow(values: string[], header = false) {
 function tableBorders() {
   const border = { style: BorderStyle.SINGLE, color: LINE, size: 6 };
   return { top: border, bottom: border, left: border, right: border, insideHorizontal: border, insideVertical: border };
+}
+
+export async function exportPropostaConfiguradaDocx(
+  info: any,
+  resumo: any,
+  itens: any[],
+  rubricas: any[],
+  opcoes: Record<string, boolean>,
+  tipoEmissao: "GIA / UFPR" | "ATGC",
+  signer: any,
+) {
+  const children: any[] = [];
+  const mainColor = tipoEmissao === "GIA / UFPR" ? BLUE : "0B8793"; // Blue vs Teal
+  const titleText = tipoEmissao === "GIA / UFPR"
+    ? "Grupo Integrado de Aquicultura e Estudos Ambientais"
+    : "ATGC Genética Ambiental Limitada";
+
+  children.push(
+    docParagraph(titleText, {
+      heading: HeadingLevel.TITLE,
+      bold: true,
+      color: mainColor,
+      size: 30,
+    })
+  );
+
+  children.push(docParagraph(`Proposta Comercial: ${info.numero} · Versão ${info.versao}`));
+  children.push(docParagraph(`Emissão: ${info.emitido_em || "-"} · Validade: ${info.validade || "-"}`));
+  children.push(docParagraph(`Cliente: ${info.cliente_nome || "-"}`));
+  if (info.cliente_contato) {
+    children.push(docParagraph(`Contato do Cliente: ${info.cliente_contato}`));
+  }
+  children.push(docParagraph(`Assunto: ${info.demanda_titulo || "-"}`));
+
+  if (opcoes.resumo_demanda && info.escopo) {
+    children.push(docParagraph("1. Objeto e Escopo", { heading: HeadingLevel.HEADING_1, bold: true, color: mainColor, size: 24 }));
+    children.push(docParagraph(info.escopo));
+  }
+
+  if (opcoes.analises_incluidas && itens.length > 0) {
+    children.push(docParagraph("2. Análises e Serviços Laboratoriais", { heading: HeadingLevel.HEADING_1, bold: true, color: mainColor, size: 24 }));
+
+    const showPrices = opcoes.custos_laboratoriais;
+    const headers = ["Código", "Análise / Descrição"];
+    if (opcoes.qtd_amostras) headers.push("Amostras");
+    if (showPrices) {
+      headers.push("V. Unitário");
+      headers.push("Subtotal");
+    }
+
+    const rows = [
+      tableRow(headers, true),
+      ...itens.map((item) => {
+        const codigo = item.codigo ?? item.codigo_analise;
+        const nome = item.nome ?? item.analises?.nome ?? "Análise Técnica";
+        const amostras = item.amostras ?? item.n_amostras ?? 0;
+        const precoUnitario = item.precoUnitarioMedio ?? item.preco_unitario ?? 0;
+        const precoSubtotal = item.preco ?? (amostras * precoUnitario);
+
+        const rowCells = [codigo, nome];
+        if (opcoes.qtd_amostras) rowCells.push(String(amostras));
+        if (showPrices) {
+          rowCells.push(formatCurrency(precoUnitario));
+          rowCells.push(formatCurrency(precoSubtotal));
+        }
+        return tableRow(rowCells, false);
+      })
+    ];
+
+    children.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        layout: TableLayoutType.FIXED,
+        borders: tableBorders(),
+        rows,
+      })
+    );
+  }
+
+  if (opcoes.custos_projeto && rubricas.length > 0) {
+    children.push(docParagraph("3. Custos Diretos de Projeto", { heading: HeadingLevel.HEADING_1, bold: true, color: mainColor, size: 24 }));
+
+    const headers = ["Descrição", "Rubrica", "Qtd", "Unitário", "Subtotal"];
+    const rows = [
+      tableRow(headers, true),
+      ...rubricas.map((item) => {
+        const desc = item.descricao ?? item.nome ?? "Item de projeto";
+        const rub = item.rubrica ?? item.codigo ?? "OU";
+        const qty = item.quantidade ?? item.itens ?? 0;
+        const uni = item.preco_unitario ?? (item.custo ? item.custo / (qty || 1) : 0);
+        const sub = (item.preco_unitario && item.quantidade) ? (item.preco_unitario * item.quantidade) : (item.custo ?? 0);
+        return tableRow([
+          desc,
+          rub,
+          String(qty),
+          formatCurrency(uni),
+          formatCurrency(sub),
+        ], false);
+      })
+    ];
+
+    children.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        layout: TableLayoutType.FIXED,
+        borders: tableBorders(),
+        rows,
+      })
+    );
+  }
+
+  if (opcoes.subtotais_modulo || opcoes.taxas || opcoes.impostos) {
+    children.push(docParagraph("Detalhamento Econômico", { heading: HeadingLevel.HEADING_1, bold: true, color: mainColor, size: 22 }));
+
+    const detailRows: any[] = [];
+    if (opcoes.subtotais_modulo) {
+      detailRows.push(tableRow(["Subtotal Lab / Análises", formatCurrency(resumo.total_laboratorio_preco)]));
+      detailRows.push(tableRow(["Subtotal Custo de Projeto", formatCurrency(resumo.total_projeto_final)]));
+    }
+    if (opcoes.impostos) {
+      const taxesVal = resumo.total_final - (resumo.total_laboratorio_preco + resumo.total_projeto_final);
+      detailRows.push(tableRow(["Impostos e Encargos Fiscais", formatCurrency(taxesVal > 0 ? taxesVal : 0)]));
+    }
+
+    if (detailRows.length > 0) {
+      children.push(
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          layout: TableLayoutType.FIXED,
+          borders: tableBorders(),
+          rows: [
+            tableRow(["Indicador", "Valor"], true),
+            ...detailRows
+          ]
+        })
+      );
+    }
+  }
+
+  children.push(docParagraph("Valor Total da Proposta", { heading: HeadingLevel.HEADING_2, bold: true, color: mainColor, size: 22 }));
+  children.push(
+    docParagraph(`Valor Total: ${formatCurrency(resumo.total_final)}`, {
+      bold: true,
+      size: 26,
+    })
+  );
+
+  if (opcoes.prazo_execucao && signer.prazo) {
+    children.push(docParagraph(`Prazo de Execução: ${signer.prazo}`));
+  }
+  if (opcoes.prazo_validade && signer.formaPagamento) {
+    children.push(docParagraph(`Forma de Pagamento: ${signer.formaPagamento}`));
+  }
+  if (opcoes.condicoes_comerciais && info.condicoes) {
+    children.push(docParagraph("Condições Comerciais", { bold: true }));
+    children.push(docParagraph(info.condicoes));
+  }
+  if (signer.observacoes) {
+    children.push(docParagraph("Observações Gerais", { bold: true }));
+    children.push(docParagraph(signer.observacoes));
+  }
+
+  if (opcoes.dados_emissor) {
+    children.push(new Paragraph({ spacing: { before: 800 } }));
+    const assinaturaBytes = dataUrlToUint8Array(signer.assinaturaUrl ?? signer.assinatura_url);
+    if (assinaturaBytes) {
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new ImageRun({
+              data: assinaturaBytes,
+              transformation: { width: 180, height: 72 },
+              type: "png",
+            }),
+          ],
+        }),
+      );
+    }
+    children.push(docParagraph(signer.nome, { bold: true }));
+    children.push(docParagraph(`${signer.cargo} — ${signer.instituicao}`));
+    if (signer.email || signer.telefone) {
+      children.push(docParagraph(`${signer.email || ""} | ${signer.telefone || ""}`, { size: 18, color: "555555" }));
+    }
+  }
+
+  // Rodapé com o endereço
+  children.push(new Paragraph({ spacing: { before: 600 } }));
+  const brandName = tipoEmissao === "GIA / UFPR" ? "Grupo Integrado de Aquicultura e Estudos Ambientais" : "ATGC Genética Ambiental Limitada";
+  children.push(docParagraph(brandName, { bold: true, size: 16, color: "888888" }));
+  children.push(docParagraph("Universidade Federal do Paraná, Rua dos Funcionários, 1540, Juvevê, Curitiba - PR, CEP 80035-050", { size: 16, color: "888888" }));
+
+  const doc = new Document({
+    creator: "Kontrol",
+    styles: {
+      default: {
+        document: {
+          run: { font: FONT_FAMILY, color: INK, size: 22 },
+          paragraph: { alignment: AlignmentType.JUSTIFIED, spacing: { after: 120 } },
+        },
+      },
+    },
+    sections: [
+      {
+        properties: { page: { margin: { top: 900, right: 720, bottom: 900, left: 720 } } },
+        children,
+      },
+    ],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, `proposta-comercial-${(info.numero || "final").replace(/[^\w-]+/g, "_")}.docx`);
+}
+
+function dataUrlToUint8Array(dataUrl?: string | null) {
+  if (!dataUrl?.startsWith("data:image/png;base64,")) return null;
+  const base64 = dataUrl.split(",", 2)[1];
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }

@@ -338,7 +338,7 @@ export default async function ParametrosEconomicosPage() {
           />
         </section>
 
-        <section className="mt-8 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section tabIndex={0} aria-label="Orçamentos de projeto considerados" className="mt-8 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
             <h2 className="text-sm font-semibold">Orçamentos de projeto considerados</h2>
             <p className="mt-1 text-xs text-zinc-500">
@@ -423,7 +423,7 @@ export default async function ParametrosEconomicosPage() {
           </div>
         </section>
 
-        <section className="mt-8 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section tabIndex={0} aria-label="Prévia de impacto" className="mt-8 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
             <h2 className="text-sm font-semibold">Prévia de impacto</h2>
             <p className="mt-1 text-xs text-zinc-500">
@@ -508,7 +508,7 @@ function TabelaParametros({
   linhas: string[][];
 }) {
   return (
-    <section className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <section tabIndex={0} aria-label={titulo} className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
         <h2 className="text-sm font-semibold">{titulo}</h2>
         <p className="mt-1 text-xs text-zinc-500">{subtitulo}</p>

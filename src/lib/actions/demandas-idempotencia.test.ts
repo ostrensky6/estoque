@@ -57,6 +57,8 @@ const from = vi.fn((table: string) => {
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn(async () => ({ from })) }));
 
+const demandasActions = await import("./demandas");
+
 const demandaLab = {
   id: 7,
   titulo: "Demanda",
@@ -81,10 +83,9 @@ beforeEach(() => {
 describe("idempotência de gerarOrcamentoAnalisesDaDemanda", () => {
   it("já existe 1 módulo ativo → abre (não duplica)", async () => {
     state.labRows = [{ id: 5, status: "rascunho", status_operacional: "pendente" }];
-    const { gerarOrcamentoAnalisesDaDemanda } = await import("./demandas");
     const fd = new FormData();
     fd.set("demanda_id", "7");
-    await expect(gerarOrcamentoAnalisesDaDemanda(fd)).rejects.toThrow("NEXT_REDIRECT:/orcamento/5");
+    await expect(demandasActions.gerarOrcamentoAnalisesDaDemanda(fd)).rejects.toThrow("NEXT_REDIRECT:/orcamento/5");
     expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(state.inserts).toHaveLength(0);
   });
@@ -94,19 +95,17 @@ describe("idempotência de gerarOrcamentoAnalisesDaDemanda", () => {
       { id: 5, status: "rascunho", status_operacional: "pendente" },
       { id: 6, status: "rascunho", status_operacional: "pendente" },
     ];
-    const { gerarOrcamentoAnalisesDaDemanda } = await import("./demandas");
     const fd = new FormData();
     fd.set("demanda_id", "7");
-    await expect(gerarOrcamentoAnalisesDaDemanda(fd)).rejects.toThrow(/erro_integridade=/);
+    await expect(demandasActions.gerarOrcamentoAnalisesDaDemanda(fd)).rejects.toThrow(/erro_integridade=/);
     expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(state.inserts).toHaveLength(0);
   });
 
   it("zero módulos → cria e marca demanda como em_analise (NUNCA orcada)", async () => {
-    const { gerarOrcamentoAnalisesDaDemanda } = await import("./demandas");
     const fd = new FormData();
     fd.set("demanda_id", "7");
-    await expect(gerarOrcamentoAnalisesDaDemanda(fd)).rejects.toThrow("NEXT_REDIRECT:/orcamento/999");
+    await expect(demandasActions.gerarOrcamentoAnalisesDaDemanda(fd)).rejects.toThrow("NEXT_REDIRECT:/orcamento/999");
     expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(state.inserts.some((i) => i.table === "orcamentos")).toBe(true);
     const statusUpdate = state.updates.find((u) => u.table === "demandas_propostas");

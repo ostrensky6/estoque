@@ -1,5 +1,6 @@
 import { getCadastrosOrdenados } from "@/lib/cadastros/config";
 import { CadastrosCards } from "@/components/cadastros/CadastrosCards";
+import { CadastrosSubnav } from "@/components/cadastros/CadastrosSubnav";
 
 export default function CadastrosIndex() {
   const cadastros = getCadastrosOrdenados();
@@ -15,6 +16,7 @@ export default function CadastrosIndex() {
           alimentam operação, suprimentos, comercial e custeio.
         </p>
 
+        <CadastrosSubnav cadastros={cadastros} />
         <CadastrosCards cadastros={cadastros} />
       </main>
     </div>

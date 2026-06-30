@@ -469,7 +469,7 @@ export default async function Home() {
             { href: "/orcamento", titulo: "Análises/Lab.", desc: "Monte demandas, vincule análises e calcule custos e preços." },
             { href: "/orcamento/projetos", titulo: "Projetos", desc: "Inclua rubricas, custos próprios e cronograma do projeto." },
             { href: "/analises", titulo: "Análises", desc: "Revise capacidade, tempos, equipamentos e materiais por protocolo." },
-            { href: "/orcamento/parametros", titulo: "Parâmetros econômicos", desc: "Ajuste margens, impostos, fundos e bases de rateio." },
+            { href: "/orcamento/revisao", titulo: "Proposta final", desc: "Ajuste parâmetros econômicos e revise o dashboard antes da emissão." },
           ]}
         />
         <JornadaCard

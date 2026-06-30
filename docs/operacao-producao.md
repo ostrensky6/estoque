@@ -19,20 +19,19 @@
 
 ## Hospedagem - Vercel
 
-- Conta/time: `Ostrensky's projects` (plano Hobby) - slug `ostrensky-s-projects`
+- Conta/time: `Ostrensky's projects` (plano Hobby)
 - Org ID: `team_HYxJGUZ1QLz2P0H2U4l9Ayn8`
-- O slug antigo `ostrenskys-projects-17ce406b` era de outra conta e nao deve ser usado.
 - Conta Vercel operacional: `ostrensky5@gmail.com`
 - Projeto: `kontrol-gia`
 - Project ID: `prj_EnHPskP6CjuCv8UCzC6iXjQpcwQi`
-- Dashboard: https://vercel.com/ostrensky-s-projects/kontrol-gia
+- Dashboard: https://vercel.com/kontrol-gia
 - Framework preset: Next.js (Turbopack, Next 16)
 - Build command: padrao Next.js (`npm run build`)
 - Output directory: padrao Next.js
 - Production URL: https://kontrol-gia.vercel.app
 - Dominio default do projeto: https://kontrol-gia-nine.vercel.app
 - `kontrol-gia-nine.vercel.app` nao e projeto duplicado; e apenas o dominio default do proprio projeto `kontrol-gia`.
-- Deploy: manual via `npm run prod:deploy`, com `VERCEL_TOKEN` definido no ambiente. O script usa `vercel --prod --token $env:VERCEL_TOKEN --scope ostrensky-s-projects` e depois fixa explicitamente o alias `kontrol-gia.vercel.app`.
+- Deploy: manual via `npm run prod:deploy`, com `VERCEL_TOKEN` definido no ambiente. O script valida `.vercel/project.json`, usa `vercel --prod --token $env:VERCEL_TOKEN --scope team_HYxJGUZ1QLz2P0H2U4l9Ayn8` e depois fixa explicitamente o alias `kontrol-gia.vercel.app`.
 - Se o Node local falhar com erro de certificado do proxy, configure `NODE_EXTRA_CA_CERTS` para a cadeia corporativa/local. Evite `NODE_TLS_REJECT_UNAUTHORIZED=0`, salvo diagnostico pontual.
 - Variaveis de ambiente configuradas e verificadas em producao (Production scope):
   - `NEXT_PUBLIC_SUPABASE_URL`

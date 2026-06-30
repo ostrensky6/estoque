@@ -15,6 +15,14 @@ const SEM_PERMISSAO: FormState = {
   ok: false,
   message: "Sem permissão — requer papel coordenador ou superior.",
 };
+const MSG_NOVO_INSUMO_INCOMPLETO =
+  "Novo insumo no recebimento precisa de especificação, unidade, categoria, fator de conversão e custo.";
+const MSG_CATEGORIA_NOVO_INSUMO =
+  "Categoria de compra é obrigatória para cadastrar novo insumo no recebimento.";
+const MSG_FATOR_NOVO_INSUMO = "Fator de conversão deve ser maior que zero.";
+const MSG_CUSTO_NOVO_INSUMO =
+  "Custo unitário é obrigatório para cadastrar novo insumo no recebimento.";
+const MSG_VALIDADE_CRITICO = "Validade é obrigatória para receber insumo crítico.";
 
 function texto(formData: FormData, campo: string) {
   return String(formData.get(campo) ?? "").trim() || null;
@@ -31,6 +39,30 @@ function comentarioObrigatorio(formData: FormData) {
   const observacao = texto(formData, "observacao");
   if (!observacao) return { ok: false as const, message: "Informe o motivo/comentário para esta decisão." };
   return { ok: true as const, observacao };
+}
+
+function validarNovoInsumoRecebimento(formData: FormData, especificacao: string | null, unidade: string | null) {
+  const categoria = texto(formData, "categoria_compra");
+  const fatorConversao = numero(formData, "fator_conversao");
+  const custo = numero(formData, "custo");
+
+  if (!especificacao || !unidade || !categoria || !(fatorConversao && fatorConversao > 0) || !(custo && custo > 0)) {
+    if (!categoria) return { ok: false as const, message: MSG_CATEGORIA_NOVO_INSUMO };
+    if (!(fatorConversao && fatorConversao > 0)) return { ok: false as const, message: MSG_FATOR_NOVO_INSUMO };
+    if (!(custo && custo > 0)) return { ok: false as const, message: MSG_CUSTO_NOVO_INSUMO };
+    return { ok: false as const, message: MSG_NOVO_INSUMO_INCOMPLETO };
+  }
+
+  if (categoria === "critico" && !texto(formData, "validade")) {
+    return { ok: false as const, message: MSG_VALIDADE_CRITICO };
+  }
+
+  return {
+    ok: true as const,
+    categoria,
+    fatorConversao,
+    custo,
+  };
 }
 
 const STATUS_ITENS_LIVRES = ["rascunho", "ajuste_solicitante", "ajuste_compras"];
@@ -622,10 +654,20 @@ export async function receberItemPedidoInterno(_prev: FormState, formData: FormD
   // Resolve o insumo: existente escolhido > novo pela especificação > já vinculado.
   let insumoId = numero(formData, "insumo_id") ?? item.insumo_id;
   const novoInsumo = texto(formData, "novo_insumo");
+  const unidadeNovoInsumo = texto(formData, "unidade") ?? item.unidade;
   if (!insumoId && novoInsumo) {
+    const novoValidado = validarNovoInsumoRecebimento(formData, novoInsumo, unidadeNovoInsumo);
+    if (!novoValidado.ok) return novoValidado;
+
     const { data: criado, error: insErr } = await supabase
       .from("insumos")
-      .insert({ especificacao: novoInsumo, unidade: texto(formData, "unidade") ?? item.unidade })
+      .insert({
+        especificacao: novoInsumo,
+        unidade: unidadeNovoInsumo,
+        categoria_compra: novoValidado.categoria,
+        fator_conversao: novoValidado.fatorConversao,
+        custo_unitario: novoValidado.custo,
+      })
       .select("id")
       .single();
     if (insErr) return { ok: false, message: `Falha ao criar insumo: ${insErr.message}` };
@@ -641,15 +683,21 @@ export async function receberItemPedidoInterno(_prev: FormState, formData: FormD
     .single();
   const validade = texto(formData, "validade");
   if (insumoRecebido?.categoria_compra === "critico" && !validade) {
-    return { ok: false, message: "Validade é obrigatória para receber insumo crítico." };
+    return { ok: false, message: MSG_VALIDADE_CRITICO };
   }
 
   const quantidade = numero(formData, "quantidade") ?? Number(item.quantidade);
   if (!(quantidade > 0)) return { ok: false, message: "Quantidade recebida deve ser maior que zero." };
+  if (quantidade < Number(item.quantidade)) {
+    return { ok: false, message: "Recebimento parcial ainda não é suportado para este fluxo." };
+  }
   const custo = numero(formData, "custo") ?? item.orcamento_previo;
   const fornecedor = texto(formData, "fornecedor") ?? item.fornecedor_sugerido;
 
-  const { data: loteId, error: loteErr } = await supabase.rpc("receber_lote", {
+  const responsavel = u?.nome ?? u?.email ?? null;
+  const { error } = await supabase.rpc("receber_item_pedido_interno" as never, {
+    p_pedido_id: pedidoId,
+    p_item_id: itemId,
     p_insumo_id: insumoId,
     p_quantidade: quantidade,
     p_validade: validade ?? undefined,
@@ -657,27 +705,10 @@ export async function receberItemPedidoInterno(_prev: FormState, formData: FormD
     p_codigo: texto(formData, "codigo") ?? undefined,
     p_fornecedor: fornecedor ?? undefined,
     p_projeto: pedido.projetos?.nome ?? undefined,
-  });
-  if (loteErr) return { ok: false, message: loteErr.message };
-
-  const responsavel = u?.nome ?? u?.email ?? null;
-  const { error } = await supabase
-    .from("pedidos_internos_itens")
-    .update({
-      insumo_id: insumoId,
-      lote_id: loteId as number,
-      quantidade_recebida: quantidade,
-      divergencia_recebimento:
-        quantidade !== Number(item.quantidade)
-          ? `Pedido: ${item.quantidade}; recebido: ${quantidade}`
-          : null,
-      recebido_em: new Date().toISOString(),
-      recebido_por: responsavel,
-    } as never)
-    .eq("id", itemId);
+    p_responsavel: responsavel ?? undefined,
+  } as never);
   if (error) return { ok: false, message: error.message };
 
-  await sincronizarRecebimentoPedido(supabase, pedidoId, responsavel);
   await registrarEvento(
     "pedido_interno",
     pedidoId,

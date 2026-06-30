@@ -55,6 +55,8 @@ const from = vi.fn((table: string) => {
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn(async () => ({ from, rpc, auth: { getUser } })) }));
 
+const demandasActions = await import("./demandas");
+
 const demandaCompleta = {
   id: 7,
   titulo: "Demanda",
@@ -84,11 +86,10 @@ beforeEach(() => {
 });
 
 async function emitir() {
-  const { emitirOrcamentoFinalDaDemanda } = await import("./demandas");
   const fd = new FormData();
   fd.set("demanda_id", "7");
   fd.set("validade_dias", "30");
-  return emitirOrcamentoFinalDaDemanda(fd);
+  return demandasActions.emitirOrcamentoFinalDaDemanda(fd);
 }
 
 describe("emissão transacional", () => {

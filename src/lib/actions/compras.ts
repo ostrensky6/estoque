@@ -12,6 +12,22 @@ const SEM_PERMISSAO: FormState = {
   ok: false,
   message: "Sem permissão — requer papel coordenador ou superior.",
 };
+const MSG_VALIDADE_CRITICO = "Validade é obrigatória para receber insumo crítico.";
+
+function leadTimeEfetivo(
+  leadTimeInsumo: unknown,
+  prazoFornecedor: unknown,
+): number | null {
+  const lead = Number(leadTimeInsumo);
+  if (Number.isFinite(lead) && lead > 0) return lead;
+  const prazo = Number(prazoFornecedor);
+  return Number.isFinite(prazo) && prazo > 0 ? prazo : null;
+}
+
+function dataPrevistaPorPrazo(prazoDias: number | null): string | null {
+  if (!(prazoDias && prazoDias > 0)) return null;
+  return new Date(Date.now() + prazoDias * 86400000).toISOString().slice(0, 10);
+}
 
 export async function criarPedido(formData: FormData) {
   const u = await usuarioAtual();
@@ -155,17 +171,37 @@ export async function aprovarPedido(_prev: FormState, formData: FormData): Promi
   const pedido_id = Number(formData.get("pedido_id"));
   const supabase = await createClient();
 
-  // prazo previsto a partir do fornecedor
-  const { data: ped } = await supabase
-    .from("pedidos_compra")
-    .select("fornecedor_id, fornecedores(prazo_medio_dias)")
-    .eq("id", pedido_id)
-    .single();
-  const prazo = (ped?.fornecedores as unknown as { prazo_medio_dias: number | null } | null)
+  const [{ data: ped }, { data: itens }] = await Promise.all([
+    supabase
+      .from("pedidos_compra")
+      .select("fornecedor_id, fornecedores(prazo_medio_dias)")
+      .eq("id", pedido_id)
+      .single(),
+    supabase
+      .from("pedidos_compra_itens")
+      .select("insumos(lead_time_dias, fornecedores(prazo_medio_dias))")
+      .eq("pedido_id", pedido_id),
+  ]);
+
+  const prazosItens = (itens ?? [])
+    .map((item) => {
+      const insumo = item.insumos as unknown as {
+        lead_time_dias: number | null;
+        fornecedores: { prazo_medio_dias: number | null } | null;
+      } | null;
+      return leadTimeEfetivo(
+        insumo?.lead_time_dias,
+        insumo?.fornecedores?.prazo_medio_dias,
+      );
+    })
+    .filter((prazo): prazo is number => prazo != null);
+
+  const prazoFornecedorPedido = (ped?.fornecedores as unknown as { prazo_medio_dias: number | null } | null)
     ?.prazo_medio_dias;
-  const prevista = prazo
-    ? new Date(Date.now() + prazo * 86400000).toISOString().slice(0, 10)
-    : null;
+  const maiorPrazo = prazosItens.length > 0
+    ? Math.max(...prazosItens)
+    : leadTimeEfetivo(null, prazoFornecedorPedido);
+  const prevista = dataPrevistaPorPrazo(maiorPrazo);
 
   const { error } = await supabase
     .from("pedidos_compra")
@@ -223,57 +259,36 @@ export async function receberItemPedido(formData: FormData) {
     ? Number(formData.get("quantidade_recebida"))
     : null;
   const supabase = await createClient();
+  const u = await usuarioAtual();
+  const responsavel = u?.nome ?? u?.email ?? null;
 
   const { data: item } = await supabase
     .from("pedidos_compra_itens")
-    .select("insumo_id, quantidade, custo_unitario_estimado, pedido_id, lote_id, insumos(categoria_compra), pedidos_compra(projeto, fornecedores(nome))")
+    .select("insumos(categoria_compra)")
     .eq("id", item_id)
+    .eq("pedido_id", pedido_id)
     .single();
-  if (!item || item.lote_id) return;
-  const quantidade = quantidadeRecebida && quantidadeRecebida > 0 ? quantidadeRecebida : Number(item.quantidade);
-  const insumo = item.insumos as { categoria_compra: string | null } | null;
+  const insumo = item?.insumos as { categoria_compra: string | null } | null | undefined;
   if (insumo?.categoria_compra === "critico" && !validade) {
-    throw new Error("Validade é obrigatória para receber insumo crítico.");
+    throw new Error(MSG_VALIDADE_CRITICO);
   }
 
-  const ped = item.pedidos_compra as unknown as {
-    projeto: string | null;
-    fornecedores: { nome: string | null } | null;
-  } | null;
-  const fornecedor = ped?.fornecedores?.nome ?? null;
-  const projeto = ped?.projeto ?? null;
-
-  const { data: loteId, error } = await supabase.rpc("receber_lote", {
-    p_insumo_id: item.insumo_id,
-    p_quantidade: quantidade,
+  const { error } = await supabase.rpc("receber_item_pedido_compra" as never, {
+    p_pedido_id: pedido_id,
+    p_item_id: item_id,
+    p_quantidade: quantidadeRecebida ?? undefined,
     p_validade: validade ?? undefined,
-    p_custo: item.custo_unitario_estimado ?? undefined,
     p_codigo: codigo ?? undefined,
-    p_fornecedor: fornecedor ?? undefined,
-    p_projeto: projeto ?? undefined,
-  });
+    p_responsavel: responsavel ?? undefined,
+  } as never);
   if (error) throw new Error(error.message);
 
-  await supabase
-    .from("pedidos_compra_itens")
-    .update({
-      lote_id: loteId,
-      quantidade_recebida: quantidade,
-      divergencia_recebimento:
-        quantidade !== Number(item.quantidade)
-          ? `Pedido: ${item.quantidade}; recebido: ${quantidade}`
-          : null,
-    } as never)
-    .eq("id", item_id);
-
-  // se todos os itens foram recebidos, marca o pedido como recebido
-  const { data: pendentes } = await supabase
-    .from("pedidos_compra_itens")
-    .select("id")
-    .eq("pedido_id", pedido_id)
-    .is("lote_id", null);
-  if (!pendentes || pendentes.length === 0) {
-    await supabase.from("pedidos_compra").update({ status: "recebido" }).eq("id", pedido_id);
+  const { data: pedido } = await supabase
+    .from("pedidos_compra")
+    .select("status")
+    .eq("id", pedido_id)
+    .single();
+  if (pedido?.status === "recebido") {
     await registrarEvento("pedido_compra", pedido_id, null, "recebido", "Todos os itens recebidos");
   }
 
