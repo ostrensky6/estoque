@@ -9,6 +9,7 @@ export default async function CusteioPage() {
   const { breakdowns, params, valorHoraPessoal, custoHoraOverhead } =
     await calcularTodas();
   const simulador = await carregarSimuladorCusteio();
+  const codigosAtivos = new Set(simulador.analises.map((analise) => analise.codigo));
 
   const fatoresPct = (
     params.margem_lucro +
@@ -17,17 +18,19 @@ export default async function CusteioPage() {
     params.fundo_reserva +
     params.fundo_investimento
   ).toFixed(1);
-  const linhas: CusteioRow[] = breakdowns.map((b) => ({
-    codigo: b.codigo,
-    lote: b.lote,
-    reagentes: b.reagentes,
-    equipamento: b.equipamento,
-    pessoal: b.pessoal,
-    custoAnalitico: b.custoAnalitico,
-    overhead: b.overhead,
-    custoTotal: b.custoTotal,
-    preco: b.preco,
-  }));
+  const linhas: CusteioRow[] = breakdowns
+    .filter((b) => codigosAtivos.has(b.codigo))
+    .map((b) => ({
+      codigo: b.codigo,
+      lote: b.lote,
+      reagentes: b.reagentes,
+      equipamento: b.equipamento,
+      pessoal: b.pessoal,
+      custoAnalitico: b.custoAnalitico,
+      overhead: b.overhead,
+      custoTotal: b.custoTotal,
+      preco: b.preco,
+    }));
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">

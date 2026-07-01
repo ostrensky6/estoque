@@ -223,10 +223,18 @@ export async function adicionarItemOrcamento(formData: FormData) {
   const n = Number(formData.get("n_amostras"));
   if (!id || !codigo || !(n > 0)) return;
 
+  const supabase = await createClient();
+  const { data: analise } = await supabase
+    .from("analises")
+    .select("ativo")
+    .eq("codigo", codigo)
+    .single();
+  if (!analise?.ativo) {
+    throw new Error("Analise inativa ou nao oferecivel para novo orcamento.");
+  }
   const { breakdowns } = await calcularTodas();
   const b = breakdowns.find((x) => x.codigo === codigo);
 
-  const supabase = await createClient();
   await assegurarLaboratorioEditavel(supabase, id);
   await supabase.from("orcamento_itens").insert({
     orcamento_id: id,

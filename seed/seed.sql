@@ -17,6 +17,7 @@ insert into analises (codigo, nome_simplificado, descricao, status) values ('Ele
 insert into analises (codigo, nome_simplificado, descricao, status) values ('Illumina_16S_AC', '16S alta cobertura', 'Sequenciamento focado em microbioma, com alta cobertura', 'Nunca feito; pode ser oferecido');
 insert into analises (codigo, nome_simplificado, descricao, status) values ('Illumina_Sh', 'Shotgun', 'Sequenciamento shotgun, com qualquer marcador', 'Revisar');
 insert into analises (codigo, nome_simplificado, descricao, status) values ('Illumina_Sh_qPCR', 'Shotgun com qPCR', 'Shotgun substituindo algumas etapas por qPCR para otimização de tempo e custo', 'Ainda não testado');
+update analises set ativo = false, status = 'Experimental - em avaliacao; nao oferecer em orcamentos' where codigo = 'Illumina_Sh_qPCR';
 insert into analises (codigo, nome_simplificado, descricao, status) values ('RTqPCR_RNA_virus_H', 'RT-qPCR vírus hemolinfa', 'PCR em tempo real de vírus 1', 'Ativo');
 insert into analises (codigo, nome_simplificado, descricao, status) values ('RTqPCR_RNA_virus_T', 'RT-qPCR vírus tecidos', 'PCR em tempo real de vírus 2', 'Ativo');
 insert into analises (codigo, nome_simplificado, descricao, status) values ('Sanger', 'Sanger', 'Sequenciamento Sanger', 'Ainda pode ser oferecido');
