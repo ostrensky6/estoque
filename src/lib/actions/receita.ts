@@ -85,6 +85,16 @@ export async function atualizarCatalogoAnalise(formData: FormData) {
   revalidatePath("/analises");
 }
 
+export async function inativarAnalise(formData: FormData) {
+  const codigo = txtReq(formData, "codigo");
+  if (!codigo) return;
+  const supabase = await createClient();
+  const { error } = await supabase.from("analises").update({ ativo: false }).eq("codigo", codigo);
+  if (error) throw new Error(error.message);
+  revalidarReceita(codigo);
+}
+
+/** Exclusão física mantida para compatibilidade interna; não expor na UI administrativa normal. */
 export async function excluirAnalise(formData: FormData) {
   const codigo = txtReq(formData, "codigo");
   if (!codigo) return;
