@@ -77,12 +77,12 @@ export default async function GovernancaOrcamentoPage() {
   if (!permitido) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-16 text-center font-sans">
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted-foreground">
           Acesso restrito. A governança de Orçamentos é visível para gestor ou admin.
         </p>
         <Link
           href="/orcamento"
-          className="mt-4 inline-flex rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          className="mt-4 inline-flex rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted"
         >
           Voltar para Orçamentos
         </Link>
@@ -114,7 +114,7 @@ export default async function GovernancaOrcamentoPage() {
   ).length;
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="mx-auto max-w-7xl px-6 py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -122,14 +122,14 @@ export default async function GovernancaOrcamentoPage() {
               Orçamentos
             </p>
             <h1 className="text-2xl font-semibold tracking-tight">Governança e permissões</h1>
-            <p className="mt-1 max-w-3xl text-sm text-zinc-500">
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               Matriz de papéis, eventos sensíveis e auditoria por campo para reconstruir o caminho de cada valor final.
             </p>
           </div>
-          <div className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <span className="block text-xs text-zinc-500">Sessão atual</span>
+          <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm shadow-sm">
+            <span className="block text-xs text-muted-foreground">Sessão atual</span>
             <strong>{usuario?.nome || usuario?.email || "Usuário autenticado"}</strong>
-            <span className="ml-2 text-zinc-500">{usuario?.papel ? LABEL_PAPEL[usuario.papel] : "Técnico"}</span>
+            <span className="ml-2 text-muted-foreground">{usuario?.papel ? LABEL_PAPEL[usuario.papel] : "Técnico"}</span>
           </div>
         </div>
 
@@ -140,14 +140,14 @@ export default async function GovernancaOrcamentoPage() {
           <Resumo titulo="Críticas" valor={acoesCriticas.toLocaleString("pt-BR")} />
         </section>
 
-        <section className="mt-6 rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+        <section className="mt-6 rounded-lg border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-4 py-3">
             <h2 className="font-semibold">Matriz operacional</h2>
-            <p className="text-sm text-zinc-500">Ações sensíveis, papel mínimo, motivo e evidência auditável.</p>
+            <p className="text-sm text-muted-foreground">Ações sensíveis, papel mínimo, motivo e evidência auditável.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-950">
+              <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">Ação</th>
                   <th className="px-4 py-3">Papel mínimo</th>
@@ -156,17 +156,17 @@ export default async function GovernancaOrcamentoPage() {
                   <th className="px-4 py-3">Regra</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <tbody className="divide-y divide-border/70">
                 {PERMISSOES_ORCAMENTO.map((permissao) => (
                   <tr key={permissao.acao}>
                     <td className="px-4 py-3">
                       <strong>{permissao.titulo}</strong>
-                      <span className="mt-1 block text-xs text-zinc-500">{permissao.descricao}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">{permissao.descricao}</span>
                     </td>
                     <td className="px-4 py-3">{LABEL_PAPEL[permissao.papelMinimo]}</td>
                     <td className="px-4 py-3">{permissao.motivoObrigatorio ? "Obrigatório" : "Quando aplicável"}</td>
                     <td className="px-4 py-3">{permissao.eventoAuditavel}</td>
-                    <td className="px-4 py-3 text-xs text-zinc-500">Bloqueio em Server Action e RLS de apoio no banco.</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">Bloqueio em Server Action e RLS de apoio no banco.</td>
                   </tr>
                 ))}
               </tbody>
@@ -176,22 +176,22 @@ export default async function GovernancaOrcamentoPage() {
 
         <section className="mt-6 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
           <Painel titulo="Eventos sensíveis">
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <div className="divide-y divide-border/70">
               {eventosRecentes.length === 0 ? (
-                <p className="px-4 py-8 text-sm text-zinc-500">Nenhum evento de orçamento encontrado.</p>
+                <p className="px-4 py-8 text-sm text-muted-foreground">Nenhum evento de orçamento encontrado.</p>
               ) : (
                 eventosRecentes.slice(0, 18).map((evento) => (
                   <div key={evento.id} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[8rem_1fr_10rem]">
-                    <span className="text-xs text-zinc-500">{formatDateTime(evento.criado_em)}</span>
+                    <span className="text-xs text-muted-foreground">{formatDateTime(evento.criado_em)}</span>
                     <span>
                       <strong>{LABEL_ENTIDADE[evento.entidade] ?? evento.entidade}</strong>
-                      <span className="text-zinc-500"> #{evento.entidade_id}</span>
-                      <span className="mt-1 block text-xs text-zinc-500">
+                      <span className="text-muted-foreground"> #{evento.entidade_id}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">
                         {evento.de_status || "novo"} {"->"} {evento.para_status}
                         {evento.observacao ? ` · ${evento.observacao}` : ""}
                       </span>
                     </span>
-                    <span className="text-xs text-zinc-500">{evento.usuario || "Sem usuário"}</span>
+                    <span className="text-xs text-muted-foreground">{evento.usuario || "Sem usuário"}</span>
                   </div>
                 ))
               )}
@@ -199,21 +199,21 @@ export default async function GovernancaOrcamentoPage() {
           </Painel>
 
           <Painel titulo="Auditoria por campo">
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <div className="divide-y divide-border/70">
               {auditoriaRecente.length === 0 ? (
-                <p className="px-4 py-8 text-sm text-zinc-500">Nenhuma alteração auditada nas tabelas de orçamento.</p>
+                <p className="px-4 py-8 text-sm text-muted-foreground">Nenhuma alteração auditada nas tabelas de orçamento.</p>
               ) : (
                 auditoriaRecente.slice(0, 18).map((item) => (
                   <div key={item.id} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[8rem_1fr_10rem]">
-                    <span className="text-xs text-zinc-500">{formatDateTime(item.criado_em)}</span>
+                    <span className="text-xs text-muted-foreground">{formatDateTime(item.criado_em)}</span>
                     <span>
                       <strong>{LABEL_ACAO[item.acao] ?? item.acao}</strong>
-                      <span className="text-zinc-500"> {item.tabela} #{item.registro_id ?? "-"}</span>
-                      <span className="mt-1 block text-xs text-zinc-500">
+                      <span className="text-muted-foreground"> {item.tabela} #{item.registro_id ?? "-"}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">
                         {resumoDiff(item.acao, item.valor_anterior, item.valor_novo)}
                       </span>
                     </span>
-                    <span className="text-xs text-zinc-500">{item.usuario || "Sem usuário"}</span>
+                    <span className="text-xs text-muted-foreground">{item.usuario || "Sem usuário"}</span>
                   </div>
                 ))
               )}
@@ -227,8 +227,8 @@ export default async function GovernancaOrcamentoPage() {
 
 function Resumo({ titulo, valor }: { titulo: string; valor: string }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">{titulo}</span>
+    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{titulo}</span>
       <strong className="mt-2 block text-2xl">{valor}</strong>
     </div>
   );
@@ -236,8 +236,8 @@ function Resumo({ titulo, valor }: { titulo: string; valor: string }) {
 
 function Painel({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+    <section className="rounded-lg border border-border bg-card shadow-sm">
+      <div className="border-b border-border px-4 py-3">
         <h2 className="font-semibold">{titulo}</h2>
       </div>
       {children}

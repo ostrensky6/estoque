@@ -57,8 +57,8 @@ type SaldoEstoque = {
   unidade: string | null;
 };
 
-const panel = "rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900";
-const th = "px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-zinc-400";
+const panel = "rounded-lg border border-border bg-card p-4 shadow-sm";
+const th = "px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80";
 const td = "px-3 py-2 align-top text-sm";
 
 export default async function AnaliseDetalhe({
@@ -149,7 +149,7 @@ export default async function AnaliseDetalhe({
   ].filter(Boolean) as string[];
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="mx-auto max-w-7xl px-6 py-10">
         <Breadcrumbs items={[{ label: "Analises", href: "/analises" }, { label: codigo }]} />
 
@@ -162,12 +162,12 @@ export default async function AnaliseDetalhe({
               {analise.status && <Badge muted>{analise.status}</Badge>}
             </div>
             <p className="mt-2 text-lg font-medium">{analise.nome_simplificado || analise.nome || "Sem nome"}</p>
-            {analise.descricao && <p className="mt-2 max-w-3xl text-sm text-zinc-500">{analise.descricao}</p>}
+            {analise.descricao && <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{analise.descricao}</p>}
           </div>
 
           <div className={panel}>
             <h2 className="text-sm font-semibold">Administracao segura</h2>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Esta ficha esta em modo leitura. A remocao fisica foi retirada da interface normal.
             </p>
             <div className="mt-3">
@@ -181,14 +181,14 @@ export default async function AnaliseDetalhe({
                   confirmLabel="Inativar"
                 />
               ) : (
-                <span className="text-sm text-zinc-500">Analise ja inativa.</span>
+                <span className="text-sm text-muted-foreground">Analise ja inativa.</span>
               )}
             </div>
           </div>
         </section>
 
         {avisos.length > 0 && (
-          <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+          <div className="mt-5 rounded-lg border border-warning-strong/30 bg-warning-soft p-4 text-sm text-warning-strong">
             <p className="font-medium">Alertas de completude</p>
             <ul className="mt-2 list-disc space-y-1 pl-5">
               {avisos.map((aviso) => (
@@ -201,7 +201,7 @@ export default async function AnaliseDetalhe({
         <nav className="mt-8 flex flex-wrap gap-2 text-sm">
           {["Resumo", "Tempo", "Materiais/Insumos", "Equipamentos", "Custeio", "Estoque", "Historico/Versoes"].map(
             (label) => (
-              <a key={label} href={`#${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`} className="rounded-md border border-zinc-200 px-3 py-1.5 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900">
+              <a key={label} href={`#${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`} className="rounded-md border border-border px-3 py-1.5 text-muted-foreground hover:bg-muted/50">
                 {label}
               </a>
             ),
@@ -223,7 +223,7 @@ export default async function AnaliseDetalhe({
             <Stat label="Bancada/amostra" value={tempoBancada > 0 ? `${formatNumber(tempoBancada)} h` : "-"} compact />
             <Stat label="Prazo lab." value={prazoLaboratorio > 0 ? `${prazoLaboratorio} dias` : "-"} compact />
           </div>
-          <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-zinc-500">Laboratorio</h3>
+          <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Laboratorio</h3>
           <Table>
             <thead>
               <tr>
@@ -241,7 +241,7 @@ export default async function AnaliseDetalhe({
               {etapasLaboratorio.map((etapa) => <EtapaRow key={(etapa as unknown as { id: number }).id} etapa={etapa} />)}
             </tbody>
           </Table>
-          <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-zinc-500">Pos-analise / Bioinformatica</h3>
+          <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pos-analise / Bioinformatica</h3>
           <Table>
             <thead>
               <tr>
@@ -259,7 +259,7 @@ export default async function AnaliseDetalhe({
               {etapasPosAnalise.map((etapa) => <EtapaRow key={(etapa as unknown as { id: number }).id} etapa={etapa} />)}
             </tbody>
           </Table>
-          {etapasPosAnalise.length === 0 && <p className="mt-3 text-sm text-zinc-500">Nenhuma etapa pos-analise cadastrada.</p>}
+          {etapasPosAnalise.length === 0 && <p className="mt-3 text-sm text-muted-foreground">Nenhuma etapa pos-analise cadastrada.</p>}
         </Section>
 
         <Section id="materiais-insumos" title="Materiais/Insumos">
@@ -278,7 +278,7 @@ export default async function AnaliseDetalhe({
             </thead>
             <tbody>
               {materiaisT.map((material) => (
-                <tr key={material.id} className="border-t border-zinc-100 dark:border-zinc-800">
+                <tr key={material.id} className="border-t border-border/70">
                   <td className={td}>{material.nome_etapa}</td>
                   <td className={td}>{material.nome_atividade}</td>
                   <td className={td}>{material.especificacao_insumo ?? "-"}</td>
@@ -308,7 +308,7 @@ export default async function AnaliseDetalhe({
             </thead>
             <tbody>
               {equipamentosT.map((linha) => (
-                <tr key={linha.id} className="border-t border-zinc-100 dark:border-zinc-800">
+                <tr key={linha.id} className="border-t border-border/70">
                   <td className={td}>{linha.equipamentos?.nome ?? "-"}</td>
                   <td className={td}>{fmt(linha.peso_alocacao)}</td>
                   <td className={td}>{fmt(linha.equipamentos?.quantidade)}</td>
@@ -329,7 +329,7 @@ export default async function AnaliseDetalhe({
         </Section>
 
         <Section id="custeio" title="Custeio">
-          {erroCusteio && <p className="text-sm text-amber-700">Nao foi possivel carregar o custeio atual.</p>}
+          {erroCusteio && <p className="text-sm text-warning-strong">Nao foi possivel carregar o custeio atual.</p>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Reagentes" value={custo ? formatCurrency(custo.reagentes) : "-"} compact />
             <Stat label="Equipamento" value={custo ? formatCurrency(custo.equipamento) : "-"} compact />
@@ -344,17 +344,17 @@ export default async function AnaliseDetalhe({
             <Stat label="Prazo total" value={prazoTotal > 0 ? `${prazoTotal} dias` : "-"} compact />
           </div>
           {posAnaliseSemParametros && (
-            <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">
+            <p className="mt-3 text-sm text-warning-strong">
               Bioinformatica classificada como pos-analise, mas ainda sem parametros de custo/prazo cadastrados.
             </p>
           )}
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-muted-foreground">
             Valores exibidos pela engine atual, sem gravar snapshot e sem recalcular orcamentos antigos nesta etapa.
           </p>
         </Section>
 
         <Section id="estoque" title="Estoque">
-          <p className="mb-3 text-sm text-zinc-500">
+          <p className="mb-3 text-sm text-muted-foreground">
             Diagnostico apenas informativo. Esta ficha nao reserva, baixa nem abre compras automaticamente.
           </p>
           <Table>
@@ -375,7 +375,7 @@ export default async function AnaliseDetalhe({
                 const disponivel = Number(saldo?.disponivel ?? 0);
                 const ponto = Number(material.insumos?.ponto_reposicao ?? 0);
                 return (
-                  <tr key={material.id} className="border-t border-zinc-100 dark:border-zinc-800">
+                  <tr key={material.id} className="border-t border-border/70">
                     <td className={td}>{material.especificacao_insumo ?? "-"}</td>
                     <td className={td}>{material.insumos?.especificacao ?? material.insumos?.nome_item ?? "Sem vinculo"}</td>
                     <td className={td}>{material.insumo_id ? `${fmt(disponivel)} ${saldo?.unidade ?? material.insumos?.unidade ?? ""}` : "-"}</td>
@@ -391,7 +391,7 @@ export default async function AnaliseDetalhe({
         </Section>
 
         <Section id="historico-versoes" title="Historico/Versoes">
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+          <div className="rounded-lg border border-warning-strong/30 bg-warning-soft p-4 text-sm text-warning-strong">
             <p className="font-medium">Ficha tecnica viva</p>
             <p className="mt-1">
               O cadastro atual ainda nao possui versionamento de protocolo nem snapshot tecnico por orcamento. Alteracoes
@@ -399,7 +399,7 @@ export default async function AnaliseDetalhe({
               conectar esta ficha a orcamentos historicos.
             </p>
           </div>
-          <p className="mt-3 text-sm text-zinc-500">
+          <p className="mt-3 text-sm text-muted-foreground">
             Proposta incremental: ficha read-only, versionamento de protocolo, snapshot no orcamento, diagnostico de
             estoque, integracao com compras e edicao administrativa controlada.
           </p>
@@ -429,7 +429,7 @@ function EtapaRow({ etapa }: { etapa: Etapa }) {
     tipo_limitacao?: string | null;
   };
   return (
-    <tr className="border-t border-zinc-100 dark:border-zinc-800">
+    <tr className="border-t border-border/70">
       <td className={td}>{e.ordem ?? "-"}</td>
       <td className={td}>{e.nome_etapa}</td>
       <td className={td}>{e.nome_atividade}</td>
@@ -447,8 +447,8 @@ function Badge({ children, muted = false }: { children: ReactNode; muted?: boole
     <span
       className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${
         muted
-          ? "bg-zinc-100 text-zinc-600 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700"
-          : "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900"
+          ? "bg-muted text-muted-foreground ring-border"
+          : "bg-success-soft text-success-strong ring-success-strong/30"
       }`}
     >
       {children}
@@ -459,7 +459,7 @@ function Badge({ children, muted = false }: { children: ReactNode; muted?: boole
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <section id={id} className="mt-8">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">{title}</h2>
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
       <div className={`mt-3 ${panel}`}>{children}</div>
     </section>
   );
@@ -467,8 +467,8 @@ function Section({ id, title, children }: { id: string; title: string; children:
 
 function Stat({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
   return (
-    <div className={compact ? "rounded-md bg-zinc-50 p-3 dark:bg-zinc-950" : panel}>
-      <p className="text-xs text-zinc-500">{label}</p>
+    <div className={compact ? "rounded-md bg-muted/50 p-3" : panel}>
+      <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
     </div>
   );

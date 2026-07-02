@@ -44,23 +44,23 @@ export function CusteioSimulator({
   if (!analise || !resultado) return null;
 
   return (
-    <section className="mt-8 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <section className="mt-8 rounded-lg border border-border bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Simulador de cenário</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="text-lg font-semibold text-foreground dark:text-white">Simulador de cenário</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Ajuste lote, opção de grupo e margem incremental para ver o preço recalcular ao vivo.
           </p>
         </div>
         <div className="text-right">
-          <div className="text-xs uppercase text-slate-500">Preço simulado</div>
+          <div className="text-xs uppercase text-muted-foreground">Preço simulado</div>
           <div className="text-2xl font-semibold text-brand-700 dark:text-brand-300">{formatCurrency(resultado.preco)}</div>
         </div>
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
         <label className="block">
-          <span className="text-xs font-medium text-slate-600 dark:text-zinc-300">Análise</span>
+          <span className="text-xs font-medium text-muted-foreground">Análise</span>
           <select
             value={analise.codigo}
             suppressHydrationWarning
@@ -70,7 +70,7 @@ export function CusteioSimulator({
               setLote(next?.lotePadrao ?? 1);
               setEscolhasGrupo({});
             }}
-            className={`mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950 ${TOM_ENTRADA}`}
+            className={`mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm font-medium ${TOM_ENTRADA}`}
           >
             {analises.map((a) => (
               <option key={a.codigo} value={a.codigo}>
@@ -81,7 +81,7 @@ export function CusteioSimulator({
         </label>
 
         <label className="block">
-          <span className="flex justify-between text-xs font-medium text-slate-600 dark:text-zinc-300">
+          <span className="flex justify-between text-xs font-medium text-muted-foreground">
             <span>Tamanho do lote</span>
             <span>{lote} amostras</span>
           </span>
@@ -98,7 +98,7 @@ export function CusteioSimulator({
         </label>
 
         <label className="block">
-          <span className="flex justify-between text-xs font-medium text-slate-600 dark:text-zinc-300">
+          <span className="flex justify-between text-xs font-medium text-muted-foreground">
             <span>Margem adicional</span>
             <span>{fator.toFixed(0)} p.p.</span>
           </span>
@@ -119,14 +119,14 @@ export function CusteioSimulator({
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {analise.grupos.map((grupo) => (
             <label key={grupo.nome} className="block">
-              <span className="text-xs font-medium text-slate-600 dark:text-zinc-300">{grupo.nome}</span>
+              <span className="text-xs font-medium text-muted-foreground">{grupo.nome}</span>
               <select
                 value={escolhasGrupo[grupo.nome] ?? ""}
                 suppressHydrationWarning
                 onChange={(event) =>
                   setEscolhasGrupo((atual) => ({ ...atual, [grupo.nome]: event.target.value }))
                 }
-                className={`mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950 ${TOM_ENTRADA}`}
+                className={`mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm font-medium ${TOM_ENTRADA}`}
               >
                 <option value="">opção mais barata</option>
                 {grupo.opcoes.map((opcao) => (
@@ -147,8 +147,8 @@ export function CusteioSimulator({
           ["Pessoal", resultado.pessoal],
           ["Overhead", resultado.overhead],
         ].map(([label, value]) => (
-          <div key={label} className="rounded-md border border-slate-100 bg-slate-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
-            <div className="text-xs text-slate-500">{label}</div>
+          <div key={label} className="rounded-md border border-border/70 bg-muted/50 p-3">
+            <div className="text-xs text-muted-foreground">{label}</div>
             <div className="mt-1 font-semibold tabular-nums">{formatCurrency(Number(value))}</div>
           </div>
         ))}

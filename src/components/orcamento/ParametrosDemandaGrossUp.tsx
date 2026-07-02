@@ -52,7 +52,7 @@ export function ParametrosDemandaGrossUp({
     return ordenadas.find((rubrica) => rubrica.custo > 0) ?? null;
   }, [rubricas]);
   const inputCls =
-    `h-8 w-20 rounded-md border border-zinc-300 bg-white px-2 text-right text-sm font-semibold tabular-nums text-brand-700 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300 dark:focus:ring-brand-900 ${TOM_ENTRADA}`;
+    `h-8 w-20 rounded-md border border-input bg-card px-2 text-right text-sm font-semibold tabular-nums text-brand-700 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-200 dark:text-brand-300 dark:focus:ring-brand-900 ${TOM_ENTRADA}`;
   const acrescimos = Math.max(0, calculo.totalFinal - subtotalTecnico);
   const markup = subtotalTecnico > 0 ? (calculo.markupSobreCusto / subtotalTecnico) * 100 : 0;
 
@@ -69,12 +69,12 @@ export function ParametrosDemandaGrossUp({
 
       {/* Esquerda: taxas/impostos/lucro (entrada). Direita: tabela final consolidada. */}
       <div className="grid gap-3 xl:grid-cols-2">
-        <form action={salvarParametrosEconomicosDaDemanda} className="self-start rounded-md border border-zinc-200 dark:border-zinc-800">
+        <form action={salvarParametrosEconomicosDaDemanda} className="self-start rounded-md border border-border">
             <input type="hidden" name="demanda_id" value={demandaId} />
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/40">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/50 px-3 py-2">
               <div>
                 <h3 className="text-sm font-semibold">Taxas, impostos e lucro</h3>
-                <p className="text-xs text-zinc-500">Padrão institucional quando não há valores salvos.</p>
+                <p className="text-xs text-muted-foreground">Padrão institucional quando não há valores salvos.</p>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {CENARIOS.map((cenario) => (
@@ -82,19 +82,19 @@ export function ParametrosDemandaGrossUp({
                     key={cenario.label}
                     type="button"
                     onClick={() => setRates(cenario.valores)}
-                    className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium hover:bg-white dark:border-zinc-700 dark:hover:bg-zinc-900"
+                    className="rounded-md border border-input px-2.5 py-1 text-xs font-medium hover:bg-card"
                   >
                     {cenario.label}
                   </button>
                 ))}
               </div>
             </div>
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <div className="divide-y divide-border/70">
               {CAMPOS.map((campo) => (
                 <div key={campo.key} className="grid items-center gap-2 px-3 py-1.5 text-sm md:grid-cols-[7.25rem_minmax(7rem,1fr)_auto_6.25rem]">
-                  <label htmlFor={campo.key} className="font-medium text-zinc-800 dark:text-zinc-100">
+                  <label htmlFor={campo.key} className="font-medium text-foreground">
                     {campo.label}
-                    <span className="block text-[10px] font-normal leading-3 text-zinc-400">
+                    <span className="block text-[10px] font-normal leading-3 text-muted-foreground/80">
                       {campo.base === "final" ? "sobre final" : "sobre custo"}
                     </span>
                   </label>
@@ -125,14 +125,14 @@ export function ParametrosDemandaGrossUp({
                     }}
                     className={inputCls}
                   />
-                  <span className="text-xs font-medium text-zinc-500">%</span>
+                  <span className="text-xs font-medium text-muted-foreground">%</span>
                 </div>
                   <span className="text-right text-sm font-semibold tabular-nums">{brl(calculo.valores[campo.key])}</span>
                 </div>
               ))}
             </div>
-            <div className="flex items-center justify-between gap-3 border-t border-zinc-200 px-3 py-2 dark:border-zinc-800">
-              <p className="max-w-xl text-xs text-zinc-500">
+            <div className="flex items-center justify-between gap-3 border-t border-border px-3 py-2">
+              <p className="max-w-xl text-xs text-muted-foreground">
                 Reserva, investimento e lucro entram antes; impostos e incubação entram por último sobre o final.
               </p>
               <button
@@ -144,27 +144,27 @@ export function ParametrosDemandaGrossUp({
             </div>
         </form>
 
-        <div className="self-start rounded-md border border-zinc-200 dark:border-zinc-800">
-          <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/40">
+        <div className="self-start rounded-md border border-border">
+          <div className="flex items-center justify-between border-b border-border bg-muted/50 px-3 py-2">
             <div>
               <h3 className="text-sm font-semibold">Resultado consolidado</h3>
-              <p className="text-xs text-zinc-500">Tabela final de preços · R$ e % do total</p>
+              <p className="text-xs text-muted-foreground">Tabela final de preços · R$ e % do total</p>
             </div>
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Valores em R$</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Valores em R$</span>
           </div>
-          <div className="divide-y divide-zinc-100 px-3 py-2 text-xs dark:divide-zinc-800">
+          <div className="divide-y divide-border/70 px-3 py-2 text-xs">
             {[
               ["Custos diretos", subtotalTecnico, "bg-brand-600"],
-              ["Impostos e incubação", calculo.valores.impostos_legacy + calculo.valores.incubacao, "bg-amber-500"],
+              ["Impostos e incubação", calculo.valores.impostos_legacy + calculo.valores.incubacao, "bg-warning-soft0"],
               ["Fundo de reserva", calculo.valores.reserva, "bg-aqua-600"],
               ["Fundo de investimento", calculo.valores.investimentos, "bg-violet-500"],
               ["Lucro", calculo.valores.lucro, "bg-leaf-500"],
             ].map(([label, valor, cor]) => (
               <LinhaResultado key={String(label)} label={String(label)} valor={Number(valor)} total={calculo.totalFinal} cor={String(cor)} />
             ))}
-            <LinhaResultado label="Total final" valor={calculo.totalFinal} total={calculo.totalFinal} cor="bg-slate-500" destaque />
+            <LinhaResultado label="Total final" valor={calculo.totalFinal} total={calculo.totalFinal} cor="bg-muted/500" destaque />
             {!calculo.valido && (
-              <p className="mt-2 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-300">
+              <p className="mt-2 rounded-md bg-danger-soft px-3 py-2 text-xs text-danger-strong">
                 Reduza impostos e incubação para calcular o gross-up.
               </p>
             )}
@@ -210,9 +210,9 @@ function percentual(valor: number, total: number) {
 
 function Kpi({ titulo, valor, destaque = false }: { titulo: string; valor: string; destaque?: boolean }) {
   return (
-    <div className={`rounded-md border p-2.5 ${destaque ? "border-brand-200 bg-brand-50 dark:border-brand-900 dark:bg-brand-950/30" : "border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/40"}`}>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{titulo}</p>
-      <p className={`mt-1 truncate text-base font-semibold tabular-nums ${destaque ? "text-brand-700 dark:text-brand-300" : "text-zinc-900 dark:text-zinc-100"}`}>{valor}</p>
+    <div className={`rounded-md border p-2.5 ${destaque ? "border-brand-200 bg-brand-50 dark:border-brand-900 dark:bg-brand-950/30" : "border-border bg-muted/50"}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</p>
+      <p className={`mt-1 truncate text-base font-semibold tabular-nums ${destaque ? "text-brand-700 dark:text-brand-300" : "text-foreground"}`}>{valor}</p>
     </div>
   );
 }
@@ -235,10 +235,10 @@ function LinhaResultado({
     <div className={`grid items-center gap-3 py-2 ${destaque ? "font-semibold text-brand-700 dark:text-brand-300" : ""} md:grid-cols-[9rem_7rem_minmax(8rem,1fr)_4rem]`}>
       <span>{label}</span>
       <span className="text-right tabular-nums">{brl(valor)}</span>
-      <span className="h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
+      <span className="h-2 rounded-full bg-muted">
         <span className={`block h-2 rounded-full ${cor}`} style={{ width: `${pct}%` }} />
       </span>
-      <span className="text-right tabular-nums text-zinc-500">{percentual(valor, total)}</span>
+      <span className="text-right tabular-nums text-muted-foreground">{percentual(valor, total)}</span>
     </div>
   );
 }

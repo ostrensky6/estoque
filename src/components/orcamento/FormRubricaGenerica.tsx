@@ -145,44 +145,44 @@ export function FormRubricaGenerica({
   );
 
   const tableInputClass = (habilitado: boolean) => 
-    `w-full bg-white dark:bg-zinc-950 border transition focus:outline-none focus:ring-1 focus:ring-brand-500 rounded px-3 py-1.5 text-sm ${
+    `w-full bg-card border transition focus:outline-none focus:ring-1 focus:ring-brand-500 rounded px-3 py-1.5 text-sm ${
       habilitado 
-        ? "text-zinc-950 dark:text-zinc-50 border-zinc-200 dark:border-zinc-800 focus:border-brand-500 font-semibold" 
-        : "text-zinc-400 dark:text-zinc-500 border-transparent cursor-not-allowed font-medium"
+        ? "text-foreground border-border focus:border-brand-500 font-semibold" 
+        : "text-muted-foreground/80 border-transparent cursor-not-allowed font-medium"
     }`;
 
   const inputClass =
-    "rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-brand-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300";
+    "rounded border border-input bg-card px-3 py-1.5 text-sm font-medium text-brand-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:text-brand-300";
 
   return (
     <div className="space-y-6">
       {/* Tabela de Lançamento da Rubrica Generica */}
-      <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-800 pb-3">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-3">
           <div>
-            <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 font-sans">{rubricaLabel}</h3>
-            <p className="mt-0.5 text-xs text-zinc-500 font-medium">
+            <h3 className="text-base font-bold text-foreground font-sans">{rubricaLabel}</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground font-medium">
               Selecione itens do catálogo, ajuste quantidade e valores, ou cadastre novos itens.
             </p>
           </div>
-          <div className="flex gap-3 text-xs bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 rounded-md font-semibold text-zinc-600 dark:text-zinc-400">
+          <div className="flex gap-3 text-xs bg-muted/50 px-3 py-1.5 rounded-md font-semibold text-muted-foreground">
             <span>{custosItens.length} selecionados</span>
-            <span className="text-zinc-300">|</span>
+            <span className="text-muted-foreground/70">|</span>
             <span>{catalogoItens.length} no catálogo</span>
           </div>
         </div>
 
         {/* Painel de busca e seleção rápida */}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 no-print bg-zinc-50/50 dark:bg-zinc-950/20 p-3 rounded-lg border border-zinc-100 dark:border-zinc-800">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 no-print bg-muted/30 p-3 rounded-lg border border-border/70">
           <div className="relative w-full max-w-xs">
             <input
               type="text"
               placeholder={`Buscar em ${rubricaLabel}...`}
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              className="w-full rounded border border-zinc-300 bg-white px-3 py-1.5 pl-8 text-xs font-semibold text-brand-700 placeholder-zinc-400 focus:border-brand-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"
+              className="w-full rounded border border-input bg-card px-3 py-1.5 pl-8 text-xs font-semibold text-brand-700 placeholder:text-muted-foreground/60 focus:border-brand-500 focus:outline-none dark:text-brand-300"
             />
-            <span className="absolute left-2.5 top-2.5 text-[10px] text-zinc-400 font-bold uppercase tracking-wide">🔍</span>
+            <span className="absolute left-2.5 top-2.5 text-[10px] text-muted-foreground/80 font-bold uppercase tracking-wide">🔍</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -191,7 +191,7 @@ export function FormRubricaGenerica({
               <input type="hidden" name="rubrica" value={rubrica} />
               <button
                 type="submit"
-                className="rounded border border-zinc-200 bg-white hover:bg-zinc-50 px-3 py-1.5 text-xs font-bold text-zinc-750 dark:border-zinc-750 dark:bg-zinc-950 dark:text-zinc-350 transition shadow-sm"
+                className="rounded border border-border bg-card hover:bg-muted/50 px-3 py-1.5 text-xs font-bold text-foreground transition shadow-sm"
               >
                 ☑️ Selecionar todos
               </button>
@@ -202,7 +202,7 @@ export function FormRubricaGenerica({
               <input type="hidden" name="rubrica" value={rubrica} />
               <button
                 type="submit"
-                className="rounded border border-zinc-200 bg-white hover:bg-zinc-50 px-3 py-1.5 text-xs font-bold text-red-650 dark:border-zinc-750 dark:bg-zinc-950 dark:text-red-400 transition shadow-sm"
+                className="rounded border border-border bg-card hover:bg-muted/50 px-3 py-1.5 text-xs font-bold text-danger-strong transition shadow-sm"
               >
                 ✕ Limpar todos
               </button>
@@ -213,7 +213,7 @@ export function FormRubricaGenerica({
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-right text-sm table-fixed min-w-[950px] border-collapse">
             <thead>
-              <tr className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500 dark:bg-zinc-950/60 border-b border-zinc-100 dark:border-zinc-800">
+              <tr className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground border-b border-border/70">
                 <th className="px-3 py-2 text-center w-20">Incluir</th>
                 <th className="px-3 py-2 text-left w-36">Item (Categoria)</th>
                 <th className="px-3 py-2 text-left min-w-[280px]">Especificação</th>
@@ -224,7 +224,7 @@ export function FormRubricaGenerica({
                 <th className="no-print px-3 py-2 w-28 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <tbody className="divide-y divide-border/70">
               {/* 1. Itens do Catálogo */}
               {catalogoFiltrado.map((catItem) => {
                 const item = custosPorCatalogoId.get(catItem.id);
@@ -241,7 +241,7 @@ export function FormRubricaGenerica({
                   const subtotalCalculado = (estado.quantidade ?? 0) * (estado.custo_unitario ?? 0);
 
                   return (
-                    <tr key={catItem.id} className="bg-brand-50/10 dark:bg-brand-950/5 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50">
+                    <tr key={catItem.id} className="bg-brand-50/10 dark:bg-brand-950/5 hover:bg-muted/30">
                       {/* Checkbox de Seleção */}
                       <td className="px-3 py-3 text-center no-print">
                         <form action={removerCustoAction}>
@@ -264,7 +264,7 @@ export function FormRubricaGenerica({
 
                       {/* Item (Categoria) */}
                       <td className="px-3 py-3 text-left">
-                        <span className="inline-block bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold px-2 py-1 text-xs rounded border border-zinc-200 dark:border-zinc-700 uppercase">
+                        <span className="inline-block bg-muted text-muted-foreground font-semibold px-2 py-1 text-xs rounded border border-border uppercase">
                           {catItem.categoria || "Geral"}
                         </span>
                       </td>
@@ -294,7 +294,7 @@ export function FormRubricaGenerica({
                           type="text"
                           value={estado.unidade ?? ""}
                           onChange={(e) => handleLinhaUnidadeChange(item.id, e.target.value)}
-                          className="w-full text-center rounded border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 px-2 py-1.5 text-sm text-zinc-800 dark:text-zinc-300 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                          className="w-full text-center rounded border border-border bg-card px-2 py-1.5 text-sm text-foreground focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                         />
                       </td>
 
@@ -308,14 +308,14 @@ export function FormRubricaGenerica({
                           step="0.01"
                           value={estado.quantidade ?? 0}
                           onChange={(e) => handleLinhaQtdChange(item.id, Number(e.target.value))}
-                          className="w-full rounded border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 px-2 py-1.5 text-right text-sm font-semibold text-zinc-900 dark:text-zinc-100 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                          className="w-full rounded border border-border bg-card px-2 py-1.5 text-right text-sm font-semibold text-foreground focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                         />
                       </td>
 
                       {/* Valor Unitário Editável */}
                       <td className="px-3 py-3">
                         <div className="relative">
-                          <span className="absolute left-3 top-2.5 text-xs text-zinc-400 font-bold">R$</span>
+                          <span className="absolute left-3 top-2.5 text-xs text-muted-foreground/80 font-bold">R$</span>
                           <input
                             form={`form-cat-${item.id}`}
                             name="custo_unitario"
@@ -324,7 +324,7 @@ export function FormRubricaGenerica({
                             step="0.01"
                             value={(estado.custo_unitario ?? 0).toFixed(2)}
                             onChange={(e) => handleLinhaCustoChange(item.id, Number(e.target.value))}
-                            className="w-full rounded border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 px-3 py-1.5 pl-8 text-right text-sm font-bold text-zinc-800 dark:text-zinc-300 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                            className="w-full rounded border border-border bg-card px-3 py-1.5 pl-8 text-right text-sm font-bold text-foreground focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                           />
                         </div>
                       </td>
@@ -357,7 +357,7 @@ export function FormRubricaGenerica({
                             <input type="hidden" name="item_id" value={item.id} />
                             <button
                               type="submit"
-                              className="rounded border border-red-200 bg-white hover:bg-red-50 p-1.5 text-xs font-bold text-red-650 transition shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+                              className="rounded border border-danger-strong/30 bg-card hover:bg-danger-soft p-1.5 text-xs font-bold text-danger-strong transition shadow-sm"
                             >
                               🗑️
                             </button>
@@ -369,7 +369,7 @@ export function FormRubricaGenerica({
                 } else {
                   // Caso o item do catálogo NÃO esteja incluído
                   return (
-                    <tr key={catItem.id} className="opacity-60 hover:opacity-100 border-b border-zinc-100 dark:border-zinc-800/60 transition">
+                    <tr key={catItem.id} className="opacity-60 hover:opacity-100 border-b border-border/70 transition">
                       {/* Checkbox de Seleção */}
                       <td className="px-3 py-3 text-center no-print">
                         <form action={alternarCustoCatalogoAction}>
@@ -387,7 +387,7 @@ export function FormRubricaGenerica({
 
                       {/* Item (Categoria) */}
                       <td className="px-3 py-3 text-left">
-                        <span className="inline-block bg-transparent text-zinc-400 font-medium px-2 py-1 text-xs rounded uppercase">
+                        <span className="inline-block bg-transparent text-muted-foreground/80 font-medium px-2 py-1 text-xs rounded uppercase">
                           {catItem.categoria || "Geral"}
                         </span>
                       </td>
@@ -403,20 +403,20 @@ export function FormRubricaGenerica({
                       </td>
 
                       {/* Unidade */}
-                      <td className="px-3 py-3 text-center text-zinc-400 font-medium">
+                      <td className="px-3 py-3 text-center text-muted-foreground/80 font-medium">
                         {catItem.unidade ?? "un"}
                       </td>
 
                       {/* Qtd. Vazia */}
-                      <td className="px-3 py-3 text-zinc-300 font-light text-center">—</td>
+                      <td className="px-3 py-3 text-muted-foreground/70 font-light text-center">—</td>
 
                       {/* Preço sugerido */}
-                      <td className="px-3 py-3 tabular-nums text-zinc-400 text-sm font-semibold pl-8">
+                      <td className="px-3 py-3 tabular-nums text-muted-foreground/80 text-sm font-semibold pl-8">
                         {brl(Number(catItem.preco_unitario ?? 0))}
                       </td>
 
                       {/* Total Vazio */}
-                      <td className="px-3 py-3 text-zinc-300 font-light">—</td>
+                      <td className="px-3 py-3 text-muted-foreground/70 font-light">—</td>
                       <td className="px-3 py-3"></td>
                     </tr>
                   );
@@ -435,7 +435,7 @@ export function FormRubricaGenerica({
                 const subtotalCalculado = (estado.quantidade ?? 0) * (estado.custo_unitario ?? 0);
 
                 return (
-                  <tr key={item.id} className="bg-amber-50/10 dark:bg-amber-950/5 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50">
+                  <tr key={item.id} className="bg-warning-soft/10 hover:bg-muted/30">
                     {/* Checkbox de Seleção */}
                     <td className="px-3 py-3 text-center no-print">
                       <form action={removerCustoAction}>
@@ -458,7 +458,7 @@ export function FormRubricaGenerica({
 
                     {/* Categoria */}
                     <td className="px-3 py-3 text-left">
-                      <span className="inline-block bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold px-2 py-1 text-xs rounded border border-amber-100 dark:border-amber-900 uppercase">
+                      <span className="inline-block bg-warning-soft text-warning-strong font-semibold px-2 py-1 text-xs rounded border border-warning-strong/20 uppercase">
                         {item.categoria || "Geral"}
                       </span>
                     </td>
@@ -487,7 +487,7 @@ export function FormRubricaGenerica({
                         type="text"
                         value={estado.unidade ?? ""}
                         onChange={(e) => handleLinhaUnidadeChange(item.id, e.target.value)}
-                        className="w-full text-center rounded border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 px-2 py-1.5 text-sm text-zinc-850 dark:text-zinc-300 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                        className="w-full text-center rounded border border-border bg-card px-2 py-1.5 text-sm text-foreground focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                       />
                     </td>
 
@@ -501,14 +501,14 @@ export function FormRubricaGenerica({
                         step="0.01"
                         value={estado.quantidade ?? 0}
                         onChange={(e) => handleLinhaQtdChange(item.id, Number(e.target.value))}
-                        className="w-full rounded border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 px-2 py-1.5 text-right text-sm font-semibold text-zinc-900 dark:text-zinc-100 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                        className="w-full rounded border border-border bg-card px-2 py-1.5 text-right text-sm font-semibold text-foreground focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                       />
                     </td>
 
                     {/* Custo Unitário Editável */}
                     <td className="px-3 py-3">
                       <div className="relative">
-                        <span className="absolute left-3 top-2.5 text-xs text-zinc-400 font-bold">R$</span>
+                        <span className="absolute left-3 top-2.5 text-xs text-muted-foreground/80 font-bold">R$</span>
                         <input
                           form={`form-linha-${item.id}`}
                           name="custo_unitario"
@@ -517,7 +517,7 @@ export function FormRubricaGenerica({
                           step="0.01"
                           value={(estado.custo_unitario ?? 0).toFixed(2)}
                           onChange={(e) => handleLinhaCustoChange(item.id, Number(e.target.value))}
-                          className="w-full rounded border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 px-3 py-1.5 pl-8 text-right text-sm font-bold text-zinc-800 dark:text-zinc-300 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                          className="w-full rounded border border-border bg-card px-3 py-1.5 pl-8 text-right text-sm font-bold text-foreground focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                         />
                       </div>
                     </td>
@@ -550,7 +550,7 @@ export function FormRubricaGenerica({
                           <input type="hidden" name="item_id" value={item.id} />
                           <button
                             type="submit"
-                            className="rounded border border-red-200 bg-white hover:bg-red-50 p-1.5 text-xs font-bold text-red-650 transition shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+                            className="rounded border border-danger-strong/30 bg-card hover:bg-danger-soft p-1.5 text-xs font-bold text-danger-strong transition shadow-sm"
                           >
                             🗑️
                           </button>
@@ -563,7 +563,7 @@ export function FormRubricaGenerica({
 
               {catalogoFiltrado.length === 0 && itensPersonalizados.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-3 py-6 text-center text-zinc-400">
+                  <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground/80">
                     Nenhum item cadastrado nesta rubrica. Adicione um custo personalizado abaixo.
                   </td>
                 </tr>
@@ -574,25 +574,25 @@ export function FormRubricaGenerica({
       </section>
 
       {/* Resumo de Custos e Totais Consolidados do Projeto */}
-      <section className="rounded-lg border border-zinc-200 bg-zinc-50 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/40">
+      <section className="rounded-lg border border-border bg-muted/50 p-5 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h4 className="text-sm font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wide">Sumário de Custos do Orçamento</h4>
-            <p className="mt-0.5 text-xs text-zinc-500 font-medium">Valores totais consolidados no momento.</p>
+            <h4 className="text-sm font-bold text-foreground uppercase tracking-wide">Sumário de Custos do Orçamento</h4>
+            <p className="mt-0.5 text-xs text-muted-foreground font-medium">Valores totais consolidados no momento.</p>
           </div>
           <div className="flex flex-wrap items-center gap-6 text-right justify-end">
             <div className="flex flex-col">
-              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wide">Subtotal {rubrica} ({rubricaLabel})</span>
-              <span className="text-base font-extrabold text-zinc-900 dark:text-zinc-100 tabular-nums">{brl(totalRubrica)}</span>
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">Subtotal {rubrica} ({rubricaLabel})</span>
+              <span className="text-base font-extrabold text-foreground tabular-nums">{brl(totalRubrica)}</span>
             </div>
-            <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800 hidden sm:block"></div>
+            <div className="h-8 w-px bg-muted hidden sm:block"></div>
             <div className="flex flex-col">
-              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wide">Subtotal Técnico (Custos Diretos)</span>
-              <span className="text-base font-extrabold text-zinc-900 dark:text-zinc-100 tabular-nums">{brl(subtotalProjeto)}</span>
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">Subtotal Técnico (Custos Diretos)</span>
+              <span className="text-base font-extrabold text-foreground tabular-nums">{brl(subtotalProjeto)}</span>
             </div>
             {totalVendaProjeto > 0 && (
               <>
-                <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800 hidden sm:block"></div>
+                <div className="h-8 w-px bg-muted hidden sm:block"></div>
                 <div className="flex flex-col">
                   <span className="text-[10px] text-brand-600 dark:text-brand-400 font-black uppercase tracking-wide">Valor Global de Venda</span>
                   <span className="text-lg font-black text-brand-700 dark:text-brand-400 tabular-nums">{brl(totalVendaProjeto)}</span>
@@ -604,9 +604,9 @@ export function FormRubricaGenerica({
       </section>
 
       {/* Inserir Item Personalizado */}
-      <section className="no-print rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 font-sans">Inserir Item Personalizado</h3>
-        <p className="mt-1 text-xs text-zinc-500">
+      <section className="no-print rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-foreground font-sans">Inserir Item Personalizado</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
           Adicione itens customizados extras que não constam no catálogo.
         </p>
 
@@ -619,7 +619,7 @@ export function FormRubricaGenerica({
 
           {/* Categoria */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Categoria</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Categoria</label>
             <input
               name="categoria"
               type="text"
@@ -633,7 +633,7 @@ export function FormRubricaGenerica({
 
           {/* Descrição */}
           <div className="flex flex-col gap-1 md:col-span-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Especificação / Item</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Especificação / Item</label>
             <input
               name="descricao"
               type="text"
@@ -648,7 +648,7 @@ export function FormRubricaGenerica({
           {/* Quantidade e Unidade */}
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Qtd.</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Qtd.</label>
               <input
                 name="quantidade"
                 type="number"
@@ -661,7 +661,7 @@ export function FormRubricaGenerica({
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Unidade</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Unidade</label>
               <input
                 name="unidade"
                 type="text"
@@ -677,7 +677,7 @@ export function FormRubricaGenerica({
           {/* Valor Custo */}
           <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Valor Unitário (R$)</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Valor Unitário (R$)</label>
               <input
                 name="custo_unitario"
                 type="number"

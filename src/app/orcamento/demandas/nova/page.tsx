@@ -130,7 +130,7 @@ export default async function NovaDemandaPage() {
   }];
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -144,19 +144,19 @@ export default async function NovaDemandaPage() {
               Entrada comercial
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">Novo Orçamento</h1>
-            <p className="mt-1 max-w-3xl text-sm text-zinc-500">
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               Preencha o orçamento inteiro uma única vez. Estes dados seguem para laboratório, projeto e proposta final.
             </p>
           </div>
           <Link
             href="/orcamento/demandas"
-            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-muted"
           >
             Voltar à lista
           </Link>
         </div>
 
-        <section className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section className="mt-6 rounded-lg border border-border bg-card p-4 shadow-sm">
           <DemandaForm
             demanda={demandaNova}
             clientes={(clientes ?? []) as { id: number; nome: string }[]}

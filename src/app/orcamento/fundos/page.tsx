@@ -64,7 +64,7 @@ type FundoLinha = {
   calculo: FundosCalculados;
 };
 
-const inputCls = "h-8 w-full min-w-0 rounded-md border border-zinc-300 bg-white px-2 text-right text-xs font-semibold tabular-nums text-brand-700 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300 dark:focus:ring-brand-900";
+const inputCls = "h-8 w-full min-w-0 rounded-md border border-input bg-card px-2 text-right text-xs font-semibold tabular-nums text-brand-700 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-200 dark:text-brand-300 dark:focus:ring-brand-900";
 
 export default async function FundosPage() {
   const supabase = await createClient();
@@ -178,18 +178,18 @@ export default async function FundosPage() {
   );
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="mx-auto max-w-7xl px-6 py-10">
         <Breadcrumbs items={[{ label: "Orçamentos", href: "/orcamento" }, { label: "Fundos e taxas" }]} />
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Fundos e taxas</h1>
-            <p className="mt-1 max-w-3xl text-sm text-zinc-500">
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               Acompanhamento financeiro de orçamentos aprovados: recebimentos, impostos, incubação, baixas e saldos de fundos.
             </p>
           </div>
-          <Link href="/orcamento/historico" className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+          <Link href="/orcamento/historico" className="rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted">
             Histórico de orçamentos
           </Link>
         </div>
@@ -218,16 +218,16 @@ export default async function FundosPage() {
           />
         </section>
 
-        <section className="mt-6 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+        <section className="mt-6 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-4 py-3">
             <h2 className="text-sm font-semibold">Acompanhamento por orçamento final</h2>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Informe os recebimentos e a execução financeira para liberar os saldos na mesma proporção do pagamento recebido.
             </p>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-[1480px] w-full text-sm">
-              <thead className="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:bg-zinc-950/50">
+              <thead className="bg-muted/50 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2">Orçamento</th>
                   <th className="px-3 py-2 text-right">Total</th>
@@ -242,15 +242,15 @@ export default async function FundosPage() {
                   <th className="px-3 py-2">Ação</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <tbody className="divide-y divide-border/70">
                 {linhas.map((linha) => (
                   <tr key={linha.versao.id} className="align-top">
                     <td className="px-3 py-3">
                       <Link href={`/orcamento/final/${linha.versao.id}`} className="font-semibold text-primary hover:underline">
                         {linha.versao.numero}
                       </Link>
-                      <p className="mt-0.5 text-xs text-zinc-500">{linha.demanda?.titulo ?? `Demanda #${linha.versao.demanda_id}`}</p>
-                      <p className="text-xs text-zinc-500">
+                      <p className="mt-0.5 text-xs text-muted-foreground">{linha.demanda?.titulo ?? `Demanda #${linha.versao.demanda_id}`}</p>
+                      <p className="text-xs text-muted-foreground">
                         {linha.demanda?.cliente_nome ?? "Cliente sem nome"} · {rotuloStatus(linha.versao.status)} · validade {formatDate(linha.versao.valido_ate)}
                       </p>
                     </td>
@@ -280,14 +280,14 @@ export default async function FundosPage() {
                           defaultValue={linha.acompanhamento?.observacao ?? ""}
                           disabled={!podeEditar}
                           placeholder="Observação"
-                          className="col-span-3 h-8 rounded-md border border-zinc-300 bg-white px-2 text-xs dark:border-zinc-700 dark:bg-zinc-950"
+                          className="col-span-3 h-8 rounded-md border border-input bg-card px-2 text-xs"
                         />
                         <input
                           name="saldo_ajustado_motivo"
                           defaultValue={linha.acompanhamento?.saldo_ajustado_motivo ?? ""}
                           disabled={!podeEditar}
                           placeholder="Motivo do saldo manual"
-                          className="col-span-3 h-8 rounded-md border border-zinc-300 bg-white px-2 text-xs dark:border-zinc-700 dark:bg-zinc-950"
+                          className="col-span-3 h-8 rounded-md border border-input bg-card px-2 text-xs"
                         />
                         <button
                           disabled={!podeEditar}
@@ -306,14 +306,14 @@ export default async function FundosPage() {
                         <LinhaSaldo label="Invest." valor={brl(linha.calculo.saldo.investimentos)} destaque />
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-xs text-zinc-500">
+                    <td className="px-3 py-3 text-xs text-muted-foreground">
                       {linha.acompanhamento?.atualizado_em ? `Atualizado ${formatDate(linha.acompanhamento.atualizado_em)}` : "Sem lançamento"}
                     </td>
                   </tr>
                 ))}
                 {linhas.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="px-3 py-8 text-center text-sm text-zinc-400">
+                    <td colSpan={11} className="px-3 py-8 text-center text-sm text-muted-foreground/80">
                       Nenhum orçamento aprovado para acompanhar. Classifique uma versão final como Aprovado no Histórico de orçamentos.
                     </td>
                   </tr>
@@ -322,7 +322,7 @@ export default async function FundosPage() {
             </table>
           </div>
           {!podeEditar && (
-            <div className="border-t border-zinc-200 bg-zinc-50 px-4 py-3 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/40">
+            <div className="border-t border-border bg-muted/50 px-4 py-3 text-xs text-muted-foreground">
               Seu papel atual permite consultar fundos, mas lançamentos financeiros exigem perfil Gestor ou Administrador.
             </div>
           )}
@@ -359,24 +359,24 @@ function CampoMoeda({
 
 function Resumo({ titulo, valor, detalhe }: { titulo: string; valor: string; detalhe: string }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <p className="text-xs font-medium text-zinc-500">{titulo}</p>
+    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+      <p className="text-xs font-medium text-muted-foreground">{titulo}</p>
       <p className="mt-1 text-lg font-semibold tabular-nums">{valor}</p>
-      <p className="mt-1 text-xs text-zinc-500">{detalhe}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{detalhe}</p>
     </div>
   );
 }
 
 function PainelConsolidado({ titulo, linhas }: { titulo: string; linhas: Array<[string, number, number, number?]> }) {
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
       <h2 className="text-sm font-semibold">{titulo}</h2>
-      <div className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800">
+      <div className="mt-3 divide-y divide-border/70">
         {linhas.map(([label, liberado, executado, saldo]) => (
           <div key={label} className="grid grid-cols-4 gap-3 py-2 text-sm">
             <span className="font-medium">{label}</span>
-            <span className="text-right tabular-nums text-zinc-500">{brl(liberado)} liberado</span>
-            <span className="text-right tabular-nums text-zinc-500">{brl(executado)} executado</span>
+            <span className="text-right tabular-nums text-muted-foreground">{brl(liberado)} liberado</span>
+            <span className="text-right tabular-nums text-muted-foreground">{brl(executado)} executado</span>
             <span className="text-right font-semibold tabular-nums">{brl(saldo ?? liberado - executado)}</span>
           </div>
         ))}
@@ -387,7 +387,7 @@ function PainelConsolidado({ titulo, linhas }: { titulo: string; linhas: Array<[
 
 function LinhaSaldo({ label, valor, destaque = false }: { label: string; valor: string; destaque?: boolean }) {
   return (
-    <div className={`flex justify-between gap-3 ${destaque ? "font-semibold text-brand-700 dark:text-brand-300" : "text-zinc-600 dark:text-zinc-300"}`}>
+    <div className={`flex justify-between gap-3 ${destaque ? "font-semibold text-brand-700 dark:text-brand-300" : "text-muted-foreground"}`}>
       <span>{label}</span>
       <span className="tabular-nums">{valor}</span>
     </div>

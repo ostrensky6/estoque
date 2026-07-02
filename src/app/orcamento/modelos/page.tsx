@@ -79,13 +79,13 @@ export default async function OrcamentoModelosPage({
   const parametrosPadrao = resumirParametrosPadrao((templates ?? []) as TemplateProjeto[]);
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="mx-auto max-w-7xl px-6 py-10">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <Link href="/orcamento" className="text-xs text-zinc-500 hover:underline">Orçamentos</Link>
+            <Link href="/orcamento" className="text-xs text-muted-foreground hover:underline">Orçamentos</Link>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight">Modelos e catálogo</h1>
-            <p className="mt-1 max-w-3xl text-sm text-zinc-500">
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               Área operacional para templates de projeto, catálogo institucional, parâmetros padrão e origem importada preservada.
             </p>
           </div>
@@ -93,7 +93,7 @@ export default async function OrcamentoModelosPage({
             <Link href="/orcamento/projetos" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
               Usar em orçamento
             </Link>
-            <Link href="/orcamento" className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+            <Link href="/orcamento" className="rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted">
               Orçamentos
             </Link>
           </div>
@@ -106,7 +106,7 @@ export default async function OrcamentoModelosPage({
             ["#parametros", "Parâmetros padrão"],
             ["#importados", "Origem importada"],
           ].map(([href, label]) => (
-            <a key={href} href={href} className="rounded-md border border-zinc-200 px-3 py-2 font-medium hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800">
+            <a key={href} href={href} className="rounded-md border border-border px-3 py-2 font-medium hover:bg-muted">
               {label}
             </a>
           ))}
@@ -119,7 +119,7 @@ export default async function OrcamentoModelosPage({
           <Resumo titulo="Origem importada" valor={importados.toLocaleString("pt-BR")} />
         </section>
 
-        <form className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <form className="mt-6 rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="grid gap-3 md:grid-cols-[1fr_10rem_12rem_10rem_auto_auto] md:items-end">
             <CampoFiltro label="Busca">
               <input name="busca" defaultValue={filtros.busca ?? ""} className={inputCls} />
@@ -146,23 +146,23 @@ export default async function OrcamentoModelosPage({
               </select>
             </CampoFiltro>
             <button className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">Filtrar</button>
-            <Link href="/orcamento/modelos" className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-center hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+            <Link href="/orcamento/modelos" className="rounded-md border border-input px-3 py-2 text-sm font-medium text-center hover:bg-muted">
               Limpar
             </Link>
           </div>
         </form>
 
-        <section id="templates" className="mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="templates" className="mt-6 scroll-mt-8 rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Templates de projeto</h2>
-              <p className="mt-1 text-xs text-zinc-500">Use, duplique ou arquive estruturas completas de rubricas e parâmetros.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Use, duplique ou arquive estruturas completas de rubricas e parâmetros.</p>
             </div>
             <Link href="/orcamento/projetos" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">Criar a partir de template</Link>
           </div>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[1100px] text-left text-sm">
-              <thead className="text-xs uppercase tracking-wide text-zinc-500">
+              <thead className="text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2">Nome</th>
                   <th className="px-3 py-2">Descrição</th>
@@ -174,22 +174,22 @@ export default async function OrcamentoModelosPage({
                   <th className="px-3 py-2 text-right">Ação</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <tbody className="divide-y divide-border/70">
                 {templatesFiltrados.map((template) => (
                   <tr key={template.id}>
                     <td className="px-3 py-3 font-medium">{nomeVisivel(template.nome)}</td>
-                    <td className="px-3 py-3 text-zinc-500">{template.descricao ?? "—"}</td>
+                    <td className="px-3 py-3 text-muted-foreground">{template.descricao ?? "—"}</td>
                     <td className="px-3 py-3"><Origem origem={template.origem} /></td>
                     <td className="px-3 py-3 text-right tabular-nums">{contarItens(template.itens)}</td>
-                    <td className="px-3 py-3 text-xs text-zinc-500">{resumoParametros(template.parametros)}</td>
-                    <td className="px-3 py-3 text-zinc-500">{formatDate(template.criado_em)}</td>
+                    <td className="px-3 py-3 text-xs text-muted-foreground">{resumoParametros(template.parametros)}</td>
+                    <td className="px-3 py-3 text-muted-foreground">{formatDate(template.criado_em)}</td>
                     <td className="px-3 py-3">{isArquivado(template) ? <Badge tom="zinc">Arquivado</Badge> : <Badge tom="brand">Ativo</Badge>}</td>
                     <td className="px-3 py-3">
                       <div className="flex justify-end gap-2">
                         {!isArquivado(template) && (
                           <form action={criarProjetoDeTemplate} className="flex items-center gap-1">
                             <input type="hidden" name="template_id" value={template.id} />
-                            <select name="projeto_id" defaultValue="" className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-950">
+                            <select name="projeto_id" defaultValue="" className="rounded-md border border-input bg-card px-2 py-1 text-xs">
                               <option value="">Sem projeto</option>
                               {((projetos ?? []) as ProjetoOpcao[]).map((projeto) => (
                                 <option key={projeto.id} value={projeto.id}>{projeto.nome}</option>
@@ -210,7 +210,7 @@ export default async function OrcamentoModelosPage({
                             titulo="Arquivar template"
                             mensagem={`Arquivar o template ${nomeVisivel(template.nome)}? Ele deixa de ser oferecido como ativo, mas o registro permanece no histórico.`}
                             confirmLabel="Arquivar"
-                            triggerClassName="text-xs font-medium text-red-600 hover:underline"
+                            triggerClassName="text-xs font-medium text-danger-strong hover:underline"
                           />
                         )}
                       </div>
@@ -219,7 +219,7 @@ export default async function OrcamentoModelosPage({
                 ))}
                 {templatesFiltrados.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-3 py-8 text-center text-zinc-400">Nenhum template encontrado.</td>
+                    <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground/80">Nenhum template encontrado.</td>
                   </tr>
                 )}
               </tbody>
@@ -227,12 +227,12 @@ export default async function OrcamentoModelosPage({
           </div>
         </section>
 
-        <section id="catalogo" className="mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="catalogo" className="mt-6 scroll-mt-8 rounded-lg border border-border bg-card p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Catálogo institucional de custos</h2>
-          <p className="mt-1 text-xs text-zinc-500">Itens reutilizáveis por rubrica, com origem auditável e arquivamento sem remoção.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Itens reutilizáveis por rubrica, com origem auditável e arquivamento sem remoção.</p>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[1100px] text-left text-sm">
-              <thead className="text-xs uppercase tracking-wide text-zinc-500">
+              <thead className="text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2">Código</th>
                   <th className="px-3 py-2">Rubrica</th>
@@ -246,7 +246,7 @@ export default async function OrcamentoModelosPage({
                   <th className="px-3 py-2 text-right">Ação</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <tbody className="divide-y divide-border/70">
                 {catalogoFiltrado.map((item) => (
                   <tr key={item.id}>
                     <td className="px-3 py-3 font-medium">{item.id}</td>
@@ -256,7 +256,7 @@ export default async function OrcamentoModelosPage({
                     <td className="px-3 py-3">{item.unidade ?? "un"}</td>
                     <td className="px-3 py-3 text-right tabular-nums">{brl(Number(item.preco_unitario ?? 0))}</td>
                     <td className="px-3 py-3"><Origem origem={item.origem} /></td>
-                    <td className="px-3 py-3 text-zinc-500">{formatDate(item.valid_from)}</td>
+                    <td className="px-3 py-3 text-muted-foreground">{formatDate(item.valid_from)}</td>
                     <td className="px-3 py-3">{item.ativo ? <Badge tom="brand">Sim</Badge> : <Badge tom="zinc">Não</Badge>}</td>
                     <td className="px-3 py-3 text-right">
                       {item.ativo ? (
@@ -267,17 +267,17 @@ export default async function OrcamentoModelosPage({
                           titulo="Arquivar item do catálogo"
                           mensagem={`Arquivar ${item.descricao}? O item deixa de ser sugerido para novos orçamentos, sem apagar histórico.`}
                           confirmLabel="Arquivar"
-                          triggerClassName="text-xs font-medium text-red-600 hover:underline"
+                          triggerClassName="text-xs font-medium text-danger-strong hover:underline"
                         />
                       ) : (
-                        <span className="text-xs text-zinc-400">Arquivado</span>
+                        <span className="text-xs text-muted-foreground/80">Arquivado</span>
                       )}
                     </td>
                   </tr>
                 ))}
                 {catalogoFiltrado.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-3 py-8 text-center text-zinc-400">Nenhum item de catálogo encontrado.</td>
+                    <td colSpan={10} className="px-3 py-8 text-center text-muted-foreground/80">Nenhum item de catálogo encontrado.</td>
                   </tr>
                 )}
               </tbody>
@@ -285,9 +285,9 @@ export default async function OrcamentoModelosPage({
           </div>
         </section>
 
-        <section id="parametros" className="mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="parametros" className="mt-6 scroll-mt-8 rounded-lg border border-border bg-card p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Parâmetros padrão em templates</h2>
-          <p className="mt-1 text-xs text-zinc-500">Leitura consolidada dos parâmetros salvos nos modelos reutilizáveis.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Leitura consolidada dos parâmetros salvos nos modelos reutilizáveis.</p>
           <div className="mt-3 grid gap-3 md:grid-cols-6">
             {parametrosPadrao.map((item) => (
               <Resumo key={item.label} titulo={item.label} valor={item.valor} />
@@ -295,9 +295,9 @@ export default async function OrcamentoModelosPage({
           </div>
         </section>
 
-        <section id="importados" className="mt-6 scroll-mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="importados" className="mt-6 scroll-mt-8 rounded-lg border border-border bg-card p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Importados do app antigo</h2>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             A origem antiga aparece como procedência auditável. O uso operacional continua sendo catálogo institucional.
           </p>
           <div className="mt-3 grid gap-3 md:grid-cols-4">
@@ -313,7 +313,7 @@ export default async function OrcamentoModelosPage({
 }
 
 const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+  "mt-1 w-full rounded-md border border-input bg-card px-2 py-2 text-sm";
 
 function filtrarTemplates(templates: TemplateProjeto[], filtros: SearchParams) {
   const busca = (filtros.busca ?? "").toLocaleLowerCase("pt-BR");
@@ -395,7 +395,7 @@ function jsonRecord(value: Json): Record<string, unknown> | null {
 
 function CampoFiltro({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block text-xs font-medium text-zinc-500">
+    <label className="block text-xs font-medium text-muted-foreground">
       {label}
       {children}
     </label>
@@ -412,15 +412,15 @@ function Badge({ children, tom = "zinc" }: { children: React.ReactNode; tom?: "b
     tom === "brand"
       ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
       : tom === "amber"
-        ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
-        : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300";
+        ? "bg-warning-soft text-warning-strong"
+        : "bg-muted text-muted-foreground";
   return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{children}</span>;
 }
 
 function Resumo({ titulo, valor }: { titulo: string; valor: string }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <p className="text-xs font-medium text-zinc-500">{titulo}</p>
+    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+      <p className="text-xs font-medium text-muted-foreground">{titulo}</p>
       <p className="mt-1 text-lg font-semibold tabular-nums">{valor}</p>
     </div>
   );
