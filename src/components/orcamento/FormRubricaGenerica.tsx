@@ -90,6 +90,7 @@ export function FormRubricaGenerica({
         unidade: item.unidade ?? "",
       };
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLinhaEstados(novosEstados);
   }, [custosItens]);
 

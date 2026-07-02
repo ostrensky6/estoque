@@ -87,6 +87,7 @@ export function FormPessoal({
         quantidade: Number(item.quantidade ?? 1),
       };
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLinhaEstados(novosEstados);
   }, [itensPE]);
 
