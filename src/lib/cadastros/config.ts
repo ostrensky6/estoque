@@ -36,6 +36,8 @@ export type Campo = {
   grupo?: string;
   /** checkbox marcado por padrão ao criar um novo registro */
   padraoLigado?: boolean;
+  /** valor inicial ao criar um novo registro */
+  valorPadrao?: string | number;
 };
 
 export type Coluna = {
@@ -218,6 +220,23 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       { name: "custo_total_embalagem", label: "Valor da embalagem (R$)", tipo: "currency", obrigatorio: true, min: 0, grupo: "Embalagem e custo" },
       { name: "quantidade_embalagem", label: "Quantidade na embalagem", tipo: "number", obrigatorio: true, min: 0 },
       { name: "unidade", label: "Unidade", tipo: "text", placeholder: "uL, reações, un, mL…" },
+      {
+        name: "unidade_consumo",
+        label: "Unidade de consumo",
+        tipo: "text",
+        placeholder: "uL, reações, un, mL…",
+        ajuda: "Unidade usada nas receitas e no estoque consumido. Use a mesma unidade da embalagem quando forem equivalentes.",
+      },
+      {
+        name: "fator_conversao",
+        label: "Fator de conversão",
+        tipo: "number",
+        obrigatorio: true,
+        min: 0.000001,
+        step: "0.000001",
+        valorPadrao: 1,
+        ajuda: "Quantas unidades de consumo correspondem a 1 unidade da embalagem. Use 1 quando as unidades forem equivalentes.",
+      },
 
       { name: "data_aquisicao", label: "Data da última compra", tipo: "date", grupo: "Compra e fornecedor" },
       { name: "fornecedor_id", label: "Fornecedor principal", tipo: "select", opcoesDe: "fornecedores" },

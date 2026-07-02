@@ -233,6 +233,16 @@ export async function salvarRegistro(
   const obj = formToObject(formData);
   if (slug === "equipamentos" && !("possui" in obj)) obj.possui = "false";
   if (slug === "tipo_insumos" && !("ativo" in obj)) obj.ativo = "false";
+  if (slug === "insumos") {
+    if (!("fator_conversao" in obj) || obj.fator_conversao === "") obj.fator_conversao = "1";
+    if (
+      (!("unidade_consumo" in obj) || obj.unidade_consumo === "") &&
+      typeof obj.unidade === "string" &&
+      obj.unidade.trim()
+    ) {
+      obj.unidade_consumo = obj.unidade;
+    }
+  }
 
   const parsed = schema.safeParse(obj);
   if (!parsed.success) {

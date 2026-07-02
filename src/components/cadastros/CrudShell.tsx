@@ -759,7 +759,8 @@ function CampoInput({
       ? "border-destructive focus-visible:ring-destructive"
       : "");
   const span = campo.colSpan === 2 ? "col-span-2" : "col-span-1";
-  const v = valor == null ? "" : String(valor);
+  const valorInicial = valor == null ? campo.valorPadrao : valor;
+  const v = valorInicial == null ? "" : String(valorInicial);
 
   return (
     <div className={span}>

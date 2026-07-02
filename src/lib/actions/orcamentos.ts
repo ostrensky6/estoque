@@ -236,13 +236,43 @@ export async function adicionarItemOrcamento(formData: FormData) {
   const b = breakdowns.find((x) => x.codigo === codigo);
 
   await assegurarLaboratorioEditavel(supabase, id);
-  await supabase.from("orcamento_itens").insert({
-    orcamento_id: id,
-    codigo_analise: codigo,
+  const payload = {
     n_amostras: n,
     custo_unitario: b?.custoTotal ?? 0,
     preco_unitario: b?.preco ?? 0,
-  });
+  };
+  const { data: existentes, error: existentesError } = await supabase
+    .from("orcamento_itens")
+    .select("id")
+    .eq("orcamento_id", id)
+    .eq("codigo_analise", codigo)
+    .order("id", { ascending: true });
+  if (existentesError) throw new Error(existentesError.message);
+
+  const principal = existentes?.[0];
+  if (principal) {
+    const { error } = await supabase
+      .from("orcamento_itens")
+      .update(payload)
+      .eq("id", principal.id);
+    if (error) throw new Error(error.message);
+
+    const duplicados = (existentes ?? []).slice(1).map((item) => item.id);
+    if (duplicados.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("orcamento_itens")
+        .delete()
+        .in("id", duplicados);
+      if (deleteError) throw new Error(deleteError.message);
+    }
+  } else {
+    const { error } = await supabase.from("orcamento_itens").insert({
+      orcamento_id: id,
+      codigo_analise: codigo,
+      ...payload,
+    });
+    if (error) throw new Error(error.message);
+  }
   await atualizarOperacionalLaboratorio(supabase, id);
   revalidatePath(`/orcamento/${id}`);
 }
