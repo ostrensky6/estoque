@@ -5,6 +5,10 @@ import { DemandasTable, type DemandaRow } from "@/components/orcamento/DemandasT
 import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
 import { carregarLinhasOrcamentos } from "@/lib/orcamento/orcamentos-listagem";
 import { resumirFunilPropostas } from "@/lib/orcamento/funil-propostas";
+import { PageShell } from "@/components/app/PageShell";
+import { PageHeader } from "@/components/app/PageHeader";
+import { SectionCard } from "@/components/app/SectionCard";
+import { StatCard } from "@/components/app/StatCard";
 
 export const dynamic = "force-dynamic";
 
@@ -24,13 +28,13 @@ const MODALIDADES_NOVAS: Array<[string, string]> = [
   ["projeto_com_analises", MODALIDADES.projeto_com_analises],
 ];
 
-const STATUS: Record<string, { label: string; cls: string }> = {
-  nova: { label: "Nova", cls: "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300" },
-  em_analise: { label: "Em análise", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
-  orcada: { label: "Orçada", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
-  aprovada: { label: "Aprovada", cls: "bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300" },
-  recusada: { label: "Recusada", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
-  cancelada: { label: "Cancelada", cls: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
+const STATUS: Record<string, string> = {
+  nova: "Nova",
+  em_analise: "Em análise",
+  orcada: "Orçada",
+  aprovada: "Aprovada",
+  recusada: "Recusada",
+  cancelada: "Cancelada",
 };
 
 export default async function DemandasPage({
@@ -53,7 +57,6 @@ export default async function DemandasPage({
   const resumoFunil = resumirFunilPropostas(linhasFunil);
   const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
   const linhas: DemandaRow[] = (demandas ?? []).map((d) => {
-    const st = STATUS[d.status] ?? { label: d.status, cls: "" };
     const completude = avaliarCompletudeDemanda(d);
     return {
       id: d.id as number,
@@ -66,7 +69,7 @@ export default async function DemandasPage({
       prioridade: d.prioridade ?? "—",
       dataSolicitacao: d.data_solicitacao ?? "—",
       status: d.status,
-      statusLabel: st.label,
+      statusLabel: STATUS[d.status] ?? d.status,
       completudeLabel: completude.completa ? "Pronta" : `${completude.faltante}% faltante`,
       completa: completude.completa,
     };
@@ -74,54 +77,39 @@ export default async function DemandasPage({
   const linhasFiltradas = statusFiltro
     ? linhas.filter((linha) => linha.status === statusFiltro)
     : linhas;
+  // §8.2: campo de entrada com texto em azul institucional.
   const inp =
-    "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"; // §8.2: entrada em azul
+    "rounded-md border border-input bg-background px-3 py-2 text-sm font-medium text-brand-700 dark:text-brand-300";
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-6xl px-6 py-10">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
-            Entrada comercial
-          </p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Propostas</h1>
-          <p className="mt-1 max-w-3xl text-sm text-zinc-500">
-            Crie e acompanhe propostas comerciais. A partir daqui o fluxo segue para orçamento
-            de análises, orçamento de projeto ou composição híbrida.
-          </p>
-        </div>
+    <PageShell>
+      <PageHeader
+        breadcrumbs={[{ label: "Orçamento" }, { label: "Propostas" }]}
+        title="Propostas"
+        description="Crie e acompanhe propostas comerciais. A partir daqui o fluxo segue para orçamento de análises, orçamento de projeto ou composição híbrida."
+      />
 
-        <section className="mt-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
-          {[
-            { label: "Em elaboração", valor: resumoFunil.emElaboracao },
-            { label: "Em revisão", valor: resumoFunil.revisao },
-            { label: "Emitidas", valor: resumoFunil.emitidas },
-            { label: "Aprovadas", valor: resumoFunil.aprovadas },
-            { label: "Recusadas", valor: resumoFunil.recusadas },
-            { label: "Concluídas", valor: resumoFunil.concluidas },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <p className="text-xs font-medium text-zinc-500">{item.label}</p>
-              <p className="mt-1 text-lg font-semibold tabular-nums">
-                {item.valor.toLocaleString("pt-BR")}
-              </p>
-            </div>
-          ))}
-        </section>
+      <section className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6" aria-label="Funil de propostas">
+        {[
+          { label: "Em elaboração", valor: resumoFunil.emElaboracao },
+          { label: "Em revisão", valor: resumoFunil.revisao },
+          { label: "Emitidas", valor: resumoFunil.emitidas },
+          { label: "Aprovadas", valor: resumoFunil.aprovadas },
+          { label: "Recusadas", valor: resumoFunil.recusadas },
+          { label: "Concluídas", valor: resumoFunil.concluidas },
+        ].map((item) => (
+          <StatCard key={item.label} label={item.label} value={item.valor.toLocaleString("pt-BR")} />
+        ))}
+      </section>
 
-        <form
-          action={criarDemanda}
-          className="mt-6 grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm md:grid-cols-4 md:items-end dark:border-zinc-800 dark:bg-zinc-900"
-        >
+      <SectionCard title="Nova demanda" description="Registre a entrada comercial antes do orçamento formal.">
+        <form action={criarDemanda} className="grid gap-3 md:grid-cols-4 md:items-end">
           <div className="md:col-span-2">
-            <label htmlFor="titulo" className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Título da demanda</label>
+            <label htmlFor="titulo" className="block text-xs font-medium text-muted-foreground">Título da demanda</label>
             <input id="titulo" name="titulo" placeholder="Ex.: Sequenciamento de amostras ambientais" className={`${inp} mt-1 w-full`} />
           </div>
           <div>
-            <label htmlFor="cliente_id" className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Cliente</label>
+            <label htmlFor="cliente_id" className="block text-xs font-medium text-muted-foreground">Cliente</label>
             <select id="cliente_id" name="cliente_id" defaultValue="" className={`${inp} mt-1 w-full`}>
               <option value="">Cliente livre</option>
               {(clientes ?? []).map((c) => (
@@ -130,7 +118,7 @@ export default async function DemandasPage({
             </select>
           </div>
           <div>
-            <label htmlFor="modalidade" className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Modalidade</label>
+            <label htmlFor="modalidade" className="block text-xs font-medium text-muted-foreground">Modalidade</label>
             <select id="modalidade" name="modalidade" defaultValue="analises" className={`${inp} mt-1 w-full`}>
               {MODALIDADES_NOVAS.map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
@@ -138,19 +126,19 @@ export default async function DemandasPage({
             </select>
           </div>
           <div className="md:col-span-2">
-            <label htmlFor="cliente_nome" className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Cliente livre</label>
+            <label htmlFor="cliente_nome" className="block text-xs font-medium text-muted-foreground">Cliente livre</label>
             <input id="cliente_nome" name="cliente_nome" placeholder="Nome do cliente/instituição se não estiver cadastrado" className={`${inp} mt-1 w-full`} />
           </div>
           <div>
-            <label htmlFor="matriz_amostra" className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Matriz/amostra</label>
+            <label htmlFor="matriz_amostra" className="block text-xs font-medium text-muted-foreground">Matriz/amostra</label>
             <input id="matriz_amostra" name="matriz_amostra" placeholder="Ex.: água, solo, tecido" className={`${inp} mt-1 w-full`} />
           </div>
           <div>
-            <label htmlFor="quantidade_amostras_estimada" className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Qtd. amostras</label>
+            <label htmlFor="quantidade_amostras_estimada" className="block text-xs font-medium text-muted-foreground">Qtd. amostras</label>
             <input id="quantidade_amostras_estimada" name="quantidade_amostras_estimada" type="number" min="1" step="1" className={`${inp} mt-1 w-full`} />
           </div>
           <div>
-            <label htmlFor="projeto_id" className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Projeto</label>
+            <label htmlFor="projeto_id" className="block text-xs font-medium text-muted-foreground">Projeto</label>
             <select id="projeto_id" name="projeto_id" defaultValue="" className={`${inp} mt-1 w-full`}>
               <option value="">Sem projeto</option>
               {(projetos ?? []).map((p) => (
@@ -158,41 +146,39 @@ export default async function DemandasPage({
               ))}
             </select>
           </div>
-          <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
+          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
             Nova demanda
           </button>
         </form>
+      </SectionCard>
 
-        <div className="mt-6 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/orcamento/demandas"
+          className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+            !statusFiltro
+              ? "border-primary/40 bg-primary/10 text-primary"
+              : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          Todas
+        </Link>
+        {Object.entries(STATUS).map(([value, label]) => (
           <Link
-            href="/orcamento/demandas"
-            className={`rounded-md border px-3 py-1.5 text-xs font-medium ${
-              !statusFiltro
-                ? "border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-700 dark:bg-brand-950/30 dark:text-brand-300"
-                : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            key={value}
+            href={`/orcamento/demandas?status=${value}`}
+            className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+              statusFiltro === value
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
-            Todas
+            {label}
           </Link>
-          {Object.entries(STATUS).map(([value, meta]) => (
-            <Link
-              key={value}
-              href={`/orcamento/demandas?status=${value}`}
-              className={`rounded-md border px-3 py-1.5 text-xs font-medium ${
-                statusFiltro === value
-                  ? "border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-700 dark:bg-brand-950/30 dark:text-brand-300"
-                  : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-              }`}
-            >
-              {meta.label}
-            </Link>
-          ))}
-        </div>
+        ))}
+      </div>
 
-        <div className="mt-6">
-          <DemandasTable rows={linhasFiltradas} />
-        </div>
-      </main>
-    </div>
+      <DemandasTable rows={linhasFiltradas} />
+    </PageShell>
   );
 }

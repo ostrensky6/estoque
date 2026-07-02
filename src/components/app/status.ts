@@ -70,6 +70,7 @@ const STATUS: Record<string, StatusInfo> = {
   cancelado: { label: "Cancelado", tone: "danger" },
   cancelada: { label: "Cancelada", tone: "danger" },
   recusado: { label: "Recusado", tone: "danger" },
+  recusada: { label: "Recusada", tone: "danger" },
   rejeitado: { label: "Rejeitado", tone: "danger" },
   vencido: { label: "Vencido", tone: "danger" },
   bloqueado: { label: "Bloqueado", tone: "danger" },
