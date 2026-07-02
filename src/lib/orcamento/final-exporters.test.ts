@@ -8,7 +8,7 @@ vi.mock("file-saver", () => ({ saveAs: vi.fn() }));
 const saveAsMock = vi.mocked(saveAs);
 
 // Estrutura reconciliada (Política A): lab 80 + projeto 200, Σ 20% → total 350.
-const dados = montarPropostaFinalExport({
+const propostaBase = {
   versao: {
     numero: "OF-2026-0001-v1",
     versao: 1,
@@ -36,8 +36,9 @@ const dados = montarPropostaFinalExport({
     orcamentos_analises: [{ orcamento_itens: [{ codigo_analise: "qPCR", n_amostras: 2, custo_unitario: 40, preco_unitario: 60 }] }],
     orcamentos_projeto: [{ orcamento_projeto_custos: [{ rubrica: "MC", quantidade: 1, custo_unitario: 200 }], orcamento_projeto_analises: [] }],
   },
-  demanda: { titulo: "Demanda híbrida", cliente_nome: "Cliente Final", modalidade: "projeto_com_analises", escopo_preliminar: "Escopo" },
-});
+  demanda: { titulo: "Demanda híbrida", instituicao: "ATGC", cliente_nome: "Cliente Final", modalidade: "projeto_com_analises", escopo_preliminar: "Escopo" },
+};
+const dados = montarPropostaFinalExport(propostaBase);
 
 describe("exportOrcamentoFinalXlsx (reconciliado)", () => {
   beforeEach(() => saveAsMock.mockClear());
@@ -57,6 +58,8 @@ describe("exportOrcamentoFinalXlsx (reconciliado)", () => {
       "Composição comercial",
       "Detalhamento técnico",
     ]);
+    expect(wb.creator).toBe("Kontrol - ATGC");
+    expect(wb.getWorksheet("Proposta")!.getCell("B1").value).toBe("ATGC Genética Ambiental Limitada");
     // a soma dos valores comerciais deve reconciliar com o total final (350)
     const comercial = wb.getWorksheet("Composição comercial")!;
     let soma = 0;
@@ -78,5 +81,18 @@ describe("exportOrcamentoFinalDocx (reconciliado)", () => {
     expect(saveAsMock).toHaveBeenCalledTimes(1);
     expect(saveAsMock.mock.calls[0][1]).toBe("orcamento-final-OF-2026-0001-v1.docx");
     expect((saveAsMock.mock.calls[0][0] as Blob).size).toBeGreaterThan(1000);
+  });
+
+  it("gera XLSX GIA com criador e instituição GIA", async () => {
+    const gia = montarPropostaFinalExport({
+      ...propostaBase,
+      demanda: { titulo: "Demanda GIA", instituicao: "GIA / UFPR", cliente_nome: "Cliente Final", modalidade: "analises", escopo_preliminar: "Escopo" },
+    });
+    await exportOrcamentoFinalXlsx(gia);
+    const blob = saveAsMock.mock.calls[0][0] as Blob;
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await blob.arrayBuffer());
+    expect(wb.creator).toBe("Kontrol - GIA");
+    expect(wb.getWorksheet("Proposta")!.getCell("B1").value).toBe("Grupo Integrado de Aquicultura e Estudos Ambientais");
   });
 });

@@ -35,10 +35,11 @@ const arquivoBase = (numero: string) =>
 export async function exportOrcamentoFinalXlsx(dados: PropostaFinalExport) {
   const { info, economico } = dados;
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Kontrol — ATGC";
+  wb.creator = info.identidade.creator;
 
   const capa = wb.addWorksheet("Proposta");
   capa.addRows([
+    ["Instituição", info.identidade.nomeLegal],
     ["Número", info.numero],
     ["Versão", info.versao],
     ["Status", info.status],
@@ -122,7 +123,7 @@ export async function exportOrcamentoFinalXlsx(dados: PropostaFinalExport) {
 export async function exportOrcamentoFinalDocx(dados: PropostaFinalExport) {
   const { info, economico } = dados;
   const doc = new Document({
-    creator: "Kontrol — ATGC",
+    creator: info.identidade.creator,
     styles: {
       default: {
         document: {
@@ -135,17 +136,17 @@ export async function exportOrcamentoFinalDocx(dados: PropostaFinalExport) {
       {
         properties: { page: { margin: { top: 900, right: 720, bottom: 900, left: 720 } } },
         children: [
-          docParagraph("Orçamento final — ATGC Genética Ambiental", { heading: HeadingLevel.TITLE, bold: true, color: BLUE, size: 34 }),
+          docParagraph(info.identidade.tituloDocumento, { heading: HeadingLevel.TITLE, bold: true, color: info.identidade.corPrincipal.slice(1), size: 34 }),
           docParagraph(`Número: ${info.numero} · Versão ${info.versao} · ${info.status}`),
           docParagraph(`Emitido em: ${info.emitidoEm || "-"} · Validade: ${info.validade || "-"}`),
           docParagraph(`Cliente: ${info.clienteNome || "-"} · Contato: ${info.clienteContato || "-"}`),
           docParagraph(`Demanda: ${info.demandaTitulo || "-"} · Responsável: ${info.responsavel}`),
           ...(dados.avisoLegado ? [docParagraph(dados.avisoLegado, { bold: true, color: "9A6700" })] : []),
-          docParagraph("Escopo", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
+          docParagraph("Escopo", { heading: HeadingLevel.HEADING_1, bold: true, color: info.identidade.corPrincipal.slice(1), size: 26 }),
           docParagraph(info.escopo || "-"),
 
           // VISÃO COMERCIAL: valor comercial alocado + total final.
-          docParagraph("Composição comercial", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
+          docParagraph("Composição comercial", { heading: HeadingLevel.HEADING_1, bold: true, color: info.identidade.corPrincipal.slice(1), size: 26 }),
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             layout: TableLayoutType.FIXED,
@@ -158,11 +159,11 @@ export async function exportOrcamentoFinalDocx(dados: PropostaFinalExport) {
               tableRow(["", "Total final", "", formatCurrency(economico.totalFinal)], true),
             ],
           }),
-          docParagraph("Condições comerciais", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
+          docParagraph("Condições comerciais", { heading: HeadingLevel.HEADING_1, bold: true, color: info.identidade.corPrincipal.slice(1), size: 26 }),
           docParagraph("Valores válidos até a data indicada. Alterações de escopo, quantidade de amostras ou premissas técnicas podem exigir nova versão."),
 
           // VISÃO INTERNA: resumo econômico + parâmetros + detalhamento técnico.
-          docParagraph("Resumo econômico (interno)", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
+          docParagraph("Resumo econômico (interno)", { heading: HeadingLevel.HEADING_1, bold: true, color: info.identidade.corPrincipal.slice(1), size: 26 }),
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             layout: TableLayoutType.FIXED,
@@ -179,7 +180,7 @@ export async function exportOrcamentoFinalDocx(dados: PropostaFinalExport) {
           }),
           ...(economico.parametros.length
             ? [
-                docParagraph("Parâmetros econômicos", { heading: HeadingLevel.HEADING_1, bold: true, color: BLUE, size: 26 }),
+                docParagraph("Parâmetros econômicos", { heading: HeadingLevel.HEADING_1, bold: true, color: info.identidade.corPrincipal.slice(1), size: 26 }),
                 new Table({
                   width: { size: 100, type: WidthType.PERCENTAGE },
                   layout: TableLayoutType.FIXED,

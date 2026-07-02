@@ -8,6 +8,7 @@
 // Compatibilidade histórica: versões SEM snapshot da nova engine são exportadas em
 // MODO LEGADO — o total salvo é preservado e nada é recalculado.
 import { modalidadeExigeLaboratorio, modalidadeExigeProjeto } from "./orcamento-economico";
+import { exigirIdentidadeInstitucional, type IdentidadeInstitucional } from "./identidade-institucional";
 import {
   montarComponentesTecnicos,
   reconciliarComposicao,
@@ -27,6 +28,7 @@ export type PropostaFinalExport = {
   exigeLaboratorio: boolean;
   exigeProjeto: boolean;
   info: {
+    identidade: IdentidadeInstitucional;
     numero: string;
     versao: number;
     status: string;
@@ -77,6 +79,7 @@ type VersaoExport = {
 
 type DemandaExport = {
   titulo?: string | null;
+  instituicao?: string | null;
   cliente_nome?: string | null;
   cliente_cnpj?: string | null;
   cliente_contato?: string | null;
@@ -117,6 +120,7 @@ export function montarPropostaFinalExport(args: {
   const legado = economia?.politica !== "A_GROSS_UP_TOTAL";
 
   const modalidade = args.demanda?.modalidade ?? null;
+  const identidade = exigirIdentidadeInstitucional(args.demanda?.instituicao);
   const exigeLaboratorio = modalidadeExigeLaboratorio(modalidade);
   const exigeProjeto = modalidadeExigeProjeto(modalidade);
 
@@ -185,6 +189,7 @@ export function montarPropostaFinalExport(args: {
     exigeLaboratorio,
     exigeProjeto,
     info: {
+      identidade,
       numero: args.versao.numero,
       versao: num(args.versao.versao),
       status: args.versao.status,
@@ -197,7 +202,7 @@ export function montarPropostaFinalExport(args: {
       demandaTitulo: args.demanda?.titulo ?? null,
       modalidade,
       escopo: args.demanda?.escopo_preliminar || args.demanda?.descricao || null,
-      responsavel: args.responsavel ?? "ATGC Genética Ambiental",
+      responsavel: args.responsavel ?? identidade.responsavel,
     },
     economico,
     composicaoComercial,

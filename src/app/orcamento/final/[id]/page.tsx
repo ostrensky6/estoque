@@ -7,6 +7,7 @@ import { PrintButton } from "@/components/orcamento/PrintButton";
 import { cancelarVersaoFinal, duplicarVersaoFinal } from "@/lib/actions/orcamento-historico";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
+import { exigirIdentidadeInstitucional } from "@/lib/orcamento/identidade-institucional";
 import { montarPropostaFinalExport } from "@/lib/orcamento/proposta-final-export";
 import type { Json } from "@/lib/supabase/database.types";
 
@@ -44,6 +45,7 @@ type SnapshotFinal = {
     id?: number;
     titulo?: string | null;
     cliente_nome?: string | null;
+    instituicao?: string | null;
     cliente_cnpj?: string | null;
     cliente_contato?: string | null;
     modalidade?: string | null;
@@ -114,11 +116,12 @@ export default async function OrcamentoFinalPage({
   const snapshot = normalizarSnapshot(versao.snapshot);
   const { data: demandaAtual } = await supabase
     .from("demandas_propostas")
-    .select("id, titulo, cliente_nome, cliente_cnpj, cliente_contato, modalidade, escopo_preliminar, descricao")
+    .select("id, titulo, instituicao, cliente_nome, cliente_cnpj, cliente_contato, modalidade, escopo_preliminar, descricao")
     .eq("id", versao.demanda_id)
     .single();
 
   const demanda = snapshot.demanda ?? demandaAtual;
+  const identidade = exigirIdentidadeInstitucional(demanda?.instituicao);
   const consolidado = snapshot.consolidado ?? {};
   const origens = normalizarOrigens(consolidado, versao);
   const itensLaboratorio = (snapshot.orcamentos_analises ?? []).flatMap((orcamento) =>
@@ -147,7 +150,7 @@ export default async function OrcamentoFinalPage({
     versao,
     snapshot: versao.snapshot,
     demanda: demanda ?? null,
-    responsavel: "ATGC Genética Ambiental",
+    responsavel: identidade.responsavel,
   });
   const composicaoCliente = dadosExport.composicaoComercial;
   const statusLabel = STATUS[versao.status] ?? versao.status;
@@ -183,14 +186,19 @@ export default async function OrcamentoFinalPage({
         </div>
 
         <section className="mt-4 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60 print:border-0 print:shadow-none">
-          <div className="border-b border-zinc-200 bg-zinc-950 px-6 py-5 text-white dark:border-zinc-800">
+          <div className="border-b border-zinc-200 px-6 py-5 text-white dark:border-zinc-800" style={{ backgroundColor: identidade.id === "ATGC" ? "#09090B" : identidade.corPrincipal }}>
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200">
-                  ATGC Genética Ambiental
+              <div className="flex items-start gap-4">
+                <div className="rounded-md bg-white p-2">
+                  <img src={identidade.logoSrc} alt={identidade.logoAlt} className="h-12 w-auto" />
+                </div>
+                <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/75">
+                  {identidade.nomeCurto}
                 </p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight">Proposta comercial</h1>
                 <p className="mt-1 text-sm text-zinc-300">{demanda?.titulo ?? `Demanda #${versao.demanda_id}`}</p>
+                </div>
               </div>
               <div className="text-right text-sm">
                 <p className="text-xs uppercase tracking-wide text-zinc-400">Número</p>
@@ -283,7 +291,7 @@ export default async function OrcamentoFinalPage({
                 Emitido em {formatDateTime(versao.criado_em)} e válido até {formatDate(versao.valido_ate)}.
               </BlocoDocumento>
               <BlocoDocumento titulo="Responsável">
-                ATGC Genética Ambiental · orçamento emitido a partir do snapshot #{versao.id}.
+                {identidade.responsavel} · orçamento emitido a partir do snapshot #{versao.id}.
               </BlocoDocumento>
             </section>
           </div>
