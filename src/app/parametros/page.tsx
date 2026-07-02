@@ -11,10 +11,10 @@ export default async function ParametrosPage() {
     .order("chave");
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-4xl px-6 py-10">
-        <h1 className="text-2xl font-semibold tracking-tight">Parâmetros de custeio</h1>
-        <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+        <h1 className="text-xl font-semibold tracking-tight">Parâmetros de custeio</h1>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Constantes globais que dirigem o cálculo. Os <b>fatores de preço</b> transformam o custo
           em preço de venda; alterá-los recalcula o custeio e os novos orçamentos imediatamente.
         </p>

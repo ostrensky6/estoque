@@ -136,9 +136,9 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
   }
 
   const inp =
-    "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-zinc-700 dark:bg-zinc-950";
+    "mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500";
   const scanInput =
-    "h-9 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-zinc-700 dark:bg-zinc-950";
+    "h-9 w-full rounded-md border border-input bg-card px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500";
 
   return (
     <>
@@ -154,9 +154,9 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
       {aberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 text-left">
           <div className="absolute inset-0 bg-black/40" onClick={fechar} />
-          <div className="relative max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:bg-zinc-900">
+          <div className="relative max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-card p-6 shadow-xl">
             <h3 className="text-base font-semibold">Receber item de compra</h3>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               {item.insumoDescricao ?? `Insumo #${item.insumoId ?? "-"}`}
               {item.unidade ? ` · ${item.unidade}` : ""}
             </p>
@@ -164,13 +164,13 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
               O scanner apenas preenche ou confere dados. O recebimento so acontece ao confirmar.
             </p>
 
-            <section className="mt-4 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+            <section className="mt-4 rounded-lg border border-border p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h4 className="inline-flex items-center gap-2 text-sm font-semibold">
                   <ScanLine className="h-4 w-4 text-brand-600 dark:text-brand-300" />
                   Escanear codigo
                 </h4>
-                <span className="rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
                   {cameraStatus === "ativa"
                     ? "Camera ativa"
                     : cameraStatus === "iniciando"
@@ -179,8 +179,8 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                 </span>
               </div>
 
-              <div className="mt-3 overflow-hidden rounded-md border border-zinc-200 bg-zinc-950 dark:border-zinc-800">
-                <video ref={videoRef} muted playsInline className="aspect-video w-full bg-zinc-950 object-cover" />
+              <div className="mt-3 overflow-hidden rounded-md border border-border bg-card">
+                <video ref={videoRef} muted playsInline className="aspect-video w-full bg-card object-cover" />
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
@@ -188,7 +188,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                   type="button"
                   onClick={iniciarCamera}
                   disabled={cameraStatus === "iniciando" || scanPending || recebimentoPending}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
                   {cameraStatus === "iniciando" ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -201,14 +201,14 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                   type="button"
                   onClick={() => pararCamera()}
                   disabled={cameraStatus === "parada" || recebimentoPending}
-                  className="rounded-md px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
                 >
                   Parar camera
                 </button>
               </div>
 
               {cameraMessage && (
-                <p className="mt-3 flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                <p className="mt-3 flex items-start gap-2 rounded-md bg-warning-soft px-3 py-2 text-xs text-warning-strong">
                   <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   {cameraMessage}
                 </p>
@@ -216,7 +216,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
 
               <div className="mt-3 flex gap-2">
                 <div className="relative min-w-0 flex-1">
-                  <Keyboard className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+                  <Keyboard className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/80" />
                   <input
                     value={codigoScanner}
                     onChange={(event) => setCodigoScanner(event.target.value)}
@@ -240,7 +240,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                   className={`mt-3 rounded-md px-3 py-2 text-xs ${
                     resultadoScanner.ok && resultadoScanner.encontrado && !aplicacaoMessage?.startsWith("Codigo aponta")
                       ? "bg-brand-50 text-brand-800 dark:bg-brand-950/30 dark:text-brand-300"
-                      : "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                      : "bg-warning-soft text-warning-strong"
                   }`}
                 >
                   <p>{aplicacaoMessage ?? resultadoScanner.message}</p>
@@ -263,7 +263,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
               <input type="hidden" name="item_id" value={item.id} />
               <input type="hidden" name="pedido_id" value={item.pedidoId} />
               <div className="col-span-1">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Quantidade</label>
+                <label className="block text-xs font-medium text-muted-foreground">Quantidade</label>
                 <input
                   name="quantidade_recebida"
                   type="number"
@@ -274,7 +274,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                 />
               </div>
               <div className="col-span-1">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Validade</label>
+                <label className="block text-xs font-medium text-muted-foreground">Validade</label>
                 <input
                   name="validade"
                   type="date"
@@ -284,7 +284,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                 />
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Codigo do lote</label>
+                <label className="block text-xs font-medium text-muted-foreground">Codigo do lote</label>
                 <input
                   name="codigo"
                   type="text"
@@ -295,7 +295,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
               </div>
 
               {erroRecebimento && (
-                <p className="col-span-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                <p className="col-span-2 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">
                   {erroRecebimento}
                 </p>
               )}
@@ -304,7 +304,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                 <button
                   type="button"
                   onClick={fechar}
-                  className="rounded-md px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
                 >
                   Cancelar
                 </button>

@@ -49,10 +49,10 @@ function StatusBadge({ status, label }: { status: string; label: string }) {
       : status === "concluido"
         ? "bg-leaf-100 text-leaf-800 dark:bg-leaf-950/50 dark:text-leaf-300"
       : status === "reservado"
-        ? "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
+        ? "bg-info-soft text-info-strong"
         : status === "liberado"
           ? "bg-secondary text-secondary-foreground"
-          : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300";
+          : "bg-warning-soft text-warning-strong";
 
   return <Badge className={variantClass}>{label}</Badge>;
 }

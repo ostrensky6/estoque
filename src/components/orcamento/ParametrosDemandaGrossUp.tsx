@@ -155,7 +155,7 @@ export function ParametrosDemandaGrossUp({
           <div className="divide-y divide-border/70 px-3 py-2 text-xs">
             {[
               ["Custos diretos", subtotalTecnico, "bg-brand-600"],
-              ["Impostos e incubação", calculo.valores.impostos_legacy + calculo.valores.incubacao, "bg-warning-soft0"],
+              ["Impostos e incubação", calculo.valores.impostos_legacy + calculo.valores.incubacao, "bg-warning-strong"],
               ["Fundo de reserva", calculo.valores.reserva, "bg-aqua-600"],
               ["Fundo de investimento", calculo.valores.investimentos, "bg-violet-500"],
               ["Lucro", calculo.valores.lucro, "bg-leaf-500"],

@@ -70,19 +70,19 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
     (a, it) => a + Number(it.quantidade) * Number(it.custo_unitario_estimado ?? 0),
     0,
   );
-  const inp = "rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"; // §8.2: entrada em azul
+  const inp = "rounded-md border border-input bg-card px-2 py-1.5 text-sm font-medium text-brand-700 dark:text-brand-300"; // §8.2: entrada em azul
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-4xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
         <Breadcrumbs items={[{ label: "Compras", href: "/compras" }, { label: `Pedido #${pedido.id}` }]} />
         <div className="mt-2 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight">Pedido #{pedido.id}</h1>
-          <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium dark:bg-zinc-800">
+          <h1 className="text-xl font-semibold tracking-tight">Pedido #{pedido.id}</h1>
+          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
             {STATUS[pedido.status] ?? pedido.status}
           </span>
         </div>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           {forn ? `Fornecedor: ${forn} · ` : ""}
           {pedido.projeto ? `Projeto: ${pedido.projeto} · ` : ""}
           Solicitante: {pedido.solicitante ?? "—"}
@@ -92,10 +92,10 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
 
         {/* itens */}
         <section className="mt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Itens</h2>
-          <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Itens</h2>
+          <div className="mt-3 overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
             <table className="w-full text-sm">
-              <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
+              <thead className="border-b border-border bg-transparent text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 text-left">Insumo</th>
                   <th className="px-4 py-3 text-right">Qtd</th>
@@ -104,7 +104,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                   {(editavel || recebivel) && <th className="px-4 py-3 text-right">Ação</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <tbody className="divide-y divide-border/70">
                 {(itens ?? []).map((it) => {
                   const ins = it.insumos as { especificacao: string | null; unidade: string | null } | null;
                   return (
@@ -117,13 +117,13 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                           <span className="inline-flex flex-col items-center gap-0.5">
                             <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs text-brand-800 dark:bg-brand-950/50 dark:text-brand-300">✓ lote {it.lote_id}</span>
                             {it.divergencia_recebimento && (
-                              <span className="text-[10px] text-amber-700 dark:text-amber-300">
+                              <span className="text-[10px] text-warning-strong">
                                 {it.divergencia_recebimento}
                               </span>
                             )}
                           </span>
                         ) : (
-                          <span className="text-xs text-zinc-400">—</span>
+                          <span className="text-xs text-muted-foreground/80">—</span>
                         )}
                       </td>
                       {(editavel || recebivel) && (
@@ -132,7 +132,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                             <form action={removerItemPedido} className="inline">
                               <input type="hidden" name="item_id" value={it.id} />
                               <input type="hidden" name="pedido_id" value={pedidoId} />
-                              <button className="text-xs text-red-600 hover:underline">Remover</button>
+                              <button className="text-xs text-danger-strong hover:underline">Remover</button>
                             </form>
                           )}
                           {recebivel && !it.lote_id && (
@@ -153,18 +153,18 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                   );
                 })}
                 {(itens ?? []).length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-zinc-400">Nenhum item.</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground/80">Nenhum item.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-right text-sm text-zinc-500">Total estimado: <b>{brl(total)}</b></p>
+          <p className="mt-2 text-right text-sm text-muted-foreground">Total estimado: <b>{brl(total)}</b></p>
 
           {editavel && (
             <form action={adicionarItemPedido} className="mt-3 flex flex-wrap items-end gap-2">
               <input type="hidden" name="pedido_id" value={pedidoId} />
               <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Insumo</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Insumo</label>
                 <select name="insumo_id" className={inp} defaultValue="">
                   <option value="" disabled>Selecione…</option>
                   {(insumos ?? []).map((i) => (
@@ -173,14 +173,14 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Qtd</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Qtd</label>
                 <input name="quantidade" type="number" min="0" step="any" className={`${inp} w-24`} />
               </div>
               <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Custo un. est.</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Custo un. est.</label>
                 <input name="custo_unitario_estimado" type="number" min="0" step="0.01" className={`${inp} w-28`} />
               </div>
-              <button className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900">Adicionar</button>
+              <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Adicionar</button>
             </form>
           )}
         </section>
@@ -190,7 +190,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
           <PedidoAcoes pedidoId={pedidoId} status={pedido.status} podeGerir={podeGerir} />
         </section>
 
-        <section className="mt-8 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section className="mt-8 rounded-xl border border-border bg-card p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Linha do tempo</h2>
           <div className="mt-3">
             <Timeline eventos={eventos} />

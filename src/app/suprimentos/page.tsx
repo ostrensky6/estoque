@@ -79,11 +79,11 @@ function adicionarDias(data: string, dias: number) {
 
 function StatusPill({ children, tone = "zinc" }: { children: React.ReactNode; tone?: "red" | "amber" | "blue" | "brand" | "zinc" }) {
   const cls = {
-    red: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300",
-    amber: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
-    blue: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300",
+    red: "bg-danger-soft text-danger-strong",
+    amber: "bg-warning-soft text-warning-strong",
+    blue: "bg-info-soft text-info-strong",
     brand: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300",
-    zinc: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200",
+    zinc: "bg-muted text-foreground",
   }[tone];
 
   return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{children}</span>;
@@ -101,9 +101,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="border-t border-zinc-200 py-8 dark:border-zinc-800">
+    <section id={id} className="border-t border-border py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">{title}</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
         {action}
       </div>
       <div className="mt-4">{children}</div>
@@ -113,7 +113,7 @@ function Section({
 
 function EmptyState({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-zinc-300 px-4 py-6 text-sm text-zinc-500 dark:border-zinc-700">
+    <div className="rounded-lg border border-dashed border-input px-4 py-6 text-sm text-muted-foreground">
       {children}
     </div>
   );
@@ -233,33 +233,33 @@ export default async function SuprimentosPage() {
   ];
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-slate-900 dark:text-slate-100">
-      <main className="mx-auto max-w-7xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Suprimentos</h1>
-            <p className="mt-1 max-w-3xl text-sm text-slate-500 dark:text-slate-400">
+            <h1 className="text-xl font-semibold tracking-tight">Suprimentos</h1>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               Central de exceções: estoque, compras, inventário e cadastros pendentes em uma fila de decisão.
               Esta tela só lê dados e aponta para os fluxos existentes.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-sm">
-            <Link href="#hoje" className="rounded-md border border-zinc-200 px-3 py-1.5 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900">Hoje</Link>
-            <Link href="#receber" className="rounded-md border border-zinc-200 px-3 py-1.5 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900">Receber</Link>
-            <Link href="#comprar" className="rounded-md border border-zinc-200 px-3 py-1.5 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900">Comprar</Link>
-            <Link href="#inventariar" className="rounded-md border border-zinc-200 px-3 py-1.5 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900">Inventariar</Link>
-            <Link href="#pendencias" className="rounded-md border border-zinc-200 px-3 py-1.5 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900">Pendencias</Link>
+            <Link href="#hoje" className="rounded-md border border-border px-3 py-1.5 hover:bg-muted/50">Hoje</Link>
+            <Link href="#receber" className="rounded-md border border-border px-3 py-1.5 hover:bg-muted/50">Receber</Link>
+            <Link href="#comprar" className="rounded-md border border-border px-3 py-1.5 hover:bg-muted/50">Comprar</Link>
+            <Link href="#inventariar" className="rounded-md border border-border px-3 py-1.5 hover:bg-muted/50">Inventariar</Link>
+            <Link href="#pendencias" className="rounded-md border border-border px-3 py-1.5 hover:bg-muted/50">Pendencias</Link>
           </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {kpis.map((kpi) => (
-            <div key={kpi.label} className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div key={kpi.label} className="rounded-lg border border-border bg-card p-4 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <StatusPill tone={kpi.tone as "red" | "amber" | "blue" | "brand"}>{kpi.label}</StatusPill>
                 <span className="text-2xl font-semibold tabular-nums">{kpi.value}</span>
               </div>
-              <p className="mt-2 text-xs text-zinc-500">{kpi.detail}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{kpi.detail}</p>
             </div>
           ))}
         </div>
@@ -268,12 +268,12 @@ export default async function SuprimentosPage() {
           {excecoesHoje.length > 0 ? (
             <div className="grid gap-2 md:grid-cols-2">
               {excecoesHoje.map((item) => (
-                <Link key={item.key} href={item.href} className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm shadow-sm hover:border-brand-300 dark:border-zinc-800 dark:bg-zinc-900">
+                <Link key={item.key} href={item.href} className="rounded-lg border border-border bg-card px-4 py-3 text-sm shadow-sm hover:border-brand-300">
                   <div className="flex items-center justify-between gap-3">
                     <span className="font-medium">{item.title}</span>
                     <StatusPill tone={item.tone}>{item.label}</StatusPill>
                   </div>
-                  <p className="mt-1 text-xs text-zinc-500">{item.meta}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{item.meta}</p>
                 </Link>
               ))}
             </div>
@@ -284,9 +284,9 @@ export default async function SuprimentosPage() {
 
         <Section id="receber" title="Receber" action={<Link href="/compras" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">Abrir compras</Link>}>
           {comprasAbertas.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="overflow-x-auto rounded-lg border border-border bg-card">
               <table className="w-full text-sm">
-                <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
+                <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 text-left">Pedido</th>
                     <th className="px-4 py-3 text-left">Fornecedor</th>
@@ -295,13 +295,13 @@ export default async function SuprimentosPage() {
                     <th className="px-4 py-3 text-right">Ação</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                <tbody className="divide-y divide-border/70">
                   {comprasAbertas.slice(0, 10).map((compra) => (
                     <tr key={compra.id}>
                       <td className="px-4 py-3 font-medium">#{compra.id}</td>
-                      <td className="px-4 py-3 text-zinc-500">{compra.fornecedorNome}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{compra.fornecedorNome}</td>
                       <td className="px-4 py-3"><StatusPill tone={compra.atrasada ? "amber" : "blue"}>{compra.status}</StatusPill></td>
-                      <td className="px-4 py-3 text-zinc-500">{formatDate(compra.data_prevista_entrega)}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{formatDate(compra.data_prevista_entrega)}</td>
                       <td className="px-4 py-3 text-right">
                         <Link href={`/compras/${compra.id}`} className="font-medium text-brand-700 hover:underline dark:text-brand-300">Detalhe</Link>
                       </td>
@@ -321,9 +321,9 @@ export default async function SuprimentosPage() {
               <h3 className="text-sm font-medium">Ruptura prevista</h3>
               <div className="mt-2 space-y-2">
                 {rupturas.length > 0 ? rupturas.map((item) => (
-                  <Link key={item.insumo_id} href="/compras" className="block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm hover:border-red-300 dark:border-red-950/50 dark:bg-red-950/20">
-                    <div className="font-medium text-red-900 dark:text-red-200">{item.especificacao}</div>
-                    <p className="mt-1 text-xs text-red-800/80 dark:text-red-300/80">
+                  <Link key={item.insumo_id} href="/compras" className="block rounded-lg border border-danger-strong/30 bg-danger-soft px-4 py-3 text-sm hover:border-danger-strong/40">
+                    <div className="font-medium text-danger-strong">{item.especificacao}</div>
+                    <p className="mt-1 text-xs text-danger-strong/80">
                       disponivel {fmt(item.disponivel)} {item.unidade ?? ""} · pedido aberto {fmt(item.qtd_pedida_aberta)}
                     </p>
                   </Link>
@@ -334,9 +334,9 @@ export default async function SuprimentosPage() {
               <h3 className="text-sm font-medium">Abaixo do ponto de reposicao</h3>
               <div className="mt-2 space-y-2">
                 {abaixoReposicao.length > 0 ? abaixoReposicao.map((item) => (
-                  <Link key={item.insumo_id} href="/compras" className="block rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm hover:border-amber-300 dark:border-amber-950/50 dark:bg-amber-950/20">
-                    <div className="font-medium text-amber-900 dark:text-amber-200">{item.especificacao}</div>
-                    <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/80">
+                  <Link key={item.insumo_id} href="/compras" className="block rounded-lg border border-warning-strong/30 bg-warning-soft px-4 py-3 text-sm hover:border-warning-strong/30">
+                    <div className="font-medium text-warning-strong">{item.especificacao}</div>
+                    <p className="mt-1 text-xs text-warning-strong/80">
                       disp. {fmt(item.disponivel)} · ponto {fmt(item.ponto_reposicao_configurado ?? item.ponto_reposicao_sugerido)} · sugerido {fmt(item.qtd_sugerida_compra)}
                     </p>
                   </Link>
@@ -359,12 +359,12 @@ export default async function SuprimentosPage() {
                   {grupo.rows.length > 0 ? grupo.rows.slice(0, 6).map((lote) => {
                     const insumo = asOne(lote.insumos);
                     return (
-                      <Link key={lote.id} href={`/estoque/lotes/${lote.id}`} className="block rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm hover:border-brand-300 dark:border-zinc-800 dark:bg-zinc-900">
+                      <Link key={lote.id} href={`/estoque/lotes/${lote.id}`} className="block rounded-lg border border-border bg-card px-4 py-3 text-sm hover:border-brand-300">
                         <div className="flex items-center justify-between gap-3">
                           <span className="truncate font-medium">{insumo?.especificacao ?? `Lote #${lote.id}`}</span>
                           <StatusPill tone={grupo.tone}>{lote.status}</StatusPill>
                         </div>
-                        <p className="mt-1 text-xs text-zinc-500">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           {lote.codigo_lote ?? `#${lote.id}`} · validade {formatDate(validadeEfetiva(lote))} · saldo {fmt(lote.quantidade_atual)} {insumo?.unidade ?? ""}
                         </p>
                       </Link>
@@ -382,9 +382,9 @@ export default async function SuprimentosPage() {
               <h3 className="text-sm font-medium">Triagens de código</h3>
               <div className="mt-2 space-y-2">
                 {triagensPendentes.length > 0 ? triagensPendentes.map((triagem) => (
-                  <Link key={triagem.id} href="/scanner/triagem" className="block rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm hover:border-brand-300 dark:border-zinc-800 dark:bg-zinc-900">
+                  <Link key={triagem.id} href="/scanner/triagem" className="block rounded-lg border border-border bg-card px-4 py-3 text-sm hover:border-brand-300">
                     <div className="font-medium">{triagem.codigo ?? `Triagem #${triagem.id}`}</div>
-                    <p className="mt-1 text-xs text-zinc-500">{triagem.tipo_sugerido ?? "tipo indefinido"} · {triagem.status ?? "pendente"} · {formatDate(triagem.criado_em)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{triagem.tipo_sugerido ?? "tipo indefinido"} · {triagem.status ?? "pendente"} · {formatDate(triagem.criado_em)}</p>
                   </Link>
                 )) : <EmptyState>Nenhuma triagem pendente.</EmptyState>}
               </div>
@@ -393,9 +393,9 @@ export default async function SuprimentosPage() {
               <h3 className="text-sm font-medium">Cadastros de insumo incompletos</h3>
               <div className="mt-2 space-y-2">
                 {cadastrosPendentes.length > 0 ? cadastrosPendentes.map((insumo) => (
-                  <Link key={insumo.id} href="/cadastros/insumos" className="block rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm hover:border-brand-300 dark:border-zinc-800 dark:bg-zinc-900">
+                  <Link key={insumo.id} href="/cadastros/insumos" className="block rounded-lg border border-border bg-card px-4 py-3 text-sm hover:border-brand-300">
                     <div className="font-medium">{insumo.especificacao ?? `Insumo #${insumo.id}`}</div>
-                    <p className="mt-1 text-xs text-zinc-500">{insumo.pendencias.join(", ")}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{insumo.pendencias.join(", ")}</p>
                   </Link>
                 )) : <EmptyState>Nenhum cadastro incompleto pela regra atual.</EmptyState>}
               </div>

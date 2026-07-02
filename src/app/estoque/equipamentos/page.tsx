@@ -65,12 +65,12 @@ type StatusLogEquipamento = {
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   operacional: { label: "Operacional", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
-  em_manutencao: { label: "Em manutencao", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
-  calibracao_pendente: { label: "Calibracao pendente", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
-  calibracao_vencida: { label: "Calibracao vencida", cls: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300" },
-  reservado: { label: "Reservado", cls: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200" },
-  inativo: { label: "Inativo", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400" },
-  descartado: { label: "Descartado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400" },
+  em_manutencao: { label: "Em manutencao", cls: "bg-warning-soft text-warning-strong" },
+  calibracao_pendente: { label: "Calibracao pendente", cls: "bg-info-soft text-info-strong" },
+  calibracao_vencida: { label: "Calibracao vencida", cls: "bg-danger-soft text-danger-strong" },
+  reservado: { label: "Reservado", cls: "bg-muted text-foreground" },
+  inativo: { label: "Inativo", cls: "bg-muted text-muted-foreground" },
+  descartado: { label: "Descartado", cls: "bg-muted text-muted-foreground" },
 };
 
 function asOne<T>(value: T | T[] | null | undefined): T | null {
@@ -79,7 +79,7 @@ function asOne<T>(value: T | T[] | null | undefined): T | null {
 
 function statusMeta(status: string, ativo: boolean) {
   if (!ativo) return STATUS.inativo;
-  return STATUS[status] ?? { label: status, cls: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200" };
+  return STATUS[status] ?? { label: status, cls: "bg-muted text-foreground" };
 }
 
 function labelTipo(value: string | null | undefined) {
@@ -163,30 +163,30 @@ export default async function EquipamentosPage({
   const planos = (planosResult.data ?? []) as unknown as PlanoManutencao[];
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-slate-900 dark:text-slate-100">
-      <main className="mx-auto max-w-7xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Estoque · Patrimonio fisico
             </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+            <h1 className="mt-1 text-xl font-semibold tracking-tight">
               Equipamentos físicos
             </h1>
-            <p className="mt-1 max-w-3xl text-sm text-zinc-500">
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               Lista mínima de unidades patrimoniais cadastradas. Esta página é somente leitura e serve de base para identificação patrimonial futura.
             </p>
           </div>
           <Link
             href="/cadastros/equipamentos"
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             Cadastro de tipos
           </Link>
         </div>
 
         {scanId && (
-          <div className="mt-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-200">
+          <div className="mt-5 rounded-lg border border-info-strong/30 bg-info-soft px-4 py-3 text-sm text-info-strong">
             Exibindo unidade escaneada #{scanId}. Esta visualização não altera status, manutenção, calibração ou operação.
             <Link href="/estoque/equipamentos?tab=unidades" className="ml-2 font-medium underline">
               Ver todas
@@ -194,9 +194,9 @@ export default async function EquipamentosPage({
           </div>
         )}
 
-        <div className="mt-6 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
           <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
+            <thead className="border-b border-border bg-transparent text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 text-left">ID</th>
                 <th className="px-4 py-3 text-left">Equipamento/tipo</th>
@@ -208,7 +208,7 @@ export default async function EquipamentosPage({
                 <th className="px-4 py-3 text-left">QR interno</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <tbody className="divide-y divide-border/70">
               {unidades.map((unidade) => {
                 const equipamento = asOne(unidade.equipamentos);
                 const local = asOne(unidade.locais);
@@ -219,7 +219,7 @@ export default async function EquipamentosPage({
                 return (
                   <tr
                     key={unidade.id}
-                    className={destacado ? "bg-blue-50/70 dark:bg-blue-950/20" : ""}
+                    className={destacado ? "bg-info-soft/70" : ""}
                   >
                     <td className="px-4 py-3 font-mono text-xs">#{unidade.id}</td>
                     <td className="px-4 py-3 font-medium">
@@ -231,10 +231,10 @@ export default async function EquipamentosPage({
                     <td className="px-4 py-3 font-mono text-xs">
                       {unidade.numero_serie ?? "—"}
                     </td>
-                    <td className="px-4 py-3 text-zinc-500">
+                    <td className="px-4 py-3 text-muted-foreground">
                       {[unidade.fabricante, unidade.modelo].filter(Boolean).join(" · ") || "—"}
                     </td>
-                    <td className="px-4 py-3 text-zinc-500">
+                    <td className="px-4 py-3 text-muted-foreground">
                       {local?.nome ?? "—"}
                     </td>
                     <td className="px-4 py-3">
@@ -243,29 +243,29 @@ export default async function EquipamentosPage({
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="inline-grid max-w-48 gap-2 rounded-md border border-zinc-200 bg-white p-2 text-xs shadow-sm dark:border-zinc-700 dark:bg-zinc-950">
+                      <div className="inline-grid max-w-48 gap-2 rounded-md border border-border bg-card p-2 text-xs shadow-sm">
                         <QrCode
                           value={urlCurta}
                           label={`QR da unidade ${unidade.id}`}
                           size={84}
-                          className="rounded bg-white"
+                          className="rounded bg-card"
                         />
                         <div className="space-y-0.5">
-                          <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                          <p className="font-medium text-foreground">
                             ID Kontrol #{unidade.id}
                           </p>
-                          <p className="truncate text-zinc-500" title={equipamento?.nome ?? undefined}>
+                          <p className="truncate text-muted-foreground" title={equipamento?.nome ?? undefined}>
                             {equipamento?.nome ?? `Equipamento #${unidade.equipamento_id}`}
                           </p>
-                          <p className="font-mono text-[11px] text-zinc-500">
+                          <p className="font-mono text-[11px] text-muted-foreground">
                             {unidade.codigo_patrimonio ?? "Sem patrimonio"}
                           </p>
                           {unidade.numero_serie && (
-                            <p className="font-mono text-[11px] text-zinc-500">
+                            <p className="font-mono text-[11px] text-muted-foreground">
                               Série {unidade.numero_serie}
                             </p>
                           )}
-                          <p className="break-all font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
+                          <p className="break-all font-mono text-[11px] text-muted-foreground">
                             {urlCurta}
                           </p>
                         </div>
@@ -276,7 +276,7 @@ export default async function EquipamentosPage({
               })}
               {unidades.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-zinc-400">
+                  <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground/80">
                     {scanId ? `Nenhuma unidade encontrada para #${scanId}.` : "Nenhuma unidade patrimonial cadastrada."}
                   </td>
                 </tr>
@@ -289,7 +289,7 @@ export default async function EquipamentosPage({
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">Operação básica</h2>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Leitura operacional mínima das unidades. Esta visão não registra manutenção, calibração ou mudança de status.
               </p>
             </div>
@@ -314,15 +314,15 @@ export default async function EquipamentosPage({
               return (
                 <article
                   key={`operacao-${unidade.id}`}
-                  className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+                  className="rounded-lg border border-border bg-card p-4 shadow-sm"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="font-mono text-xs text-zinc-500">Unidade #{unidade.id}</p>
+                      <p className="font-mono text-xs text-muted-foreground">Unidade #{unidade.id}</p>
                       <h3 className="mt-1 text-base font-semibold">
                         {equipamento?.nome ?? `Equipamento #${unidade.equipamento_id}`}
                       </h3>
-                      <p className="mt-1 text-xs text-zinc-500">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         Patrimônio {unidade.codigo_patrimonio ?? "não informado"} · Série {unidade.numero_serie ?? "não informada"}
                       </p>
                     </div>
@@ -332,17 +332,17 @@ export default async function EquipamentosPage({
                   </div>
 
                   <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-md border border-zinc-100 p-3 dark:border-zinc-800">
-                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Última manutenção</dt>
+                    <div className="rounded-md border border-border/70 p-3">
+                      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Última manutenção</dt>
                       <dd className="mt-1 text-sm font-medium">
                         {ultima ? `${labelTipo(ultima.tipo)} · ${formatDate(ultima.data_conclusao ?? ultima.data_programada)}` : "Sem registro concluído"}
                       </dd>
                       {ultima?.resultado && (
-                        <p className="mt-1 line-clamp-2 text-xs text-zinc-500">{ultima.resultado}</p>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{ultima.resultado}</p>
                       )}
                     </div>
-                    <div className="rounded-md border border-zinc-100 p-3 dark:border-zinc-800">
-                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Próxima ação</dt>
+                    <div className="rounded-md border border-border/70 p-3">
+                      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Próxima ação</dt>
                       <dd className="mt-1 text-sm font-medium">
                         {proxima
                           ? `${labelTipo(proxima.tipo)} · ${formatDate(proxima.data_programada)}`
@@ -351,24 +351,24 @@ export default async function EquipamentosPage({
                             : "Sem agenda/plano ativo"}
                       </dd>
                       {proxima?.bloqueia_operacao && (
-                        <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-300">Bloqueia operação</p>
+                        <p className="mt-1 text-xs font-medium text-danger-strong">Bloqueia operação</p>
                       )}
                     </div>
-                    <div className="rounded-md border border-zinc-100 p-3 dark:border-zinc-800">
-                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Plano ativo</dt>
+                    <div className="rounded-md border border-border/70 p-3">
+                      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Plano ativo</dt>
                       <dd className="mt-1 text-sm font-medium">
                         {plano ? `${labelTipo(plano.tipo)} · tolerância ${plano.tolerancia_dias} dias` : "Nenhum plano aplicável"}
                       </dd>
                       {plano?.descricao && (
-                        <p className="mt-1 line-clamp-2 text-xs text-zinc-500">{plano.descricao}</p>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{plano.descricao}</p>
                       )}
                     </div>
-                    <div className="rounded-md border border-zinc-100 p-3 dark:border-zinc-800">
-                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Histórico de status</dt>
-                      <dd className="mt-1 space-y-1 text-xs text-zinc-500">
+                    <div className="rounded-md border border-border/70 p-3">
+                      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Histórico de status</dt>
+                      <dd className="mt-1 space-y-1 text-xs text-muted-foreground">
                         {historico.length > 0 ? historico.map((item) => (
                           <p key={item.id}>
-                            <span className="font-medium text-zinc-700 dark:text-zinc-200">{statusMeta(item.status_novo, true).label}</span>
+                            <span className="font-medium text-foreground">{statusMeta(item.status_novo, true).label}</span>
                             {" · "}
                             {formatDate(item.criado_em)}
                           </p>

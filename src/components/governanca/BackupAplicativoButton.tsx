@@ -24,7 +24,7 @@ export function BackupAplicativoButton() {
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-950 dark:hover:bg-zinc-200"
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-card"
         >
           <Archive className="h-4 w-4" aria-hidden="true" />
           {pending ? "Gerando backup..." : "Fazer backup do aplicativo"}
@@ -36,7 +36,7 @@ export function BackupAplicativoButton() {
           className={`text-sm ${
             state.ok
               ? "text-brand-700 dark:text-brand-300"
-              : "text-red-700 dark:text-red-300"
+              : "text-danger-strong"
           }`}
         >
           {state.message}

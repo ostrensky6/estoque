@@ -77,38 +77,38 @@ export function LoteAcoes({
         </button>
       )}
       {(status === "aceito" || status === "em_uso") && podeGerir && (
-        <button disabled={pending} onClick={() => setModal("bloquear")} className={`${btn} text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30`}>
+        <button disabled={pending} onClick={() => setModal("bloquear")} className={`${btn} text-warning-strong hover:bg-warning-soft`}>
           Bloquear
         </button>
       )}
       {loteAtivo && (
-        <button disabled={pending} onClick={() => setModal("baixa")} className={`${btn} text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30`}>
+        <button disabled={pending} onClick={() => setModal("baixa")} className={`${btn} text-danger-strong hover:bg-danger-soft`}>
           Baixa
         </button>
       )}
       {loteAtivo && podeGerir && (
-        <button disabled={pending} onClick={() => setModal("ajuste")} className={`${btn} text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/30`}>
+        <button disabled={pending} onClick={() => setModal("ajuste")} className={`${btn} text-info-strong hover:bg-info-soft`}>
           Ajustar
         </button>
       )}
       {status === "bloqueado" && podeGerir && (
-        <button disabled={pending} onClick={() => run(desbloquearLote)} className={`${btn} text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/30`}>
+        <button disabled={pending} onClick={() => run(desbloquearLote)} className={`${btn} text-info-strong hover:bg-info-soft`}>
           Desbloquear
         </button>
       )}
       {status !== "consumido" && status !== "descartado" && podeGerir && (
-        <button disabled={pending} onClick={() => setModal("descartar")} className={`${btn} text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30`}>
+        <button disabled={pending} onClick={() => setModal("descartar")} className={`${btn} text-danger-strong hover:bg-danger-soft`}>
           Descartar
         </button>
       )}
       {!podeAceitar && !podeGerir && status === "quarentena" && (
-        <span className="text-xs text-zinc-400">aguardando aceitação</span>
+        <span className="text-xs text-muted-foreground/80">aguardando aceitação</span>
       )}
 
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 text-left">
           <div className="absolute inset-0 bg-black/40" onClick={() => !pending && setModal(null)} />
-          <div className="relative w-full max-w-sm rounded-xl bg-white p-6 shadow-xl dark:bg-zinc-900">
+          <div className="relative w-full max-w-sm rounded-xl bg-card p-6 shadow-xl">
             <h3 className="text-base font-semibold">
               {modal === "bloquear"
                 ? "Bloquear lote"
@@ -118,7 +118,7 @@ export function LoteAcoes({
                     ? "Baixa manual"
                     : "Ajustar saldo"}
             </h3>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               {modal === "bloquear"
                 ? "Informe o motivo do bloqueio (não conformidade, recall, investigação…)."
                 : modal === "descartar"
@@ -129,7 +129,7 @@ export function LoteAcoes({
             </p>
             {(modal === "baixa" || modal === "ajuste") && (
               <div className="mt-3">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                <label className="block text-xs font-medium text-muted-foreground">
                   {modal === "baixa" ? "Quantidade a baixar" : "Saldo contado"}
                 </label>
                 <input
@@ -139,10 +139,10 @@ export function LoteAcoes({
                   step="any"
                   min="0"
                   max={modal === "baixa" ? quantidadeAtual : undefined}
-                  className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"
+                  className="mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm font-medium text-brand-700 dark:text-brand-300"
                 />
-                {state.errors?.quantidade && <p className="mt-1 text-xs text-red-600">{state.errors.quantidade}</p>}
-                {state.errors?.quantidade_nova && <p className="mt-1 text-xs text-red-600">{state.errors.quantidade_nova}</p>}
+                {state.errors?.quantidade && <p className="mt-1 text-xs text-danger-strong">{state.errors.quantidade}</p>}
+                {state.errors?.quantidade_nova && <p className="mt-1 text-xs text-danger-strong">{state.errors.quantidade_nova}</p>}
               </div>
             )}
             <textarea
@@ -150,11 +150,11 @@ export function LoteAcoes({
               onChange={(e) => setMotivo(e.target.value)}
               rows={3}
               placeholder={modal === "baixa" ? "Ex.: consumo extra, perda, quebra..." : "Motivo"}
-              className="mt-3 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"
+              className="mt-3 w-full rounded-md border border-input bg-card px-3 py-2 text-sm font-medium text-brand-700 dark:text-brand-300"
             />
-            {state.errors?.motivo && <p className="mt-1 text-xs text-red-600">{state.errors.motivo}</p>}
+            {state.errors?.motivo && <p className="mt-1 text-xs text-danger-strong">{state.errors.motivo}</p>}
             {state.message && !state.ok && (
-              <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+              <p className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">
                 {state.message}
               </p>
             )}
@@ -167,7 +167,7 @@ export function LoteAcoes({
                   setQuantidade("");
                 }}
                 disabled={pending}
-                className="rounded-md px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
               >
                 Cancelar
               </button>
@@ -181,10 +181,10 @@ export function LoteAcoes({
                 }}
                 className={`rounded-md px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50 ${
                   modal === "bloquear"
-                    ? "bg-amber-600 hover:bg-amber-500"
+                    ? "bg-warning-strong hover:bg-warning-strong/90"
                     : modal === "ajuste"
-                      ? "bg-blue-600 hover:bg-blue-500"
-                      : "bg-red-600 hover:bg-red-500"
+                      ? "bg-primary hover:bg-primary/90"
+                      : "bg-destructive hover:bg-destructive/90"
                 }`}
               >
                 {pending

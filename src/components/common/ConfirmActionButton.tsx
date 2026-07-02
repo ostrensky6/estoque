@@ -16,7 +16,7 @@ export function ConfirmActionButton({
   mensagem,
   confirmLabel = "Excluir",
   destrutivo = true,
-  triggerClassName = "text-xs text-zinc-400 hover:text-red-600",
+  triggerClassName = "text-xs text-muted-foreground/80 hover:text-danger-strong",
 }: {
   action: (formData: FormData) => void | Promise<void>;
   fields: Record<string, string | number>;
@@ -38,14 +38,14 @@ export function ConfirmActionButton({
       {aberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 text-left">
           <div className="absolute inset-0 bg-black/40" onClick={() => setAberto(false)} />
-          <div className="relative w-full max-w-sm rounded-xl bg-white p-6 shadow-xl dark:bg-zinc-900">
+          <div className="relative w-full max-w-sm rounded-xl bg-card p-6 shadow-xl">
             <h3 className="text-base font-semibold">{titulo}</h3>
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{mensagem}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{mensagem}</p>
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setAberto(false)}
-                className="rounded-md px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
               >
                 Cancelar
               </button>
@@ -55,7 +55,7 @@ export function ConfirmActionButton({
                 ))}
                 <button
                   className={`rounded-md px-4 py-1.5 text-sm font-medium text-white ${
-                    destrutivo ? "bg-red-600 hover:bg-red-500" : "bg-brand-600 hover:bg-brand-500"
+                    destrutivo ? "bg-destructive hover:bg-destructive/90" : "bg-brand-600 hover:bg-brand-500"
                   }`}
                 >
                   {confirmLabel}

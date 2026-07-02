@@ -71,13 +71,13 @@ export default async function ScannerTriagemPage({
   const mensagem = statusMessage(status);
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
             Triagem de codigos desconhecidos
           </h1>
-          <p className="mt-1 max-w-3xl text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
             Resolva leituras pendentes vinculando o codigo a uma entidade existente, criando um
             insumo minimo por transacao segura ou arquivando a triagem. Nenhum lote recebido ou
             fluxo operacional e criado aqui.
@@ -85,14 +85,14 @@ export default async function ScannerTriagemPage({
         </div>
         <Link
           href="/scanner/desconhecido"
-          className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
+          className="rounded-md border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/50"
         >
           Codigo manual
         </Link>
       </div>
 
       {mensagem && (
-        <p className="mt-6 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-300">
+        <p className="mt-6 rounded-md border border-success-strong/30 bg-success-soft px-3 py-2 text-sm text-success-strong">
           {mensagem}
         </p>
       )}
@@ -108,7 +108,7 @@ export default async function ScannerTriagemPage({
           />
         ))}
         {triagens.length === 0 && (
-          <p className="rounded-lg border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
+          <p className="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
             Nenhuma triagem pendente.
           </p>
         )}

@@ -80,7 +80,7 @@ export function ScannerModal() {
         variant="outline"
         size="sm"
         onClick={() => setOpen(true)}
-        className="fixed bottom-4 right-4 z-40 h-10 gap-2 border-brand-200 bg-white shadow-lg print:hidden dark:border-brand-900 dark:bg-zinc-950"
+        className="fixed bottom-4 right-4 z-40 h-10 gap-2 border-brand-200 bg-card shadow-lg print:hidden dark:border-brand-900"
       >
         <ScanLine className="h-4 w-4 text-brand-600 dark:text-brand-300" />
         <span>Escanear</span>
@@ -96,12 +96,12 @@ export function ScannerModal() {
           </DialogHeader>
 
           <div className="grid gap-4">
-            <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-950 dark:border-zinc-800">
+            <div className="overflow-hidden rounded-lg border border-border bg-black">
               <video
                 ref={videoRef}
                 muted
                 playsInline
-                className="aspect-video w-full bg-slate-950 object-cover"
+                className="aspect-video w-full bg-black object-cover"
               />
             </div>
 
@@ -127,7 +127,7 @@ export function ScannerModal() {
               >
                 Parar camera
               </Button>
-              <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-zinc-900 dark:text-zinc-300">
+              <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                 {cameraStatus === "ativa"
                   ? "Camera ativa"
                   : cameraStatus === "iniciando"
@@ -137,19 +137,19 @@ export function ScannerModal() {
             </div>
 
             {cameraMessage && (
-              <p className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-300">
+              <p className="flex items-start gap-2 rounded-md border border-warning-strong/30 bg-warning-soft px-3 py-2 text-sm text-warning-strong">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 {cameraMessage}
               </p>
             )}
 
             <form ref={formRef} action={formAction} className="grid gap-2">
-              <label className="text-sm font-medium text-slate-700 dark:text-zinc-200" htmlFor="scanner-codigo">
+              <label className="text-sm font-medium text-foreground" htmlFor="scanner-codigo">
                 Codigo ou URL curta
               </label>
               <div className="flex gap-2">
                 <div className="relative min-w-0 flex-1">
-                  <Keyboard className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Keyboard className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/80" />
                   <input
                     id="scanner-codigo"
                     name="codigo"
@@ -157,7 +157,7 @@ export function ScannerModal() {
                     onChange={(event) => setCodigo(event.target.value)}
                     autoComplete="off"
                     inputMode="text"
-                    className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:ring-brand-950/50"
+                    className="h-10 w-full rounded-md border border-border bg-card pl-9 pr-3 text-sm text-foreground outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-950/50"
                     placeholder="KONTROL:LOTE:123 ou /s/lote/123"
                   />
                 </div>
@@ -169,7 +169,7 @@ export function ScannerModal() {
             </form>
 
             {!state.ok && state.message && (
-              <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300">
+              <p className="rounded-md border border-danger-strong/30 bg-danger-soft px-3 py-2 text-sm text-danger-strong">
                 {state.message}
               </p>
             )}

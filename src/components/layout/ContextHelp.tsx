@@ -85,9 +85,9 @@ export function ContextHelp() {
           <DialogTitle>{content.title}</DialogTitle>
           <DialogDescription>{content.description}</DialogDescription>
         </DialogHeader>
-        <ul className="space-y-2 text-sm text-slate-700 dark:text-zinc-300">
+        <ul className="space-y-2 text-sm text-foreground">
           {content.checks.map((check) => (
-            <li key={check} className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/40">
+            <li key={check} className="rounded-md border border-border bg-muted/50 px-3 py-2">
               {check}
             </li>
           ))}

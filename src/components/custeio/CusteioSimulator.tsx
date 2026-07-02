@@ -110,7 +110,7 @@ export function CusteioSimulator({
             step={1}
             value={fator}
             onChange={(event) => setFator(Number(event.target.value))}
-            className="mt-3 w-full accent-blue-600"
+            className="mt-3 w-full accent-primary"
           />
         </label>
       </div>

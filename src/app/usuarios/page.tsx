@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 export default async function UsuariosPage() {
   if (!(await temPapel("admin"))) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-16 text-center font-sans">
-        <p className="text-zinc-500">Acesso restrito — apenas administradores gerenciam usuários e permissões.</p>
+      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8 text-center font-sans">
+        <p className="text-muted-foreground">Acesso restrito — apenas administradores gerenciam usuários e permissões.</p>
       </main>
     );
   }
@@ -66,10 +66,10 @@ export default async function UsuariosPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-6xl px-6 py-10">
-        <h1 className="text-2xl font-semibold tracking-tight">Usuários e permissões</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <h1 className="text-xl font-semibold tracking-tight">Usuários e permissões</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Cadastre acessos, mantenha pré-aprovados, assinaturas e permissões por categoria.
           Técnico, coordenador, gestor e administrador têm matrizes editáveis por usuário.
         </p>
