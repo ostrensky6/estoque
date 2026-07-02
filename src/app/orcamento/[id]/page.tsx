@@ -83,7 +83,7 @@ export default async function OrcamentoDetalhe({
         .select("id, codigo_analise, n_amostras, custo_unitario, preco_unitario, valor_snapshot")
         .eq("orcamento_id", orcId)
         .order("id"),
-      supabase.from("analises").select("codigo, nome").eq("ativo", true).order("codigo"),
+      supabase.from("analises").select("codigo, nome").eq("ativo", true).eq("ofertavel", true).order("codigo"),
       calcularTodas(),
       supabase.from("clientes").select("id, nome").eq("ativo", true).order("nome"),
       supabase.from("projetos").select("id, nome").order("nome"),

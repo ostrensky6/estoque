@@ -28,6 +28,7 @@ export default async function NovaDemandaPage() {
       .from("analises")
       .select("codigo, nome, nome_simplificado, descricao, status, ativo")
       .eq("ativo", true)
+      .eq("ofertavel", true)
       .order("codigo"),
     supabase
       .from("etapas")

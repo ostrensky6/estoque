@@ -41,6 +41,7 @@ export type Database = {
           descricao: string | null
           nome: string | null
           nome_simplificado: string | null
+          ofertavel: boolean
           status: string | null
         }
         Insert: {
@@ -49,6 +50,7 @@ export type Database = {
           descricao?: string | null
           nome?: string | null
           nome_simplificado?: string | null
+          ofertavel?: boolean
           status?: string | null
         }
         Update: {
@@ -57,6 +59,7 @@ export type Database = {
           descricao?: string | null
           nome?: string | null
           nome_simplificado?: string | null
+          ofertavel?: boolean
           status?: string | null
         }
         Relationships: []
@@ -497,6 +500,7 @@ export type Database = {
           codigo_analise: string
           dia_fim_max: number | null
           dia_inicio: string | null
+          escopo_operacional: string
           execucoes_por_dia: number | null
           id: number
           nome_atividade: string
@@ -512,6 +516,7 @@ export type Database = {
           codigo_analise: string
           dia_fim_max?: number | null
           dia_inicio?: string | null
+          escopo_operacional?: string
           execucoes_por_dia?: number | null
           id?: never
           nome_atividade: string
@@ -527,6 +532,7 @@ export type Database = {
           codigo_analise?: string
           dia_fim_max?: number | null
           dia_inicio?: string | null
+          escopo_operacional?: string
           execucoes_por_dia?: number | null
           id?: never
           nome_atividade?: string

@@ -13,6 +13,7 @@ type AnaliseCatalogo = {
   descricao: string | null;
   status: string | null;
   ativo: boolean;
+  ofertavel: boolean;
 };
 
 type DiagnosticoAnalise = {
@@ -36,7 +37,8 @@ function statusTextualIndicaRevisao(status: string | null) {
 
 function grupoDaAnalise(analise: AnaliseCatalogo) {
   if (statusTextualIndicaRevisao(analise.status)) return "revisao";
-  return analise.ativo ? "ativas" : "inativas";
+  if (!analise.ativo) return "inativas";
+  return analise.ofertavel ? "ofertaveis" : "ativas_nao_ofertaveis";
 }
 
 function rotuloPrincipal(analise: AnaliseCatalogo) {
@@ -55,7 +57,7 @@ export default async function AnalisesPage() {
     await Promise.all([
       supabase
         .from("analises")
-        .select("codigo, nome, nome_simplificado, descricao, status, ativo")
+        .select("codigo, nome, nome_simplificado, descricao, status, ativo, ofertavel")
         .order("codigo"),
       supabase.from("etapas").select("*"),
       supabase
@@ -90,6 +92,7 @@ export default async function AnalisesPage() {
     if (analise.ativo && statusTextualIndicaRevisao(analise.status)) {
       avisos.push("ativa com status textual de revisão");
     }
+    if (analise.ativo && !analise.ofertavel) avisos.push("ativa, mas fora da oferta comercial");
     if (analise.ativo && (custos.get(analise.codigo) ?? 0) <= 0) avisos.push("sem preço calculado");
 
     return {
@@ -106,15 +109,21 @@ export default async function AnalisesPage() {
 
   const grupos = [
     {
-      id: "ativas",
-      titulo: "Ativas e ofertaveis",
-      descricao: "Analises com ativo=true e sem marcador textual de revisao.",
-      itens: diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "ativas"),
+      id: "ofertaveis",
+      titulo: "Ofertaveis",
+      descricao: "Analises com ativo=true e ofertavel=true, sem marcador textual de revisao.",
+      itens: diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "ofertaveis"),
+    },
+    {
+      id: "ativas_nao_ofertaveis",
+      titulo: "Ativas, mas nao ofertaveis",
+      descricao: "Cadastros operacionais ativos que nao devem entrar em novos orcamentos.",
+      itens: diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "ativas_nao_ofertaveis"),
     },
     {
       id: "revisao",
       titulo: "Experimentais ou em revisao",
-      descricao: "Agrupamento visual por status textual; nao altera regra de oferta.",
+      descricao: "Agrupamento visual por status textual; o card mostra se ainda esta ofertavel.",
       itens: diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "revisao"),
     },
     {
@@ -136,10 +145,11 @@ export default async function AnalisesPage() {
           </p>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <Stat label="Ativas/ofertaveis" value={String(grupos[0].itens.length)} />
-          <Stat label="Em revisao textual" value={String(grupos[1].itens.length)} />
-          <Stat label="Inativas" value={String(grupos[2].itens.length)} />
+        <div className="mt-6 grid gap-3 sm:grid-cols-4">
+          <Stat label="Ofertaveis" value={String(grupos[0].itens.length)} />
+          <Stat label="Ativas nao ofertaveis" value={String(grupos[1].itens.length)} />
+          <Stat label="Em revisao textual" value={String(grupos[2].itens.length)} />
+          <Stat label="Inativas" value={String(grupos[3].itens.length)} />
         </div>
 
         <div className="mt-8 space-y-8">
@@ -194,6 +204,9 @@ function AnaliseCard({ item }: { item: DiagnosticoAnalise }) {
         </div>
         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${badgeAtivo(analise.ativo)}`}>
           {analise.ativo ? "Ativa" : "Inativa"}
+        </span>
+        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${analise.ofertavel ? "bg-brand-50 text-brand-700 ring-brand-200 dark:bg-brand-950/40 dark:text-brand-300 dark:ring-brand-900" : "bg-zinc-100 text-zinc-600 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700"}`}>
+          {analise.ofertavel ? "Ofertavel" : "Nao ofertavel"}
         </span>
       </div>
 

@@ -139,7 +139,7 @@ export async function carregarSimuladorCusteio(): Promise<{
     { data: equipAnalise },
     { data: insumoAnalise },
   ] = await Promise.all([
-    supabase.from("analises").select("codigo").eq("ativo", true).order("codigo"),
+    supabase.from("analises").select("codigo").eq("ativo", true).eq("ofertavel", true).order("codigo"),
     supabase.from("etapas").select("*"),
     supabase.from("equipamentos").select("*"),
     supabase.from("equipamento_analise").select("*"),

@@ -72,7 +72,7 @@ export default async function AnaliseDetalhe({
 
   const { data: analise } = await supabase
     .from("analises")
-    .select("codigo, nome, nome_simplificado, descricao, status, ativo")
+    .select("codigo, nome, nome_simplificado, descricao, status, ativo, ofertavel")
     .eq("codigo", codigo)
     .single();
   if (!analise) notFound();
@@ -99,6 +99,8 @@ export default async function AnaliseDetalhe({
   ]);
 
   const etapasT = (etapas ?? []) as unknown as Etapa[];
+  const etapasLaboratorio = etapasT.filter((etapa) => !isEtapaPosAnalise(etapa));
+  const etapasPosAnalise = etapasT.filter((etapa) => isEtapaPosAnalise(etapa));
   const materiaisT = (materiais ?? []) as unknown as MaterialVinculado[];
   const equipamentosT = (equipamentos ?? []) as unknown as EquipamentoVinculado[];
   const idsInsumos = [...new Set(materiaisT.map((m) => m.insumo_id).filter((id): id is number => id != null))];
@@ -123,15 +125,25 @@ export default async function AnaliseDetalhe({
     erroCusteio = true;
   }
 
-  const g = gargalo(etapasT);
-  const tempoBancada = horasBancadaPorAmostra(etapasT);
-  const prazo = Math.max(0, ...(etapas ?? []).map((e) => Number(e.dia_fim_max ?? 0)));
+  const g = gargalo(etapasLaboratorio);
+  const tempoBancada = horasBancadaPorAmostra(etapasLaboratorio);
+  const prazoLaboratorio = Math.max(0, ...etapasLaboratorio.map((e) => Number((e as unknown as { dia_fim_max?: number | null }).dia_fim_max ?? 0)));
+  const prazoPosAnalise = Math.max(0, ...etapasPosAnalise.map((e) => Number((e as unknown as { dia_fim_max?: number | null }).dia_fim_max ?? 0)));
+  const prazoTotal = Math.max(prazoLaboratorio, prazoPosAnalise);
+  const posAnaliseSemParametros = etapasPosAnalise.some((e) => !e.tempo_maquina_h && !e.tempo_bancada_h);
   const avisos = [
     etapasT.length === 0 ? "Sem etapas cadastradas." : null,
     materiaisT.length === 0 ? "Sem materiais/insumos vinculados." : null,
     equipamentosT.length === 0 ? "Sem equipamentos vinculados." : null,
     materiaisT.some((m) => Number(m.quantidade_por_amostra ?? 0) > 0 && !m.insumo_id)
       ? "Ha materiais com consumo tecnico sem vinculo com item de estoque."
+      : null,
+    analise.ativo && !analise.ofertavel ? "Analise ativa, mas fora da oferta comercial." : null,
+    analise.ativo && /experimental|experimento|revis|avali|pend|todo/i.test(analise.status ?? "")
+      ? "Analise ativa com status textual de revisao."
+      : null,
+    posAnaliseSemParametros
+      ? "Bioinformatica classificada como pos-analise, mas ainda sem parametros de custo/prazo cadastrados."
       : null,
     !custo || custo.custoTotal <= 0 ? "Custeio calculado ausente ou zerado." : null,
   ].filter(Boolean) as string[];
@@ -146,6 +158,7 @@ export default async function AnaliseDetalhe({
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-semibold tracking-tight">{analise.codigo}</h1>
               <Badge>{analise.ativo ? "Ativa" : "Inativa"}</Badge>
+              <Badge muted>{analise.ofertavel ? "Ofertavel" : "Nao ofertavel"}</Badge>
               {analise.status && <Badge muted>{analise.status}</Badge>}
             </div>
             <p className="mt-2 text-lg font-medium">{analise.nome_simplificado || analise.nome || "Sem nome"}</p>
@@ -208,8 +221,9 @@ export default async function AnaliseDetalhe({
             <Stat label="Execucoes/dia" value={g.execucoesDia > 0 ? formatNumber(g.execucoesDia) : "-"} compact />
             <Stat label="Amostras/execucao" value={g.amostrasPorExecucao > 0 ? formatNumber(g.amostrasPorExecucao) : "-"} compact />
             <Stat label="Bancada/amostra" value={tempoBancada > 0 ? `${formatNumber(tempoBancada)} h` : "-"} compact />
-            <Stat label="Prazo max." value={prazo > 0 ? `${prazo} dias` : "-"} compact />
+            <Stat label="Prazo lab." value={prazoLaboratorio > 0 ? `${prazoLaboratorio} dias` : "-"} compact />
           </div>
+          <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-zinc-500">Laboratorio</h3>
           <Table>
             <thead>
               <tr>
@@ -224,20 +238,28 @@ export default async function AnaliseDetalhe({
               </tr>
             </thead>
             <tbody>
-              {(etapas ?? []).map((etapa) => (
-                <tr key={etapa.id} className="border-t border-zinc-100 dark:border-zinc-800">
-                  <td className={td}>{etapa.ordem ?? "-"}</td>
-                  <td className={td}>{etapa.nome_etapa}</td>
-                  <td className={td}>{etapa.nome_atividade}</td>
-                  <td className={td}>{fmt(etapa.execucoes_por_dia)}</td>
-                  <td className={td}>{fmt(etapa.amostras_por_execucao)}</td>
-                  <td className={td}>{fmt(etapa.tempo_maquina_h)}</td>
-                  <td className={td}>{fmt(etapa.tempo_bancada_h)}</td>
-                  <td className={td}>{etapa.tipo_limitacao ?? "-"}</td>
-                </tr>
-              ))}
+              {etapasLaboratorio.map((etapa) => <EtapaRow key={(etapa as unknown as { id: number }).id} etapa={etapa} />)}
             </tbody>
           </Table>
+          <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-zinc-500">Pos-analise / Bioinformatica</h3>
+          <Table>
+            <thead>
+              <tr>
+                <th className={th}>Ordem</th>
+                <th className={th}>Etapa</th>
+                <th className={th}>Atividade</th>
+                <th className={th}>Exec/dia</th>
+                <th className={th}>Amostras/exec.</th>
+                <th className={th}>Maquina h</th>
+                <th className={th}>Bancada h</th>
+                <th className={th}>Limitacao</th>
+              </tr>
+            </thead>
+            <tbody>
+              {etapasPosAnalise.map((etapa) => <EtapaRow key={(etapa as unknown as { id: number }).id} etapa={etapa} />)}
+            </tbody>
+          </Table>
+          {etapasPosAnalise.length === 0 && <p className="mt-3 text-sm text-zinc-500">Nenhuma etapa pos-analise cadastrada.</p>}
         </Section>
 
         <Section id="materiais-insumos" title="Materiais/Insumos">
@@ -317,7 +339,15 @@ export default async function AnaliseDetalhe({
             <Stat label="Custo total" value={custo ? formatCurrency(custo.custoTotal) : "-"} compact />
             <Stat label="Fatores" value={custo ? `${formatNumber(custo.fatores * 100)}%` : "-"} compact />
             <Stat label="Preco" value={custo ? formatCurrency(custo.preco) : "-"} compact />
+            <Stat label="Prazo laboratorio" value={prazoLaboratorio > 0 ? `${prazoLaboratorio} dias` : "-"} compact />
+            <Stat label="Prazo pos-analise" value={prazoPosAnalise > 0 ? `${prazoPosAnalise} dias` : "-"} compact />
+            <Stat label="Prazo total" value={prazoTotal > 0 ? `${prazoTotal} dias` : "-"} compact />
           </div>
+          {posAnaliseSemParametros && (
+            <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">
+              Bioinformatica classificada como pos-analise, mas ainda sem parametros de custo/prazo cadastrados.
+            </p>
+          )}
           <p className="mt-3 text-xs text-zinc-500">
             Valores exibidos pela engine atual, sem gravar snapshot e sem recalcular orcamentos antigos nesta etapa.
           </p>
@@ -384,6 +414,32 @@ export default async function AnaliseDetalhe({
 
 function fmt(value: number | null | undefined) {
   return value == null ? "-" : formatNumber(value);
+}
+
+function isEtapaPosAnalise(etapa: Etapa) {
+  return (
+    etapa.escopo_operacional === "pos_analise" ||
+    /bioinform/i.test(`${etapa.nome_etapa ?? ""} ${etapa.nome_atividade ?? ""}`)
+  );
+}
+
+function EtapaRow({ etapa }: { etapa: Etapa }) {
+  const e = etapa as Etapa & {
+    ordem?: number | null;
+    tipo_limitacao?: string | null;
+  };
+  return (
+    <tr className="border-t border-zinc-100 dark:border-zinc-800">
+      <td className={td}>{e.ordem ?? "-"}</td>
+      <td className={td}>{e.nome_etapa}</td>
+      <td className={td}>{e.nome_atividade}</td>
+      <td className={td}>{fmt(e.execucoes_por_dia)}</td>
+      <td className={td}>{fmt(e.amostras_por_execucao)}</td>
+      <td className={td}>{fmt(e.tempo_maquina_h)}</td>
+      <td className={td}>{fmt(e.tempo_bancada_h)}</td>
+      <td className={td}>{e.tipo_limitacao ?? "-"}</td>
+    </tr>
+  );
 }
 
 function Badge({ children, muted = false }: { children: ReactNode; muted?: boolean }) {

@@ -10,6 +10,7 @@
 export type Etapa = {
   nome_etapa: string;
   nome_atividade: string;
+  escopo_operacional?: string | null;
   execucoes_por_dia: number | null;
   amostras_por_execucao: number | null;
   tempo_maquina_h: number | null;
@@ -47,6 +48,10 @@ export type Cenario = {
 };
 
 const n = (v: number | null | undefined) => (typeof v === "number" ? v : 0);
+const isPosAnalise = (e: Etapa) =>
+  e.escopo_operacional === "pos_analise" ||
+  /bioinform/i.test(`${e.nome_etapa ?? ""} ${e.nome_atividade ?? ""}`);
+const etapasLaboratorio = (etapas: Etapa[]) => etapas.filter((e) => !isPosAnalise(e));
 
 /** custo/dia de um equipamento com depreciação LINEAR pela vida útil. */
 export function equipCustoDia(
@@ -71,10 +76,12 @@ export function equipCustoDia(
 
 /** Gargalo: replica a lógica da planilha (mínimos ignorando Qubit). */
 export function gargalo(etapas: Etapa[]) {
-  const semQubit = etapas.filter(
+  const laboratorio = etapasLaboratorio(etapas);
+  const baseOperacional = laboratorio.length ? laboratorio : etapas;
+  const semQubit = baseOperacional.filter(
     (e) => !/qubit/i.test(e.nome_atividade ?? ""),
   );
-  const base = semQubit.length ? semQubit : etapas;
+  const base = semQubit.length ? semQubit : baseOperacional;
   const minExec = Math.min(...base.map((e) => n(e.execucoes_por_dia) || Infinity));
   const minAmExec = Math.min(
     ...base.map((e) => n(e.amostras_por_execucao) || Infinity),
@@ -89,10 +96,12 @@ export function gargalo(etapas: Etapa[]) {
 }
 
 function etapasSemQubit(etapas: Etapa[]) {
-  const semQubit = etapas.filter(
+  const laboratorio = etapasLaboratorio(etapas);
+  const base = laboratorio.length ? laboratorio : etapas;
+  const semQubit = base.filter(
     (e) => !/qubit/i.test(e.nome_atividade ?? ""),
   );
-  return semQubit.length ? semQubit : etapas;
+  return semQubit.length ? semQubit : base;
 }
 
 /** Horas de bancada por execução = soma da síntese operacional, ignorando Qubit. */

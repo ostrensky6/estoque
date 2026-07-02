@@ -226,10 +226,10 @@ export async function adicionarItemOrcamento(formData: FormData) {
   const supabase = await createClient();
   const { data: analise } = await supabase
     .from("analises")
-    .select("ativo")
+    .select("ativo, ofertavel")
     .eq("codigo", codigo)
     .single();
-  if (!analise?.ativo) {
+  if (!analise?.ativo || !analise?.ofertavel) {
     throw new Error("Analise inativa ou nao oferecivel para novo orcamento.");
   }
   const { breakdowns } = await calcularTodas();
