@@ -36,8 +36,8 @@ function statusTextualIndicaRevisao(status: string | null) {
 }
 
 function grupoDaAnalise(analise: AnaliseCatalogo) {
-  if (statusTextualIndicaRevisao(analise.status)) return "revisao";
   if (!analise.ativo) return "inativas";
+  if (statusTextualIndicaRevisao(analise.status)) return "revisao";
   return analise.ofertavel ? "ofertaveis" : "ativas_nao_ofertaveis";
 }
 
@@ -107,12 +107,18 @@ export default async function AnalisesPage() {
     };
   });
 
+  const totalOfertaveis = diagnosticos.filter((item) => item.analise.ativo && item.analise.ofertavel);
+  const ofertaveisSemRessalva = diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "ofertaveis");
+  const ofertaveisEmRevisao = diagnosticos.filter(
+    (item) => item.analise.ativo && item.analise.ofertavel && statusTextualIndicaRevisao(item.analise.status),
+  );
+
   const grupos = [
     {
       id: "ofertaveis",
-      titulo: "Ofertaveis",
+      titulo: "Ofertaveis sem ressalva",
       descricao: "Analises com ativo=true e ofertavel=true, sem marcador textual de revisao.",
-      itens: diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "ofertaveis"),
+      itens: ofertaveisSemRessalva,
     },
     {
       id: "ativas_nao_ofertaveis",
@@ -145,10 +151,11 @@ export default async function AnalisesPage() {
           </p>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-4">
-          <Stat label="Ofertaveis" value={String(grupos[0].itens.length)} />
+        <div className="mt-6 grid gap-3 sm:grid-cols-5">
+          <Stat label="Ofertaveis totais" value={String(totalOfertaveis.length)} />
+          <Stat label="Ofertaveis sem ressalva" value={String(ofertaveisSemRessalva.length)} />
+          <Stat label="Ofertaveis em revisao" value={String(ofertaveisEmRevisao.length)} />
           <Stat label="Ativas nao ofertaveis" value={String(grupos[1].itens.length)} />
-          <Stat label="Em revisao textual" value={String(grupos[2].itens.length)} />
           <Stat label="Inativas" value={String(grupos[3].itens.length)} />
         </div>
 
