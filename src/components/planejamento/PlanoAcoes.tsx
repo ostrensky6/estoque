@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   reservarPlano,
@@ -27,6 +27,7 @@ function Botao({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, {
     ok: false,
   });
@@ -34,9 +35,15 @@ function Botao({
     if (state.ok) router.refresh();
   }, [state, router]);
 
+  function confirmarEnvio() {
+    const form = formRef.current;
+    setOpen(false);
+    form?.requestSubmit();
+  }
+
   return (
     <div className="flex flex-col gap-1">
-      <form action={formAction}>
+      <form ref={formRef} action={formAction}>
         <input type="hidden" name="planejamento_id" value={planId} />
         {confirmar ? (
           <button
@@ -70,11 +77,12 @@ function Botao({
                   Cancelar
                 </button>
                 <button
-                  type="submit"
-                  onClick={() => setOpen(false)}
+                  type="button"
+                  disabled={pending}
+                  onClick={confirmarEnvio}
                   className="rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-500"
                 >
-                  Confirmar
+                  {pending ? "…" : "Confirmar"}
                 </button>
               </div>
             </div>

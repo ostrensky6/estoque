@@ -3,6 +3,20 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLICAS = ["/login", "/auth", "/aprovar"];
 
+function isInvalidRefreshToken(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const err = error as { code?: string; message?: string; name?: string };
+  return (
+    err.code === "refresh_token_not_found" ||
+    err.name === "AuthSessionMissingError" ||
+    String(err.message ?? "").toLowerCase().includes("invalid refresh token")
+  );
+}
+
+function isSupabaseAuthCookie(name: string) {
+  return name.startsWith("sb-") && (name.includes("auth-token") || name.includes("code-verifier"));
+}
+
 /** Atualiza a sessão e protege rotas (redireciona não autenticados ao /login). */
 export async function updateSession(request: NextRequest) {
   if (process.env.PLAYWRIGHT_MOCK_SUPABASE === "1") {
@@ -30,9 +44,18 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getUser();
+  let user = data.user;
+
+  if (error && isInvalidRefreshToken(error)) {
+    user = null;
+    response = NextResponse.next({ request });
+    for (const cookie of request.cookies.getAll()) {
+      if (isSupabaseAuthCookie(cookie.name)) {
+        response.cookies.set(cookie.name, "", { path: "/", maxAge: 0 });
+      }
+    }
+  }
 
   const path = request.nextUrl.pathname;
   const publica = PUBLICAS.some((p) => path.startsWith(p));
