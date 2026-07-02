@@ -215,6 +215,53 @@ export async function salvarCabecalho(formData: FormData) {
   revalidatePath("/orcamento");
 }
 
+export async function revisarOrcamentoLaboratorio(formData: FormData) {
+  await exigirPapelOrcamento("revisar_modulo");
+  const id = Number(formData.get("orcamento_id"));
+  const responsavel = String(formData.get("responsavel") ?? "").trim();
+  const novoStatus = String(formData.get("status") ?? "enviado");
+  if (!id) return;
+  if (!responsavel) {
+    throw new Error("Informe o responsável técnico antes de revisar os custos laboratoriais.");
+  }
+  if (!["enviado", "aprovado"].includes(novoStatus)) {
+    throw new Error("Status de revisão inválido.");
+  }
+
+  const supabase = await createClient();
+  const [{ data: anterior }, { data: itens }] = await Promise.all([
+    supabase
+      .from("orcamentos")
+      .select("status")
+      .eq("id", id)
+      .single(),
+    supabase
+      .from("orcamento_itens")
+      .select("id")
+      .eq("orcamento_id", id),
+  ]);
+  if ((itens ?? []).length === 0) {
+    throw new Error("Adicione ao menos uma análise antes de revisar os custos laboratoriais.");
+  }
+
+  const { error } = await supabase
+    .from("orcamentos")
+    .update({
+      responsavel,
+      status: novoStatus,
+      status_operacional: "revisado",
+      status_operacional_atualizado_em: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  if (anterior && anterior.status !== novoStatus) {
+    await registrarEvento("orcamento", id, anterior.status, novoStatus);
+  }
+  await atualizarOperacionalLaboratorio(supabase, id, novoStatus);
+  revalidatePath(`/orcamento/${id}`);
+  revalidatePath("/orcamento");
+}
+
 /** Adiciona uma análise solicitada, gravando o snapshot de custo/preço atual. */
 export async function adicionarItemOrcamento(formData: FormData) {
   await exigirPapelOrcamento("preencher_custos");

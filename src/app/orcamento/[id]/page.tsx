@@ -9,6 +9,7 @@ import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import {
   salvarCabecalho,
+  revisarOrcamentoLaboratorio,
   alternarAnaliseOrcamento,
   removerItemOrcamento,
   recalcularOrcamento,
@@ -610,8 +611,43 @@ export default async function OrcamentoDetalhe({
             </ul>
           ) : (
             <p className="mt-3 rounded-md bg-brand-50 px-3 py-2 text-xs leading-5 text-brand-900 dark:bg-brand-950/40 dark:text-brand-200">
-              Cabeçalho, responsável e análises estão coerentes. A próxima ação natural é salvar o status revisado no cabeçalho.
+              Cabeçalho, responsável e análises estão coerentes. Marque os custos laboratoriais como revisados para liberar a proposta final.
             </p>
+          )}
+          {demanda && statusOperacional !== "revisado" && orc.status !== "cancelado" && (
+            <form action={revisarOrcamentoLaboratorio} className="mt-4 grid gap-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-950/50 sm:grid-cols-[1fr_180px_auto]">
+              <input type="hidden" name="orcamento_id" value={orcId} />
+              <div>
+                <label className={lbl}>Responsável técnico</label>
+                <input
+                  aria-label="Responsável técnico"
+                  name="responsavel"
+                  defaultValue={orc.responsavel ?? demanda.responsavel_interno ?? ""}
+                  className={`${inp} mt-1 w-full`}
+                  required
+                />
+              </div>
+              <div>
+                <label className={lbl}>Status de revisão</label>
+                <select
+                  aria-label="Status de revisão"
+                  name="status"
+                  defaultValue="enviado"
+                  className={`${inp} mt-1 w-full`}
+                >
+                  <option value="enviado">Enviado</option>
+                  <option value="aprovado">Aprovado</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
+                  Marcar revisado
+                </button>
+              </div>
+              <p className="sm:col-span-3 text-xs leading-5 text-zinc-500">
+                Esta ação preserva o snapshot laboratorial e transforma o módulo em revisado; depois disso, a edição direta fica bloqueada.
+              </p>
+            </form>
           )}
         </section>
 
