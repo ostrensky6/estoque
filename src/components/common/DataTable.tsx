@@ -184,14 +184,15 @@ export function DataTable<TData>({
         </div>
 
         {filters.map((filter) => {
-          const column = table.getColumn(filter.columnId);
-          const value = (column?.getFilterValue() as string | undefined) ?? "";
+          const column = table.getAllLeafColumns().find((col) => col.id === filter.columnId);
+          if (!column) return null;
+          const value = (column.getFilterValue() as string | undefined) ?? "";
           const options = uniqueFilterOptions(filter.options);
           return (
             <Select
               key={filter.columnId}
               value={value}
-              onChange={(event) => column?.setFilterValue(event.target.value || undefined)}
+              onChange={(event) => column.setFilterValue(event.target.value || undefined)}
               className="h-9 w-auto min-w-36 text-xs"
               aria-label={`Filtrar por ${filter.label}`}
             >

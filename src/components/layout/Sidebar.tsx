@@ -122,7 +122,7 @@ function SidebarContent({
             alt="GIA"
             width={1767}
             height={1434}
-            className="h-10 w-auto object-contain opacity-80 dark:opacity-100 dark:brightness-0 dark:invert"
+            className="h-10 w-auto object-contain opacity-80 dark:opacity-100"
             unoptimized
           />
           <span className="h-9 w-px bg-slate-200 dark:bg-zinc-800" aria-hidden="true" />

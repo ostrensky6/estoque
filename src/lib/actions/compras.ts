@@ -70,8 +70,8 @@ export async function gerarRascunhosReposicao(_prev: FormState): Promise<FormSta
 
 /**
  * 2.3 — Falta do plano → pedido de compra. Gera pedido(s) pré-preenchidos com
- * os insumos em falta: quantidade sugerida = falta + estoque de segurança,
- * agrupados pelo fornecedor principal de cada insumo. Um pedido por fornecedor.
+ * os insumos em falta pela demanda real ainda não atendida. Um pedido por
+ * fornecedor.
  */
 export async function comprarFaltasDoPlano(formData: FormData) {
   const planId = Number(formData.get("planejamento_id"));
@@ -101,7 +101,7 @@ export async function comprarFaltasDoPlano(formData: FormData) {
   for (const f of faltas) {
     const info = infoMap.get(f.insumo_id);
     const fornecedor = info?.fornecedor_id ?? null;
-    const quantidade = f.falta + Number(info?.estoque_seguranca ?? 0);
+    const quantidade = f.falta;
     const arr = porFornecedor.get(fornecedor) ?? [];
     arr.push({ insumo_id: f.insumo_id, quantidade, custo: info?.custo_unitario ?? null });
     porFornecedor.set(fornecedor, arr);
