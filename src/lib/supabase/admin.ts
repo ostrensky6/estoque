@@ -2,16 +2,40 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 
-function adminKey() {
-  return process.env.SUPABASE_AUTH_ADMIN_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY!;
+export const MENSAGEM_CONFIG_ADMIN_AUSENTE =
+  "Configuração administrativa ausente: SUPABASE_SERVICE_ROLE_KEY não está definida no servidor.";
+
+export class SupabaseAdminConfigError extends Error {
+  constructor() {
+    super(MENSAGEM_CONFIG_ADMIN_AUSENTE);
+    this.name = "SupabaseAdminConfigError";
+  }
 }
 
-export function mensagemErroAdminSupabase(error: { message?: string; code?: string } | null | undefined) {
+export function isSupabaseAdminConfigError(error: unknown) {
+  return error instanceof SupabaseAdminConfigError;
+}
+
+function adminKey() {
+  const key = process.env.SUPABASE_AUTH_ADMIN_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) throw new SupabaseAdminConfigError();
+  return key;
+}
+
+export function mensagemErroAdminSupabase(error: { message?: string; code?: string } | Error | null | undefined) {
+  if (isSupabaseAdminConfigError(error)) return MENSAGEM_CONFIG_ADMIN_AUSENTE;
+
   const message = error?.message ?? "";
-  const key = adminKey();
+  const code = error && "code" in error ? error.code : undefined;
+  let key = "";
+  try {
+    key = adminKey();
+  } catch {
+    return MENSAGEM_CONFIG_ADMIN_AUSENTE;
+  }
   const pareceChaveNova = key.startsWith("sb_secret_");
   const pareceErroChave =
-    error?.code === "bad_jwt" ||
+    code === "bad_jwt" ||
     /invalid api key|bad jwt|jwt/i.test(message);
 
   if (pareceChaveNova || pareceErroChave) {

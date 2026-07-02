@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { MoreHorizontal } from "lucide-react";
 
-import { alternarSuspensao, criarUsuarioPreAprovado, editarUsuario, excluirUsuario, resetarSenha } from "@/lib/actions/usuarios";
+import { alterarSenhaUsuario, alternarSuspensao, criarUsuarioPreAprovado, editarUsuario, excluirUsuario } from "@/lib/actions/usuarios";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,7 @@ import type { UsuarioRow } from "./UsuariosTable";
 
 const initial: FormState = { ok: false, message: "" };
 
-type DialogAberto = "editar" | "assinatura" | "resetar" | "apagar" | "pre_aprovar" | null;
+type DialogAberto = "editar" | "assinatura" | "senha" | "apagar" | "pre_aprovar" | null;
 
 function EditarDialog({
   row,
@@ -204,7 +204,7 @@ function PreAprovarDialog({
   );
 }
 
-function ResetarDialog({
+function AlterarSenhaDialog({
   row,
   open,
   onOpenChange,
@@ -213,28 +213,60 @@ function ResetarDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
-  const [state, action, pending] = useActionState(resetarSenha, initial);
+  const [state, action, pending] = useActionState(alterarSenhaUsuario, initial);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Resetar senha inicial</DialogTitle>
+          <DialogTitle>Alterar senha</DialogTitle>
           <DialogDescription>
-            Volta {row.email} para a senha de primeiro acesso. No próximo login ele será obrigado a criar uma senha definitiva.
+            Defina uma nova senha para {row.email}. A senha não é exibida nem armazenada pelo Kontrol.
           </DialogDescription>
         </DialogHeader>
         <form action={action} className="space-y-4">
           <input type="hidden" name="id" value={row.id} />
-          <input type="hidden" name="email" value={row.email} />
+          <div>
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Nova senha</label>
+            <Input
+              name="senha"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Confirmar senha</label>
+            <Input
+              name="confirmar"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              className="mt-1"
+            />
+          </div>
+          <label className="flex items-start gap-2 rounded-md border border-zinc-200 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+            <Checkbox name="exigir_troca" className="mt-0.5" />
+            <span>
+              <span className="block font-medium text-zinc-800 dark:text-zinc-100">
+                Exigir troca no próximo login
+              </span>
+              <span className="block leading-4">
+                Use quando a senha foi definida pelo administrador e deve ser substituída pelo usuário.
+              </span>
+            </span>
+          </label>
           {state.message && (
             <p className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-red-600"}`}>
               {state.message}
             </p>
           )}
           <DialogFooter>
-            <Button type="submit" variant="destructive" disabled={pending || state.ok}>
-              {pending ? "Resetando…" : state.ok ? "Senha resetada" : "Voltar para senha inicial"}
+            <Button type="submit" disabled={pending || state.ok}>
+              {pending ? "Salvando…" : state.ok ? "Senha atualizada" : "Alterar senha"}
             </Button>
           </DialogFooter>
         </form>
@@ -305,7 +337,7 @@ export function UsuarioAcoes({ row }: { row: UsuarioRow }) {
             <>
               <DropdownMenuItem onSelect={() => setDialog("editar")}>Editar</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setDialog("assinatura")}>Upload assinatura</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setDialog("resetar")}>Resetar senha inicial</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setDialog("senha")}>Alterar senha</DropdownMenuItem>
               <DropdownMenuItem onSelect={suspender}>
                 {row.suspenso ? "Reativar" : "Suspender"}
               </DropdownMenuItem>
@@ -325,7 +357,7 @@ export function UsuarioAcoes({ row }: { row: UsuarioRow }) {
         <>
           <EditarDialog row={row} open={dialog === "editar"} onOpenChange={(v) => setDialog(v ? "editar" : null)} />
           <AssinaturaDialog row={row} open={dialog === "assinatura"} onOpenChange={(v) => setDialog(v ? "assinatura" : null)} />
-          <ResetarDialog row={row} open={dialog === "resetar"} onOpenChange={(v) => setDialog(v ? "resetar" : null)} />
+          <AlterarSenhaDialog row={row} open={dialog === "senha"} onOpenChange={(v) => setDialog(v ? "senha" : null)} />
           <ExcluirDialog row={row} open={dialog === "apagar"} onOpenChange={(v) => setDialog(v ? "apagar" : null)} />
         </>
       )}
