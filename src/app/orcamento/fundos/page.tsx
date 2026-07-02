@@ -179,12 +179,12 @@ export default async function FundosPage() {
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-7xl px-6 py-10">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <Breadcrumbs items={[{ label: "Orçamentos", href: "/orcamento" }, { label: "Fundos e taxas" }]} />
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Fundos e taxas</h1>
+            <h1 className="text-xl font-semibold tracking-tight">Fundos e taxas</h1>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               Acompanhamento financeiro de orçamentos aprovados: recebimentos, impostos, incubação, baixas e saldos de fundos.
             </p>

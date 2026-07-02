@@ -197,7 +197,7 @@ export default async function OrcamentoDetalhe({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="print-area mx-auto max-w-6xl px-6 py-10">
+      <main className="print-area mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="no-print flex items-center justify-between">
           <Breadcrumbs items={[{ label: "Orçamentos não finalizados", href: "/orcamento/demandas" }, { label: `Custos laboratoriais #${orc.id}` }]} />
           <div className="flex items-center gap-2">

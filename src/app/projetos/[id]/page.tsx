@@ -203,14 +203,14 @@ export default async function ProjetoHubPage({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <Breadcrumbs items={[{ label: "Projetos", href: "/projetos" }, { label: projeto.nome }]} />
 
         {/* Header */}
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight">{projeto.nome}</h1>
+              <h1 className="text-xl font-semibold tracking-tight">{projeto.nome}</h1>
               <Badge map={STATUS_PROJETO} status={projeto.status} />
             </div>
             <p className="mt-1 text-sm text-muted-foreground">

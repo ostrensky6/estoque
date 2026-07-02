@@ -163,12 +163,12 @@ export default async function HistoricoOrcamentosPage({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-7xl px-6 py-10">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <Breadcrumbs items={[{ label: "Orçamentos", href: "/orcamento" }, { label: "Histórico de Orçamentos" }]} />
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Histórico de Orçamentos</h1>
+            <h1 className="text-xl font-semibold tracking-tight">Histórico de Orçamentos</h1>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               Área de consulta para registros fechados. Versões finais preservam snapshot técnico, parâmetros e valores emitidos.
             </p>

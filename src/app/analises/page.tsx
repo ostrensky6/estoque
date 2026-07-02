@@ -142,9 +142,9 @@ export default async function AnalisesPage() {
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-7xl px-6 py-10">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="max-w-3xl">
-          <h1 className="text-2xl font-semibold tracking-tight">Analises</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Analises</h1>
           <p className={`mt-2 ${subtle}`}>
             Ficha tecnica operacional em modo somente leitura. Esta etapa reorganiza a visao do cadastro atual
             sem criar tabelas, aplicar migrations ou alterar regras de orcamento, estoque e compras.

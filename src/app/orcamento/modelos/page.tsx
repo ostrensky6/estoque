@@ -80,11 +80,11 @@ export default async function OrcamentoModelosPage({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-7xl px-6 py-10">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <Link href="/orcamento" className="text-xs text-muted-foreground hover:underline">Orçamentos</Link>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight">Modelos e catálogo</h1>
+            <h1 className="mt-2 text-xl font-semibold tracking-tight">Modelos e catálogo</h1>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               Área operacional para templates de projeto, catálogo institucional, parâmetros padrão e origem importada preservada.
             </p>

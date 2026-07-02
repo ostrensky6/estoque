@@ -150,13 +150,13 @@ export default async function AnaliseDetalhe({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-7xl px-6 py-10">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <Breadcrumbs items={[{ label: "Analises", href: "/analises" }, { label: codigo }]} />
 
         <section className="mt-3 grid gap-4 lg:grid-cols-[1fr_280px]">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight">{analise.codigo}</h1>
+              <h1 className="text-xl font-semibold tracking-tight">{analise.codigo}</h1>
               <Badge>{analise.ativo ? "Ativa" : "Inativa"}</Badge>
               <Badge muted>{analise.ofertavel ? "Ofertavel" : "Nao ofertavel"}</Badge>
               {analise.status && <Badge muted>{analise.status}</Badge>}

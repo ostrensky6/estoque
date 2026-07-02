@@ -28,10 +28,10 @@ export default async function ProjetosPage() {
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Projetos</h1>
+            <h1 className="text-xl font-semibold tracking-tight">Projetos</h1>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               Visão 360° por projeto: orçamentos, planejamentos, compras e demandas num só lugar.
             </p>
