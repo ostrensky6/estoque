@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { formatCurrency as brl } from "@/lib/formatters";
 
 type CatalogoItem = {
@@ -47,6 +47,18 @@ type FormPessoalProps = {
   limparTodosAction: (formData: FormData) => Promise<void>;
 };
 
+function montarEstadoLinhas(itens: Custo[]) {
+  const estados: Record<number, { descricao: string; custo_unitario: number; quantidade: number }> = {};
+  itens.forEach(item => {
+    estados[item.id] = {
+      descricao: item.descricao ?? "",
+      custo_unitario: Number(item.custo_unitario ?? 0),
+      quantidade: Number(item.quantidade ?? 1),
+    };
+  });
+  return estados;
+}
+
 export function FormPessoal({
   orcId,
   projectMonths,
@@ -76,19 +88,7 @@ export function FormPessoal({
   const itensPersonalizados = itensPE.filter(it => !it.catalogo_item_id);
 
   // Estados locais das linhas
-  const [linhaEstados, setLinhaEstados] = useState<Record<number, { descricao: string; custo_unitario: number; quantidade: number }>>({});
-
-  useEffect(() => {
-    const novosEstados: typeof linhaEstados = {};
-    itensPE.forEach(item => {
-      novosEstados[item.id] = {
-        descricao: item.descricao ?? "",
-        custo_unitario: Number(item.custo_unitario ?? 0),
-        quantidade: Number(item.quantidade ?? 1),
-      };
-    });
-    setLinhaEstados(novosEstados);
-  }, [itensPE]);
+  const [linhaEstados, setLinhaEstados] = useState(() => montarEstadoLinhas(itensPE));
 
   const handleLinhaDescricaoChange = (id: number, val: string) => {
     setLinhaEstados(prev => ({

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { formatCurrency as brl } from "@/lib/formatters";
 
 type CatalogoItem = {
@@ -48,6 +48,19 @@ type FormRubricaGenericaProps = {
   limparTodosAction: (formData: FormData) => Promise<void>;
 };
 
+function montarEstadoLinhas(itens: Custo[]) {
+  const estados: Record<number, { descricao: string; custo_unitario: number; quantidade: number; unidade: string }> = {};
+  itens.forEach(item => {
+    estados[item.id] = {
+      descricao: item.descricao ?? "",
+      custo_unitario: Number(item.custo_unitario ?? 0),
+      quantidade: Number(item.quantidade ?? 1),
+      unidade: item.unidade ?? "",
+    };
+  });
+  return estados;
+}
+
 export function FormRubricaGenerica({
   orcId,
   rubrica,
@@ -78,20 +91,7 @@ export function FormRubricaGenerica({
   const itensPersonalizados = custosItens.filter(it => !it.catalogo_item_id);
 
   // Estados locais das linhas
-  const [linhaEstados, setLinhaEstados] = useState<Record<number, { descricao: string; custo_unitario: number; quantidade: number; unidade: string }>>({});
-
-  useEffect(() => {
-    const novosEstados: typeof linhaEstados = {};
-    custosItens.forEach(item => {
-      novosEstados[item.id] = {
-        descricao: item.descricao ?? "",
-        custo_unitario: Number(item.custo_unitario ?? 0),
-        quantidade: Number(item.quantidade ?? 1),
-        unidade: item.unidade ?? "",
-      };
-    });
-    setLinhaEstados(novosEstados);
-  }, [custosItens]);
+  const [linhaEstados, setLinhaEstados] = useState(() => montarEstadoLinhas(custosItens));
 
   const handleLinhaDescChange = (id: number, val: string) => {
     setLinhaEstados(prev => ({
