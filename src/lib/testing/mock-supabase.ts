@@ -32,14 +32,16 @@ const baseStore = (): Store => {
     },
   ],
   orcamento_projetos: [],
+  orcamento_final_versoes: [],
+  eventos_status: [],
   orcamento_projeto_analises: [],
   orcamento_projeto_custos: [],
   demanda_analises: [],
   projetos: [{ id: 1, nome: "Projeto E2E" }],
   clientes: [{ id: 1, nome: "Cliente Cadastrado", ativo: true }],
   analises: [
-    { codigo: "TESTE-16S", nome: "Metagenomica 16S", ativo: true },
-    { codigo: "TESTE-QPCR", nome: "qPCR marcador alvo", ativo: true },
+    { codigo: "TESTE-16S", nome: "Metagenomica 16S", ativo: true, ofertavel: true },
+    { codigo: "TESTE-QPCR", nome: "qPCR marcador alvo", ativo: true, ofertavel: true },
   ],
   etapas: [
     {
@@ -195,7 +197,9 @@ const baseStore = (): Store => {
       demanda_id: 1,
       tipo: "analises",
       cliente_nome: "Cliente Demo",
-      status: "rascunho",
+      status: "enviado",
+      status_operacional: "revisado",
+      responsavel_tecnico: "Responsavel E2E",
       data_orcamento: "2026-06-21",
       criado_em: "2026-06-21T10:00:00.000Z",
     });
@@ -238,7 +242,7 @@ const baseStore = (): Store => {
         id: 1,
         demanda_id: 1,
         titulo: "Projeto Demo",
-        status: "rascunho",
+        status: "enviado",
         data_orcamento: "2026-06-21",
         impostos: 0,
         margem_lucro: 0,
@@ -282,6 +286,10 @@ export function getMockSupabaseStore() {
 
 const nextId = (table: string) =>
   Math.max(0, ...((store[table] ?? []) as Row[]).map((row) => Number(row.id) || 0)) + 1;
+
+function valoresIguais(a: unknown, b: unknown) {
+  return a === b || String(a) === String(b);
+}
 
 function withRelations(table: string, row: Row): Row {
   if (table === "orcamentos") {
@@ -447,9 +455,9 @@ class MockQuery {
 
   private matches(row: Row) {
     return (
-      this.filters.every((filter) => row[filter.column] === filter.value) &&
-      this.neqFilters.every((filter) => row[filter.column] !== filter.value) &&
-      this.inFilters.every((filter) => filter.values.includes(row[filter.column])) &&
+      this.filters.every((filter) => valoresIguais(row[filter.column], filter.value)) &&
+      this.neqFilters.every((filter) => !valoresIguais(row[filter.column], filter.value)) &&
+      this.inFilters.every((filter) => filter.values.some((value) => valoresIguais(row[filter.column], value))) &&
       this.notFilters.every((filter) => !filter.values.includes(String(row[filter.column]))) &&
       this.isFilters.every((filter) => (row[filter.column] ?? null) === filter.value)
     );
@@ -578,6 +586,60 @@ function sincronizarDemandaAnalises(args: Row) {
   }
 }
 
+function emitirOrcamentoFinalTransacional(args: Row) {
+  const demandaId = Number(args.p_demanda_id);
+  const versoesDaDemanda = (store.orcamento_final_versoes ?? []).filter((row) => Number(row.demanda_id) === demandaId);
+  const versao = Math.max(0, ...versoesDaDemanda.map((row) => Number(row.versao) || 0)) + 1;
+  const id = nextId("orcamento_final_versoes");
+  const numero = `OF-2026-${String(demandaId).padStart(4, "0")}-v${versao}`;
+  const criadoEm = new Date().toISOString();
+  const validadeDias = Number(args.p_validade_dias ?? 30);
+  const validoAte = new Date(Date.now() + validadeDias * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  store.orcamento_final_versoes = (store.orcamento_final_versoes ?? []).map((row) =>
+    Number(row.demanda_id) === demandaId && row.status === "emitido"
+      ? { ...row, status: "substituido", substituido_em: criadoEm }
+      : row,
+  );
+
+  const versaoFinal = {
+    id,
+    demanda_id: demandaId,
+    versao,
+    numero,
+    status: "emitido",
+    total_laboratorio_custo: args.p_total_laboratorio_custo,
+    total_laboratorio_preco: args.p_total_laboratorio_preco,
+    total_projeto_custo: args.p_total_projeto_custo,
+    total_projeto_final: args.p_total_projeto_final,
+    total_final: args.p_total_final,
+    snapshot: args.p_snapshot,
+    parametros: args.p_parametros,
+    criado_por: args.p_criado_por,
+    criado_em: criadoEm,
+    valido_ate: validoAte,
+  };
+  store.orcamento_final_versoes.push(versaoFinal);
+
+  store.demandas_propostas = (store.demandas_propostas ?? []).map((row) =>
+    Number(row.id) === demandaId ? { ...row, status: "orcada", atualizado_em: criadoEm } : row,
+  );
+  store.eventos_status = [
+    ...(store.eventos_status ?? []),
+    {
+      id: nextId("eventos_status"),
+      entidade_tipo: "demanda_proposta",
+      entidade_id: demandaId,
+      status_novo: "orcada",
+      observacao: `Versao final ${numero} emitida via mock e2e.`,
+      criado_em: criadoEm,
+      usuario_email: args.p_usuario_email ?? null,
+    },
+  ];
+
+  return { versao_id: id, versao, numero };
+}
+
 export function createMockSupabaseClient() {
   return {
     auth: {
@@ -599,6 +661,7 @@ export function createMockSupabaseClient() {
           return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
         }
       }
+      if (fn === "emitir_orcamento_final_transacional") return { data: emitirOrcamentoFinalTransacional(args), error: null };
       return { data: null, error: null };
     },
   };
