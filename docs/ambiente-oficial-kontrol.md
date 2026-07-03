@@ -34,14 +34,18 @@ Não usar o slug antigo `ostrenskys-projects-17ce406b`.
 ## Supabase
 
 - Projeto: `estoque`
-- Project ref: `hhxwdcwphitfxywbgtju`
+- Project ref: `gkcjzwfsnoknxgpsumxi`
 - Região: `sa-east-1`
-- API URL: https://hhxwdcwphitfxywbgtju.supabase.co
-- Dashboard: https://supabase.com/dashboard/project/hhxwdcwphitfxywbgtju
+- API URL: https://gkcjzwfsnoknxgpsumxi.supabase.co
+- Dashboard: https://supabase.com/dashboard/project/gkcjzwfsnoknxgpsumxi
 - Pooler host: `aws-1-sa-east-1.pooler.supabase.com`
 - Pooler port: `5432`
-- Pooler user: `postgres.hhxwdcwphitfxywbgtju`
+- Pooler user: `postgres.gkcjzwfsnoknxgpsumxi`
 - Database: `postgres`
+
+Nota operacional (2026-07-03): referências anteriores a `hhxwdcwphitfxywbgtju`
+devem ser tratadas como obsoletas/incorretas para o Kontrol até prova
+documental contrária.
 
 ## Segurança
 

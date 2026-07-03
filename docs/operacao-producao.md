@@ -51,26 +51,31 @@
 
 - Conta: `ostrensky6@gmail.com`
 - Projeto: `estoque`
-- Project ref: `hhxwdcwphitfxywbgtju`
+- Project ref: `gkcjzwfsnoknxgpsumxi`
 - Regiao: `sa-east-1`
-- API URL: https://hhxwdcwphitfxywbgtju.supabase.co
+- API URL: https://gkcjzwfsnoknxgpsumxi.supabase.co
 - Pooler IPv4:
   - Host: `aws-1-sa-east-1.pooler.supabase.com`
   - Porta: `5432`
-  - User: `postgres.hhxwdcwphitfxywbgtju`
+  - User: `postgres.gkcjzwfsnoknxgpsumxi`
   - Database: `postgres`
 - Chave anon/public: configurar como `NEXT_PUBLIC_SUPABASE_ANON_KEY` no host. Pode usar o formato novo `sb_publishable_...` (Settings -> API Keys -> Publishable key) ou o legacy anon JWT.
 - Chave service/secret: configurar como `SUPABASE_SERVICE_ROLE_KEY` no host. Pode usar o formato novo `sb_secret_...` (Settings -> API Keys -> Secret keys) ou o legacy service_role JWT.
-- Status CLI: linkado com `supabase link --project-ref hhxwdcwphitfxywbgtju`.
+- Status CLI: linkado com `supabase link --project-ref gkcjzwfsnoknxgpsumxi`.
 - Historico de migrations em producao: alinhado de `0001` a `0039`.
 - Senha Postgres: armazenada no gerenciador de senhas. Nunca versionar.
+
+Nota operacional (2026-07-03): o responsavel confirmou
+`gkcjzwfsnoknxgpsumxi` como Supabase correto. Referencias anteriores a
+`hhxwdcwphitfxywbgtju` devem ser tratadas como obsoletas/incorretas ate prova
+documental contraria.
 
 ## Checklist operacional
 
 1. Rode `npm run prod:check` antes de deploy ou `supabase db push`; ele bloqueia projeto Vercel errado, Supabase linkado no ref errado e migrations com prefixo duplicado.
-2. Antes de features que dependam de schema novo, aplicar as migrations pendentes no Supabase producao (`hhxwdcwphitfxywbgtju`) somente depois de revisar `supabase migration list --linked`.
+2. Antes de features que dependam de schema novo, aplicar as migrations pendentes no Supabase producao (`gkcjzwfsnoknxgpsumxi`) somente depois de revisar `supabase migration list --linked`.
 3. No projeto Vercel (`kontrol-gia`), manter configurado:
-   - `NEXT_PUBLIC_SUPABASE_URL=https://hhxwdcwphitfxywbgtju.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_URL=https://gkcjzwfsnoknxgpsumxi.supabase.co`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable key do Supabase>`
    - `SUPABASE_SERVICE_ROLE_KEY=<secret/service role key do Supabase>`
 4. No Supabase Auth, manter Site URL/Redirect URLs para `https://kontrol-gia.vercel.app`.

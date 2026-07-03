@@ -12,8 +12,8 @@ $Expected = @{
   VercelTeamName = "Ostrensky's projects"
   VercelProject = "kontrol-gia"
   ProductionUrl = "https://kontrol-gia.vercel.app"
-  SupabaseRef = "hhxwdcwphitfxywbgtju"
-  SupabaseUrl = "https://hhxwdcwphitfxywbgtju.supabase.co"
+  SupabaseRef = "gkcjzwfsnoknxgpsumxi"
+  SupabaseUrl = "https://gkcjzwfsnoknxgpsumxi.supabase.co"
 }
 
 $Failures = New-Object System.Collections.Generic.List[string]
