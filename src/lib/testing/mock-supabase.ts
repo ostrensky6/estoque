@@ -291,6 +291,13 @@ function valoresIguais(a: unknown, b: unknown) {
   return a === b || String(a) === String(b);
 }
 
+function compararValores(a: unknown, b: unknown) {
+  const numeroA = Number(a);
+  const numeroB = Number(b);
+  if (Number.isFinite(numeroA) && Number.isFinite(numeroB)) return numeroA - numeroB;
+  return String(a).localeCompare(String(b));
+}
+
 function withRelations(table: string, row: Row): Row {
   if (table === "orcamentos") {
     return {
@@ -321,6 +328,7 @@ class MockQuery {
   private inFilters: { column: string; values: unknown[] }[] = [];
   private notFilters: { column: string; values: string[] }[] = [];
   private isFilters: { column: string; value: null }[] = [];
+  private comparisonFilters: { column: string; operator: "gt" | "gte" | "lt" | "lte"; value: unknown }[] = [];
   private mutation: null | { type: "insert" | "update" | "delete" | "upsert"; payload?: Row | Row[] } = null;
 
   constructor(private table: string) {}
@@ -363,11 +371,23 @@ class MockQuery {
     return this;
   }
 
-  gte() {
+  gt(column: string, value: unknown) {
+    this.comparisonFilters.push({ column, operator: "gt", value });
     return this;
   }
 
-  lte() {
+  gte(column: string, value: unknown) {
+    this.comparisonFilters.push({ column, operator: "gte", value });
+    return this;
+  }
+
+  lt(column: string, value: unknown) {
+    this.comparisonFilters.push({ column, operator: "lt", value });
+    return this;
+  }
+
+  lte(column: string, value: unknown) {
+    this.comparisonFilters.push({ column, operator: "lte", value });
     return this;
   }
 
@@ -459,7 +479,14 @@ class MockQuery {
       this.neqFilters.every((filter) => !valoresIguais(row[filter.column], filter.value)) &&
       this.inFilters.every((filter) => filter.values.some((value) => valoresIguais(row[filter.column], value))) &&
       this.notFilters.every((filter) => !filter.values.includes(String(row[filter.column]))) &&
-      this.isFilters.every((filter) => (row[filter.column] ?? null) === filter.value)
+      this.isFilters.every((filter) => (row[filter.column] ?? null) === filter.value) &&
+      this.comparisonFilters.every((filter) => {
+        const comparison = compararValores(row[filter.column], filter.value);
+        if (filter.operator === "gt") return comparison > 0;
+        if (filter.operator === "gte") return comparison >= 0;
+        if (filter.operator === "lt") return comparison < 0;
+        return comparison <= 0;
+      })
     );
   }
 }
