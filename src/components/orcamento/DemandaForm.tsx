@@ -124,7 +124,7 @@ export function DemandaForm({
     }),
   );
   const [, setGrupoAtivo] = useState(() => grupos[0]?.key ?? "grupo-1");
-  const [seletorAberto, setSeletorAberto] = useState<string | null>(() => grupos[0]?.key ?? null);
+  const [seletorAberto, setSeletorAberto] = useState<string | null>(null);
   const exigeAnalises = modalidadeExigeLaboratorio(modalidade);
   const mostraDemanda = modo !== "laboratorio";
   const mostraLaboratorio = modo !== "demanda";
