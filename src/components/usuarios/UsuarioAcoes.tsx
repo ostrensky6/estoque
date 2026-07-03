@@ -3,8 +3,9 @@
 import { useActionState, useState, useTransition } from "react";
 import { MoreHorizontal } from "lucide-react";
 
-import { alternarSuspensao, editarUsuario, excluirUsuario, resetarSenha } from "@/lib/actions/usuarios";
+import { alterarSenhaUsuario, alternarSuspensao, criarUsuarioPreAprovado, editarUsuario, excluirUsuario } from "@/lib/actions/usuarios";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
@@ -22,19 +23,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { PERMISSOES, PAPEIS, normalizePermissions } from "@/lib/auth/permissions";
 import type { FormState } from "@/lib/actions/cadastros";
+import { AssinaturaUsuarioForm } from "./AssinaturaUsuarioForm";
 import type { UsuarioRow } from "./UsuariosTable";
-
-const PAPEIS = [
-  { value: "tecnico", label: "Técnico" },
-  { value: "coordenador", label: "Coordenador" },
-  { value: "gestor", label: "Gestor" },
-  { value: "admin", label: "Admin" },
-];
 
 const initial: FormState = { ok: false, message: "" };
 
-type DialogAberto = "editar" | "resetar" | "excluir" | null;
+type DialogAberto = "editar" | "assinatura" | "senha" | "apagar" | "pre_aprovar" | null;
 
 function EditarDialog({
   row,
@@ -47,6 +43,8 @@ function EditarDialog({
 }) {
   const [erro, setErro] = useState("");
   const [pending, startTransition] = useTransition();
+  const [papel, setPapel] = useState(row.papel);
+  const permissoes = normalizePermissions(papel, row.permissoes);
 
   function handle(formData: FormData) {
     startTransition(async () => {
@@ -70,12 +68,12 @@ function EditarDialog({
         <form action={handle} className="space-y-4">
           <input type="hidden" name="id" value={row.id} />
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Nome</label>
+            <label className="block text-xs font-medium text-muted-foreground">Nome</label>
             <Input name="nome" defaultValue={row.nome === "—" ? "" : row.nome} className="mt-1" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Papel</label>
-            <Select name="papel" defaultValue={row.papel} className="mt-1 h-9">
+            <label className="block text-xs font-medium text-muted-foreground">Categoria</label>
+            <Select name="papel" value={papel} onChange={(event) => setPapel(event.target.value)} className="mt-1 h-9">
               {PAPEIS.map((p) => (
                 <option key={p.value} value={p.value}>
                   {p.label}
@@ -83,7 +81,36 @@ function EditarDialog({
               ))}
             </Select>
           </div>
-          {erro && <p className="text-xs text-red-600">{erro}</p>}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Permissões efetivas</p>
+            <div className="grid gap-2 md:grid-cols-2">
+              {PERMISSOES.map((permissao) => (
+                <label
+                  key={permissao.key}
+                  className="flex items-start gap-2 rounded-md border border-border p-2 text-xs"
+                >
+                  <Checkbox
+                    key={`${papel}-${permissao.key}`}
+                    name="permissoes"
+                    value={permissao.key}
+                    defaultChecked={Boolean(permissoes[permissao.key])}
+                    disabled={papel === "admin"}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="block font-semibold text-foreground">
+                      {permissao.modulo} · {permissao.label}
+                    </span>
+                    <span className="block leading-4 text-muted-foreground">{permissao.descricao}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {papel === "admin" && (
+              <p className="text-xs text-muted-foreground">Administradores sempre recebem todas as permissões.</p>
+            )}
+          </div>
+          {erro && <p className="text-xs text-danger-strong">{erro}</p>}
           <DialogFooter>
             <Button type="submit" disabled={pending}>
               {pending ? "Salvando…" : "Salvar"}
@@ -95,7 +122,7 @@ function EditarDialog({
   );
 }
 
-function ResetarDialog({
+function AssinaturaDialog({
   row,
   open,
   onOpenChange,
@@ -104,29 +131,142 @@ function ResetarDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
-  const [state, action, pending] = useActionState(resetarSenha, initial);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Upload da assinatura</DialogTitle>
+          <DialogDescription>
+            Envie a assinatura PNG de {row.nome}. O app remove fundo claro e usa a assinatura automaticamente na proposta emitida por esse usuário.
+          </DialogDescription>
+        </DialogHeader>
+        <AssinaturaUsuarioForm
+          userId={row.id}
+          assinaturaPath={row.assinaturaPath}
+          assinaturaUrl={row.assinaturaUrl}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function UploadAssinaturaButton({ row }: { row: UsuarioRow }) {
+  const [open, setOpen] = useState(false);
+  if (!row.temAcesso) {
+    return <span className="text-xs text-muted-foreground/80">Após cadastro</span>;
+  }
+
+  return (
+    <>
+      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+        {row.assinaturaUrl ? "Trocar" : "Upload"}
+      </Button>
+      <AssinaturaDialog row={row} open={open} onOpenChange={setOpen} />
+    </>
+  );
+}
+
+function PreAprovarDialog({
+  row,
+  open,
+  onOpenChange,
+}: {
+  row: UsuarioRow;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const [state, action, pending] = useActionState(criarUsuarioPreAprovado, initial);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Resetar senha</DialogTitle>
+          <DialogTitle>Cadastrar acesso pré-aprovado</DialogTitle>
           <DialogDescription>
-            Define uma senha provisória para {row.email}. No próximo acesso ele será obrigado a criar
-            uma nova senha.
+            Cria a conta de {row.email} no Auth com senha provisória e categoria {row.papelLabel}.
           </DialogDescription>
         </DialogHeader>
         <form action={action} className="space-y-4">
-          <input type="hidden" name="id" value={row.id} />
-          <input type="hidden" name="email" value={row.email} />
+          <input type="hidden" name="pre_aprovado_id" value={row.preAprovadoId ?? ""} />
           {state.message && (
-            <p className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-red-600"}`}>
+            <p className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-danger-strong"}`}>
               {state.message}
             </p>
           )}
           <DialogFooter>
-            <Button type="submit" variant="destructive" disabled={pending || state.ok}>
-              {pending ? "Resetando…" : state.ok ? "Senha resetada" : "Confirmar reset"}
+            <Button type="submit" disabled={pending || state.ok}>
+              {pending ? "Cadastrando..." : state.ok ? "Acesso criado" : "Cadastrar acesso"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AlterarSenhaDialog({
+  row,
+  open,
+  onOpenChange,
+}: {
+  row: UsuarioRow;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const [state, action, pending] = useActionState(alterarSenhaUsuario, initial);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Alterar senha</DialogTitle>
+          <DialogDescription>
+            Defina uma nova senha para {row.email}. A senha não é exibida nem armazenada pelo Kontrol.
+          </DialogDescription>
+        </DialogHeader>
+        <form action={action} className="space-y-4">
+          <input type="hidden" name="id" value={row.id} />
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground">Nova senha</label>
+            <Input
+              name="senha"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground">Confirmar senha</label>
+            <Input
+              name="confirmar"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              className="mt-1"
+            />
+          </div>
+          <label className="flex items-start gap-2 rounded-md border border-border p-3 text-xs text-muted-foreground">
+            <Checkbox name="exigir_troca" className="mt-0.5" />
+            <span>
+              <span className="block font-medium text-foreground">
+                Exigir troca no próximo login
+              </span>
+              <span className="block leading-4">
+                Use quando a senha foi definida pelo administrador e deve ser substituída pelo usuário.
+              </span>
+            </span>
+          </label>
+          {state.message && (
+            <p className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-danger-strong"}`}>
+              {state.message}
+            </p>
+          )}
+          <DialogFooter>
+            <Button type="submit" disabled={pending || state.ok}>
+              {pending ? "Salvando…" : state.ok ? "Senha atualizada" : "Alterar senha"}
             </Button>
           </DialogFooter>
         </form>
@@ -150,19 +290,19 @@ function ExcluirDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Excluir usuário</DialogTitle>
+          <DialogTitle>Apagar usuário</DialogTitle>
           <DialogDescription>
-            Esta ação é irreversível. {row.email} perderá o acesso e o cadastro será removido. O
+            Esta ação é irreversível. {row.email} perderá o acesso e o cadastro será apagado. O
             histórico de auditoria das ações dele é preservado.
           </DialogDescription>
         </DialogHeader>
         <form action={action} className="space-y-4">
           <input type="hidden" name="id" value={row.id} />
           <input type="hidden" name="email" value={row.email} />
-          {state.message && !state.ok && <p className="text-xs text-red-600">{state.message}</p>}
+          {state.message && !state.ok && <p className="text-xs text-danger-strong">{state.message}</p>}
           <DialogFooter>
             <Button type="submit" variant="destructive" disabled={pending}>
-              {pending ? "Excluindo…" : "Excluir definitivamente"}
+              {pending ? "Apagando…" : "Apagar definitivamente"}
             </Button>
           </DialogFooter>
         </form>
@@ -191,24 +331,39 @@ export function UsuarioAcoes({ row }: { row: UsuarioRow }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => setDialog("editar")}>Editar</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setDialog("resetar")}>Resetar senha</DropdownMenuItem>
-          <DropdownMenuItem onSelect={suspender}>
-            {row.suspenso ? "Reativar" : "Suspender"}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onSelect={() => setDialog("excluir")}
-            className="text-red-600 focus:text-red-600"
-          >
-            Excluir
-          </DropdownMenuItem>
+          {!row.temAcesso ? (
+            <DropdownMenuItem onSelect={() => setDialog("pre_aprovar")}>Cadastrar acesso</DropdownMenuItem>
+          ) : (
+            <>
+              <DropdownMenuItem onSelect={() => setDialog("editar")}>Editar</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setDialog("assinatura")}>Upload assinatura</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setDialog("senha")}>Alterar senha</DropdownMenuItem>
+              <DropdownMenuItem onSelect={suspender}>
+                {row.suspenso ? "Reativar" : "Suspender"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => setDialog("apagar")}
+                className="text-danger-strong focus:text-danger-strong"
+              >
+                Apagar
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <EditarDialog row={row} open={dialog === "editar"} onOpenChange={(v) => setDialog(v ? "editar" : null)} />
-      <ResetarDialog row={row} open={dialog === "resetar"} onOpenChange={(v) => setDialog(v ? "resetar" : null)} />
-      <ExcluirDialog row={row} open={dialog === "excluir"} onOpenChange={(v) => setDialog(v ? "excluir" : null)} />
+      {row.temAcesso && (
+        <>
+          <EditarDialog row={row} open={dialog === "editar"} onOpenChange={(v) => setDialog(v ? "editar" : null)} />
+          <AssinaturaDialog row={row} open={dialog === "assinatura"} onOpenChange={(v) => setDialog(v ? "assinatura" : null)} />
+          <AlterarSenhaDialog row={row} open={dialog === "senha"} onOpenChange={(v) => setDialog(v ? "senha" : null)} />
+          <ExcluirDialog row={row} open={dialog === "apagar"} onOpenChange={(v) => setDialog(v ? "apagar" : null)} />
+        </>
+      )}
+      {!row.temAcesso && (
+        <PreAprovarDialog row={row} open={dialog === "pre_aprovar"} onOpenChange={(v) => setDialog(v ? "pre_aprovar" : null)} />
+      )}
     </div>
   );
 }

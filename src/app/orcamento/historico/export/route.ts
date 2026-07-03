@@ -99,7 +99,16 @@ function filtrar(versoes: VersaoFinal[], filtros: Record<string, string>) {
 
   return versoes.filter((item) => {
     const demanda = item.demandas_propostas;
+    const buscaLivre = [
+      item.numero,
+      demanda?.titulo,
+      demanda?.cliente_nome,
+      demanda?.responsavel_interno,
+      demanda?.modalidade,
+      item.status,
+    ].join(" ");
     return (
+      inclui(buscaLivre, filtros.texto) &&
       (!filtros.status || item.status === filtros.status) &&
       inclui(demanda?.cliente_nome, filtros.cliente) &&
       inclui(demanda?.responsavel_interno ?? item.criado_por, filtros.responsavel) &&

@@ -53,6 +53,12 @@ export function InsumosAnaliseTable({
         ),
     },
     {
+      accessorKey: "semInsumo",
+      header: "Cadastro",
+      filterFn: "equalsString",
+      meta: { className: "hidden" },
+    },
+    {
       accessorKey: "custoUnitario",
       header: "Custo un.",
       sortingFn: numericSort,

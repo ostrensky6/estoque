@@ -75,4 +75,30 @@ describe("actions de historico de orcamentos", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/orcamento/historico");
     expect(revalidatePath).toHaveBeenCalledWith("/orcamento");
   });
+
+  it("classifica versao final e revalida fundos quando aprovado", async () => {
+    single.mockResolvedValueOnce({ data: { status: "enviado" }, error: null });
+    const { classificarVersaoFinal } = await import("./orcamento-historico");
+    const formData = new FormData();
+    formData.set("versao_id", "77");
+    formData.set("status", "aprovado");
+    formData.set("motivo", "Cliente aprovou a proposta");
+
+    await classificarVersaoFinal(formData);
+
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("classificar_final");
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      status: "aprovado",
+      classificacao_motivo: "Cliente aprovou a proposta",
+      classificado_por: "user-1",
+    }));
+    expect(registrarEvento).toHaveBeenCalledWith(
+      "orcamento_final",
+      77,
+      "enviado",
+      "aprovado",
+      "Cliente aprovou a proposta",
+    );
+    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/fundos");
+  });
 });

@@ -8,30 +8,30 @@ import { formatCurrency as moeda, formatDate as fmtData } from "@/lib/formatters
 export const dynamic = "force-dynamic";
 
 const STATUS_PROJETO: Record<string, { label: string; cls: string }> = {
-  proposto: { label: "Proposto", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
+  proposto: { label: "Proposto", cls: "bg-warning-soft text-warning-strong" },
   ativo: { label: "Ativo", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
-  concluido: { label: "Concluído", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
-  cancelado: { label: "Cancelado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
+  concluido: { label: "Concluído", cls: "bg-info-soft text-info-strong" },
+  cancelado: { label: "Cancelado", cls: "bg-muted text-muted-foreground" },
 };
 
 const STATUS_ORC: Record<string, { label: string; cls: string }> = {
-  rascunho: { label: "Rascunho", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
-  enviado: { label: "Enviado", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
+  rascunho: { label: "Rascunho", cls: "bg-warning-soft text-warning-strong" },
+  enviado: { label: "Enviado", cls: "bg-info-soft text-info-strong" },
   aprovado: { label: "Aprovado", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
-  recusado: { label: "Recusado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
+  recusado: { label: "Recusado", cls: "bg-muted text-muted-foreground" },
 };
 
 const STATUS_COMPRA: Record<string, { label: string; cls: string }> = {
-  solicitado: { label: "Solicitado", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
-  aprovado: { label: "Aprovado", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
-  enviado: { label: "Enviado", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
-  em_transito: { label: "Em trânsito", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
+  solicitado: { label: "Solicitado", cls: "bg-warning-soft text-warning-strong" },
+  aprovado: { label: "Aprovado", cls: "bg-info-soft text-info-strong" },
+  enviado: { label: "Enviado", cls: "bg-info-soft text-info-strong" },
+  em_transito: { label: "Em trânsito", cls: "bg-info-soft text-info-strong" },
   recebido: { label: "Recebido", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
-  cancelado: { label: "Cancelado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
+  cancelado: { label: "Cancelado", cls: "bg-muted text-muted-foreground" },
 };
 
 function Badge({ map, status }: { map: Record<string, { label: string; cls: string }>; status: string }) {
-  const s = map[status] ?? { label: status, cls: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800" };
+  const s = map[status] ?? { label: status, cls: "bg-muted text-muted-foreground" };
   return (
     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${s.cls}`}>
       {s.label}
@@ -41,19 +41,19 @@ function Badge({ map, status }: { map: Record<string, { label: string; cls: stri
 
 function Kpi({ label, valor, hint }: { label: string; valor: string; hint?: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-zinc-400">{label}</p>
-      <p className="mt-1 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{valor}</p>
-      {hint && <p className="mt-0.5 text-xs text-slate-400 dark:text-zinc-500">{hint}</p>}
+    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-semibold tracking-tight text-foreground">{valor}</p>
+      {hint && <p className="mt-0.5 text-xs text-muted-foreground/80">{hint}</p>}
     </div>
   );
 }
 
 const cardCls =
-  "rounded-lg border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900";
+  "rounded-lg border border-border bg-card shadow-sm";
 const thCls =
-  "px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400";
-const tdCls = "px-3 py-2 text-sm text-slate-700 dark:text-zinc-200";
+  "px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground";
+const tdCls = "px-3 py-2 text-sm text-foreground";
 
 export default async function ProjetoHubPage({
   params,
@@ -202,18 +202,18 @@ export default async function ProjetoHubPage({
   }));
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-slate-900 dark:bg-zinc-950 dark:text-slate-100">
-      <main className="mx-auto max-w-6xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <Breadcrumbs items={[{ label: "Projetos", href: "/projetos" }, { label: projeto.nome }]} />
 
         {/* Header */}
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight">{projeto.nome}</h1>
+              <h1 className="text-xl font-semibold tracking-tight">{projeto.nome}</h1>
               <Badge map={STATUS_PROJETO} status={projeto.status} />
             </div>
-            <p className="mt-1 text-sm text-slate-500 dark:text-zinc-400">
+            <p className="mt-1 text-sm text-muted-foreground">
               {cliente?.nome ? `Cliente: ${cliente.nome}` : "Sem cliente vinculado"}
               {projeto.coordenador ? ` · Coordenador: ${projeto.coordenador}` : ""}
               {projeto.data_inicio || projeto.data_fim
@@ -221,7 +221,7 @@ export default async function ProjetoHubPage({
                 : ""}
             </p>
             {projeto.descricao && (
-              <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-zinc-300">{projeto.descricao}</p>
+              <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{projeto.descricao}</p>
             )}
           </div>
           <Link
@@ -248,10 +248,10 @@ export default async function ProjetoHubPage({
           </div>
           <div className={`${cardCls} overflow-x-auto`}>
             {orcLinhas.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-slate-400 dark:text-zinc-500">Nenhum orçamento vinculado a este projeto.</p>
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground/80">Nenhum orçamento vinculado a este projeto.</p>
             ) : (
               <table className="min-w-full">
-                <thead className="border-b border-slate-100 dark:border-zinc-800">
+                <thead className="border-b border-border/70">
                   <tr>
                     <th className={thCls}>Documento</th>
                     <th className={thCls}>Tipo</th>
@@ -262,7 +262,7 @@ export default async function ProjetoHubPage({
                 </thead>
                 <tbody>
                   {orcLinhas.map((o) => (
-                    <tr key={o.key} className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/40">
+                    <tr key={o.key} className="border-b border-border/50 last:border-b-0 hover:bg-muted/50">
                       <td className={tdCls}><Link href={o.href} className="font-medium text-brand-700 hover:underline dark:text-brand-400">{o.titulo}</Link></td>
                       <td className={tdCls}>{o.tipo}</td>
                       <td className={tdCls}>{fmtData(o.data)}</td>
@@ -284,10 +284,10 @@ export default async function ProjetoHubPage({
           </div>
           <div className={`${cardCls} overflow-x-auto`}>
             {planosLinhas.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-slate-400 dark:text-zinc-500">Nenhum planejamento vinculado a este projeto.</p>
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground/80">Nenhum planejamento vinculado a este projeto.</p>
             ) : (
               <table className="min-w-full">
-                <thead className="border-b border-slate-100 dark:border-zinc-800">
+                <thead className="border-b border-border/70">
                   <tr>
                     <th className={thCls}>Plano</th>
                     <th className={thCls}>Data-alvo</th>
@@ -297,7 +297,7 @@ export default async function ProjetoHubPage({
                 </thead>
                 <tbody>
                   {planosLinhas.map((p) => (
-                    <tr key={p.id} className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/40">
+                    <tr key={p.id} className="border-b border-border/50 last:border-b-0 hover:bg-muted/50">
                       <td className={tdCls}><Link href={`/planejamento/${p.id}`} className="font-medium text-brand-700 hover:underline dark:text-brand-400">{p.nome}</Link></td>
                       <td className={tdCls}>{fmtData(p.dataAlvo)}</td>
                       <td className={`${tdCls} text-right tabular-nums`}>{p.itens}</td>
@@ -318,10 +318,10 @@ export default async function ProjetoHubPage({
           </div>
           <div className={`${cardCls} overflow-x-auto`}>
             {comprasLinhas.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-slate-400 dark:text-zinc-500">Nenhum pedido de compra vinculado a este projeto.</p>
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground/80">Nenhum pedido de compra vinculado a este projeto.</p>
             ) : (
               <table className="min-w-full">
-                <thead className="border-b border-slate-100 dark:border-zinc-800">
+                <thead className="border-b border-border/70">
                   <tr>
                     <th className={thCls}>Pedido</th>
                     <th className={thCls}>Fornecedor</th>
@@ -333,7 +333,7 @@ export default async function ProjetoHubPage({
                 </thead>
                 <tbody>
                   {comprasLinhas.map((c) => (
-                    <tr key={c.id} className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/40">
+                    <tr key={c.id} className="border-b border-border/50 last:border-b-0 hover:bg-muted/50">
                       <td className={tdCls}><Link href={`/compras/${c.id}`} className="font-medium text-brand-700 hover:underline dark:text-brand-400">Pedido {c.id}</Link></td>
                       <td className={tdCls}>{c.fornecedor}</td>
                       <td className={tdCls}>{fmtData(c.data)}</td>
@@ -354,7 +354,7 @@ export default async function ProjetoHubPage({
             <h2 className="mb-2 text-lg font-semibold tracking-tight">Demandas / Propostas</h2>
             <div className={`${cardCls} overflow-x-auto`}>
               <table className="min-w-full">
-                <thead className="border-b border-slate-100 dark:border-zinc-800">
+                <thead className="border-b border-border/70">
                   <tr>
                     <th className={thCls}>Título</th>
                     <th className={thCls}>Data</th>
@@ -363,7 +363,7 @@ export default async function ProjetoHubPage({
                 </thead>
                 <tbody>
                   {(demandas ?? []).map((d) => (
-                    <tr key={d.id} className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/40">
+                    <tr key={d.id} className="border-b border-border/50 last:border-b-0 hover:bg-muted/50">
                       <td className={tdCls}><Link href={`/orcamento/demandas/${d.id}`} className="font-medium text-brand-700 hover:underline dark:text-brand-400">{d.titulo}</Link></td>
                       <td className={tdCls}>{fmtData(d.data_solicitacao)}</td>
                       <td className={tdCls}>{d.status}</td>

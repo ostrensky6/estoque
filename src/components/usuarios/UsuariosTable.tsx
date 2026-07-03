@@ -4,26 +4,27 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { DataTable } from "@/components/common/DataTable";
 import { Badge } from "@/components/ui/badge";
-import { UsuarioAcoes } from "./UsuarioAcoes";
-
-const PAPEIS = [
-  { value: "tecnico", label: "Técnico" },
-  { value: "coordenador", label: "Coordenador" },
-  { value: "gestor", label: "Gestor" },
-  { value: "admin", label: "Admin" },
-];
+import { PAPEIS } from "@/lib/auth/permissions";
+import { UploadAssinaturaButton, UsuarioAcoes } from "./UsuarioAcoes";
 
 export type UsuarioRow = {
   id: string;
+  userId?: string;
+  preAprovadoId?: number;
   nome: string;
   email: string;
   papel: string;
   papelLabel: string;
   suspenso: boolean;
   senhaProvisoria: boolean;
+  temAcesso: boolean;
+  assinaturaPath?: string | null;
+  assinaturaUrl?: string | null;
+  permissoes: unknown;
 };
 
 function statusTexto(row: UsuarioRow) {
+  if (!row.temAcesso) return "Pré-aprovado";
   if (row.suspenso) return "Suspenso";
   if (row.senhaProvisoria) return "Senha provisória";
   return "Ativo";
@@ -32,12 +33,18 @@ function statusTexto(row: UsuarioRow) {
 const columns: ColumnDef<UsuarioRow, unknown>[] = [
   { accessorKey: "nome", header: "Usuário" },
   { accessorKey: "email", header: "E-mail" },
-  { accessorKey: "papelLabel", header: "Papel", filterFn: "equalsString" },
+  { accessorKey: "papelLabel", header: "Categoria", filterFn: "equalsString" },
+  {
+    id: "assinatura",
+    header: "Assinatura",
+    cell: ({ row }) => <UploadAssinaturaButton row={row.original} />,
+  },
   {
     id: "status",
     header: "Status",
     cell: ({ row }) => {
       const r = row.original;
+      if (!r.temAcesso) return <Badge variant="secondary">Pré-aprovado</Badge>;
       if (r.suspenso) return <Badge variant="secondary">Suspenso</Badge>;
       if (r.senhaProvisoria) return <Badge variant="muted">Senha provisória</Badge>;
       return <Badge variant="outline">Ativo</Badge>;
@@ -60,7 +67,7 @@ export function UsuariosTable({ rows }: { rows: UsuarioRow[] }) {
       filters={[
         {
           columnId: "papelLabel",
-          label: "Papel",
+          label: "Categoria",
           options: PAPEIS.map((papel) => ({ value: papel.label, label: papel.label })),
         },
       ]}

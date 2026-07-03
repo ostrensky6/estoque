@@ -45,15 +45,15 @@ export function ItemRecebimentoCell({
           <CheckCircle2 className="h-3.5 w-3.5" />
           Recebido {quando}
         </span>
-        {recebidoPor && <span className="text-[10px] text-zinc-400">{recebidoPor}</span>}
+        {recebidoPor && <span className="text-[10px] text-muted-foreground/80">{recebidoPor}</span>}
         <button
           onClick={estornar}
           disabled={pending}
-          className="text-[11px] text-zinc-500 hover:underline disabled:opacity-50"
+          className="text-[11px] text-muted-foreground hover:underline disabled:opacity-50"
         >
           {pending ? "..." : "estornar"}
         </button>
-        {erro && <span className="text-[10px] text-red-600">{erro}</span>}
+        {erro && <span className="text-[10px] text-danger-strong">{erro}</span>}
       </div>
     );
   }
@@ -62,5 +62,5 @@ export function ItemRecebimentoCell({
     return <ReceberItemPedidoInterno item={item} insumos={insumos} />;
   }
 
-  return <span className="text-xs text-zinc-400">aguardando etapa</span>;
+  return <span className="text-xs text-muted-foreground/80">aguardando etapa</span>;
 }

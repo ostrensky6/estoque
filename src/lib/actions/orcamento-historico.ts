@@ -8,6 +8,7 @@ import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
 import { registrarEvento } from "./eventos";
 
 const historicoPath = "/orcamento/historico";
+const STATUS_CLASSIFICACAO = new Set(["enviado", "alterado_reenviado", "aprovado", "recusado"]);
 
 export async function atualizarOrcamentosFinaisVencidos() {
   const supabase = await createClient();
@@ -35,6 +36,63 @@ export async function cancelarVersaoFinal(formData: FormData) {
   if (error) throw new Error(error.message);
   await registrarEvento("orcamento_final", id, "emitido", "cancelado", motivo);
   revalidatePath(historicoPath);
+  revalidatePath("/orcamento");
+}
+
+export async function classificarVersaoFinal(formData: FormData) {
+  const id = Number(formData.get("versao_id"));
+  const status = String(formData.get("status") ?? "").trim();
+  if (!id || !STATUS_CLASSIFICACAO.has(status)) return;
+
+  const motivo = String(formData.get("motivo") ?? "").trim() || null;
+  await exigirPapelOrcamento("classificar_final");
+  const supabase = await createClient();
+  const db = supabase as unknown as {
+    from: (table: "orcamento_final_versoes") => {
+      select: (columns: string) => {
+        eq: (column: string, value: unknown) => {
+          single: () => Promise<{ data: { status: string | null } | null; error: { message: string } | null }>;
+        };
+      };
+      update: (value: {
+        status: string;
+        classificado_em: string;
+        classificado_por: string | null;
+        classificacao_motivo: string | null;
+      }) => { eq: (column: string, value: unknown) => Promise<{ error: { message: string } | null }> };
+    };
+  };
+  const { data: atual, error: atualError } = await db
+    .from("orcamento_final_versoes")
+    .select("status")
+    .eq("id", id)
+    .single();
+  if (atualError) throw new Error(atualError.message);
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { error } = await db
+    .from("orcamento_final_versoes")
+    .update({
+      status,
+      classificado_em: new Date().toISOString(),
+      classificado_por: user?.id ?? null,
+      classificacao_motivo: motivo,
+    })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+
+  await registrarEvento(
+    "orcamento_final",
+    id,
+    typeof atual?.status === "string" ? atual.status : null,
+    status,
+    motivo ?? `Classificação comercial alterada para ${status}.`,
+  );
+  revalidatePath(historicoPath);
+  revalidatePath("/orcamento/fundos");
   revalidatePath("/orcamento");
 }
 

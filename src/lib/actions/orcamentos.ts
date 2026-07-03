@@ -215,6 +215,53 @@ export async function salvarCabecalho(formData: FormData) {
   revalidatePath("/orcamento");
 }
 
+export async function revisarOrcamentoLaboratorio(formData: FormData) {
+  await exigirPapelOrcamento("revisar_modulo");
+  const id = Number(formData.get("orcamento_id"));
+  const responsavel = String(formData.get("responsavel") ?? "").trim();
+  const novoStatus = String(formData.get("status") ?? "enviado");
+  if (!id) return;
+  if (!responsavel) {
+    throw new Error("Informe o responsável técnico antes de revisar os custos laboratoriais.");
+  }
+  if (!["enviado", "aprovado"].includes(novoStatus)) {
+    throw new Error("Status de revisão inválido.");
+  }
+
+  const supabase = await createClient();
+  const [{ data: anterior }, { data: itens }] = await Promise.all([
+    supabase
+      .from("orcamentos")
+      .select("status")
+      .eq("id", id)
+      .single(),
+    supabase
+      .from("orcamento_itens")
+      .select("id")
+      .eq("orcamento_id", id),
+  ]);
+  if ((itens ?? []).length === 0) {
+    throw new Error("Adicione ao menos uma análise antes de revisar os custos laboratoriais.");
+  }
+
+  const { error } = await supabase
+    .from("orcamentos")
+    .update({
+      responsavel,
+      status: novoStatus,
+      status_operacional: "revisado",
+      status_operacional_atualizado_em: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  if (anterior && anterior.status !== novoStatus) {
+    await registrarEvento("orcamento", id, anterior.status, novoStatus);
+  }
+  await atualizarOperacionalLaboratorio(supabase, id, novoStatus);
+  revalidatePath(`/orcamento/${id}`);
+  revalidatePath("/orcamento");
+}
+
 /** Adiciona uma análise solicitada, gravando o snapshot de custo/preço atual. */
 export async function adicionarItemOrcamento(formData: FormData) {
   await exigirPapelOrcamento("preencher_custos");
@@ -223,20 +270,78 @@ export async function adicionarItemOrcamento(formData: FormData) {
   const n = Number(formData.get("n_amostras"));
   if (!id || !codigo || !(n > 0)) return;
 
+  const supabase = await createClient();
+  const { data: analise } = await supabase
+    .from("analises")
+    .select("ativo, ofertavel")
+    .eq("codigo", codigo)
+    .single();
+  if (!analise?.ativo || !analise?.ofertavel) {
+    throw new Error("Analise inativa ou nao oferecivel para novo orcamento.");
+  }
   const { breakdowns } = await calcularTodas();
   const b = breakdowns.find((x) => x.codigo === codigo);
 
-  const supabase = await createClient();
   await assegurarLaboratorioEditavel(supabase, id);
-  await supabase.from("orcamento_itens").insert({
-    orcamento_id: id,
-    codigo_analise: codigo,
+  const payload = {
     n_amostras: n,
     custo_unitario: b?.custoTotal ?? 0,
     preco_unitario: b?.preco ?? 0,
-  });
+  };
+  const { data: existentes, error: existentesError } = await supabase
+    .from("orcamento_itens")
+    .select("id")
+    .eq("orcamento_id", id)
+    .eq("codigo_analise", codigo)
+    .order("id", { ascending: true });
+  if (existentesError) throw new Error(existentesError.message);
+
+  const principal = existentes?.[0];
+  if (principal) {
+    const { error } = await supabase
+      .from("orcamento_itens")
+      .update(payload)
+      .eq("id", principal.id);
+    if (error) throw new Error(error.message);
+
+    const duplicados = (existentes ?? []).slice(1).map((item) => item.id);
+    if (duplicados.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("orcamento_itens")
+        .delete()
+        .in("id", duplicados);
+      if (deleteError) throw new Error(deleteError.message);
+    }
+  } else {
+    const { error } = await supabase.from("orcamento_itens").insert({
+      orcamento_id: id,
+      codigo_analise: codigo,
+      ...payload,
+    });
+    if (error) throw new Error(error.message);
+  }
   await atualizarOperacionalLaboratorio(supabase, id);
   revalidatePath(`/orcamento/${id}`);
+}
+
+export async function alternarAnaliseOrcamento(formData: FormData) {
+  const id = Number(formData.get("orcamento_id"));
+  const codigo = String(formData.get("codigo_analise") ?? "");
+  const incluir = String(formData.get("incluir") ?? "") === "true";
+  if (!id || !codigo) return;
+  if (!incluir) {
+    const supabase = await createClient();
+    await assegurarLaboratorioEditavel(supabase, id);
+    await supabase
+      .from("orcamento_itens")
+      .delete()
+      .eq("orcamento_id", id)
+      .eq("codigo_analise", codigo);
+    await atualizarOperacionalLaboratorio(supabase, id);
+    revalidatePath(`/orcamento/${id}`);
+    return;
+  }
+  await adicionarItemOrcamento(formData);
 }
 
 export async function removerItemOrcamento(formData: FormData) {

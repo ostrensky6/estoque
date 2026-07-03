@@ -41,9 +41,9 @@ const columns: ColumnDef<CompraRow, unknown>[] = [
 function StatusBadge({ status, label }: { status: string; label: string }) {
   const variantClass =
     status === "solicitado"
-      ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+      ? "bg-warning-soft text-warning-strong"
       : status === "aprovado"
-        ? "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
+        ? "bg-info-soft text-info-strong"
         : status === "enviado"
           ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300"
           : status === "recebido"

@@ -10,6 +10,7 @@
 export type Etapa = {
   nome_etapa: string;
   nome_atividade: string;
+  escopo_operacional?: string | null;
   execucoes_por_dia: number | null;
   amostras_por_execucao: number | null;
   tempo_maquina_h: number | null;
@@ -47,6 +48,10 @@ export type Cenario = {
 };
 
 const n = (v: number | null | undefined) => (typeof v === "number" ? v : 0);
+const isPosAnalise = (e: Etapa) =>
+  e.escopo_operacional === "pos_analise" ||
+  /bioinform/i.test(`${e.nome_etapa ?? ""} ${e.nome_atividade ?? ""}`);
+const etapasLaboratorio = (etapas: Etapa[]) => etapas.filter((e) => !isPosAnalise(e));
 
 /** custo/dia de um equipamento com depreciação LINEAR pela vida útil. */
 export function equipCustoDia(
@@ -71,10 +76,12 @@ export function equipCustoDia(
 
 /** Gargalo: replica a lógica da planilha (mínimos ignorando Qubit). */
 export function gargalo(etapas: Etapa[]) {
-  const semQubit = etapas.filter(
+  const laboratorio = etapasLaboratorio(etapas);
+  const baseOperacional = laboratorio.length ? laboratorio : etapas;
+  const semQubit = baseOperacional.filter(
     (e) => !/qubit/i.test(e.nome_atividade ?? ""),
   );
-  const base = semQubit.length ? semQubit : etapas;
+  const base = semQubit.length ? semQubit : baseOperacional;
   const minExec = Math.min(...base.map((e) => n(e.execucoes_por_dia) || Infinity));
   const minAmExec = Math.min(
     ...base.map((e) => n(e.amostras_por_execucao) || Infinity),
@@ -88,13 +95,24 @@ export function gargalo(etapas: Etapa[]) {
   };
 }
 
-/** Horas de bancada por amostra = Σ (tempo_bancada_execução / amostras_da_execução). */
+function etapasSemQubit(etapas: Etapa[]) {
+  const laboratorio = etapasLaboratorio(etapas);
+  const base = laboratorio.length ? laboratorio : etapas;
+  const semQubit = base.filter(
+    (e) => !/qubit/i.test(e.nome_atividade ?? ""),
+  );
+  return semQubit.length ? semQubit : base;
+}
+
+/** Horas de bancada por execução = soma da síntese operacional, ignorando Qubit. */
+export function horasBancadaPorExecucao(etapas: Etapa[]): number {
+  return etapasSemQubit(etapas).reduce((acc, e) => acc + n(e.tempo_bancada_h), 0);
+}
+
+/** Horas de bancada por amostra = horas por execução divididas pelo gargalo/lote. */
 export function horasBancadaPorAmostra(etapas: Etapa[]): number {
-  return etapas.reduce((acc, e) => {
-    const amExec = n(e.amostras_por_execucao);
-    if (amExec <= 0) return acc;
-    return acc + n(e.tempo_bancada_h) / amExec;
-  }, 0);
+  const lote = gargalo(etapas).amostrasPorExecucao;
+  return lote > 0 ? horasBancadaPorExecucao(etapas) / lote : 0;
 }
 
 /** Seleciona as linhas de insumo válidas aplicando as escolhas de grupo. */
@@ -155,6 +173,27 @@ export function reagentesPorAmostra(
   return { total: detalhe.reduce((a, d) => a + d.valor, 0), detalhe };
 }
 
+export function reagentesTotal(
+  linhas: InsumoLinha[],
+  numeroAmostras: number,
+  loteAmostras: number,
+): { total: number; detalhe: { nome: string; porAmostra: boolean; valor: number }[] } {
+  const amostras = Math.max(0, numeroAmostras);
+  const lote = loteAmostras > 0 ? loteAmostras : 1;
+  const execucoes = amostras > 0 ? Math.ceil(amostras / lote) : 0;
+  const detalhe = linhas.map((l) => {
+    const base = n(l.custo_unitario) * n(l.quantidade_por_amostra);
+    const porExec = l.modo_cobranca === "por_execucao";
+    const valor = porExec ? base * execucoes : base * amostras;
+    return {
+      nome: l.especificacao_insumo ?? "(sem insumo)",
+      porAmostra: !porExec,
+      valor,
+    };
+  });
+  return { total: detalhe.reduce((a, d) => a + d.valor, 0), detalhe };
+}
+
 export type Breakdown = {
   codigo: string;
   lote: number;
@@ -166,6 +205,21 @@ export type Breakdown = {
   custoTotal: number;
   fatores: number; // soma % aplicada
   preco: number;
+};
+
+export type BreakdownOrcamento = Breakdown & {
+  nAmostras: number;
+  numeroExecucoes: number;
+  totais: {
+    reagentes: number;
+    equipamento: number;
+    pessoal: number;
+    overhead: number;
+    custoAnalitico: number;
+    custoTotal: number;
+    preco: number;
+  };
+  escolhasGrupo: Record<string, string>;
 };
 
 export function calcularAnalise(args: {
@@ -218,5 +272,57 @@ export function calcularAnalise(args: {
     custoTotal,
     fatores,
     preco,
+  };
+}
+
+export function calcularAnaliseOrcamento(args: {
+  codigo: string;
+  etapas: Etapa[];
+  equip: EquipAlloc[];
+  insumos: InsumoLinha[];
+  valorHoraPessoal: number;
+  custoHoraOverhead: number;
+  params: Parametros;
+  numeroAmostras: number;
+  cenario?: Cenario;
+}): BreakdownOrcamento {
+  const amostras = Math.max(0, args.numeroAmostras);
+  const base = calcularAnalise(args);
+  const lote = args.cenario?.loteAmostras ?? base.lote;
+  const loteSeguro = lote > 0 ? lote : 1;
+  const numeroExecucoes = amostras > 0 ? Math.ceil(amostras / loteSeguro) : 0;
+  const sel = insumosSelecionados(args.insumos, args.cenario?.escolhasGrupo);
+  const reagentes = reagentesTotal(sel, amostras, loteSeguro).total;
+  const equipamento = base.equipamento * amostras;
+  const horasBancada = horasBancadaPorExecucao(args.etapas);
+  const pessoal = horasBancada * args.valorHoraPessoal * numeroExecucoes;
+  const overhead = horasBancada * args.custoHoraOverhead * numeroExecucoes;
+  const custoAnalitico = reagentes + equipamento + pessoal;
+  const custoTotal = custoAnalitico + overhead;
+  const preco = custoTotal * (1 + base.fatores);
+  const divisor = amostras > 0 ? amostras : 1;
+
+  return {
+    ...base,
+    nAmostras: amostras,
+    numeroExecucoes,
+    lote: loteSeguro,
+    reagentes: reagentes / divisor,
+    equipamento: equipamento / divisor,
+    pessoal: pessoal / divisor,
+    overhead: overhead / divisor,
+    custoAnalitico: custoAnalitico / divisor,
+    custoTotal: custoTotal / divisor,
+    preco: preco / divisor,
+    escolhasGrupo: args.cenario?.escolhasGrupo ?? {},
+    totais: {
+      reagentes,
+      equipamento,
+      pessoal,
+      overhead,
+      custoAnalitico,
+      custoTotal,
+      preco,
+    },
   };
 }

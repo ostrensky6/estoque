@@ -1,10 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
   equipCustoDia,
+  calcularAnaliseOrcamento,
   gargalo,
+  horasBancadaPorExecucao,
   horasBancadaPorAmostra,
   insumosSelecionados,
   reagentesPorAmostra,
+  reagentesTotal,
   calcularAnalise,
   type Etapa,
   type InsumoLinha,
@@ -90,12 +93,22 @@ describe("gargalo", () => {
 });
 
 describe("horasBancadaPorAmostra", () => {
-  it("soma tempo_bancada/amostras_por_execucao por etapa", () => {
+  it("usa a síntese operacional: soma bancada por execução e divide pelo gargalo, ignorando Qubit", () => {
     const h = horasBancadaPorAmostra([
-      etapa({ tempo_bancada_h: 2, amostras_por_execucao: 4 }), // 0,5
-      etapa({ tempo_bancada_h: 1, amostras_por_execucao: 2 }), // 0,5
+      etapa({ tempo_bancada_h: 2, amostras_por_execucao: 4 }),
+      etapa({ nome_atividade: "Qubit", tempo_bancada_h: 8, amostras_por_execucao: 1 }),
     ]);
-    expect(h).toBeCloseTo(1, 6);
+    expect(h).toBeCloseTo(0.5, 6);
+  });
+});
+
+describe("horasBancadaPorExecucao", () => {
+  it("soma tempo de bancada da execução, ignorando Qubit quando há outras etapas", () => {
+    const h = horasBancadaPorExecucao([
+      etapa({ nome_atividade: "PCR", tempo_bancada_h: 2 }),
+      etapa({ nome_atividade: "Qubit", tempo_bancada_h: 8 }),
+    ]);
+    expect(h).toBeCloseTo(2, 6);
   });
 });
 
@@ -142,6 +155,16 @@ describe("reagentesPorAmostra", () => {
   });
 });
 
+describe("reagentesTotal", () => {
+  it("multiplica itens por execução pelo teto de amostras/lote", () => {
+    const linhas: InsumoLinha[] = [
+      ins({ custo_unitario: 2, quantidade_por_amostra: 3, modo_cobranca: "por_amostra" }),
+      ins({ custo_unitario: 96, quantidade_por_amostra: 1, modo_cobranca: "por_execucao" }),
+    ];
+    expect(reagentesTotal(linhas, 25, 24).total).toBeCloseTo(342, 6);
+  });
+});
+
 describe("calcularAnalise — cascata custo→preço", () => {
   const base = {
     codigo: "TESTE",
@@ -178,5 +201,22 @@ describe("calcularAnalise — cascata custo→preço", () => {
     const b = calcularAnalise({ ...base, params: { ...params0, margem_lucro: 20, impostos: 10 } });
     expect(b.fatores).toBeCloseTo(0.3, 6);
     expect(b.preco).toBeCloseTo(b.custoTotal * 1.3, 6);
+  });
+
+  it("calcula orçamento por quantidade real, com execuções inteiras e unitário derivado do total", () => {
+    const b = calcularAnaliseOrcamento({
+      ...base,
+      params: params0,
+      numeroAmostras: 11,
+      insumos: [ins({ custo_unitario: 100, quantidade_por_amostra: 1, modo_cobranca: "por_execucao" })],
+      valorHoraPessoal: 10,
+      custoHoraOverhead: 1,
+    });
+    expect(b.numeroExecucoes).toBe(2);
+    expect(b.totais.reagentes).toBeCloseTo(200, 6);
+    expect(b.totais.equipamento).toBeCloseTo(110, 6);
+    expect(b.totais.pessoal).toBeCloseTo(100, 6);
+    expect(b.totais.overhead).toBeCloseTo(10, 6);
+    expect(b.custoTotal).toBeCloseTo(420 / 11, 6);
   });
 });

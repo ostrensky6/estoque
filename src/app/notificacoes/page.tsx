@@ -39,12 +39,12 @@ function formatarData(value: string) {
 
 function badgeClass(status: string) {
   if (status === "nao_lida") {
-    return "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200";
+    return "border-danger-strong/30 bg-danger-soft text-danger-strong";
   }
   if (status === "arquivada") {
-    return "border-slate-200 bg-slate-50 text-slate-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400";
+    return "border-border bg-muted/50 text-muted-foreground";
   }
-  return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200";
+  return "border-success-strong/30 bg-success-soft text-success-strong";
 }
 
 export default async function NotificacoesPage() {
@@ -67,11 +67,11 @@ export default async function NotificacoesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Suprimentos
           </p>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-zinc-50">Notificações</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-zinc-400">
+          <h1 className="text-2xl font-bold text-foreground">Notificações</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Faltas de estoque, reposições sugeridas e vencimentos que pedem ação operacional.
           </p>
         </div>
@@ -79,7 +79,7 @@ export default async function NotificacoesPage() {
           <form action={marcarTodasNotificacoesLidas}>
             <button
               type="submit"
-              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+              className="rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-sm hover:bg-muted/50"
             >
               Marcar todas como lidas
             </button>
@@ -88,28 +88,28 @@ export default async function NotificacoesPage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-md border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">
+        <div className="rounded-md border border-border bg-card p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Não lidas
           </p>
-          <p className="mt-2 text-2xl font-bold text-slate-950 dark:text-zinc-50">{naoLidas}</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{naoLidas}</p>
         </div>
-        <div className="rounded-md border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">
+        <div className="rounded-md border border-border bg-card p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Falta em planos
           </p>
-          <p className="mt-2 text-2xl font-bold text-slate-950 dark:text-zinc-50">{faltaPlano}</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{faltaPlano}</p>
         </div>
-        <div className="rounded-md border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">
+        <div className="rounded-md border border-border bg-card p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Reposição
           </p>
-          <p className="mt-2 text-2xl font-bold text-slate-950 dark:text-zinc-50">{reposicao}</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{reposicao}</p>
         </div>
       </div>
 
       {notificacoes.length === 0 ? (
-        <div className="rounded-md border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
+        <div className="rounded-md border border-dashed border-input bg-card p-8 text-sm text-muted-foreground">
           Nenhuma notificação operacional pendente.
         </div>
       ) : (
@@ -119,7 +119,7 @@ export default async function NotificacoesPage() {
             return (
               <article
                 key={item.id}
-                className="rounded-md border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+                className="rounded-md border border-border bg-card p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -131,17 +131,17 @@ export default async function NotificacoesPage() {
                       >
                         {item.status === "nao_lida" ? "não lida" : item.status}
                       </span>
-                      <span className="text-xs font-medium text-slate-500 dark:text-zinc-400">
+                      <span className="text-xs font-medium text-muted-foreground">
                         {item.tipo.replace("_", " ")} • {formatarData(item.criado_em)}
                       </span>
                     </div>
-                    <h2 className="mt-2 text-base font-semibold text-slate-950 dark:text-zinc-50">
+                    <h2 className="mt-2 text-base font-semibold text-foreground">
                       {item.titulo}
                     </h2>
                     {item.corpo && (
-                      <p className="mt-1 text-sm text-slate-600 dark:text-zinc-400">{item.corpo}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{item.corpo}</p>
                     )}
-                    <p className="mt-2 text-xs text-slate-500 dark:text-zinc-500">
+                    <p className="mt-2 text-xs text-muted-foreground">
                       Destino: {item.papel_destino ?? "equipe"} • Canal: {item.canal}
                     </p>
                   </div>
@@ -149,7 +149,7 @@ export default async function NotificacoesPage() {
                     {href && (
                       <Link
                         href={href}
-                        className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                        className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted/50"
                       >
                         Abrir
                       </Link>
@@ -159,7 +159,7 @@ export default async function NotificacoesPage() {
                         <input type="hidden" name="notificacao_id" value={item.id} />
                         <button
                           type="submit"
-                          className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200"
+                          className="rounded-md border border-success-strong/30 bg-success-soft px-3 py-1.5 text-xs font-semibold text-success-strong hover:bg-success-soft"
                         >
                           Lida
                         </button>
@@ -169,7 +169,7 @@ export default async function NotificacoesPage() {
                       <input type="hidden" name="notificacao_id" value={item.id} />
                       <button
                         type="submit"
-                        className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                        className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/50"
                       >
                         Arquivar
                       </button>

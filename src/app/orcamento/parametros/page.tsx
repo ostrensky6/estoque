@@ -193,23 +193,23 @@ export default async function ParametrosEconomicosPage() {
   const projetosInvalidos = projetosCalculados.filter((projeto) => projeto.calculo.validationError);
 
   const card =
-    "rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900";
+    "rounded-lg border border-border bg-card p-4 shadow-sm";
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-6xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <Link
               href="/orcamento"
-              className="text-xs text-zinc-500 hover:underline"
+              className="text-xs text-muted-foreground hover:underline"
             >
               Orçamentos
             </Link>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+            <h1 className="mt-2 text-xl font-semibold tracking-tight">
               Parâmetros econômicos
             </h1>
-            <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
               Cockpit financeiro para conferir custos recebidos, percentuais,
               fórmula, impacto e versões antes de recalcular ou emitir novas
               propostas.
@@ -217,7 +217,7 @@ export default async function ParametrosEconomicosPage() {
           </div>
           <Link
             href="/custeio"
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="rounded-md border border-input px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
           >
             Ver custeio
           </Link>
@@ -225,7 +225,7 @@ export default async function ParametrosEconomicosPage() {
 
         <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className={card}>
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Fator econômico total
             </p>
             <p className="mt-2 text-2xl font-semibold text-brand-700 dark:text-brand-400">
@@ -233,7 +233,7 @@ export default async function ParametrosEconomicosPage() {
             </p>
           </div>
           <div className={card}>
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Dias úteis/ano
             </p>
             <p className="mt-2 text-2xl font-semibold tabular-nums">
@@ -241,7 +241,7 @@ export default async function ParametrosEconomicosPage() {
             </p>
           </div>
           <div className={card}>
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Impacto laboratório
             </p>
             <p className="mt-2 text-2xl font-semibold tabular-nums">
@@ -249,7 +249,7 @@ export default async function ParametrosEconomicosPage() {
             </p>
           </div>
           <div className={card}>
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Impacto projeto
             </p>
             <p className="mt-2 text-2xl font-semibold tabular-nums">
@@ -275,9 +275,9 @@ export default async function ParametrosEconomicosPage() {
               <InfoParametro label="Base laboratório" value={`${brl(custoMedio)} -> ${brl(precoMedio)}`} />
               <InfoParametro label="Base projeto" value={`${brl(totalProjetoCusto)} -> ${brl(totalProjetoFinal)}`} />
             </div>
-            <div className="mt-4 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs leading-5 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950/50 dark:text-zinc-300">
+            <div className="mt-4 rounded-md border border-border bg-muted/50 p-3 text-xs leading-5 text-muted-foreground">
               {projetosInvalidos.length > 0 ? (
-                <span className="font-medium text-red-600 dark:text-red-300">
+                <span className="font-medium text-danger-strong">
                   {projetosInvalidos.length} orçamento(s) de projeto têm gross-up inválido e precisam de revisão antes de emissão.
                 </span>
               ) : (
@@ -291,7 +291,7 @@ export default async function ParametrosEconomicosPage() {
         </section>
 
         {ultimaAtualizacao && (
-          <p className="mt-3 text-xs text-zinc-400">
+          <p className="mt-3 text-xs text-muted-foreground/80">
             Última atualização:{" "}
             {formatDateTime(ultimaAtualizacao)}
           </p>
@@ -299,10 +299,10 @@ export default async function ParametrosEconomicosPage() {
 
         <section className="mt-8">
           <div className="mb-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Premissas de orçamento
             </h2>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               Alterações valem para novos cálculos e para orçamentos
               recalculados. Orçamentos já emitidos mantêm o snapshot salvo até
               você usar “Recalcular preços”.
@@ -338,15 +338,15 @@ export default async function ParametrosEconomicosPage() {
           />
         </section>
 
-        <section className="mt-8 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+        <section tabIndex={0} aria-label="Orçamentos de projeto considerados" className="mt-8 overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-4 py-3">
             <h2 className="text-sm font-semibold">Orçamentos de projeto considerados</h2>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Leitura recente para validar base, itens, fator de gross-up e bloqueios.
             </p>
           </div>
           <table className="w-full text-left text-sm">
-            <thead className="text-xs uppercase tracking-wide text-zinc-500">
+            <thead className="text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">Projeto</th>
                 <th className="px-4 py-3">Cliente</th>
@@ -357,27 +357,27 @@ export default async function ParametrosEconomicosPage() {
                 <th className="px-4 py-3">Validação</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <tbody className="divide-y divide-border/70">
               {projetosCalculados.map((projeto) => (
                 <tr key={projeto.id}>
                   <td className="px-4 py-3">
                     <Link href={`/orcamento/projetos/${projeto.id}`} className="font-medium text-brand-700 hover:underline dark:text-brand-300">
                       #{projeto.id} {projeto.titulo ?? "Sem título"}
                     </Link>
-                    <p className="mt-0.5 text-xs text-zinc-500">{projeto.status ?? "sem status"}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{projeto.status ?? "sem status"}</p>
                   </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{projeto.cliente_nome ?? "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-zinc-500">{projeto.analisesCount + projeto.custosCount}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-zinc-500">{brl(projeto.calculo.subtotal)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-zinc-500">
+                  <td className="px-4 py-3 text-muted-foreground">{projeto.cliente_nome ?? "—"}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{projeto.analisesCount + projeto.custosCount}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{brl(projeto.calculo.subtotal)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
                     {pct(projeto.calculo.markupRate)} · {projeto.calculo.grossUpFactor.toFixed(4).replace(".", ",")}x
                   </td>
                   <td className="px-4 py-3 text-right font-semibold tabular-nums">{brl(projeto.calculo.grossTotal)}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-1 text-xs font-medium ${
                       projeto.calculo.validationError
-                        ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300"
-                        : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+                        ? "bg-danger-soft text-danger-strong"
+                        : "bg-success-soft text-success-strong"
                     }`}>
                       {projeto.calculo.validationError || "Válido"}
                     </span>
@@ -386,7 +386,7 @@ export default async function ParametrosEconomicosPage() {
               ))}
               {projetosCalculados.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-5 text-sm text-zinc-400">
+                  <td colSpan={7} className="px-4 py-5 text-sm text-muted-foreground/80">
                     Nenhum orçamento de projeto recente encontrado para simulação.
                   </td>
                 </tr>
@@ -395,14 +395,14 @@ export default async function ParametrosEconomicosPage() {
           </table>
         </section>
 
-        <section className="mt-8 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+        <section className="mt-8 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-4 py-3">
             <h2 className="text-sm font-semibold">Versões de parâmetros</h2>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Snapshots criados ao salvar parâmetros globais ou parâmetros econômicos de projeto.
             </p>
           </div>
-          <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          <div className="divide-y divide-border/70">
             {(versoes ?? []).map((versao) => (
               <div key={versao.id} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[1.1fr_0.5fr_0.8fr_1fr_1fr_1.2fr]">
                 <span className="font-medium">
@@ -411,27 +411,27 @@ export default async function ParametrosEconomicosPage() {
                 <span>v{versao.versao}</span>
                 <span>{versao.orcamento_projeto_id ? `Projeto #${versao.orcamento_projeto_id}` : "Global"}</span>
                 <span>{versao.origem}</span>
-                <span className="text-zinc-500">{formatDateTime(versao.criado_em)}</span>
-                <span className="text-zinc-500">{resumirPayloadVersao((versao as VersaoParametro).parametros)}</span>
+                <span className="text-muted-foreground">{formatDateTime(versao.criado_em)}</span>
+                <span className="text-muted-foreground">{resumirPayloadVersao((versao as VersaoParametro).parametros)}</span>
               </div>
             ))}
             {(versoes ?? []).length === 0 && (
-              <p className="px-4 py-5 text-sm text-zinc-400">
+              <p className="px-4 py-5 text-sm text-muted-foreground/80">
                 Nenhuma versão registrada ainda. O próximo salvamento criará o primeiro snapshot.
               </p>
             )}
           </div>
         </section>
 
-        <section className="mt-8 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+        <section tabIndex={0} aria-label="Prévia de impacto" className="mt-8 overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-4 py-3">
             <h2 className="text-sm font-semibold">Prévia de impacto</h2>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Cinco análises com maior preço atual usando estes parâmetros.
             </p>
           </div>
           <table className="w-full text-right text-sm">
-            <thead className="text-xs uppercase tracking-wide text-zinc-500">
+            <thead className="text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 text-left">Análise</th>
                 <th className="px-4 py-3">Custo total</th>
@@ -439,16 +439,16 @@ export default async function ParametrosEconomicosPage() {
                 <th className="px-4 py-3">Preço</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <tbody className="divide-y divide-border/70">
               {analisesPreview.map((b) => (
                 <tr key={b.codigo}>
                   <td className="px-4 py-2.5 text-left font-medium">
                     {b.codigo}
                   </td>
-                  <td className="px-4 py-2.5 tabular-nums text-zinc-500">
+                  <td className="px-4 py-2.5 tabular-nums text-muted-foreground">
                     {brl(b.custoTotal)}
                   </td>
-                  <td className="px-4 py-2.5 tabular-nums text-zinc-500">
+                  <td className="px-4 py-2.5 tabular-nums text-muted-foreground">
                     {pct(b.fatores * 100)}
                   </td>
                   <td className="px-4 py-2.5 font-semibold tabular-nums text-brand-700 dark:text-brand-400">
@@ -466,9 +466,9 @@ export default async function ParametrosEconomicosPage() {
 
 function InfoParametro({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-zinc-50 p-2 dark:bg-zinc-950/50">
-      <p className="text-zinc-400">{label}</p>
-      <p className="mt-1 font-medium text-zinc-700 dark:text-zinc-200">{value}</p>
+    <div className="rounded-md bg-muted/50 p-2">
+      <p className="text-muted-foreground">{label}</p>
+      <p className="mt-1 font-medium text-foreground">{value}</p>
     </div>
   );
 }
@@ -481,14 +481,14 @@ function PainelCustos({
   itens: Array<[string, string, string]>;
 }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
       <h2 className="text-sm font-semibold">{titulo}</h2>
-      <div className="mt-4 divide-y divide-zinc-100 dark:divide-zinc-800">
+      <div className="mt-4 divide-y divide-border/70">
         {itens.map(([label, valor, detalhe]) => (
           <div key={label} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
             <div>
               <p className="text-sm font-medium">{label}</p>
-              <p className="mt-1 text-xs text-zinc-500">{detalhe}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{detalhe}</p>
             </div>
             <p className="text-right text-sm font-semibold tabular-nums">{valor}</p>
           </div>
@@ -508,13 +508,13 @@ function TabelaParametros({
   linhas: string[][];
 }) {
   return (
-    <section className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+    <section tabIndex={0} aria-label={titulo} className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+      <div className="border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold">{titulo}</h2>
-        <p className="mt-1 text-xs text-zinc-500">{subtitulo}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{subtitulo}</p>
       </div>
       <table className="w-full text-left text-sm">
-        <thead className="text-xs uppercase tracking-wide text-zinc-500">
+        <thead className="text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-4 py-3">Campo</th>
             <th className="px-4 py-3 text-right">Valor</th>
@@ -524,20 +524,20 @@ function TabelaParametros({
             <th className="px-4 py-3 text-right">Impacto</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+        <tbody className="divide-y divide-border/70">
           {linhas.map((linha) => (
             <tr key={`${linha[0]}-${linha[3]}`}>
               <td className="px-4 py-3 font-medium">{linha[0]}</td>
-              <td className="px-4 py-3 text-right tabular-nums text-zinc-500">{linha[1]}</td>
-              <td className="px-4 py-3 text-zinc-500">{linha[2]}</td>
-              <td className="px-4 py-3 text-zinc-500">{linha[3]}</td>
-              <td className="px-4 py-3 text-zinc-500">{linha[4]}</td>
+              <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{linha[1]}</td>
+              <td className="px-4 py-3 text-muted-foreground">{linha[2]}</td>
+              <td className="px-4 py-3 text-muted-foreground">{linha[3]}</td>
+              <td className="px-4 py-3 text-muted-foreground">{linha[4]}</td>
               <td className="px-4 py-3 text-right font-semibold tabular-nums">{linha[5]}</td>
             </tr>
           ))}
           {linhas.length === 0 && (
             <tr>
-              <td colSpan={6} className="px-4 py-5 text-sm text-zinc-400">
+              <td colSpan={6} className="px-4 py-5 text-sm text-muted-foreground/80">
                 Sem dados suficientes para calcular impacto.
               </td>
             </tr>

@@ -51,13 +51,13 @@ const MODALIDADES_SELECIONAVEIS: Array<[string, string]> = [
 ];
 
 const STATUS_FINAL_CLS: Record<StatusPropostaFinal, string> = {
-  bloqueada: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300",
-  em_composicao: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
-  aguardando_revisao: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
+  bloqueada: "bg-danger-soft text-danger-strong",
+  em_composicao: "bg-warning-soft text-warning-strong",
+  aguardando_revisao: "bg-warning-soft text-warning-strong",
   pronta_para_emitir: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300",
-  emitida: "bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300",
-  substituida: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
-  cancelada: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800",
+  emitida: "bg-success-soft text-success-strong",
+  substituida: "bg-muted text-muted-foreground",
+  cancelada: "bg-muted text-muted-foreground",
 };
 
 type OrcamentoAnalisesResumo = {
@@ -333,13 +333,13 @@ export default async function DemandaDetalhe({
 
   // §8.2: valor digitado/escolhido pelo usuário aparece em azul (TOM_ENTRADA).
   const inp =
-    `rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950 ${TOM_ENTRADA}`;
-  const lbl = "block text-xs font-medium text-zinc-600 dark:text-zinc-300";
+    `rounded-md border border-input bg-card px-3 py-2 text-sm font-medium ${TOM_ENTRADA}`;
+  const lbl = "block text-xs font-medium text-muted-foreground";
   const hydrationSafe = { suppressHydrationWarning: true } as const;
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-6xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <Breadcrumbs
           items={[
             { label: "Demandas/Propostas", href: "/orcamento/demandas" },
@@ -347,22 +347,22 @@ export default async function DemandaDetalhe({
           ]}
         />
 
-        <section className="mt-4 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section className="mt-4 rounded-lg border border-border bg-card p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
                 Demanda/Proposta
               </p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight">{demanda.titulo}</h1>
-              <p className="mt-1 text-sm text-zinc-500">
+              <h1 className="mt-1 text-xl font-semibold tracking-tight">{demanda.titulo}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
                 {MODALIDADES[modalidadeCanonica] ?? MODALIDADES[demanda.modalidade] ?? demanda.modalidade}
               </p>
             </div>
             <div className="text-right text-sm">
               <p className="font-medium">Nº {demanda.id}</p>
-              <p className="text-zinc-500">Status: {demanda.status}</p>
-              <p className="text-zinc-500">Prioridade: {demanda.prioridade}</p>
-              <p className={completudeDemanda.completa ? "text-brand-700 dark:text-brand-300" : "text-amber-700 dark:text-amber-300"}>
+              <p className="text-muted-foreground">Status: {demanda.status}</p>
+              <p className="text-muted-foreground">Prioridade: {demanda.prioridade}</p>
+              <p className={completudeDemanda.completa ? "text-brand-700 dark:text-brand-300" : "text-warning-strong"}>
                 {completudeDemanda.completa ? "Demanda pronta" : `${completudeDemanda.faltante}% faltante`}
               </p>
             </div>
@@ -386,7 +386,7 @@ export default async function DemandaDetalhe({
           </div>
         </section>
 
-        <nav className="sticky top-0 z-10 mt-4 overflow-x-auto border-y border-zinc-200 bg-white/95 py-2 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+        <nav className="sticky top-0 z-10 mt-4 overflow-x-auto border-y border-border bg-card/95 py-2 shadow-sm backdrop-blur">
           <div className="flex min-w-max gap-2 px-2">
             {etapas.map((etapa, indice) => {
               const ativa = etapa.id === etapaAtiva;
@@ -397,12 +397,12 @@ export default async function DemandaDetalhe({
                   href={etapa.href}
                   aria-current={ativa ? "step" : undefined}
                   aria-disabled={desabilitada || undefined}
-                  className={`rounded-md border px-3 py-2 text-left text-xs transition hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+                  className={`rounded-md border px-3 py-2 text-left text-xs transition hover:bg-muted ${
                     ativa
                       ? "border-brand-500 bg-brand-50 text-brand-800 dark:border-brand-500 dark:bg-brand-950/40 dark:text-brand-200"
                       : desabilitada
-                        ? "border-zinc-200 text-zinc-400 dark:border-zinc-800"
-                        : "border-zinc-300 text-zinc-800 dark:border-zinc-700 dark:text-zinc-100"
+                        ? "border-border text-muted-foreground/80"
+                        : "border-input text-foreground"
                   }`}
                 >
                   <span className="block font-semibold">
@@ -418,18 +418,18 @@ export default async function DemandaDetalhe({
         </nav>
 
         <section id="acoes" className={`mt-6 scroll-mt-20 grid gap-4 lg:grid-cols-3 ${passo("demanda")}`}>
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
             <h2 className="text-sm font-semibold">Próximos módulos</h2>
-            <p className="mt-1 text-xs leading-5 text-zinc-500">
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
               A modalidade da demanda controla quais módulos podem ser preenchidos.
             </p>
             {!completudeDemanda.completa && (
-              <div className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+              <div className="mt-3 rounded-md bg-warning-soft px-3 py-2 text-xs leading-5 text-warning-strong">
                 Complete a demanda antes de gerar módulos: {completudeDemanda.pendencias.join("; ")}.
               </div>
             )}
             {(planoModulosUi.bloqueadoPorDuplicidade || erroIntegridade) && (
-              <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+              <div className="mt-3 rounded-md border border-danger-strong/30 bg-danger-soft px-3 py-2 text-xs leading-5 text-danger-strong">
                 <p className="font-medium">Integridade comprometida</p>
                 {erroIntegridade && <p>{erroIntegridade}</p>}
                 {planoModulosUi.erros.map((e) => (
@@ -457,28 +457,28 @@ export default async function DemandaDetalhe({
             </div>
           </div>
 
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
             <h2 className="text-sm font-semibold">Custos vinculados</h2>
             <div className="mt-3 space-y-2 text-sm">
               {orcamentosAnalises.map((o) => (
-                <Link key={o.id} href={`/orcamento/${o.id}`} className="block rounded-md bg-zinc-50 px-3 py-2 hover:bg-zinc-100 dark:bg-zinc-950/50 dark:hover:bg-zinc-800">
+                <Link key={o.id} href={`/orcamento/${o.id}`} className="block rounded-md bg-muted/50 px-3 py-2 hover:bg-muted">
                   Laboratório #{o.id} · {o.status} · {(o.orcamento_itens?.length ?? 0)} item(ns)
                 </Link>
               ))}
               {orcamentosProjeto.map((o) => (
-                <Link key={o.id} href={`/orcamento/projetos/${o.id}`} className="block rounded-md bg-zinc-50 px-3 py-2 hover:bg-zinc-100 dark:bg-zinc-950/50 dark:hover:bg-zinc-800">
+                <Link key={o.id} href={`/orcamento/projetos/${o.id}`} className="block rounded-md bg-muted/50 px-3 py-2 hover:bg-muted">
                   Projeto #{o.id} · {o.status} · {(o.orcamento_projeto_custos?.length ?? 0) + (o.orcamento_projeto_analises?.length ?? 0)} item(ns)
                 </Link>
               ))}
               {orcamentosAnalises.length === 0 && orcamentosProjeto.length === 0 && (
-                <p className="text-xs text-zinc-400">Nenhum custo gerado a partir desta demanda.</p>
+                <p className="text-xs text-muted-foreground/80">Nenhum custo gerado a partir desta demanda.</p>
               )}
             </div>
           </div>
 
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
             <h2 className="text-sm font-semibold">Fluxo recomendado</h2>
-            <ol className="mt-3 space-y-2 text-xs leading-5 text-zinc-500">
+            <ol className="mt-3 space-y-2 text-xs leading-5 text-muted-foreground">
               <li>1. Registrar demanda.</li>
               <li>2. Confirmar modalidade e projeto.</li>
               <li>3. Gerar o custo correto.</li>
@@ -487,11 +487,11 @@ export default async function DemandaDetalhe({
           </div>
         </section>
 
-        <section id="laboratorio" className={`mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("laboratorio")}`}>
+        <section id="laboratorio" className={`mt-6 scroll-mt-20 rounded-lg border border-border bg-card p-4 shadow-sm ${passo("laboratorio")}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Orçamento laboratorial</h2>
-              <p className="mt-1 text-xs leading-5 text-zinc-500">
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 Tabela operacional dos orçamentos de análises gerados a partir desta demanda.
               </p>
             </div>
@@ -501,7 +501,7 @@ export default async function DemandaDetalhe({
           </div>
 
           {!exigeAnalises ? (
-            <div className="mt-4 rounded-md bg-zinc-50 px-3 py-4 text-sm text-zinc-500 dark:bg-zinc-950/50">
+            <div className="mt-4 rounded-md bg-muted/50 px-3 py-4 text-sm text-muted-foreground">
               Esta modalidade não exige orçamento laboratorial.
             </div>
           ) : (
@@ -541,11 +541,11 @@ export default async function DemandaDetalhe({
           )}
         </section>
 
-        <section id="projeto" className={`mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("projeto")}`}>
+        <section id="projeto" className={`mt-6 scroll-mt-20 rounded-lg border border-border bg-card p-4 shadow-sm ${passo("projeto")}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Custos do projeto</h2>
-              <p className="mt-1 text-xs leading-5 text-zinc-500">
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 Custos próprios, análises internas do projeto e justificativas de projeto sem custo.
               </p>
             </div>
@@ -555,7 +555,7 @@ export default async function DemandaDetalhe({
           </div>
 
           {!exigeProjeto ? (
-            <div className="mt-4 rounded-md bg-zinc-50 px-3 py-4 text-sm text-zinc-500 dark:bg-zinc-950/50">
+            <div className="mt-4 rounded-md bg-muted/50 px-3 py-4 text-sm text-muted-foreground">
               Esta modalidade não exige orçamento de projeto.
             </div>
           ) : (
@@ -585,7 +585,7 @@ export default async function DemandaDetalhe({
           )}
         </section>
 
-        <section className={`mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("demanda")}`}>
+        <section className={`mt-6 rounded-lg border border-border bg-card p-4 shadow-sm ${passo("demanda")}`}>
           <h2 className="text-sm font-semibold">Pendências por etapa</h2>
           <TabelaSimples
             colunas={["Etapa", "Obrigatório?", "Status", "Pendência", "Ação"]}
@@ -602,15 +602,15 @@ export default async function DemandaDetalhe({
           />
         </section>
 
-        <section id="parametros" className={`mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("parametros")}`}>
+        <section id="parametros" className={`mt-6 scroll-mt-20 rounded-lg border border-border bg-card p-4 shadow-sm ${passo("parametros")}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Parâmetros econômicos</h2>
-              <p className="mt-1 text-xs leading-5 text-zinc-500">
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 Leitura dos custos recebidos e dos percentuais usados na consolidação final.
               </p>
             </div>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${podeConsolidar ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"}`}>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${podeConsolidar ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-warning-soft text-warning-strong"}`}>
               {podeConsolidar ? "Liberado" : "Aguardando revisão"}
             </span>
           </div>
@@ -638,14 +638,14 @@ export default async function DemandaDetalhe({
 
         <section id="final" className={`mt-6 scroll-mt-20 space-y-4 ${passo("final")}`}>
           {/* A — Cabeçalho da proposta + ações */}
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
                   Proposta final · Nº {demanda.id}
                 </p>
                 <h2 className="mt-1 text-lg font-semibold tracking-tight">{demanda.titulo}</h2>
-                <p className="mt-0.5 text-xs text-zinc-500">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {demanda.cliente_nome || "Cliente livre"} · {MODALIDADES[modalidadeCanonica] ?? demanda.modalidade}
                   {versaoEmitidaVigente?.valido_ate ? ` · válido até ${versaoEmitidaVigente.valido_ate}` : ""}
                 </p>
@@ -665,7 +665,7 @@ export default async function DemandaDetalhe({
                 {versaoEmitidaVigente && (
                   <Link
                     href={`/orcamento/final/${versaoEmitidaVigente.id}`}
-                    className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                    className="rounded-md border border-input bg-card px-3 py-2 text-xs font-medium hover:bg-muted"
                   >
                     Abrir versão emitida ({versaoEmitidaVigente.numero})
                   </Link>
@@ -673,11 +673,11 @@ export default async function DemandaDetalhe({
                 <form action={emitirOrcamentoFinalDaDemanda} className="flex items-end gap-2">
                   <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
                   <div>
-                    <label className="block text-[10px] uppercase tracking-wide text-zinc-500">Validade (dias)</label>
+                    <label className="block text-[10px] uppercase tracking-wide text-muted-foreground">Validade (dias)</label>
                     <input {...hydrationSafe} name="validade_dias" type="number" min="1" step="1" defaultValue="30" className={`${inp} mt-1 w-24`} disabled={!podeEmitir} />
                   </div>
                   <button
-                    className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 dark:disabled:bg-zinc-800"
+                    className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground dark:disabled:bg-muted"
                     disabled={!podeEmitir}
                   >
                     Emitir versão final
@@ -686,12 +686,12 @@ export default async function DemandaDetalhe({
               </div>
             </div>
             {erroEmissao && (
-              <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">{erroEmissao}</p>
+              <p className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-xs text-danger-strong">{erroEmissao}</p>
             )}
           </div>
 
           {/* B — Resumo executivo */}
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
             <h3 className="text-sm font-semibold">Resumo executivo</h3>
             <div className={`mt-3 grid gap-3 ${exigeProjeto ? "md:grid-cols-5" : "md:grid-cols-4"}`}>
               <ResumoFinal titulo="Custo laboratório (técnico)" valor={orcamentoFinal.totalLaboratorioCusto} />
@@ -703,7 +703,7 @@ export default async function DemandaDetalhe({
           </div>
 
           {/* C — Resumo econômico */}
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
             <h3 className="text-sm font-semibold">Resumo econômico</h3>
             <div className="mt-3 grid gap-3 md:grid-cols-3">
               <Info titulo="Subtotal técnico" texto={brl(orcamentoFinal.subtotalTecnico)} />
@@ -721,14 +721,14 @@ export default async function DemandaDetalhe({
                 ])}
               />
             )}
-            <p className="mt-3 text-[11px] leading-5 text-zinc-400">{orcamentoFinal.economia.formula}</p>
+            <p className="mt-3 text-[11px] leading-5 text-muted-foreground/80">{orcamentoFinal.economia.formula}</p>
           </div>
 
           {/* F — Pendências e bloqueios */}
           {(orcamentoFinal.pendencias.length > 0 || temCustoZeroSemJustificativa || !composicaoFinal.reconciliaOk) && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
-              <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">Pendências e bloqueios</h3>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-amber-900 dark:text-amber-200">
+            <div className="rounded-lg border border-warning-strong/30 bg-warning-soft p-4">
+              <h3 className="text-sm font-semibold text-warning-strong">Pendências e bloqueios</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-warning-strong">
                 {orcamentoFinal.pendencias.map((p) => (
                   <li key={p}>{p}</li>
                 ))}
@@ -746,15 +746,15 @@ export default async function DemandaDetalhe({
           )}
 
           {/* D — Composição da proposta (reconciliada) */}
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold">Composição da proposta</h3>
-              <span className="text-[11px] text-zinc-400">
+              <span className="text-[11px] text-muted-foreground/80">
                 valor comercial = total final × participação técnica · {composicaoFinal.reconciliaOk ? "reconciliado" : "divergente"}
               </span>
             </div>
             {composicaoFinal.linhas.length === 0 ? (
-              <p className="mt-3 text-xs text-zinc-400">Nenhum componente com valor positivo para compor a proposta.</p>
+              <p className="mt-3 text-xs text-muted-foreground/80">Nenhum componente com valor positivo para compor a proposta.</p>
             ) : (
               <TabelaSimples
                 colunas={["Componente", "Descrição", "Qtd", "Custo unit. téc.", "Subtotal téc.", "Participação", "Valor comercial", "Obs."]}
@@ -774,12 +774,12 @@ export default async function DemandaDetalhe({
           </div>
 
           {/* E — Itens detalhados (custo técnico × preço snapshot), expansível */}
-          <details className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <details className="rounded-lg border border-border bg-card p-4 shadow-sm">
             <summary className="cursor-pointer text-sm font-semibold">Detalhamento interno (custo técnico × preço snapshot)</summary>
             <div className="mt-3 space-y-4">
               {exigeAnalises && (
                 <div>
-                  <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">Laboratório</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Laboratório</p>
                   <TabelaSimples
                     colunas={["Análise", "Amostras", "Custo unit. (técnico)", "Preço unit. (snapshot)", "Custo total"]}
                     vazio="Sem itens laboratoriais."
@@ -795,7 +795,7 @@ export default async function DemandaDetalhe({
               )}
               {exigeProjeto && (
                 <div>
-                  <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">Projeto</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Projeto</p>
                   <TabelaSimples
                     colunas={["Rubrica", "Quantidade", "Custo unit. (técnico)", "Custo total"]}
                     vazio="Sem custos de projeto."
@@ -816,19 +816,19 @@ export default async function DemandaDetalhe({
                   />
                 </div>
               )}
-              <p className="text-[11px] text-zinc-400">
+              <p className="text-[11px] text-muted-foreground/80">
                 O preço laboratorial (snapshot) é apenas referência operacional e NÃO entra no fechamento da proposta (Política A).
               </p>
             </div>
           </details>
 
           {/* G — Histórico resumido */}
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold">Histórico de versões</h3>
-              <span className="text-xs text-zinc-400">{versoesFinais?.length ?? 0} versão(ões)</span>
+              <span className="text-xs text-muted-foreground/80">{versoesFinais?.length ?? 0} versão(ões)</span>
             </div>
-            <div className="mt-3 divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
+            <div className="mt-3 divide-y divide-border/70 text-sm">
               {(versoesFinais ?? []).map((versao) => (
                 <div key={versao.id} className="grid items-center gap-2 px-1 py-2 md:grid-cols-5">
                   <Link href={`/orcamento/final/${versao.id}`} className="font-medium text-primary hover:underline">
@@ -841,24 +841,24 @@ export default async function DemandaDetalhe({
                 </div>
               ))}
               {(versoesFinais ?? []).length === 0 && (
-                <p className="px-1 py-4 text-xs text-zinc-400">Nenhuma versão final emitida.</p>
+                <p className="px-1 py-4 text-xs text-muted-foreground/80">Nenhuma versão final emitida.</p>
               )}
             </div>
-            <p className="mt-2 text-[11px] text-zinc-400">
+            <p className="mt-2 text-[11px] text-muted-foreground/80">
               Versões emitidas antes da engine atual mantêm seus snapshots originais (modo legado) e não são recalculadas.
             </p>
           </div>
         </section>
 
-        <section id="demanda" className={`mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("demanda")}`}>
+        <section id="demanda" className={`mt-6 scroll-mt-20 rounded-lg border border-border bg-card p-4 shadow-sm ${passo("demanda")}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Dados da demanda</h2>
-              <p className="mt-1 text-xs leading-5 text-zinc-500">
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 Identificação, classificação e escopo inicial que liberam os módulos seguintes.
               </p>
             </div>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${completudeDemanda.completa ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"}`}>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${completudeDemanda.completa ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-warning-soft text-warning-strong"}`}>
               {completudeDemanda.completa ? "Completa" : `${completudeDemanda.faltante}% faltante`}
             </span>
           </div>
@@ -971,22 +971,22 @@ export default async function DemandaDetalhe({
               <textarea {...hydrationSafe} name="observacoes" rows={3} defaultValue={demanda.observacoes ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div className="sm:col-span-2">
-              <button className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900">
+              <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                 Salvar demanda
               </button>
             </div>
           </form>
         </section>
 
-        <section id="historico" className={`mt-6 scroll-mt-20 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${passo("historico")}`}>
+        <section id="historico" className={`mt-6 scroll-mt-20 rounded-lg border border-border bg-card p-4 shadow-sm ${passo("historico")}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Histórico e auditoria</h2>
-              <p className="mt-1 text-xs leading-5 text-zinc-500">
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 Linha operacional com os registros preservados desta demanda e seus documentos derivados.
               </p>
             </div>
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
               {(versoesFinais?.length ?? 0) + orcamentosAnalises.length + orcamentosProjeto.length} registro(s)
             </span>
           </div>
@@ -1048,21 +1048,21 @@ function ModuloAcao({
 }) {
   if (!plano.aplicavel) {
     return (
-      <span className="rounded-md border border-zinc-200 px-3 py-2 text-xs text-zinc-400 dark:border-zinc-800">
+      <span className="rounded-md border border-border px-3 py-2 text-xs text-muted-foreground/80">
         {rotulo === "laboratorial" ? "Laboratório" : "Projeto"} não se aplica
       </span>
     );
   }
   if (plano.acao === "bloqueado") {
     return (
-      <span className="rounded-md border border-red-200 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:text-red-300">
+      <span className="rounded-md border border-danger-strong/30 px-3 py-2 text-xs text-danger-strong">
         Orçamento {rotulo}: saneamento necessário
       </span>
     );
   }
   if (!demandaCompleta) {
     return (
-      <span className="rounded-md border border-amber-200 px-3 py-2 text-xs text-amber-700 dark:border-amber-900 dark:text-amber-300">
+      <span className="rounded-md border border-warning-strong/30 px-3 py-2 text-xs text-warning-strong">
         Complete a demanda
       </span>
     );
@@ -1071,7 +1071,7 @@ function ModuloAcao({
     return (
       <Link
         href={`${hrefBase}/${plano.moduloId}`}
-        className="rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+        className="rounded-md border border-input px-3 py-2 text-xs font-medium hover:bg-muted"
       >
         Abrir orçamento {rotulo}
       </Link>
@@ -1089,8 +1089,8 @@ function ModuloAcao({
 
 function Info({ titulo, texto }: { titulo: string; texto: string | null }) {
   return (
-    <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/50">
-      <p className="text-xs font-medium text-zinc-500">{titulo}</p>
+    <div className="rounded-lg bg-muted/50 p-3">
+      <p className="text-xs font-medium text-muted-foreground">{titulo}</p>
       <p className="mt-1 text-sm font-medium">{texto || "—"}</p>
     </div>
   );
@@ -1099,16 +1099,16 @@ function Info({ titulo, texto }: { titulo: string; texto: string | null }) {
 function Texto({ titulo, texto }: { titulo: string; texto: string | null }) {
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{titulo}</h3>
-      <p className="mt-1 whitespace-pre-wrap leading-6 text-zinc-700 dark:text-zinc-300">{texto || "—"}</p>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</h3>
+      <p className="mt-1 whitespace-pre-wrap leading-6 text-foreground">{texto || "—"}</p>
     </div>
   );
 }
 
 function ResumoFinal({ titulo, valor, destaque = false }: { titulo: string; valor: number; destaque?: boolean }) {
   return (
-    <div className={`rounded-md border p-3 ${destaque ? "border-brand-200 bg-brand-50 dark:border-brand-900 dark:bg-brand-950/30" : "border-zinc-200 dark:border-zinc-800"}`}>
-      <p className="text-xs font-medium text-zinc-500">{titulo}</p>
+    <div className={`rounded-md border p-3 ${destaque ? "border-brand-200 bg-brand-50 dark:border-brand-900 dark:bg-brand-950/30" : "border-border"}`}>
+      <p className="text-xs font-medium text-muted-foreground">{titulo}</p>
       <p className={`mt-1 text-base font-semibold tabular-nums ${destaque ? "text-brand-700 dark:text-brand-300" : ""}`}>
         {brl(valor)}
       </p>
@@ -1126,9 +1126,9 @@ function TabelaSimples({
   vazio: string;
 }) {
   return (
-    <div className="mt-4 overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800">
-      <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
-        <thead className="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:bg-zinc-950/50">
+    <div className="mt-4 overflow-x-auto rounded-md border border-border">
+      <table className="min-w-full divide-y divide-border text-sm">
+        <thead className="bg-muted/50 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <tr>
             {colunas.map((coluna) => (
               <th key={coluna} className="px-3 py-2">
@@ -1137,12 +1137,12 @@ function TabelaSimples({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+        <tbody className="divide-y divide-border/70">
           {linhas.length > 0 ? (
             linhas.map((linha, index) => (
               <tr key={index} className="align-top">
                 {linha.map((celula, celulaIndex) => (
-                  <td key={celulaIndex} className="max-w-sm px-3 py-2 text-zinc-700 dark:text-zinc-200">
+                  <td key={celulaIndex} className="max-w-sm px-3 py-2 text-foreground">
                     {celula}
                   </td>
                 ))}
@@ -1150,7 +1150,7 @@ function TabelaSimples({
             ))
           ) : (
             <tr>
-              <td colSpan={colunas.length} className="px-3 py-4 text-xs text-zinc-400">
+              <td colSpan={colunas.length} className="px-3 py-4 text-xs text-muted-foreground/80">
                 {vazio}
               </td>
             </tr>
@@ -1166,10 +1166,10 @@ function statusClasse(status: ReturnType<typeof avaliarModuloOperacional>["statu
     return "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300";
   }
   if (status === "preenchido") {
-    return "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300";
+    return "bg-warning-soft text-warning-strong";
   }
   if (status === "pendente") {
-    return "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300";
+    return "bg-danger-soft text-danger-strong";
   }
-  return "bg-zinc-100 text-zinc-500 dark:bg-zinc-800";
+  return "bg-muted text-muted-foreground";
 }

@@ -7,11 +7,11 @@ import { formatNumber as fmt } from "@/lib/formatters";
 export const dynamic = "force-dynamic";
 
 const STATUS: Record<string, { label: string; cls: string }> = {
-  solicitado: { label: "Solicitado", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
-  aprovado: { label: "Aprovado", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
+  solicitado: { label: "Solicitado", cls: "bg-warning-soft text-warning-strong" },
+  aprovado: { label: "Aprovado", cls: "bg-info-soft text-info-strong" },
   enviado: { label: "Enviado", cls: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300" },
   recebido: { label: "Recebido", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
-  cancelado: { label: "Cancelado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
+  cancelado: { label: "Cancelado", cls: "bg-muted text-muted-foreground" },
 };
 
 export default async function ComprasPage() {
@@ -64,32 +64,32 @@ export default async function ComprasPage() {
     .slice(0, 8);
   const sugestoesRender = sugestoesHistoricas.length > 0 ? sugestoesHistoricas : sugestoes;
 
-  const inp = "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"; // §8.2: entrada em azul
+  const inp = "rounded-md border border-input bg-card px-3 py-2 text-sm font-medium text-brand-700 dark:text-brand-300"; // §8.2: entrada em azul
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-5xl px-6 py-10">
-        <h1 className="text-2xl font-semibold tracking-tight">Compras</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+        <h1 className="text-xl font-semibold tracking-tight">Compras</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Solicitação → aprovação → recebimento. O material recebido entra em
           quarentena até a aceitação.
         </p>
 
         {/* sugestões */}
         {(sugestoes.length > 0 || sugestoesHistoricas.length > 0) && (
-          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
+          <div className="mt-6 rounded-xl border border-warning-strong/30 bg-warning-soft p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                <h2 className="text-sm font-semibold text-warning-strong">
                   Sugestões de compra ({Math.max(sugestoes.length, sugestoesHistoricas.length)})
                 </h2>
-                <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/80">
+                <p className="mt-1 text-xs text-warning-strong">
                   Combina ponto configurado com consumo histórico, lead time e estoque de segurança.
                 </p>
               </div>
               <GerarReposicaoButton />
             </div>
-            <ul className="mt-2 space-y-1 text-xs text-amber-900 dark:text-amber-200">
+            <ul className="mt-2 space-y-1 text-xs text-warning-strong">
               {sugestoesRender.slice(0, 8).map((s, i) => (
                 <li key={i} className="flex justify-between gap-4">
                   <span className="truncate">
@@ -105,13 +105,13 @@ export default async function ComprasPage() {
           </div>
         )}
 
-        <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
+        <div className="mt-6 rounded-xl border border-info-strong/30 bg-info-soft p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+              <h2 className="text-sm font-semibold text-info-strong">
                 Reposição automática
               </h2>
-              <p className="mt-1 max-w-2xl text-xs leading-5 text-blue-900/80 dark:text-blue-200/80">
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-info-strong">
                 A mesma rotina que será agendada no Supabase cron pode ser disparada manualmente aqui.
                 Agendamento diário e e-mail externo dependem das credenciais/configuração do Supabase cron e Resend.
               </p>
@@ -121,9 +121,9 @@ export default async function ComprasPage() {
         </div>
 
         {/* novo pedido */}
-        <form action={criarPedido} className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <form action={criarPedido} className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Fornecedor</label>
+            <label className="block text-xs font-medium text-muted-foreground">Fornecedor</label>
             <select aria-label="Fornecedor" name="fornecedor_id" className={`${inp} mt-1`} defaultValue="">
               <option value="">—</option>
               {(fornecedores ?? []).map((f) => (
@@ -132,7 +132,7 @@ export default async function ComprasPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Projeto</label>
+            <label className="block text-xs font-medium text-muted-foreground">Projeto</label>
             <select aria-label="Projeto" name="projeto_id" className={`${inp} mt-1`} defaultValue="">
               <option value="">—</option>
               {(projetos ?? []).map((p) => (
@@ -141,7 +141,7 @@ export default async function ComprasPage() {
             </select>
           </div>
           <div className="flex-1 min-w-40">
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Campanha (texto livre)</label>
+            <label className="block text-xs font-medium text-muted-foreground">Campanha (texto livre)</label>
             <input aria-label="Campanha (texto livre)" name="projeto" className={`${inp} mt-1 w-full`} />
           </div>
           <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">

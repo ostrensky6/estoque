@@ -21,7 +21,7 @@ function formatDate(date: Date) {
 function EmptyRow({ children }: { children: React.ReactNode }) {
   return (
     <tr>
-      <td colSpan={3} className="px-4 py-8 text-center text-sm text-slate-400">
+      <td colSpan={3} className="px-4 py-8 text-center text-sm text-muted-foreground/80">
         {children}
       </td>
     </tr>
@@ -33,8 +33,8 @@ export default async function BackupsPage() {
 
   if (!resumo) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-16 text-center font-sans">
-        <p className="text-zinc-500">
+      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8 text-center font-sans">
+        <p className="text-muted-foreground">
           Acesso restrito: backups locais são uma operação de administrador.
         </p>
       </main>
@@ -45,27 +45,27 @@ export default async function BackupsPage() {
   const ultimoDb = resumo.dbBackups[0];
 
   return (
-    <main className="mx-auto max-w-6xl px-5 py-8 font-sans text-slate-900 dark:text-slate-100 sm:px-6">
+    <main className="mx-auto max-w-6xl px-5 py-8 font-sans text-foreground sm:px-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Backups</h1>
-          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-600 dark:text-zinc-400">
+          <h1 className="text-xl font-semibold tracking-tight">Backups</h1>
+          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
             Cópias locais administradas para aplicativo e banco de dados em nuvem.
           </p>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+        <span className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-sm">
           <ShieldCheck className="h-4 w-4" aria-hidden="true" />
           Governança
         </span>
       </div>
 
       <section className="mt-6 grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
           <div className="flex items-start gap-3">
-            <FolderArchive className="mt-0.5 h-5 w-5 text-slate-500" aria-hidden="true" />
+            <FolderArchive className="mt-0.5 h-5 w-5 text-muted-foreground" aria-hidden="true" />
             <div>
               <h2 className="text-lg font-semibold">Aplicativo local</h2>
-              <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-zinc-400">
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 Backup manual da versão atual em localhost, salvo em {resumo.appDir}.
               </p>
             </div>
@@ -74,12 +74,12 @@ export default async function BackupsPage() {
             <BackupAplicativoButton />
           </div>
           <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-            <div className="rounded-md border border-slate-100 bg-slate-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
-              <dt className="text-xs font-medium uppercase text-slate-500">Retenção</dt>
+            <div className="rounded-md border border-border/70 bg-muted/50 p-3">
+              <dt className="text-xs font-medium uppercase text-muted-foreground">Retenção</dt>
               <dd className="mt-1 font-semibold">5 últimas versões</dd>
             </div>
-            <div className="rounded-md border border-slate-100 bg-slate-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
-              <dt className="text-xs font-medium uppercase text-slate-500">Último backup</dt>
+            <div className="rounded-md border border-border/70 bg-muted/50 p-3">
+              <dt className="text-xs font-medium uppercase text-muted-foreground">Último backup</dt>
               <dd className="mt-1 font-semibold">
                 {ultimoApp ? formatDate(ultimoApp.modifiedAt) : "Nenhum"}
               </dd>
@@ -87,33 +87,33 @@ export default async function BackupsPage() {
           </dl>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
           <div className="flex items-start gap-3">
-            <DatabaseBackup className="mt-0.5 h-5 w-5 text-slate-500" aria-hidden="true" />
+            <DatabaseBackup className="mt-0.5 h-5 w-5 text-muted-foreground" aria-hidden="true" />
             <div>
               <h2 className="text-lg font-semibold">Banco da nuvem</h2>
-              <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-zinc-400">
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 Dump automático da nuvem salvo em {resumo.dbDir}.
               </p>
             </div>
           </div>
-          <div className="mt-5 rounded-md border border-slate-100 bg-slate-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-950/40">
+          <div className="mt-5 rounded-md border border-border/70 bg-muted/50 p-4 text-sm">
             <div className="flex items-center gap-2 font-semibold">
               <Clock className="h-4 w-4" aria-hidden="true" />
               Agendamento Windows
             </div>
-            <p className="mt-2 text-slate-600 dark:text-zinc-400">
+            <p className="mt-2 text-muted-foreground">
               Execute scripts\install-windows-backup-tasks.ps1 no computador do
               administrador para registrar os backups de 00:30 e 12:30.
             </p>
           </div>
           <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-            <div className="rounded-md border border-slate-100 bg-slate-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
-              <dt className="text-xs font-medium uppercase text-slate-500">Retenção</dt>
+            <div className="rounded-md border border-border/70 bg-muted/50 p-3">
+              <dt className="text-xs font-medium uppercase text-muted-foreground">Retenção</dt>
               <dd className="mt-1 font-semibold">30 dias; dias 1 e 15 indefinidos</dd>
             </div>
-            <div className="rounded-md border border-slate-100 bg-slate-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
-              <dt className="text-xs font-medium uppercase text-slate-500">Último backup</dt>
+            <div className="rounded-md border border-border/70 bg-muted/50 p-3">
+              <dt className="text-xs font-medium uppercase text-muted-foreground">Último backup</dt>
               <dd className="mt-1 font-semibold">
                 {ultimoDb ? formatDate(ultimoDb.modifiedAt) : "Nenhum"}
               </dd>
@@ -123,29 +123,29 @@ export default async function BackupsPage() {
       </section>
 
       <section className="mt-6 grid gap-4 lg:grid-cols-2">
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="border-b border-slate-100 px-4 py-3 dark:border-zinc-800">
+        <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+          <div className="border-b border-border/70 px-4 py-3">
             <h2 className="text-sm font-semibold">Versões do aplicativo</h2>
           </div>
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-zinc-950/40">
+            <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 text-left">Arquivo</th>
                 <th className="px-4 py-3 text-left">Quando</th>
                 <th className="px-4 py-3 text-right">Tamanho</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+            <tbody className="divide-y divide-border/70">
               {resumo.appBackups.length ? (
                 resumo.appBackups.map((backup) => (
                   <tr key={backup.path}>
                     <td className="max-w-0 truncate px-4 py-3 font-medium" title={backup.name}>
                       {backup.name}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-500">
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                       {formatDate(backup.modifiedAt)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-slate-500">
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-muted-foreground">
                       {formatBytes(backup.size)}
                     </td>
                   </tr>
@@ -157,29 +157,29 @@ export default async function BackupsPage() {
           </table>
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="border-b border-slate-100 px-4 py-3 dark:border-zinc-800">
+        <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+          <div className="border-b border-border/70 px-4 py-3">
             <h2 className="text-sm font-semibold">Dumps do banco</h2>
           </div>
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-zinc-950/40">
+            <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 text-left">Arquivo</th>
                 <th className="px-4 py-3 text-left">Quando</th>
                 <th className="px-4 py-3 text-right">Tamanho</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+            <tbody className="divide-y divide-border/70">
               {resumo.dbBackups.length ? (
                 resumo.dbBackups.slice(0, 80).map((backup) => (
                   <tr key={backup.path}>
                     <td className="max-w-0 truncate px-4 py-3 font-medium" title={backup.name}>
                       {backup.name}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-500">
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                       {formatDate(backup.modifiedAt)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-slate-500">
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-muted-foreground">
                       {formatBytes(backup.size)}
                     </td>
                   </tr>

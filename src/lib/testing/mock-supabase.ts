@@ -1,6 +1,234 @@
 type Row = Record<string, unknown>;
 type Store = Record<string, Row[]>;
 
+const HISTORICAL_ANALISES: Row[] = [
+  {
+    codigo: "Eletrof_vir_hem",
+    nome: "Eletroforese hemolinfa",
+    nome_simplificado: "Eletroforese hemolinfa",
+    descricao: "Gel para hemolinfa",
+    status: "Ativo - ainda e feito",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "Eletrof_vir_tec",
+    nome: "Eletroforese tecido",
+    nome_simplificado: "Eletroforese tecido",
+    descricao: "Gel para tecido",
+    status: "Ativo - ainda e feito",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "Illumina_16S_AC",
+    nome: "16S alta cobertura",
+    nome_simplificado: "16S alta cobertura",
+    descricao: "Sequenciamento focado em microbioma, com alta cobertura",
+    status: "Ativo - oferecivel; manter alta cobertura",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "Illumina_Sh",
+    nome: "Shotgun",
+    nome_simplificado: "Shotgun",
+    descricao: "Sequenciamento shotgun, com qualquer marcador",
+    status: "Ativo - TODO tecnico: revisar quantificacao de insumos",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "Illumina_Sh_qPCR",
+    nome: "Shotgun com qPCR",
+    nome_simplificado: "Shotgun com qPCR",
+    descricao: "Shotgun substituindo algumas etapas por qPCR para otimizacao de tempo e custo",
+    status: "Experimental - em avaliacao; nao oferecer em orcamentos",
+    ativo: false,
+    ofertavel: false,
+  },
+  {
+    codigo: "RTqPCR_RNA_virus_H",
+    nome: "RT-qPCR virus hemolinfa",
+    nome_simplificado: "RT-qPCR virus hemolinfa",
+    descricao: "PCR em tempo real de virus 1",
+    status: "Ativo - ainda e feito",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "RTqPCR_RNA_virus_T",
+    nome: "RT-qPCR virus tecidos",
+    nome_simplificado: "RT-qPCR virus tecidos",
+    descricao: "PCR em tempo real de virus 2",
+    status: "Ativo - ainda e feito",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "Sanger",
+    nome: "Sanger",
+    nome_simplificado: "Sanger",
+    descricao: "Sequenciamento Sanger",
+    status: "Ativo - ainda pode ser oferecido",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "qPCR_F",
+    nome: "qPCR com filtracao",
+    nome_simplificado: "qPCR com filtracao",
+    descricao: "PCR em tempo real com filtracao",
+    status: "Ativo - ainda e feito",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "qPCR_SF",
+    nome: "qPCR sem filtracao",
+    nome_simplificado: "qPCR sem filtracao",
+    descricao: "PCR em tempo real sem filtracao",
+    status: "Ativo - ainda e feito",
+    ativo: true,
+    ofertavel: true,
+  },
+];
+
+const HISTORICAL_ANALISE_CODES = HISTORICAL_ANALISES.map((analise) => String(analise.codigo));
+
+const MOCK_PERMISSOES_CATEGORIAS = [
+  {
+    papel: "tecnico",
+    permissoes: {
+      "orcamentos.visualizar": true,
+      "orcamentos.criar_editar": true,
+      "compras.solicitar": true,
+      "estoque.movimentar": true,
+      "analises.ver": true,
+      "insumos.ver": true,
+      "custeio.ver": true,
+      "estoque.ver": true,
+      "planejamento.ver": true,
+      "pedido.ver": true,
+      "pedido.criar": true,
+      "compras.ver": true,
+      "recebimento.ver": true,
+      "projetos.ver": true,
+      "cadastros.ver": true,
+    },
+  },
+  {
+    papel: "coordenador",
+    permissoes: {
+      "orcamentos.visualizar": true,
+      "orcamentos.criar_editar": true,
+      "orcamentos.emitir": true,
+      "compras.solicitar": true,
+      "compras.aprovar": true,
+      "estoque.movimentar": true,
+      "cadastros.editar": true,
+      "analises.ver": true,
+      "analises.editar": true,
+      "insumos.ver": true,
+      "insumos.editar": true,
+      "custeio.ver": true,
+      "estoque.ver": true,
+      "estoque.lote.aceitar": true,
+      "planejamento.ver": true,
+      "planejamento.editar": true,
+      "pedido.ver": true,
+      "pedido.criar": true,
+      "pedido.aprovar": true,
+      "compras.ver": true,
+      "compras.receber": true,
+      "recebimento.ver": true,
+      "recebimento.registrar": true,
+      "projetos.ver": true,
+      "projetos.editar": true,
+      "cadastros.ver": true,
+    },
+  },
+  {
+    papel: "gestor",
+    permissoes: {
+      "orcamentos.visualizar": true,
+      "orcamentos.criar_editar": true,
+      "orcamentos.emitir": true,
+      "orcamentos.cancelar": true,
+      "compras.solicitar": true,
+      "compras.aprovar": true,
+      "estoque.movimentar": true,
+      "estoque.descartar_bloquear": true,
+      "cadastros.editar": true,
+      "auditoria.visualizar": true,
+      "analises.ver": true,
+      "analises.editar": true,
+      "insumos.ver": true,
+      "insumos.editar": true,
+      "custeio.ver": true,
+      "estoque.ver": true,
+      "estoque.lote.aceitar": true,
+      "estoque.lote.gerir": true,
+      "planejamento.ver": true,
+      "planejamento.editar": true,
+      "pedido.ver": true,
+      "pedido.criar": true,
+      "pedido.aprovar": true,
+      "compras.ver": true,
+      "compras.receber": true,
+      "compras.cancelar": true,
+      "recebimento.ver": true,
+      "recebimento.registrar": true,
+      "orcamento.parametros.editar": true,
+      "projetos.ver": true,
+      "projetos.editar": true,
+      "cadastros.ver": true,
+      "configuracoes.ver": true,
+    },
+  },
+  {
+    papel: "admin",
+    permissoes: {
+      "orcamentos.visualizar": true,
+      "orcamentos.criar_editar": true,
+      "orcamentos.emitir": true,
+      "orcamentos.cancelar": true,
+      "compras.solicitar": true,
+      "compras.aprovar": true,
+      "estoque.movimentar": true,
+      "estoque.descartar_bloquear": true,
+      "cadastros.editar": true,
+      "usuarios.gerenciar": true,
+      "auditoria.visualizar": true,
+      "analises.ver": true,
+      "analises.editar": true,
+      "insumos.ver": true,
+      "insumos.editar": true,
+      "custeio.ver": true,
+      "estoque.ver": true,
+      "estoque.lote.aceitar": true,
+      "estoque.lote.gerir": true,
+      "planejamento.ver": true,
+      "planejamento.editar": true,
+      "pedido.ver": true,
+      "pedido.criar": true,
+      "pedido.aprovar": true,
+      "compras.ver": true,
+      "compras.receber": true,
+      "compras.cancelar": true,
+      "recebimento.ver": true,
+      "recebimento.registrar": true,
+      "orcamento.parametros.editar": true,
+      "projetos.ver": true,
+      "projetos.editar": true,
+      "cadastros.ver": true,
+      "backups.gerenciar": true,
+      "privilegios.gerenciar": true,
+      "configuracoes.ver": true,
+    },
+  },
+];
+
 const baseStore = (): Store => {
   const seed: Store = {
   orcamentos: [
@@ -25,45 +253,51 @@ const baseStore = (): Store => {
     {
       id: 1,
       orcamento_id: 1,
-      codigo_analise: "TESTE-16S",
+      codigo_analise: "Illumina_16S_AC",
       n_amostras: 12,
       custo_unitario: 45,
       preco_unitario: 90,
     },
   ],
   orcamento_projetos: [],
+  orcamento_final_versoes: [],
+  eventos_status: [],
   orcamento_projeto_analises: [],
   orcamento_projeto_custos: [],
+  demanda_analises: [],
   projetos: [{ id: 1, nome: "Projeto E2E" }],
   clientes: [{ id: 1, nome: "Cliente Cadastrado", ativo: true }],
-  analises: [{ codigo: "TESTE-16S", nome: "Metagenomica 16S", ativo: true }],
-  etapas: [
-    {
-      codigo_analise: "TESTE-16S",
-      nome_etapa: "Preparo",
-      nome_atividade: "PCR",
-      execucoes_por_dia: 1,
-      amostras_por_execucao: 12,
-      tempo_maquina_h: 0,
-      tempo_bancada_h: 6,
-    },
-  ],
-  equipamentos: [],
-  equipamento_analise: [],
+  analises: HISTORICAL_ANALISES,
+  etapas: HISTORICAL_ANALISE_CODES.map((codigo) => ({
+    codigo_analise: codigo,
+    nome_etapa: "Preparo",
+    nome_atividade: codigo.includes("qPCR") ? "qPCR" : "Rotina laboratorial",
+    execucoes_por_dia: 1,
+    amostras_por_execucao: 12,
+    tempo_maquina_h: 1,
+    tempo_bancada_h: 2,
+    escopo_operacional: "laboratorio",
+  })),
+  equipamentos: [{ id: 1, nome: "Equipamento mock", custo_hora: 30, ativo: true }],
+  equipamento_analise: HISTORICAL_ANALISE_CODES.map((codigo) => ({
+    codigo_analise: codigo,
+    equipamento_id: 1,
+    tempo_horas: 1,
+    equipamentos: { custo_hora: 30 },
+  })),
   tecnicos: [],
   overhead: [],
-  insumo_analise: [
-    {
-      codigo_analise: "TESTE-16S",
-      nome_etapa: "Preparo",
-      nome_atividade: "PCR",
-      especificacao_insumo: "Mix PCR",
-      grupo_escolha: null,
-      quantidade_por_amostra: 1,
-      modo_cobranca: "por_amostra",
-      insumos: { custo_unitario: 45 },
-    },
-  ],
+  insumo_analise: HISTORICAL_ANALISE_CODES.map((codigo, index) => ({
+    codigo_analise: codigo,
+    nome_etapa: "Preparo",
+    nome_atividade: codigo.includes("qPCR") ? "qPCR" : "Rotina laboratorial",
+    especificacao_insumo: `Insumo mock ${codigo}`,
+    unidade: "un",
+    grupo_escolha: null,
+    quantidade_por_amostra: 1,
+    modo_cobranca: "por_amostra",
+    insumos: { custo_unitario: 20 + index },
+  })),
   parametros: [
     { chave: "dias_uteis_ano", valor: 222 },
     { chave: "margem_lucro", valor: 100 },
@@ -101,7 +335,8 @@ const baseStore = (): Store => {
   compras: [],
   movimentacoes_estoque: [],
   lotes_estoque: [],
-  perfis: [{ id: "user-e2e", nome: "Gestor E2E", email: "gestor@example.com", papel: "gestor" }],
+  perfis: [{ id: "user-e2e", nome: "Admin E2E", email: "admin@example.com", papel: "admin" }],
+  permissoes_categorias: MOCK_PERMISSOES_CATEGORIAS,
   notificacoes: [
     {
       id: 1,
@@ -160,24 +395,52 @@ const baseStore = (): Store => {
       demanda_id: 1,
       tipo: "analises",
       cliente_nome: "Cliente Demo",
-      status: "rascunho",
+      status: "enviado",
+      status_operacional: "revisado",
+      responsavel_tecnico: "Responsavel E2E",
       data_orcamento: "2026-06-21",
       criado_em: "2026-06-21T10:00:00.000Z",
     });
     seed.orcamento_itens.push({
       id: 2,
       orcamento_id: 2,
-      codigo_analise: "TESTE-16S",
+      codigo_analise: "Illumina_16S_AC",
       n_amostras: 12,
       custo_unitario: 45,
       preco_unitario: 90,
     });
+    seed.orcamento_itens.push({
+      id: 3,
+      orcamento_id: 2,
+      codigo_analise: "qPCR_F",
+      n_amostras: 5,
+      custo_unitario: 40,
+      preco_unitario: 80,
+    });
+    seed.demanda_analises = [
+      {
+        id: 1,
+        demanda_id: 1,
+        codigo_analise: "Illumina_16S_AC",
+        quantidade_amostras: 12,
+        origem_quantidade: "padrao",
+        status_custeio: "disponivel",
+      },
+      {
+        id: 2,
+        demanda_id: 1,
+        codigo_analise: "qPCR_F",
+        quantidade_amostras: 5,
+        origem_quantidade: "manual",
+        status_custeio: "disponivel",
+      },
+    ];
     seed.orcamento_projetos = [
       {
         id: 1,
         demanda_id: 1,
         titulo: "Projeto Demo",
-        status: "rascunho",
+        status: "enviado",
         data_orcamento: "2026-06-21",
         impostos: 0,
         margem_lucro: 0,
@@ -209,8 +472,29 @@ const baseStore = (): Store => {
 const store = (globalThis as typeof globalThis & { __kontrolMockStore?: Store }).__kontrolMockStore ?? baseStore();
 (globalThis as typeof globalThis & { __kontrolMockStore?: Store }).__kontrolMockStore = store;
 
+export function resetMockSupabaseStore() {
+  const fresh = baseStore();
+  for (const key of Object.keys(store)) delete store[key];
+  Object.assign(store, fresh);
+}
+
+export function getMockSupabaseStore() {
+  return store;
+}
+
 const nextId = (table: string) =>
   Math.max(0, ...((store[table] ?? []) as Row[]).map((row) => Number(row.id) || 0)) + 1;
+
+function valoresIguais(a: unknown, b: unknown) {
+  return a === b || String(a) === String(b);
+}
+
+function compararValores(a: unknown, b: unknown) {
+  const numeroA = Number(a);
+  const numeroB = Number(b);
+  if (Number.isFinite(numeroA) && Number.isFinite(numeroB)) return numeroA - numeroB;
+  return String(a).localeCompare(String(b));
+}
 
 function withRelations(table: string, row: Row): Row {
   if (table === "orcamentos") {
@@ -238,9 +522,11 @@ function withRelations(table: string, row: Row): Row {
 
 class MockQuery {
   private filters: { column: string; value: unknown }[] = [];
+  private neqFilters: { column: string; value: unknown }[] = [];
   private inFilters: { column: string; values: unknown[] }[] = [];
   private notFilters: { column: string; values: string[] }[] = [];
   private isFilters: { column: string; value: null }[] = [];
+  private comparisonFilters: { column: string; operator: "gt" | "gte" | "lt" | "lte"; value: unknown }[] = [];
   private mutation: null | { type: "insert" | "update" | "delete" | "upsert"; payload?: Row | Row[] } = null;
 
   constructor(private table: string) {}
@@ -256,6 +542,11 @@ class MockQuery {
 
   eq(column: string, value: unknown) {
     this.filters.push({ column, value });
+    return this;
+  }
+
+  neq(column: string, value: unknown) {
+    this.neqFilters.push({ column, value });
     return this;
   }
 
@@ -278,11 +569,23 @@ class MockQuery {
     return this;
   }
 
-  gte() {
+  gt(column: string, value: unknown) {
+    this.comparisonFilters.push({ column, operator: "gt", value });
     return this;
   }
 
-  lte() {
+  gte(column: string, value: unknown) {
+    this.comparisonFilters.push({ column, operator: "gte", value });
+    return this;
+  }
+
+  lt(column: string, value: unknown) {
+    this.comparisonFilters.push({ column, operator: "lt", value });
+    return this;
+  }
+
+  lte(column: string, value: unknown) {
+    this.comparisonFilters.push({ column, operator: "lte", value });
     return this;
   }
 
@@ -354,7 +657,7 @@ class MockQuery {
     if (this.mutation?.type === "upsert") {
       const rows = Array.isArray(this.mutation.payload) ? this.mutation.payload : [this.mutation.payload];
       for (const row of rows.filter(Boolean) as Row[]) {
-        const key = "chave" in row ? "chave" : "id";
+        const key = "chave" in row ? "chave" : "papel" in row ? "papel" : "id";
         const index = (store[this.table] ?? []).findIndex((current) => current[key] === row[key]);
         if (index >= 0) store[this.table][index] = { ...store[this.table][index], ...row };
         else store[this.table] = [...(store[this.table] ?? []), { id: row.id ?? nextId(this.table), ...row }];
@@ -370,10 +673,18 @@ class MockQuery {
 
   private matches(row: Row) {
     return (
-      this.filters.every((filter) => row[filter.column] === filter.value) &&
-      this.inFilters.every((filter) => filter.values.includes(row[filter.column])) &&
+      this.filters.every((filter) => valoresIguais(row[filter.column], filter.value)) &&
+      this.neqFilters.every((filter) => !valoresIguais(row[filter.column], filter.value)) &&
+      this.inFilters.every((filter) => filter.values.some((value) => valoresIguais(row[filter.column], value))) &&
       this.notFilters.every((filter) => !filter.values.includes(String(row[filter.column]))) &&
-      this.isFilters.every((filter) => (row[filter.column] ?? null) === filter.value)
+      this.isFilters.every((filter) => (row[filter.column] ?? null) === filter.value) &&
+      this.comparisonFilters.every((filter) => {
+        const comparison = compararValores(row[filter.column], filter.value);
+        if (filter.operator === "gt") return comparison > 0;
+        if (filter.operator === "gte") return comparison >= 0;
+        if (filter.operator === "lt") return comparison < 0;
+        return comparison <= 0;
+      })
     );
   }
 }
@@ -416,10 +727,148 @@ function ajustarSaldoLote(args: Row) {
   if (Number(lote.quantidade_atual) <= 0) lote.status = "consumido";
 }
 
+function sincronizarDemandaAnalises(args: Row) {
+  const demandaId = Number(args.p_demanda_id);
+  const itens = Array.isArray(args.p_itens) ? args.p_itens as Row[] : [];
+  const exigeLaboratorio = args.p_exige_laboratorio !== false;
+  const backup = {
+    demanda_analises: [...(store.demanda_analises ?? [])],
+    orcamento_itens: [...(store.orcamento_itens ?? [])],
+    orcamentos: [...(store.orcamentos ?? [])],
+  };
+
+  try {
+    const demanda = store.demandas_propostas?.find((row) => Number(row.id) === demandaId);
+    if (!demanda) throw new Error(`Demanda ${demandaId} nao encontrada`);
+    if (itens.some((item) => item.codigo_analise === "FORCAR-FALHA-RPC")) {
+      throw new Error("Falha simulada na RPC de sincronização");
+    }
+
+    let orcamento = store.orcamentos.find((row) => Number(row.demanda_id) === demandaId && row.status !== "cancelado");
+    if (exigeLaboratorio) {
+      if (orcamento && orcamento.status !== "rascunho") {
+        throw new Error("Somente orcamento laboratorial em rascunho pode ser sincronizado pela demanda");
+      }
+      if (!orcamento) {
+        orcamento = {
+          id: nextId("orcamentos"),
+          demanda_id: demandaId,
+          tipo: "analises",
+          cliente_nome: demanda.cliente_nome ?? demanda.titulo ?? "Cliente",
+          status: "rascunho",
+          criado_em: new Date().toISOString(),
+        };
+        store.orcamentos.push(orcamento);
+      }
+    }
+
+    store.demanda_analises = (store.demanda_analises ?? []).filter((row) => Number(row.demanda_id) !== demandaId);
+    for (const item of itens) {
+      store.demanda_analises.push({
+        id: nextId("demanda_analises"),
+        demanda_id: demandaId,
+        codigo_analise: item.codigo_analise,
+        quantidade_amostras: item.quantidade_amostras,
+        origem_quantidade: item.origem_quantidade ?? "padrao",
+        status_custeio: item.status_custeio ?? "pendente",
+      });
+    }
+
+    if (exigeLaboratorio && orcamento) {
+      const codigos = itens.map((item) => item.codigo_analise);
+      store.orcamento_itens = (store.orcamento_itens ?? []).filter(
+        (row) => Number(row.orcamento_id) !== Number(orcamento.id) || codigos.includes(row.codigo_analise),
+      );
+      for (const item of itens) {
+        const existente = store.orcamento_itens.find(
+          (row) => Number(row.orcamento_id) === Number(orcamento?.id) && row.codigo_analise === item.codigo_analise,
+        );
+        const payload = {
+          orcamento_id: orcamento.id,
+          codigo_analise: item.codigo_analise,
+          n_amostras: item.quantidade_amostras,
+          custo_unitario: item.custo_unitario ?? 0,
+          preco_unitario: item.preco_unitario ?? 0,
+          valor_snapshot: item.valor_snapshot ?? {},
+        };
+        if (existente) Object.assign(existente, payload);
+        else store.orcamento_itens.push({ id: nextId("orcamento_itens"), ...payload });
+      }
+      orcamento.status_operacional = itens.length > 0 ? "preenchido" : "pendente";
+      orcamento.status_operacional_atualizado_em = new Date().toISOString();
+    }
+
+    return {
+      registradas: itens.length,
+      pendentes: itens.filter((item) => item.status_custeio !== "disponivel").length,
+      orcamento_id: orcamento?.id ?? null,
+    };
+  } catch (error) {
+    store.demanda_analises = backup.demanda_analises;
+    store.orcamento_itens = backup.orcamento_itens;
+    store.orcamentos = backup.orcamentos;
+    throw error;
+  }
+}
+
+function emitirOrcamentoFinalTransacional(args: Row) {
+  const demandaId = Number(args.p_demanda_id);
+  const versoesDaDemanda = (store.orcamento_final_versoes ?? []).filter((row) => Number(row.demanda_id) === demandaId);
+  const versao = Math.max(0, ...versoesDaDemanda.map((row) => Number(row.versao) || 0)) + 1;
+  const id = nextId("orcamento_final_versoes");
+  const numero = `OF-2026-${String(demandaId).padStart(4, "0")}-v${versao}`;
+  const criadoEm = new Date().toISOString();
+  const validadeDias = Number(args.p_validade_dias ?? 30);
+  const validoAte = new Date(Date.now() + validadeDias * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  store.orcamento_final_versoes = (store.orcamento_final_versoes ?? []).map((row) =>
+    Number(row.demanda_id) === demandaId && row.status === "emitido"
+      ? { ...row, status: "substituido", substituido_em: criadoEm }
+      : row,
+  );
+
+  const versaoFinal = {
+    id,
+    demanda_id: demandaId,
+    versao,
+    numero,
+    status: "emitido",
+    total_laboratorio_custo: args.p_total_laboratorio_custo,
+    total_laboratorio_preco: args.p_total_laboratorio_preco,
+    total_projeto_custo: args.p_total_projeto_custo,
+    total_projeto_final: args.p_total_projeto_final,
+    total_final: args.p_total_final,
+    snapshot: args.p_snapshot,
+    parametros: args.p_parametros,
+    criado_por: args.p_criado_por,
+    criado_em: criadoEm,
+    valido_ate: validoAte,
+  };
+  store.orcamento_final_versoes.push(versaoFinal);
+
+  store.demandas_propostas = (store.demandas_propostas ?? []).map((row) =>
+    Number(row.id) === demandaId ? { ...row, status: "orcada", atualizado_em: criadoEm } : row,
+  );
+  store.eventos_status = [
+    ...(store.eventos_status ?? []),
+    {
+      id: nextId("eventos_status"),
+      entidade_tipo: "demanda_proposta",
+      entidade_id: demandaId,
+      status_novo: "orcada",
+      observacao: `Versao final ${numero} emitida via mock e2e.`,
+      criado_em: criadoEm,
+      usuario_email: args.p_usuario_email ?? null,
+    },
+  ];
+
+  return { versao_id: id, versao, numero };
+}
+
 export function createMockSupabaseClient() {
   return {
     auth: {
-      getUser: async () => ({ data: { user: { id: "user-e2e", email: "gestor@example.com" } }, error: null }),
+      getUser: async () => ({ data: { user: { id: "user-e2e", email: "admin@example.com" } }, error: null }),
     },
     from: (table: string) => new MockQuery(table),
     rpc: async (fn: string, args: Row) => {
@@ -430,25 +879,16 @@ export function createMockSupabaseClient() {
       if (fn === "descartar_lote") setLotStatus(Number(args.p_lote_id), "descartado");
       if (fn === "baixa_manual_lote") baixarManualLote(args);
       if (fn === "ajustar_saldo_lote") ajustarSaldoLote(args);
+      if (fn === "sincronizar_demanda_analises") {
+        try {
+          return { data: sincronizarDemandaAnalises(args), error: null };
+        } catch (error) {
+          return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
+        }
+      }
+      if (fn === "emitir_orcamento_final_transacional") return { data: emitirOrcamentoFinalTransacional(args), error: null };
       return { data: null, error: null };
     },
   };
-}
-
-export function getMockSupabaseStore(): Store {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (globalThis as any).__kontrolMockStore;
-}
-
-export function resetMockSupabaseStore(): void {
-  const fresh = baseStore();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const current = (globalThis as any).__kontrolMockStore;
-  if (current) {
-    for (const key of Object.keys(current)) {
-      delete current[key];
-    }
-    Object.assign(current, fresh);
-  }
 }
 

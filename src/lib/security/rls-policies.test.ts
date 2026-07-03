@@ -11,7 +11,7 @@ const aliasCleanupMigration = readFileSync(
   "utf8",
 );
 const orcamentoRlsMigration = readFileSync(
-  join(process.cwd(), "supabase/migrations/0047_rls_permissoes_orcamentos.sql"),
+  join(process.cwd(), "supabase/migrations/0075_rls_permissoes_orcamentos.sql"),
   "utf8",
 );
 
@@ -45,7 +45,7 @@ describe("RLS por papel", () => {
     expect(migration).not.toContain("rls_tecnico_insert_reservas_estoque");
   });
 
-  it("endurece RLS no modulo orcamentos (Fase 11 - migration 0047)", () => {
+  it("endurece RLS no modulo orcamentos (Fase 11 - migration 0075)", () => {
     // Remove as policies amplas
     expect(orcamentoRlsMigration).toContain("drop policy if exists authenticated_all_orcamento_final_versoes");
     expect(orcamentoRlsMigration).toContain("drop policy if exists authenticated_all_orcamento_parametros_aplicados");

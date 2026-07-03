@@ -259,9 +259,17 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
   const nAmostras = numero(formData, "n_amostras", 1);
   if (!id || !codigo || nAmostras <= 0) return;
 
+  const supabase = await createClient();
+  const { data: analise } = await supabase
+    .from("analises")
+    .select("ativo, ofertavel")
+    .eq("codigo", codigo)
+    .single();
+  if (!analise?.ativo || !analise?.ofertavel) {
+    throw new Error("Analise inativa ou nao oferecivel para novo orcamento.");
+  }
   const { breakdowns } = await calcularTodas();
   const breakdown = breakdowns.find((x) => x.codigo === codigo);
-  const supabase = await createClient();
   await assegurarProjetoEditavel(supabase, id);
   const { error } = await supabase.from("orcamento_projeto_analises").insert({
     orcamento_projeto_id: id,

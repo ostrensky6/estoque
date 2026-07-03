@@ -6,6 +6,7 @@ export type Entidade =
   | "orcamento"
   | "orcamento_projeto"
   | "orcamento_final"
+  | "orcamento_fundos"
   | "orcamento_parametros"
   | "orcamento_template"
   | "orcamento_catalogo"

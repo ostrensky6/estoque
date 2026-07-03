@@ -31,6 +31,16 @@
   --border: #e2e8f0;
   --input: #e2e8f0;
   --ring: #1b5aac;
+
+  /* Tons de status — soft = superfície, strong = texto/ícone (AA sobre soft) */
+  --success-soft: #e6f7e6;
+  --success-strong: #0a6b0a;
+  --warning-soft: #fef3c7;
+  --warning-strong: #92400e;
+  --info-soft: #e0f5f7;
+  --info-strong: #0a727d;
+  --danger-soft: #fee2e2;
+  --danger-strong: #b91c1c;
 }
 
 .dark {
@@ -54,6 +64,15 @@
   --border: #27272a;
   --input: #27272a;
   --ring: #2f7fd1;
+
+  --success-soft: #122f12;
+  --success-strong: #8fda8c;
+  --warning-soft: #33230a;
+  --warning-strong: #fbbf24;
+  --info-soft: #0b2f33;
+  --info-strong: #7fd3da;
+  --danger-soft: #390f0f;
+  --danger-strong: #f87171;
 }
 
 @theme inline {
@@ -76,6 +95,14 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-success-soft: var(--success-soft);
+  --color-success-strong: var(--success-strong);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-strong: var(--warning-strong);
+  --color-info-soft: var(--info-soft);
+  --color-info-strong: var(--info-strong);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-strong: var(--danger-strong);
 
   /* Paleta institucional — brand = azul GIA (#01489d), acentos ATGC */
   --color-brand-50: #eaf1fb;
@@ -132,6 +159,21 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+html:not(.dark) .text-zinc-400,
+html:not(.dark) .text-slate-400 {
+  color: #52525b;
+}
+
+html:not(.dark) .text-zinc-500,
+html:not(.dark) .text-slate-500 {
+  color: #475569;
+}
+
+html:not(.dark) .text-brand-400,
+html:not(.dark) .text-brand-500 {
+  color: #013a80;
+}
+
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 3px solid color-mix(in srgb, var(--ring) 80%, white);
   outline-offset: 3px;
@@ -159,8 +201,8 @@ body {
 /* Degradê suave no fundo da área de trabalho — claro, com toque de azul/verde */
 .app-canvas {
   background:
-    radial-gradient(60rem 60rem at 110% -10%, rgba(0, 142, 156, 0.06), transparent 60%),
-    radial-gradient(60rem 60rem at -10% 0%, rgba(1, 72, 157, 0.08), transparent 55%),
+    radial-gradient(60rem 60rem at 110% -10%, rgba(0, 142, 156, 0.04), transparent 60%),
+    radial-gradient(60rem 60rem at -10% 0%, rgba(1, 72, 157, 0.05), transparent 55%),
     linear-gradient(180deg, #f4f7fb 0%, #eef2f8 100%);
 }
 
@@ -171,15 +213,41 @@ body {
 /* Impressão de orçamentos: esconde navegação e controles de edição,
    mostra só o documento (.print-area). */
 @media print {
+  @page {
+    size: A4;
+    margin: 15mm 15mm 15mm 15mm;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
   aside,
+  nav,
+  header,
+  footer:not(.proposal-footer),
+  button,
+  a.no-print,
   .no-print {
     display: none !important;
   }
-  body {
-    background: #fff;
-    color: #000;
-  }
   .print-area {
     padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+  .page-break-before {
+    page-break-before: always;
+    break-before: page;
+  }
+  .page-break-inside-avoid,
+  table,
+  tr,
+  blockquote,
+  .page-break-inside-avoid {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 }

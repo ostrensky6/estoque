@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import {
   calcularAnalise,
+  calcularAnaliseOrcamento,
   equipCustoDia,
   type Breakdown,
+  type BreakdownOrcamento,
   type Cenario,
   type EquipAlloc,
   type Etapa,
@@ -129,14 +131,15 @@ export async function carregarSimuladorCusteio(): Promise<{
   valorHoraPessoal: number;
   custoHoraOverhead: number;
 }> {
-  const { breakdowns, params, valorHoraPessoal, custoHoraOverhead } = await calcularTodas();
   const supabase = await createClient();
   const [
+    { data: analises },
     { data: etapas },
     { data: equipamentos },
     { data: equipAnalise },
     { data: insumoAnalise },
   ] = await Promise.all([
+    supabase.from("analises").select("codigo").eq("ativo", true).eq("ofertavel", true).order("codigo"),
     supabase.from("etapas").select("*"),
     supabase.from("equipamentos").select("*"),
     supabase.from("equipamento_analise").select("*"),
@@ -146,6 +149,8 @@ export async function carregarSimuladorCusteio(): Promise<{
         "codigo_analise, nome_etapa, nome_atividade, especificacao_insumo, grupo_escolha, quantidade_por_amostra, modo_cobranca, insumo_id, insumos(custo_unitario)",
       ),
   ]);
+  const codigosAtivos = new Set((analises ?? []).map((analise) => analise.codigo));
+  const { breakdowns, params, valorHoraPessoal, custoHoraOverhead } = await calcularTodas();
 
   const custoDiaPorEquip = new Map<number, number>();
   for (const e of equipamentos ?? []) {
@@ -156,42 +161,66 @@ export async function carregarSimuladorCusteio(): Promise<{
     params,
     valorHoraPessoal,
     custoHoraOverhead,
-    analises: breakdowns.map((b) => {
-      const linhas = (insumoAnalise ?? [])
-        .filter((i) => i.codigo_analise === b.codigo)
-        .map((i) => ({
-          nome_etapa: i.nome_etapa,
-          nome_atividade: i.nome_atividade,
-          especificacao_insumo: i.especificacao_insumo,
-          grupo_escolha: i.grupo_escolha,
-          quantidade_por_amostra: i.quantidade_por_amostra,
-          modo_cobranca: i.modo_cobranca,
-          custo_unitario:
-            (i.insumos as { custo_unitario: number | null } | null)?.custo_unitario ?? null,
-          insumo_id: i.insumo_id,
+    analises: breakdowns
+      .filter((b) => codigosAtivos.has(b.codigo))
+      .map((b) => {
+        const linhas = (insumoAnalise ?? [])
+          .filter((i) => i.codigo_analise === b.codigo)
+          .map((i) => ({
+            nome_etapa: i.nome_etapa,
+            nome_atividade: i.nome_atividade,
+            especificacao_insumo: i.especificacao_insumo,
+            grupo_escolha: i.grupo_escolha,
+            quantidade_por_amostra: i.quantidade_por_amostra,
+            modo_cobranca: i.modo_cobranca,
+            custo_unitario:
+              (i.insumos as { custo_unitario: number | null } | null)?.custo_unitario ?? null,
+            insumo_id: i.insumo_id,
+          }));
+        const grupos = [...new Set(linhas.map((l) => l.grupo_escolha).filter(Boolean) as string[])].map((grupo) => ({
+          nome: grupo,
+          opcoes: linhas
+            .filter((l) => l.grupo_escolha === grupo)
+            .map((l) => l.especificacao_insumo)
+            .filter(Boolean) as string[],
         }));
-      const grupos = [...new Set(linhas.map((l) => l.grupo_escolha).filter(Boolean) as string[])].map((grupo) => ({
-        nome: grupo,
-        opcoes: linhas
-          .filter((l) => l.grupo_escolha === grupo)
-          .map((l) => l.especificacao_insumo)
-          .filter(Boolean) as string[],
-      }));
-      return {
-        codigo: b.codigo,
-        lotePadrao: b.lote,
-        etapas: ((etapas ?? []) as Etapa[]).filter(
-          (e) => (e as unknown as { codigo_analise: string }).codigo_analise === b.codigo,
-        ),
-        equip: (equipAnalise ?? [])
-          .filter((ea) => ea.codigo_analise === b.codigo)
-          .map((ea) => ({
-            peso: Number(ea.peso_alocacao),
-            custoDia: custoDiaPorEquip.get(ea.equipamento_id) ?? 0,
-          })),
-        insumos: linhas,
-        grupos,
-      };
-    }),
+        return {
+          codigo: b.codigo,
+          lotePadrao: b.lote,
+          etapas: ((etapas ?? []) as Etapa[]).filter(
+            (e) => (e as unknown as { codigo_analise: string }).codigo_analise === b.codigo,
+          ),
+          equip: (equipAnalise ?? [])
+            .filter((ea) => ea.codigo_analise === b.codigo)
+            .map((ea) => ({
+              peso: Number(ea.peso_alocacao),
+              custoDia: custoDiaPorEquip.get(ea.equipamento_id) ?? 0,
+            })),
+          insumos: linhas,
+          grupos,
+        };
+      }),
   };
+}
+
+export async function calcularItemAnaliseOrcamento(
+  codigo: string,
+  numeroAmostras: number,
+  cenario?: Cenario,
+): Promise<BreakdownOrcamento | null> {
+  const dados = await carregarSimuladorCusteio();
+  const analise = dados.analises.find((item) => item.codigo === codigo);
+  if (!analise) return null;
+
+  return calcularAnaliseOrcamento({
+    codigo,
+    etapas: analise.etapas,
+    equip: analise.equip,
+    insumos: analise.insumos,
+    valorHoraPessoal: dados.valorHoraPessoal,
+    custoHoraOverhead: dados.custoHoraOverhead,
+    params: dados.params,
+    numeroAmostras,
+    cenario,
+  });
 }

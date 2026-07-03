@@ -3,6 +3,7 @@ import { montarPropostaFinalExport } from "./proposta-final-export";
 
 const demanda = {
   titulo: "Demanda X",
+  instituicao: "ATGC",
   cliente_nome: "Cliente X",
   cliente_cnpj: null,
   cliente_contato: null,
@@ -95,6 +96,26 @@ describe("montarPropostaFinalExport — composição reconciliada", () => {
     const soma = ex.composicaoComercial.reduce((a, l) => a + l.valorComercial, 0);
     expect(soma).toBe(125);
     expect(ex.detalhamento.laboratorio[0].precoSnapshot).toBe(999); // só na visão interna
+  });
+
+  it("seleciona identidade GIA a partir da instituição da demanda", () => {
+    const ex = montarPropostaFinalExport({
+      versao: versao({ total_final: 125 }),
+      snapshot: snapshotNovo({ lab: [{ codigo_analise: "AN1", n_amostras: 1, custo_unitario: 100 }], subtotal: 100, somaPercentual: 20, totalFinal: 125 }),
+      demanda: { ...demanda, instituicao: "GIA / UFPR", modalidade: "analises" },
+    });
+    expect(ex.info.identidade.id).toBe("GIA");
+    expect(ex.info.responsavel).toMatch(/Grupo Integrado/);
+  });
+
+  it("não usa ATGC como fallback quando a instituição está ausente", () => {
+    expect(() =>
+      montarPropostaFinalExport({
+        versao: versao({ total_final: 125 }),
+        snapshot: snapshotNovo({ lab: [{ codigo_analise: "AN1", n_amostras: 1, custo_unitario: 100 }], subtotal: 100, somaPercentual: 20, totalFinal: 125 }),
+        demanda: { ...demanda, instituicao: null, modalidade: "analises" },
+      }),
+    ).toThrow(/Identidade institucional/);
   });
 });
 

@@ -1,13 +1,23 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createClientUntyped } from "@/lib/supabase/server";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
 import { adicionarItem, removerItem, excluirPlano } from "@/lib/actions/planejamento";
 import { comprarFaltasDoPlano } from "@/lib/actions/compras";
 import { PlanoAcoes } from "@/components/planejamento/PlanoAcoes";
+import {
+  PlanejamentoConferenciaLotes,
+  type PlanoConferenciaInsumo,
+  type PlanoConferenciaRegistro,
+} from "@/components/planejamento/PlanejamentoConferenciaLotes";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { Combobox } from "@/components/ui/combobox";
 import { formatNumber as fmt } from "@/lib/formatters";
+import {
+  loteSugeridoFefo,
+  type LoteConferencia,
+} from "@/lib/planejamento/conferencia-lotes";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +29,7 @@ export default async function PlanoDetalhe({
   const { id } = await params;
   const planId = Number(id);
   const supabase = await createClient();
+  const supabaseUntyped = await createClientUntyped();
 
   const { data: plano } = await supabase
     .from("planejamento")
@@ -34,6 +45,21 @@ export default async function PlanoDetalhe({
   ]);
 
   const demanda = await computarDemandaPlano(supabase, planId);
+  const demandaIds = demanda.map((d) => d.insumo_id);
+  const [{ data: lotesConferencia }, { data: conferenciasPlanejamento }] = demandaIds.length > 0
+    ? await Promise.all([
+        supabase
+          .from("lotes_estoque")
+          .select("id, insumo_id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status")
+          .in("insumo_id", demandaIds)
+          .gt("quantidade_atual", 0),
+        supabaseUntyped
+          .from("planejamento_lote_conferencias")
+          .select("id, insumo_id, lote_id, quantidade_conferida, status, justificativa, conferido_em")
+          .eq("planejamento_id", planId)
+          .order("conferido_em", { ascending: false }),
+      ])
+    : [{ data: [] }, { data: [] }];
 
   const rs = (reservas ?? []) as { status: string }[];
   const status = rs.some((r) => r.status === "consumido")
@@ -56,39 +82,79 @@ export default async function PlanoDetalhe({
             : status;
   const temFalta = demanda.some((d) => d.falta > 0);
   const baixaPendente = statusLabel === "Reservado";
+  const lotesPorInsumo = new Map<number, (LoteConferencia & { codigoLote: string | null })[]>();
+  for (const lote of lotesConferencia ?? []) {
+    const insumoId = Number(lote.insumo_id);
+    if (!Number.isInteger(insumoId) || insumoId <= 0) continue;
+    const linha = {
+      id: Number(lote.id),
+      insumoId,
+      codigoLote: lote.codigo_lote ? String(lote.codigo_lote) : null,
+      quantidadeAtual: Number(lote.quantidade_atual ?? 0),
+      status: String(lote.status ?? ""),
+      validade: lote.validade ? String(lote.validade) : null,
+      validadeAposAbertura: lote.validade_apos_abertura ? String(lote.validade_apos_abertura) : null,
+    };
+    lotesPorInsumo.set(insumoId, [...(lotesPorInsumo.get(insumoId) ?? []), linha]);
+  }
+  const insumosConferencia: PlanoConferenciaInsumo[] = demanda.map((d) => {
+    const loteSugerido = loteSugeridoFefo(lotesPorInsumo.get(d.insumo_id) ?? []);
+    const loteSugeridoCompleto = loteSugerido
+      ? lotesPorInsumo.get(d.insumo_id)?.find((lote) => lote.id === loteSugerido.id) ?? null
+      : null;
 
-  const inp = "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"; // §8.2: entrada em azul
+    return {
+      insumoId: d.insumo_id,
+      especificacao: d.especificacao,
+      unidade: d.unidade,
+      quantidadePrevista: d.demanda,
+      loteSugeridoId: loteSugerido?.id ?? null,
+      loteSugeridoLabel: loteSugerido
+        ? `#${loteSugerido.id}${loteSugeridoCompleto?.codigoLote ? ` · ${loteSugeridoCompleto.codigoLote}` : ""}`
+        : null,
+    };
+  });
+  const conferencias: PlanoConferenciaRegistro[] = (conferenciasPlanejamento ?? []).map((row) => ({
+    id: Number(row.id),
+    insumoId: Number(row.insumo_id),
+    loteId: Number(row.lote_id),
+    quantidadeConferida: Number(row.quantidade_conferida ?? 0),
+    status: String(row.status ?? ""),
+    justificativa: row.justificativa ? String(row.justificativa) : null,
+  }));
+
+  const inp = "rounded-md border border-input bg-card px-3 py-2 text-sm font-medium text-brand-700 dark:text-brand-300"; // §8.2: entrada em azul
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-5xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <Breadcrumbs items={[{ label: "Planejamento", href: "/planejamento" }, { label: plano.nome ?? `Plano #${planId}` }]} />
         <div className="mt-2 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight">{plano.nome}</h1>
-          <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium dark:bg-zinc-800">
+          <h1 className="text-xl font-semibold tracking-tight">{plano.nome}</h1>
+          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
             {statusLabel}
           </span>
         </div>
         {baixaPendente && (
-          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
+          <p className="mt-3 rounded-lg border border-warning-strong/30 bg-warning-soft px-4 py-2 text-sm text-warning-strong">
             Insumos reservados, mas a baixa definitiva ainda não foi feita. Use Iniciar quando a análise entrar em execução.
           </p>
         )}
         {plano.data_alvo && (
-          <p className="mt-1 text-sm text-zinc-500">Data alvo: {plano.data_alvo}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Data alvo: {plano.data_alvo}</p>
         )}
 
         {/* itens do plano */}
         <section className="mt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Análises do plano
           </h2>
           <div className="mt-3 space-y-2">
             {(itens ?? []).map((it) => (
-              <div key={it.id} className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <div key={it.id} className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-2 text-sm">
                 <span>
                   <span className="font-medium">{it.codigo_analise}</span>
-                  <span className="text-zinc-500">
+                  <span className="text-muted-foreground">
                     {" · "}{fmt(it.n_amostras)} amostras
                     {(it.n_controles ?? 0) > 0 ? ` + ${fmt(it.n_controles)} controles` : ""}
                     {(it.repeticoes ?? 1) !== 1 ? ` × ${fmt(it.repeticoes)} rep.` : ""}
@@ -98,19 +164,19 @@ export default async function PlanoDetalhe({
                 <form action={removerItem}>
                   <input type="hidden" name="item_id" value={it.id} />
                   <input type="hidden" name="planejamento_id" value={planId} />
-                  <button className="text-xs text-red-600 hover:underline">Remover</button>
+                  <button className="text-xs text-danger-strong hover:underline">Remover</button>
                 </form>
               </div>
             ))}
             {(itens ?? []).length === 0 && (
-              <p className="text-sm text-zinc-400">Nenhuma análise. Adicione abaixo.</p>
+              <p className="text-sm text-muted-foreground/80">Nenhuma análise. Adicione abaixo.</p>
             )}
           </div>
 
           <form action={adicionarItem} className="mt-3 flex flex-wrap items-end gap-2">
             <input type="hidden" name="planejamento_id" value={planId} />
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Análise</label>
+              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Análise</label>
               <div className="w-64">
                 <Combobox
                   name="codigo_analise"
@@ -126,22 +192,22 @@ export default async function PlanoDetalhe({
               </div>
             </div>
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Amostras</label>
+              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Amostras</label>
               <input name="n_amostras" type="number" min="1" step="1" className={`${inp} w-24`} />
             </div>
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Controles</label>
+              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Controles</label>
               <input name="n_controles" type="number" min="0" step="1" defaultValue="0" className={`${inp} w-24`} />
             </div>
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Repetições</label>
+              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Repetições</label>
               <input name="repeticoes" type="number" min="1" step="1" defaultValue="1" className={`${inp} w-24`} />
             </div>
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-zinc-400">% perda</label>
+              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">% perda</label>
               <input name="perda_percentual" type="number" min="0" step="1" defaultValue="0" className={`${inp} w-20`} />
             </div>
-            <button className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900">
+            <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
               Adicionar
             </button>
           </form>
@@ -150,21 +216,21 @@ export default async function PlanoDetalhe({
         {/* demanda */}
         <section className="mt-8">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-              Demanda de insumos {temFalta && <span className="text-amber-600">· há faltas</span>}
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Demanda de insumos {temFalta && <span className="text-warning-strong">· há faltas</span>}
             </h2>
             {temFalta && (
               <form action={comprarFaltasDoPlano}>
                 <input type="hidden" name="planejamento_id" value={planId} />
-                <button className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500">
+                <button className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90">
                   Comprar faltas
                 </button>
               </form>
             )}
           </div>
-          <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
             <table className="w-full text-sm">
-              <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
+              <thead className="border-b border-border bg-transparent text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 text-left">Insumo</th>
                   <th className="px-4 py-3 text-left">Un.</th>
@@ -173,21 +239,21 @@ export default async function PlanoDetalhe({
                   <th className="px-4 py-3 text-right">Falta</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <tbody className="divide-y divide-border/70">
                 {demanda.map((d) => (
-                  <tr key={d.insumo_id} className={d.falta > 0 ? "bg-amber-50/60 dark:bg-amber-950/20" : ""}>
+                  <tr key={d.insumo_id} className={d.falta > 0 ? "bg-warning-soft/60" : ""}>
                     <td className="px-4 py-2 max-w-sm truncate" title={d.especificacao}>{d.especificacao}</td>
-                    <td className="px-4 py-2 text-zinc-500">{d.unidade ?? "—"}</td>
+                    <td className="px-4 py-2 text-muted-foreground">{d.unidade ?? "—"}</td>
                     <td className="px-4 py-2 text-right tabular-nums">{fmt(d.demanda)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-zinc-500">{fmt(d.disponivel)}</td>
-                    <td className={`px-4 py-2 text-right tabular-nums font-medium ${d.falta > 0 ? "text-amber-700 dark:text-amber-400" : "text-zinc-400"}`}>
+                    <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">{fmt(d.disponivel)}</td>
+                    <td className={`px-4 py-2 text-right tabular-nums font-medium ${d.falta > 0 ? "text-warning-strong" : "text-muted-foreground/80"}`}>
                       {d.falta > 0 ? fmt(d.falta) : "—"}
                     </td>
                   </tr>
                 ))}
                 {demanda.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-zinc-400">
+                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground/80">
                       Adicione análises para calcular a demanda.
                     </td>
                   </tr>
@@ -196,6 +262,14 @@ export default async function PlanoDetalhe({
             </table>
           </div>
         </section>
+
+        {baixaPendente && insumosConferencia.length > 0 && (
+          <PlanejamentoConferenciaLotes
+            planId={planId}
+            insumos={insumosConferencia}
+            conferencias={conferencias}
+          />
+        )}
 
         {/* ações */}
         <section className="mt-8">

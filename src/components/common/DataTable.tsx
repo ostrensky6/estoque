@@ -79,6 +79,16 @@ function normalize(value: unknown) {
   return String(value).toLowerCase();
 }
 
+function uniqueFilterOptions(options: DataTableFilter["options"]) {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    const value = String(option.value ?? "");
+    if (value === "" || seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
+}
+
 export function DataTable<TData>({
   columns,
   data,
@@ -174,19 +184,23 @@ export function DataTable<TData>({
         </div>
 
         {filters.map((filter) => {
-          const column = table.getColumn(filter.columnId);
-          const value = (column?.getFilterValue() as string | undefined) ?? "";
+          const column = table.getAllLeafColumns().find((col) => col.id === filter.columnId);
+          if (!column) return null;
+          const value = (column.getFilterValue() as string | undefined) ?? "";
+          const options = uniqueFilterOptions(filter.options);
           return (
             <Select
               key={filter.columnId}
               value={value}
-              onChange={(event) => column?.setFilterValue(event.target.value || undefined)}
+              onChange={(event) => column.setFilterValue(event.target.value || undefined)}
               className="h-9 w-auto min-w-36 text-xs"
               aria-label={`Filtrar por ${filter.label}`}
             >
-              <option value="">{filter.label}: todos</option>
-              {filter.options.map((option) => (
-                <option key={option.value} value={option.value}>
+              <option key={`${filter.columnId}:all`} value="">
+                {filter.label}: todos
+              </option>
+              {options.map((option) => (
+                <option key={`${filter.columnId}:${String(option.value ?? "")}`} value={option.value}>
                   {option.label}
                 </option>
               ))}

@@ -14,9 +14,20 @@ import type { Json } from "@/lib/supabase/database.types";
 
 const listaPath = "/orcamento/demandas";
 
+export type DemandaFormState = {
+  ok: boolean;
+  message?: string;
+  errors?: Record<string, string>;
+  savedAt?: string;
+};
+
 function texto(formData: FormData, chave: string) {
   const valor = String(formData.get(chave) ?? "").trim();
   return valor || null;
+}
+
+function numero(formData: FormData, chave: string) {
+  return Number(formData.get(chave) ?? 0) || 0;
 }
 
 function numeroOuNull(formData: FormData, chave: string) {
@@ -117,10 +128,28 @@ export async function criarDemanda(formData: FormData) {
   redirect(`${listaPath}/${data.id}`);
 }
 
-export async function salvarDemanda(formData: FormData) {
+export async function criarDemandaCompleta(
+  _prevState: DemandaFormState,
+  formData: FormData,
+): Promise<DemandaFormState> {
+  await criarDemanda(formData);
+  return { ok: true, message: "Demanda criada." };
+}
+
+export async function salvarDemanda(formData: FormData): Promise<void>;
+export async function salvarDemanda(
+  _prevState: DemandaFormState,
+  formData: FormData,
+): Promise<DemandaFormState>;
+export async function salvarDemanda(
+  stateOrFormData: DemandaFormState | FormData,
+  maybeFormData?: FormData,
+): Promise<DemandaFormState | void> {
   await exigirPapelOrcamento("criar_demanda");
+  const formData = maybeFormData ?? (stateOrFormData as FormData);
+  const retornaEstado = Boolean(maybeFormData);
   const id = Number(formData.get("demanda_id"));
-  if (!id) return;
+  if (!id) return retornaEstado ? { ok: false, message: "Demanda inválida." } : undefined;
 
   const supabase = await createClient();
   const clienteId = numeroOuNull(formData, "cliente_id");
@@ -158,9 +187,15 @@ export async function salvarDemanda(formData: FormData) {
       completude_atualizada_em: completude.atualizado_em,
     })
     .eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (retornaEstado) return { ok: false, message: error.message };
+    throw new Error(error.message);
+  }
   revalidatePath(listaPath);
   revalidatePath(`${listaPath}/${id}`);
+  if (retornaEstado) {
+    return { ok: true, message: "Demanda salva com sucesso.", savedAt: new Date().toISOString() };
+  }
 }
 
 export async function gerarOrcamentoAnalisesDaDemanda(formData: FormData) {
@@ -503,4 +538,48 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
   revalidatePath(`${listaPath}/${id}`);
   revalidatePath("/orcamento");
   redirect(`${listaPath}/${id}?etapa=final`);
+}
+
+export async function salvarParametrosEconomicosDaDemanda(formData: FormData) {
+  const demandaId = numero(formData, "demanda_id");
+  if (!demandaId) return;
+  await exigirPapelOrcamento("editar_parametros");
+
+  const patch = {
+    impostos_legacy: numero(formData, "impostos_legacy"),
+    incubacao: numero(formData, "incubacao"),
+    reserva: numero(formData, "reserva"),
+    investimentos: numero(formData, "investimentos"),
+    lucro: numero(formData, "lucro"),
+  };
+
+  const supabase = await createClient();
+  const { data: projeto } = await supabase
+    .from("orcamento_projetos")
+    .select("id")
+    .eq("demanda_id", demandaId)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!projeto?.id) {
+    redirect(`${listaPath}/${demandaId}?etapa=final&erro_parametros=${encodeURIComponent("Não foi possível localizar o orçamento para salvar parâmetros.")}`);
+  }
+
+  const { error } = await supabase.from("orcamento_projetos").update(patch).eq("id", projeto.id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(listaPath);
+  revalidatePath(`${listaPath}/${demandaId}`);
+  redirect(`${listaPath}/${demandaId}?etapa=final`);
+}
+
+export async function emitirPropostaCliente(
+  _prevState: DemandaFormState,
+  formData: FormData,
+): Promise<DemandaFormState> {
+  const id = Number(formData.get("demanda_id"));
+  if (!id) return { ok: false, message: "Identificador de demanda inválido." };
+  await emitirOrcamentoFinalDaDemanda(formData);
+  return { ok: true, message: "Proposta emitida." };
 }

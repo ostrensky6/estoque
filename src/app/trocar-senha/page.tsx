@@ -11,8 +11,8 @@ export default function TrocarSenhaPage() {
   });
 
   return (
-    <div className="app-canvas flex min-h-dvh items-center justify-center px-6 font-sans dark:bg-zinc-950">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-lg ring-1 ring-slate-900/5 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="app-canvas flex min-h-dvh items-center justify-center px-6 font-sans">
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 shadow-lg ring-1 ring-foreground/5">
         <div className="flex justify-center">
           <Image
             src="/logos/kontrol-app.png"
@@ -24,33 +24,33 @@ export default function TrocarSenhaPage() {
             unoptimized
           />
         </div>
-        <h1 className="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">Defina sua senha</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        <h1 className="mt-4 text-lg font-semibold text-foreground">Defina sua senha</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Você entrou com uma senha provisória. Crie uma senha definitiva para continuar.
         </p>
 
         <form action={action} className="mt-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Nova senha</label>
+            <label className="block text-xs font-medium text-muted-foreground">Nova senha</label>
             <input
               name="senha"
               type="password"
               autoComplete="new-password"
-              className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              className="mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Confirmar senha</label>
+            <label className="block text-xs font-medium text-muted-foreground">Confirmar senha</label>
             <input
               name="confirmar"
               type="password"
               autoComplete="new-password"
-              className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              className="mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm"
             />
           </div>
 
           {state.message && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">
               {state.message}
             </p>
           )}
@@ -64,7 +64,7 @@ export default function TrocarSenhaPage() {
         </form>
 
         <form action={sair} className="mt-4">
-          <button className="w-full text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300">
+          <button className="w-full text-xs text-muted-foreground hover:text-foreground">
             Sair
           </button>
         </form>

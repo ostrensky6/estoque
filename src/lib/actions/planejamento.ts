@@ -234,7 +234,13 @@ export async function iniciarPlano(
   } as never);
 
   const shortfalls = parseShortfalls((data as { shortfalls?: unknown } | null)?.shortfalls);
-  const faltaPorInsumo = new Map(shortfalls.map((item) => [item.insumo_id, item.falta]));
+  const faltaPorInsumo = new Map<number, number>();
+  for (const item of demanda.filter((d) => d.falta > 0)) {
+    faltaPorInsumo.set(item.insumo_id, item.falta);
+  }
+  for (const item of shortfalls) {
+    faltaPorInsumo.set(item.insumo_id, Math.max(faltaPorInsumo.get(item.insumo_id) ?? 0, item.falta));
+  }
   const faltasPlano = demanda
     .filter((item) => faltaPorInsumo.has(item.insumo_id))
     .map((item) => ({ ...item, falta: faltaPorInsumo.get(item.insumo_id) ?? item.falta }));

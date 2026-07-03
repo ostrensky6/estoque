@@ -16,7 +16,7 @@ const GRUPOS = [
   { value: "todos", label: "Todos", slugs: [] },
   { value: "comercial", label: "Comercial", slugs: ["clientes", "projetos"] },
   { value: "custos", label: "Custos", slugs: ["equipamentos", "tecnicos", "overhead"] },
-  { value: "materiais", label: "Materiais", slugs: ["insumos", "fornecedores", "locais"] },
+  { value: "materiais", label: "Materiais", slugs: ["tipo_insumos", "insumos", "fornecedores", "locais"] },
 ] as const;
 
 export function CadastrosCards({ cadastros }: { cadastros: CadastroConfig[] }) {

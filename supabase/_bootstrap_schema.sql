@@ -57,6 +57,7 @@ create table equipamentos (
   quantidade                  numeric not null default 1,
   custo_unitario              numeric not null default 0,
   data_aquisicao              date,
+  data_validade               date,
   possui                      boolean not null default true,
   vida_util_anos              numeric,                    -- usado p/ depreciação linear
   percentual_manutencao_anual numeric not null default 0, -- fração (0.05 = 5%)
@@ -102,7 +103,10 @@ create table insumos (
   quantidade_embalagem   numeric,
   unidade                text,
   custo_unitario         numeric,               -- = custo_total_embalagem / quantidade_embalagem
-  data_aquisicao         date
+  data_aquisicao         date,
+  data_fabricacao        date,
+  validade_dias          int,
+  data_validade          date
 );
 
 -- ---------- Insumo por etapa de análise (aba MCA) -------------------
@@ -1000,5 +1004,55 @@ create trigger aud_clientes after insert or update or delete on clientes
   for each row execute function fn_auditoria();
 create trigger aud_projetos after insert or update or delete on projetos
   for each row execute function fn_auditoria();
+
+-- ===== 0047_normalizacao_tipos_insumos.sql =====
+-- Tipos tecnicos genericos para calculo, analise e padronizacao.
+-- Itens especificos/SKUs permanecem em insumos para compra, estoque,
+-- lote e rastreabilidade.
+create table if not exists tipo_insumos (
+  id bigint generated always as identity primary key,
+  nome text not null unique,
+  classe text not null default 'insumo'
+    check (classe in ('reagente','consumivel','material','equipamento_consumivel','servico','insumo')),
+  unidade_referencia text,
+  finalidade text,
+  observacoes text,
+  ativo boolean not null default true,
+  criado_em timestamptz not null default now()
+);
+
+comment on table tipo_insumos is
+  'Tipos tecnicos genericos para calculo, analise e padronizacao cadastral. Itens especificos/SKUs permanecem em insumos.';
+comment on column tipo_insumos.nome is
+  'Nome tecnico normalizado, ex.: Alcool etilico 70%, Ponteira 200 uL, Kit Illumina.';
+comment on column tipo_insumos.classe is
+  'Classificacao conceitual do tipo: reagente, consumivel, material, equipamento_consumivel, servico ou insumo.';
+comment on column tipo_insumos.unidade_referencia is
+  'Unidade preferencial para analise de consumo deste tipo tecnico.';
+
+alter table tipo_insumos enable row level security;
+create policy authenticated_all_tipo_insumos on tipo_insumos
+  for all to authenticated using (true) with check (true);
+create policy anon_read_tipo_insumos on tipo_insumos
+  for select to anon using (true);
+
+alter table insumos
+  add column if not exists tipo_insumo_id bigint references tipo_insumos(id) on delete set null;
+
+comment on column insumos.tipo_insumo_id is
+  'Tipo tecnico generico usado para calculo, analise e padronizacao. O registro em insumos continua sendo o item especifico/SKU operacional.';
+comment on column insumos.nome_item is
+  'Categoria curta legada. Preferir tipo_insumo_id para normalizacao tecnica.';
+
+create index if not exists idx_insumos_tipo_insumo_id on insumos (tipo_insumo_id);
+create index if not exists idx_tipo_insumos_classe on tipo_insumos (classe);
+
+create trigger aud_tipo_insumos
+  after insert or update or delete on tipo_insumos
+  for each row execute function fn_auditoria();
+
+grant all on tipo_insumos to authenticated, service_role;
+grant select on tipo_insumos to anon;
+grant usage, select on all sequences in schema public to authenticated, service_role;
 
 commit;
