@@ -467,7 +467,7 @@ export default async function ParametrosEconomicosPage() {
 function InfoParametro({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-muted/50 p-2">
-      <p className="text-muted-foreground/80">{label}</p>
+      <p className="text-muted-foreground">{label}</p>
       <p className="mt-1 font-medium text-foreground">{value}</p>
     </div>
   );

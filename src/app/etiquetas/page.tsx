@@ -109,7 +109,7 @@ export default async function EtiquetasPage({
               Impressão simples de QR interno para lotes e unidades patrimoniais. Esta página é somente leitura.
             </p>
           </div>
-          <span className="rounded-md bg-card px-4 py-2 text-sm font-medium text-white dark:bg-card">
+          <span className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
             Use Ctrl+P para imprimir
           </span>
         </div>

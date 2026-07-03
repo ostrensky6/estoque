@@ -99,7 +99,7 @@ export default async function AuditoriaPage({
               href={t ? `/auditoria?tabela=${t}` : "/auditoria"}
               className={`rounded-full px-3 py-1 ${
                 (tabela ?? "") === t
-                  ? "bg-card text-white dark:bg-card"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-muted text-foreground hover:bg-muted/80"
               }`}
             >

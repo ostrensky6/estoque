@@ -83,7 +83,7 @@ export default async function ComprasPage() {
                 <h2 className="text-sm font-semibold text-warning-strong">
                   Sugestões de compra ({Math.max(sugestoes.length, sugestoesHistoricas.length)})
                 </h2>
-                <p className="mt-1 text-xs text-warning-strong/80">
+                <p className="mt-1 text-xs text-warning-strong">
                   Combina ponto configurado com consumo histórico, lead time e estoque de segurança.
                 </p>
               </div>
@@ -111,7 +111,7 @@ export default async function ComprasPage() {
               <h2 className="text-sm font-semibold text-info-strong">
                 Reposição automática
               </h2>
-              <p className="mt-1 max-w-2xl text-xs leading-5 text-info-strong/80">
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-info-strong">
                 A mesma rotina que será agendada no Supabase cron pode ser disparada manualmente aqui.
                 Agendamento diário e e-mail externo dependem das credenciais/configuração do Supabase cron e Resend.
               </p>

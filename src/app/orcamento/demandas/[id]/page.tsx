@@ -971,7 +971,7 @@ export default async function DemandaDetalhe({
               <textarea {...hydrationSafe} name="observacoes" rows={3} defaultValue={demanda.observacoes ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div className="sm:col-span-2">
-              <button className="rounded-md bg-card px-4 py-2 text-sm font-medium text-white hover:bg-muted dark:bg-card">
+              <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                 Salvar demanda
               </button>
             </div>

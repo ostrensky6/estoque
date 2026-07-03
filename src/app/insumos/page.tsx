@@ -82,7 +82,7 @@ export default async function InsumosPage({
               href={`/insumos?analise=${encodeURIComponent(a.codigo)}`}
               className={`rounded-full px-3 py-1 text-xs ${
                 a.codigo === atual
-                  ? "bg-card text-white dark:bg-card"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-muted text-foreground"
               }`}
             >

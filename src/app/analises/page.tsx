@@ -244,7 +244,7 @@ function AnaliseCard({ item }: { item: DiagnosticoAnalise }) {
 function Mini({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-muted/50 px-3 py-2">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground/80">{label}</p>
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-0.5 font-medium tabular-nums">{value}</p>
     </div>
   );
