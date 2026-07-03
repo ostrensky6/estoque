@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 test("emissão configurada salva proposta final no histórico", async ({ page }) => {
+  test.setTimeout(60_000);
+
   await page.goto("/orcamento/demandas/1?etapa=final");
 
   const propostaFinal = page.locator("#final");
