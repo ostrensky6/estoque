@@ -125,13 +125,13 @@ export function SideNav({
                   className={cn(
                     "relative flex h-10 w-10 items-center justify-center rounded-md transition-colors",
                     ativo
-                      ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-200"
-                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100",
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                   )}
                 >
                   {ativo && (
                     <span
-                      className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-brand-500"
+                      className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-primary"
                       aria-hidden="true"
                     />
                   )}
@@ -159,16 +159,16 @@ export function SideNav({
             className={cn(
               "mb-1.5 flex items-center gap-2 rounded-md px-2.5 py-2.5 text-left transition-colors last:mb-0",
               temLinkAtivo
-                ? "bg-brand-50 text-slate-950 ring-1 ring-brand-100 dark:bg-brand-950/30 dark:text-slate-100 dark:ring-brand-900/60"
-                : "text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-zinc-100",
+                ? "bg-primary/10 font-semibold text-primary"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
             )}
           >
             <span
               className={cn(
                 "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border",
                 temLinkAtivo
-                  ? "border-brand-200 bg-white text-brand-700 dark:border-brand-900/70 dark:bg-zinc-950 dark:text-brand-300"
-                  : "border-slate-200 bg-white text-slate-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-500",
+                  ? "border-primary/30 bg-card text-primary"
+                  : "border-border bg-card text-muted-foreground",
               )}
             >
               <GrupoIcone className="h-4 w-4" />

@@ -28,8 +28,8 @@ type DiagnosticoAnalise = {
 };
 
 const card =
-  "rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900";
-const subtle = "text-sm text-zinc-500 dark:text-zinc-400";
+  "rounded-lg border border-border bg-card p-4 shadow-sm";
+const subtle = "text-sm text-muted-foreground";
 
 function statusTextualIndicaRevisao(status: string | null) {
   return /experimental|experimento|revis|avali|pend|todo/i.test(status ?? "");
@@ -47,8 +47,8 @@ function rotuloPrincipal(analise: AnaliseCatalogo) {
 
 function badgeAtivo(ativo: boolean) {
   return ativo
-    ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900"
-    : "bg-zinc-100 text-zinc-600 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700";
+    ? "bg-success-soft text-success-strong ring-success-strong/30"
+    : "bg-muted text-muted-foreground ring-border";
 }
 
 export default async function AnalisesPage() {
@@ -141,10 +141,10 @@ export default async function AnalisesPage() {
   ];
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-7xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="max-w-3xl">
-          <h1 className="text-2xl font-semibold tracking-tight">Analises</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Analises</h1>
           <p className={`mt-2 ${subtle}`}>
             Ficha tecnica operacional em modo somente leitura. Esta etapa reorganiza a visao do cadastro atual
             sem criar tabelas, aplicar migrations ou alterar regras de orcamento, estoque e compras.
@@ -164,12 +164,12 @@ export default async function AnalisesPage() {
             <section key={grupo.id}>
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                     {grupo.titulo}
                   </h2>
-                  <p className="mt-1 text-xs text-zinc-500">{grupo.descricao}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{grupo.descricao}</p>
                 </div>
-                <span className="text-xs font-medium text-zinc-500">{grupo.itens.length} analises</span>
+                <span className="text-xs font-medium text-muted-foreground">{grupo.itens.length} analises</span>
               </div>
 
               <div className="mt-3 grid gap-3 lg:grid-cols-2">
@@ -177,7 +177,7 @@ export default async function AnalisesPage() {
                   <AnaliseCard key={item.analise.codigo} item={item} />
                 ))}
                 {grupo.itens.length === 0 && (
-                  <div className="rounded-lg border border-dashed border-zinc-300 p-6 text-sm text-zinc-500 dark:border-zinc-700">
+                  <div className="rounded-lg border border-dashed border-input p-6 text-sm text-muted-foreground">
                     Nenhuma analise neste grupo.
                   </div>
                 )}
@@ -193,7 +193,7 @@ export default async function AnalisesPage() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className={card}>
-      <p className="text-xs text-zinc-500">{label}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
     </div>
   );
@@ -205,14 +205,14 @@ function AnaliseCard({ item }: { item: DiagnosticoAnalise }) {
     <Link href={`/analises/${encodeURIComponent(analise.codigo)}`} className={`${card} block hover:border-brand-300`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-mono text-xs font-medium text-zinc-500">{analise.codigo}</p>
+          <p className="font-mono text-xs font-medium text-muted-foreground">{analise.codigo}</p>
           <h3 className="mt-1 text-base font-semibold">{rotuloPrincipal(analise)}</h3>
-          {analise.descricao && <p className="mt-1 line-clamp-2 text-sm text-zinc-500">{analise.descricao}</p>}
+          {analise.descricao && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{analise.descricao}</p>}
         </div>
         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${badgeAtivo(analise.ativo)}`}>
           {analise.ativo ? "Ativa" : "Inativa"}
         </span>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${analise.ofertavel ? "bg-brand-50 text-brand-700 ring-brand-200 dark:bg-brand-950/40 dark:text-brand-300 dark:ring-brand-900" : "bg-zinc-100 text-zinc-600 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700"}`}>
+        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${analise.ofertavel ? "bg-brand-50 text-brand-700 ring-brand-200 dark:bg-brand-950/40 dark:text-brand-300 dark:ring-brand-900" : "bg-muted text-muted-foreground ring-border"}`}>
           {analise.ofertavel ? "Ofertavel" : "Nao ofertavel"}
         </span>
       </div>
@@ -223,7 +223,7 @@ function AnaliseCard({ item }: { item: DiagnosticoAnalise }) {
         <Mini label="Equip." value={String(item.nEquipamentos)} />
         <Mini label="Preco" value={item.preco != null && item.preco > 0 ? formatCurrency(item.preco) : "-"} />
       </div>
-      <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-500">
+      <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
         <span>{item.amostrasDia > 0 ? `${formatNumber(item.amostrasDia)} amostras/dia` : "capacidade nao calculada"}</span>
         <span>{item.tempoBancada > 0 ? `${formatNumber(item.tempoBancada)} h bancada/amostra` : "tempo de bancada incompleto"}</span>
         {analise.status && <span>Status: {analise.status}</span>}
@@ -231,7 +231,7 @@ function AnaliseCard({ item }: { item: DiagnosticoAnalise }) {
       {item.avisos.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {item.avisos.map((aviso) => (
-            <span key={aviso} className="rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+            <span key={aviso} className="rounded-full bg-warning-soft px-2 py-1 text-xs text-warning-strong">
               {aviso}
             </span>
           ))}
@@ -243,8 +243,8 @@ function AnaliseCard({ item }: { item: DiagnosticoAnalise }) {
 
 function Mini({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-zinc-50 px-3 py-2 dark:bg-zinc-950">
-      <p className="text-[11px] uppercase tracking-wide text-zinc-400">{label}</p>
+    <div className="rounded-md bg-muted/50 px-3 py-2">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-0.5 font-medium tabular-nums">{value}</p>
     </div>
   );

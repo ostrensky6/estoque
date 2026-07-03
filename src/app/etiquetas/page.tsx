@@ -45,7 +45,7 @@ function filtroTipo(value: string | undefined): "todos" | "lotes" | "equipamento
 
 function LabelShell({ children }: { children: React.ReactNode }) {
   return (
-    <article className="break-inside-avoid rounded-md border border-zinc-300 bg-white p-3 text-zinc-950 shadow-sm print:border-zinc-900 print:shadow-none">
+    <article className="break-inside-avoid rounded-md border border-input bg-card p-3 text-foreground shadow-sm print:border-border print:shadow-none">
       {children}
     </article>
   );
@@ -87,7 +87,7 @@ export default async function EtiquetasPage({
   const total = lotes.length + equipamentos.length;
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:text-zinc-100">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <style>{`
         @media print {
           body { background: white !important; }
@@ -96,35 +96,35 @@ export default async function EtiquetasPage({
           @page { size: A4; margin: 12mm; }
         }
       `}</style>
-      <main className="mx-auto max-w-7xl px-6 py-10 print:max-w-none print:px-0 print:py-0">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 print:max-w-none print:px-0 print:py-0">
         <div className="no-print flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Estoque · Identificação interna
             </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+            <h1 className="mt-1 text-xl font-semibold tracking-tight">
               Etiquetas internas
             </h1>
-            <p className="mt-1 max-w-3xl text-sm text-zinc-500">
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               Impressão simples de QR interno para lotes e unidades patrimoniais. Esta página é somente leitura.
             </p>
           </div>
-          <span className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900">
+          <span className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
             Use Ctrl+P para imprimir
           </span>
         </div>
 
         <div className="no-print mt-6 flex flex-wrap gap-2 text-sm">
-          <Link href="/etiquetas" className={`rounded-md border px-3 py-1.5 ${tipo === "todos" ? "border-brand-400 bg-brand-50 text-brand-700" : "border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"}`}>
+          <Link href="/etiquetas" className={`rounded-md border px-3 py-1.5 ${tipo === "todos" ? "border-brand-400 bg-brand-50 text-brand-700" : "border-border hover:bg-muted/50"}`}>
             Todas
           </Link>
-          <Link href="/etiquetas?tipo=lotes" className={`rounded-md border px-3 py-1.5 ${tipo === "lotes" ? "border-brand-400 bg-brand-50 text-brand-700" : "border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"}`}>
+          <Link href="/etiquetas?tipo=lotes" className={`rounded-md border px-3 py-1.5 ${tipo === "lotes" ? "border-brand-400 bg-brand-50 text-brand-700" : "border-border hover:bg-muted/50"}`}>
             Lotes
           </Link>
-          <Link href="/etiquetas?tipo=equipamentos" className={`rounded-md border px-3 py-1.5 ${tipo === "equipamentos" ? "border-brand-400 bg-brand-50 text-brand-700" : "border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"}`}>
+          <Link href="/etiquetas?tipo=equipamentos" className={`rounded-md border px-3 py-1.5 ${tipo === "equipamentos" ? "border-brand-400 bg-brand-50 text-brand-700" : "border-border hover:bg-muted/50"}`}>
             Equipamentos
           </Link>
-          <span className="rounded-md bg-zinc-100 px-3 py-1.5 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+          <span className="rounded-md bg-muted px-3 py-1.5 text-muted-foreground">
             {total} etiqueta(s)
           </span>
         </div>
@@ -136,19 +136,19 @@ export default async function EtiquetasPage({
             return (
               <LabelShell key={`lote-${lote.id}`}>
                 <div className="flex gap-3">
-                  <QrCode value={url} label={`QR do lote ${lote.id}`} size={112} className="shrink-0 rounded bg-white" />
+                  <QrCode value={url} label={`QR do lote ${lote.id}`} size={112} className="shrink-0 rounded bg-card" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Lote</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lote</p>
                     <h2 className="mt-1 truncate text-base font-semibold" title={insumo?.especificacao ?? undefined}>
                       {insumo?.especificacao ?? `Lote #${lote.id}`}
                     </h2>
                     <dl className="mt-2 grid gap-1 text-xs">
-                      <div><dt className="inline text-zinc-500">ID Kontrol: </dt><dd className="inline font-medium">#{lote.id}</dd></div>
-                      <div><dt className="inline text-zinc-500">Lote: </dt><dd className="inline font-mono">{lote.codigo_lote ?? "—"}</dd></div>
-                      <div><dt className="inline text-zinc-500">Validade: </dt><dd className="inline">{formatDate(lote.validade)}</dd></div>
-                      <div><dt className="inline text-zinc-500">Saldo: </dt><dd className="inline">{fmt(lote.quantidade_atual)} {insumo?.unidade ?? ""}</dd></div>
+                      <div><dt className="inline text-muted-foreground">ID Kontrol: </dt><dd className="inline font-medium">#{lote.id}</dd></div>
+                      <div><dt className="inline text-muted-foreground">Lote: </dt><dd className="inline font-mono">{lote.codigo_lote ?? "—"}</dd></div>
+                      <div><dt className="inline text-muted-foreground">Validade: </dt><dd className="inline">{formatDate(lote.validade)}</dd></div>
+                      <div><dt className="inline text-muted-foreground">Saldo: </dt><dd className="inline">{fmt(lote.quantidade_atual)} {insumo?.unidade ?? ""}</dd></div>
                     </dl>
-                    <p className="mt-2 break-all font-mono text-[11px] text-zinc-600">{url}</p>
+                    <p className="mt-2 break-all font-mono text-[11px] text-muted-foreground">{url}</p>
                     <Link href={`/etiquetas?tipo=lotes&id=${lote.id}`} className="no-print mt-2 inline-block text-xs font-medium text-brand-700 hover:underline">
                       Imprimir somente esta
                     </Link>
@@ -164,18 +164,18 @@ export default async function EtiquetasPage({
             return (
               <LabelShell key={`equipamento-${unidade.id}`}>
                 <div className="flex gap-3">
-                  <QrCode value={url} label={`QR da unidade ${unidade.id}`} size={112} className="shrink-0 rounded bg-white" />
+                  <QrCode value={url} label={`QR da unidade ${unidade.id}`} size={112} className="shrink-0 rounded bg-card" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Equipamento</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Equipamento</p>
                     <h2 className="mt-1 truncate text-base font-semibold" title={equipamento?.nome ?? undefined}>
                       {equipamento?.nome ?? `Equipamento #${unidade.equipamento_id}`}
                     </h2>
                     <dl className="mt-2 grid gap-1 text-xs">
-                      <div><dt className="inline text-zinc-500">ID Kontrol: </dt><dd className="inline font-medium">#{unidade.id}</dd></div>
-                      <div><dt className="inline text-zinc-500">Patrimônio: </dt><dd className="inline font-mono">{unidade.codigo_patrimonio ?? "—"}</dd></div>
-                      <div><dt className="inline text-zinc-500">Série: </dt><dd className="inline font-mono">{unidade.numero_serie ?? "—"}</dd></div>
+                      <div><dt className="inline text-muted-foreground">ID Kontrol: </dt><dd className="inline font-medium">#{unidade.id}</dd></div>
+                      <div><dt className="inline text-muted-foreground">Patrimônio: </dt><dd className="inline font-mono">{unidade.codigo_patrimonio ?? "—"}</dd></div>
+                      <div><dt className="inline text-muted-foreground">Série: </dt><dd className="inline font-mono">{unidade.numero_serie ?? "—"}</dd></div>
                     </dl>
-                    <p className="mt-2 break-all font-mono text-[11px] text-zinc-600">{url}</p>
+                    <p className="mt-2 break-all font-mono text-[11px] text-muted-foreground">{url}</p>
                     <Link href={`/etiquetas?tipo=equipamentos&id=${unidade.id}`} className="no-print mt-2 inline-block text-xs font-medium text-brand-700 hover:underline">
                       Imprimir somente esta
                     </Link>
@@ -186,7 +186,7 @@ export default async function EtiquetasPage({
           })}
 
           {total === 0 && (
-            <div className="rounded-md border border-dashed border-zinc-300 px-4 py-10 text-center text-sm text-zinc-500 dark:border-zinc-700">
+            <div className="rounded-md border border-dashed border-input px-4 py-10 text-center text-sm text-muted-foreground">
               Nenhuma etiqueta encontrada para o filtro atual.
             </div>
           )}

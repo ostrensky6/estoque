@@ -38,7 +38,7 @@ function colunas(insumos: Insumo[]): ColumnDef<RecebimentoItemRow, unknown>[] {
       accessorKey: "pedidoNumero",
       header: "Nº",
       cell: ({ row }) => (
-        <Link href={`/pedido/${row.original.pedidoId}`} className="font-mono text-xs text-zinc-500 hover:underline">
+        <Link href={`/pedido/${row.original.pedidoId}`} className="font-mono text-xs text-muted-foreground hover:underline">
           {row.original.pedidoNumero}
         </Link>
       ),
@@ -49,7 +49,7 @@ function colunas(insumos: Insumo[]): ColumnDef<RecebimentoItemRow, unknown>[] {
       cell: ({ row }) => (
         <div>
           <p className="font-medium">{row.original.especificacao}</p>
-          <p className="text-xs text-zinc-500">{row.original.pedidoTitulo}</p>
+          <p className="text-xs text-muted-foreground">{row.original.pedidoTitulo}</p>
         </div>
       ),
     },
@@ -131,7 +131,7 @@ export function RecebimentoItensTable({
       ]}
       getMobileTitle={(row) => (
         <span>
-          <span className="font-mono text-xs text-zinc-400">{row.pedidoNumero}</span> · {row.especificacao}
+          <span className="font-mono text-xs text-muted-foreground/80">{row.pedidoNumero}</span> · {row.especificacao}
         </span>
       )}
       getMobileDescription={(row) => `${row.projeto} · ${row.quantidade} ${row.unidade ?? ""}`}

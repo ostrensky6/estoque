@@ -26,7 +26,7 @@ export function ModuleTopNavClient({
   return (
     <nav
       aria-label={`Navegacao de ${appModule.label}`}
-      className="border-b border-border bg-white/90 py-2 backdrop-blur dark:bg-zinc-950/90"
+      className="border-b border-border bg-card/90 py-2 backdrop-blur"
     >
       <div className="mx-auto max-w-7xl px-6 flex w-full gap-2 overflow-x-auto">
         {items.map((child) => {

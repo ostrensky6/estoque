@@ -44,14 +44,14 @@ async function registrarEvento(args: {
 
 function EstadoDesconhecido({ codigo }: { codigo: string }) {
   return (
-    <main className="mx-auto max-w-lg px-6 py-12">
-      <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+    <main className="mx-auto max-w-lg px-4 py-6 sm:px-6 sm:py-8">
+      <h1 className="text-xl font-semibold text-foreground">
         Codigo nao encontrado
       </h1>
-      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+      <p className="mt-2 text-sm text-muted-foreground">
         O Kontrol registrou a leitura, mas nao encontrou uma entidade ativa para este codigo.
       </p>
-      <p className="mt-4 rounded-md bg-slate-100 px-3 py-2 font-mono text-xs text-slate-700 dark:bg-zinc-900 dark:text-zinc-300">
+      <p className="mt-4 rounded-md bg-muted px-3 py-2 font-mono text-xs text-foreground">
         {codigo}
       </p>
       <TriagemCodigoDesconhecidoForm codigo={codigo} />

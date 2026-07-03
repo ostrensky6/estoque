@@ -49,30 +49,30 @@ function SidebarContent({
       <Link
         href="/"
         onClick={onNavigate}
-        className="flex items-center justify-center border-b border-slate-100 px-4 py-5 dark:border-zinc-900"
+        className="flex items-center justify-center border-b border-border/70 px-4 py-4"
       >
         <Image
           src="/logos/kontrol-app.png"
           alt="Kontrol App"
           width={1448}
           height={1086}
-          className="h-auto w-48 max-w-full object-contain"
+          className="h-auto w-40 max-w-full object-contain"
           priority
           unoptimized
         />
       </Link>
 
-      <div className="border-b border-slate-100 px-3 py-2.5 dark:border-zinc-900">
+      <div className="border-b border-border/70 px-3 py-2.5">
         <div className="flex items-center gap-2">
           <Button
             type="button"
             variant="outline"
             onClick={abrirPaletaComandos}
-            className="h-8 min-w-0 flex-1 justify-start gap-2 border-slate-200 bg-white text-sm text-slate-500 shadow-none hover:text-slate-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-100"
+            className="h-8 min-w-0 flex-1 justify-start gap-2 border-border bg-background text-sm text-muted-foreground shadow-none hover:text-foreground"
           >
             <Search className="h-3.5 w-3.5" />
             <span className="min-w-0 flex-1 truncate text-left">Buscar ou executar</span>
-            <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
               Ctrl K
             </kbd>
           </Button>
@@ -84,7 +84,7 @@ function SidebarContent({
               onClick={onCollapse}
               aria-label="Colapsar menu"
               title="Colapsar menu"
-              className="hidden h-8 w-8 shrink-0 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 md:inline-flex"
+              className="hidden h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground md:inline-flex"
             >
               <PanelLeftClose className="h-4 w-4" />
             </Button>
@@ -94,20 +94,20 @@ function SidebarContent({
 
       <SideNav groups={groups} onNavigate={onNavigate} />
 
-      <div className="border-t border-slate-100 px-5 py-3 dark:border-zinc-900">
-        <p className="truncate text-xs font-medium text-slate-600 dark:text-slate-300">
+      <div className="border-t border-border/70 px-5 py-3">
+        <p className="truncate text-xs font-medium text-foreground">
           {perfil?.nome || perfil?.email || userEmail}
         </p>
         <div className="mt-1.5 flex items-center justify-between">
           {perfil?.papel && (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-zinc-800 dark:text-zinc-300">
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
               {PAPEL_LABEL[perfil.papel] ?? perfil.papel}
             </span>
           )}
           <div className="flex items-center gap-1">
             <ThemeToggle />
             <form action={sair}>
-              <button className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-zinc-800">
+              <button className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-danger-soft hover:text-danger-strong">
                 Sair
               </button>
             </form>
@@ -115,33 +115,33 @@ function SidebarContent({
         </div>
       </div>
 
-      <footer className="border-t border-slate-100 px-4 py-3 dark:border-zinc-900">
+      <footer className="border-t border-border/70 px-4 py-3">
         <div className="flex items-center justify-center gap-4">
           <Image
             src="/logos/gia.svg"
             alt="GIA"
             width={1767}
             height={1434}
-            className="h-10 w-auto object-contain opacity-80 dark:opacity-100"
+            className="h-8 w-auto object-contain opacity-80 dark:opacity-100"
             unoptimized
           />
-          <span className="h-9 w-px bg-slate-200 dark:bg-zinc-800" aria-hidden="true" />
+          <span className="h-8 w-px bg-border" aria-hidden="true" />
           <Image
             src="/logos/atgc.svg"
             alt="ATGC"
             width={250}
             height={250}
-            className="h-10 w-auto object-contain opacity-90"
+            className="h-8 w-auto object-contain opacity-90"
             unoptimized
           />
         </div>
-        <p className="mt-2 text-center text-[11px] font-medium leading-tight text-slate-600 dark:text-zinc-300">
+        <p className="mt-2 text-center text-[11px] font-medium leading-tight text-muted-foreground">
           {APP_NAME}
         </p>
-        <p className="text-center text-[10px] leading-tight text-slate-500 dark:text-zinc-400">
+        <p className="text-center text-[10px] leading-tight text-muted-foreground">
           Uma parceria GIA &amp; ATGC
         </p>
-        <p className="mt-0.5 text-center text-[10px] leading-tight text-slate-500 dark:text-zinc-400">
+        <p className="mt-0.5 text-center text-[10px] leading-tight text-muted-foreground">
           Versão {APP_VERSION} · {APP_YEAR}
         </p>
       </footer>
@@ -157,10 +157,10 @@ function CollapsedSidebar({
   onExpand: () => void;
 }) {
   return (
-    <aside className="hidden shrink-0 flex-col border-r border-slate-200/80 bg-white md:sticky md:top-0 md:flex md:h-dvh md:w-14 md:items-center md:shadow-[1px_0_0_0_rgba(15,23,42,0.04),4px_0_24px_-12px_rgba(15,23,42,0.12)] dark:border-zinc-800 dark:bg-zinc-950">
+    <aside className="hidden shrink-0 flex-col border-r border-border bg-card md:sticky md:top-0 md:flex md:h-dvh md:w-14 md:items-center md:shadow-[1px_0_0_0_rgba(15,23,42,0.04),4px_0_24px_-12px_rgba(15,23,42,0.12)]">
       <Link
         href="/"
-        className="flex h-14 w-full items-center justify-center border-b border-slate-100 dark:border-zinc-900"
+        className="flex h-14 w-full items-center justify-center border-b border-border/70"
         title="Inicio"
         aria-label="Inicio"
       >
@@ -175,7 +175,7 @@ function CollapsedSidebar({
         />
       </Link>
 
-      <div className="flex w-full flex-col items-center gap-1 border-b border-slate-100 px-2 py-2 dark:border-zinc-900">
+      <div className="flex w-full flex-col items-center gap-1 border-b border-border/70 px-2 py-2">
         <Button
           type="button"
           variant="ghost"
@@ -183,7 +183,7 @@ function CollapsedSidebar({
           onClick={onExpand}
           aria-label="Expandir menu"
           title="Expandir menu"
-          className="h-10 w-10 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          className="h-10 w-10 text-muted-foreground hover:text-foreground"
         >
           <PanelLeftOpen className="h-4 w-4" />
         </Button>
@@ -194,7 +194,7 @@ function CollapsedSidebar({
           onClick={abrirPaletaComandos}
           aria-label="Buscar ou executar"
           title="Buscar ou executar"
-          className="h-10 w-10 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          className="h-10 w-10 text-muted-foreground hover:text-foreground"
         >
           <Search className="h-4 w-4" />
         </Button>
@@ -202,14 +202,14 @@ function CollapsedSidebar({
 
       <SideNav groups={groups} collapsed />
 
-      <div className="flex w-full flex-col items-center gap-1 border-t border-slate-100 px-2 py-3 dark:border-zinc-900">
+      <div className="flex w-full flex-col items-center gap-1 border-t border-border/70 px-2 py-3">
         <ThemeToggle />
         <form action={sair}>
           <button
             type="submit"
             aria-label="Sair"
             title="Sair"
-            className="flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-red-300"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-danger-soft hover:text-danger-strong"
           >
             <LogOut className="h-4 w-4" />
           </button>
@@ -253,20 +253,20 @@ export function Sidebar({
   return (
     <>
       {/* Barra superior (só mobile) */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 py-2.5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950 md:hidden">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/95 px-4 py-2.5 backdrop-blur md:hidden">
         <Button
           type="button"
           aria-label="Abrir menu"
           onClick={() => setOpen(true)}
           variant="ghost"
           size="icon"
-          className="h-9 w-9 text-slate-600 dark:text-slate-300"
+          className="h-9 w-9 text-muted-foreground"
         >
           <Menu className="h-5 w-5" />
         </Button>
         <Link
           href="/"
-          className="flex items-center gap-2 font-bold tracking-tight text-slate-900 dark:text-slate-100"
+          className="flex items-center gap-2 font-bold tracking-tight text-foreground"
         >
           <Image
             src="/logos/kontrol-app.png"
@@ -284,7 +284,7 @@ export function Sidebar({
           onClick={abrirPaletaComandos}
           variant="ghost"
           size="icon"
-          className="h-9 w-9 text-slate-600 dark:text-slate-300"
+          className="h-9 w-9 text-muted-foreground"
         >
           <Search className="h-5 w-5" />
         </Button>
@@ -294,7 +294,7 @@ export function Sidebar({
       {collapsed ? (
         <CollapsedSidebar groups={groups} onExpand={() => atualizarCollapsed(false)} />
       ) : (
-        <aside className="hidden shrink-0 flex-col border-r border-slate-200/80 bg-white md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:shadow-[1px_0_0_0_rgba(15,23,42,0.04),4px_0_24px_-12px_rgba(15,23,42,0.12)] dark:border-zinc-800 dark:bg-zinc-950">
+        <aside className="hidden shrink-0 flex-col border-r border-border bg-card md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:shadow-[1px_0_0_0_rgba(15,23,42,0.04),4px_0_24px_-12px_rgba(15,23,42,0.12)]">
           <SidebarContent
             groups={groups}
             perfil={perfil}
@@ -306,7 +306,7 @@ export function Sidebar({
 
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerContent
-          className="left-0 right-auto w-[18rem] max-w-[86vw] border-l-0 border-r border-border bg-white p-0 dark:bg-zinc-950 md:hidden"
+          className="left-0 right-auto w-[18rem] max-w-[86vw] border-l-0 border-r border-border bg-card p-0 md:hidden"
           showCloseButton
         >
           <DrawerTitle className="sr-only">Menu de navegação</DrawerTitle>

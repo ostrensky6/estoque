@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { DataTable } from "@/components/common/DataTable";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/app/StatusBadge";
 
 export type DemandaRow = {
   id: number;
@@ -50,8 +51,8 @@ const columns: ColumnDef<DemandaRow, unknown>[] = [
       <Badge
         className={
           row.original.completa
-            ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
-            : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+            ? "bg-success-soft text-success-strong"
+            : "bg-warning-soft text-warning-strong"
         }
       >
         {row.original.completudeLabel}
@@ -66,20 +67,6 @@ const columns: ColumnDef<DemandaRow, unknown>[] = [
     cell: ({ row }) => <StatusBadge status={row.original.status} label={row.original.statusLabel} />,
   },
 ];
-
-function StatusBadge({ status, label }: { status: string; label: string }) {
-  const className =
-    status === "nova"
-      ? "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300"
-      : status === "em_analise"
-        ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
-        : status === "orcada" || status === "aprovada"
-          ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
-          : status === "cancelada"
-            ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
-            : "bg-secondary text-secondary-foreground";
-  return <Badge className={className}>{label}</Badge>;
-}
 
 export function DemandasTable({ rows }: { rows: DemandaRow[] }) {
   return (
@@ -125,8 +112,8 @@ export function DemandasTable({ rows }: { rows: DemandaRow[] }) {
           <Badge
             className={
               row.completa
-                ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
-                : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+                ? "bg-success-soft text-success-strong"
+                : "bg-warning-soft text-warning-strong"
             }
           >
             {row.completudeLabel}

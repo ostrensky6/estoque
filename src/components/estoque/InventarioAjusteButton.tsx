@@ -27,13 +27,13 @@ export function InventarioAjusteButton({ contagemId }: { contagemId: number }) {
         type="button"
         onClick={aplicar}
         disabled={pending}
-        className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+        className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-medium text-white hover:bg-primary/90 disabled:opacity-50"
       >
         {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
         Aplicar ajuste
       </button>
       {state.message && (
-        <span className={`max-w-48 text-[11px] ${state.ok ? "text-brand-700" : "text-red-600"}`}>
+        <span className={`max-w-48 text-[11px] ${state.ok ? "text-brand-700" : "text-danger-strong"}`}>
           {state.message}
         </span>
       )}

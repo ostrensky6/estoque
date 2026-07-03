@@ -15,8 +15,8 @@ const LABEL: Record<string, string> = {
 };
 const ACAO: Record<string, { label: string; cls: string }> = {
   insert: { label: "Criou", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
-  update: { label: "Alterou", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
-  delete: { label: "Removeu", cls: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300" },
+  update: { label: "Alterou", cls: "bg-info-soft text-info-strong" },
+  delete: { label: "Removeu", cls: "bg-danger-soft text-danger-strong" },
 };
 
 const IGNORAR = new Set(["criado_em", "atualizado_em"]);
@@ -47,8 +47,8 @@ export default async function AuditoriaPage({
 }) {
   if (!(await temPapel("gestor"))) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-16 text-center font-sans">
-        <p className="text-zinc-500">
+      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8 text-center font-sans">
+        <p className="text-muted-foreground">
           Acesso restrito — a trilha de auditoria é visível para papel gestor ou admin.
         </p>
       </main>
@@ -84,10 +84,10 @@ export default async function AuditoriaPage({
   });
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-5xl px-6 py-10">
-        <h1 className="text-2xl font-semibold tracking-tight">Auditoria</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+        <h1 className="text-xl font-semibold tracking-tight">Auditoria</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Trilha de alterações (quem · quando · o quê). Imutável — gravada
           automaticamente pelo banco.
         </p>
@@ -99,8 +99,8 @@ export default async function AuditoriaPage({
               href={t ? `/auditoria?tabela=${t}` : "/auditoria"}
               className={`rounded-full px-3 py-1 ${
                 (tabela ?? "") === t
-                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                  : "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-foreground hover:bg-muted/80"
               }`}
             >
               {t ? LABEL[t] : "Todas"}

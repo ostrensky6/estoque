@@ -145,27 +145,27 @@ export function PlanejamentoConferenciaLotes({
   }
 
   const inputCls =
-    "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-zinc-700 dark:bg-zinc-950";
+    "mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500";
   const conferenciasPorInsumo = new Map(conferencias.map((item) => [item.insumoId, item]));
   const podeSalvar = Boolean(loteEscaneado && insumoSelecionado && validacao?.ok);
 
   return (
-    <section className="mt-8 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <section className="mt-8 rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Separar material
           </h2>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Escaneie o lote físico para registrar a conferência antes de iniciar. Esta etapa não baixa estoque
             e não escolhe o lote da baixa definitiva.
           </p>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             A baixa real continua seguindo a rotina atual do banco; a conferência abaixo é rastreabilidade
             operacional do material separado.
           </p>
         </div>
-        <span className="rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+        <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
           {cameraStatus === "ativa"
             ? "Camera ativa"
             : cameraStatus === "iniciando"
@@ -189,14 +189,14 @@ export function PlanejamentoConferenciaLotes({
                 className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${
                   String(item.insumoId) === insumoId
                     ? "border-brand-400 bg-brand-50 dark:border-brand-700 dark:bg-brand-950/30"
-                    : "border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-950/40"
+                    : "border-border hover:bg-muted/50"
                 }`}
               >
                 <span className="font-medium">{item.especificacao}</span>
-                <span className="ml-2 text-xs text-zinc-500">
+                <span className="ml-2 text-xs text-muted-foreground">
                   {item.quantidadePrevista} {item.unidade ?? ""}
                 </span>
-                <span className="mt-1 block text-xs text-zinc-500">
+                <span className="mt-1 block text-xs text-muted-foreground">
                   Sugestão FEFO atual: {item.loteSugeridoLabel ?? "sem lote disponivel"}
                 </span>
                 {conferencia && (
@@ -209,16 +209,16 @@ export function PlanejamentoConferenciaLotes({
           })}
         </div>
 
-        <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-          <div className="overflow-hidden rounded-md border border-zinc-200 bg-zinc-950 dark:border-zinc-800">
-            <video ref={videoRef} muted playsInline className="aspect-video w-full bg-zinc-950 object-cover" />
+        <div className="rounded-lg border border-border p-3">
+          <div className="overflow-hidden rounded-md border border-border bg-card">
+            <video ref={videoRef} muted playsInline className="aspect-video w-full bg-card object-cover" />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={iniciarCamera}
               disabled={cameraStatus === "iniciando" || scanPending || submitPending}
-              className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {cameraStatus === "iniciando" ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -231,14 +231,14 @@ export function PlanejamentoConferenciaLotes({
               type="button"
               onClick={() => pararCamera()}
               disabled={cameraStatus === "parada" || submitPending}
-              className="rounded-md px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
             >
               Parar camera
             </button>
           </div>
 
           {cameraMessage && (
-            <p className="mt-3 flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+            <p className="mt-3 flex items-start gap-2 rounded-md bg-warning-soft px-3 py-2 text-xs text-warning-strong">
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               {cameraMessage}
             </p>
@@ -246,7 +246,7 @@ export function PlanejamentoConferenciaLotes({
 
           <div className="mt-3 flex gap-2">
             <div className="relative min-w-0 flex-1">
-              <Keyboard className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+              <Keyboard className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/80" />
               <input
                 value={codigoScanner}
                 onChange={(event) => setCodigoScanner(event.target.value)}
@@ -270,7 +270,7 @@ export function PlanejamentoConferenciaLotes({
               className={`mt-3 rounded-md px-3 py-2 text-xs ${
                 loteEscaneado && validacao?.ok
                   ? "bg-brand-50 text-brand-800 dark:bg-brand-950/30 dark:text-brand-300"
-                  : "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                  : "bg-warning-soft text-warning-strong"
               }`}
             >
               <p>{validacao?.message ?? resultadoScanner.message}</p>
@@ -304,7 +304,7 @@ export function PlanejamentoConferenciaLotes({
             <input type="hidden" name="lote_id" value={loteEscaneado?.id ?? ""} />
             <input type="hidden" name="quantidade_prevista" value={insumoSelecionado?.quantidadePrevista ?? ""} />
             <div>
-              <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
+              <label className="block text-xs font-medium text-muted-foreground">
                 Quantidade conferida
               </label>
               <input
@@ -318,10 +318,10 @@ export function PlanejamentoConferenciaLotes({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                Justificativa {precisaJustificativa && <span className="text-red-500">*</span>}
+              <label className="block text-xs font-medium text-muted-foreground">
+                Justificativa {precisaJustificativa && <span className="text-danger-strong">*</span>}
               </label>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Use apenas para documentar divergência física/FEFO. A baixa definitiva continua na rotina atual.
               </p>
               <textarea
@@ -333,7 +333,7 @@ export function PlanejamentoConferenciaLotes({
                 className={inputCls}
               />
               {state.errors?.justificativa && (
-                <p className="mt-1 text-xs text-red-600">{state.errors.justificativa}</p>
+                <p className="mt-1 text-xs text-danger-strong">{state.errors.justificativa}</p>
               )}
             </div>
 
@@ -342,7 +342,7 @@ export function PlanejamentoConferenciaLotes({
                 className={`rounded-md px-3 py-2 text-sm ${
                   state.ok
                     ? "bg-brand-50 text-brand-800 dark:bg-brand-950/30 dark:text-brand-300"
-                    : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                    : "bg-danger-soft text-danger-strong"
                 }`}
               >
                 {state.message}

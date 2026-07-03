@@ -40,7 +40,7 @@ export type LoteRow = {
 function SaldoStatusBadge({ status, label }: { status: SaldoRow["status"]; label: string }) {
   const className =
     status === "repor"
-      ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+      ? "bg-warning-soft text-warning-strong"
       : status === "sem_estoque"
         ? "bg-secondary text-secondary-foreground"
         : "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300";
@@ -51,13 +51,13 @@ function SaldoStatusBadge({ status, label }: { status: SaldoRow["status"]; label
 function LoteStatusBadge({ status, label }: { status: string; label: string }) {
   const className =
     status === "quarentena"
-      ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+      ? "bg-warning-soft text-warning-strong"
       : status === "aceito"
         ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
         : status === "em_uso"
-          ? "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
+          ? "bg-info-soft text-info-strong"
           : status === "bloqueado"
-            ? "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300"
+            ? "bg-danger-soft text-danger-strong"
             : "bg-secondary text-secondary-foreground";
 
   return <Badge className={className}>{label}</Badge>;

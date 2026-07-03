@@ -93,13 +93,13 @@ export function AssinaturaUsuarioForm({
   }
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+    <div className="rounded-md border border-border bg-muted/50 p-3">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex h-16 w-36 items-center justify-center rounded-md border border-dashed border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-950">
+        <div className="flex h-16 w-36 items-center justify-center rounded-md border border-dashed border-input bg-card">
           {preview ? (
             <img src={preview} alt="Assinatura do usuário" className="max-h-14 max-w-32 object-contain" />
           ) : (
-            <span className="text-[10px] text-zinc-400">Sem assinatura</span>
+            <span className="text-[10px] text-muted-foreground/80">Sem assinatura</span>
           )}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -122,7 +122,7 @@ export function AssinaturaUsuarioForm({
           )}
         </div>
       </div>
-      {mensagem && <p className="mt-2 text-xs text-zinc-500">{mensagem}</p>}
+      {mensagem && <p className="mt-2 text-xs text-muted-foreground">{mensagem}</p>}
     </div>
   );
 }

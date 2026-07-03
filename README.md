@@ -54,3 +54,10 @@ docs/modelo-dados.md     mapa das tabelas, fórmulas e achados de qualidade de d
 - Depreciação de equipamentos é **linear pela vida útil** (não o regime de 222 dias da planilha).
 - Todos os parâmetros de custeio ficam na tabela `parametros` (ajustáveis p/ simulação).
 - Realtime está desligado no `config.toml` (não usado; evita conflito de seed com outros projetos Supabase locais).
+
+## Design system (redesign 2026-07)
+
+- **Primitivas de página** em `src/components/app/`: `PageShell` (largura/padding), `PageHeader` (breadcrumbs + h1 + ações), `SectionCard`, `StatCard`, `EmptyState`, `FilterBar` e `StatusBadge` (dicionário central status→cor em `status.ts`).
+- **Regra de cor**: componentes usam apenas tokens semânticos (`bg-card`, `text-muted-foreground`, `border-border`, `bg-muted` e tons de status `*-soft`/`*-strong` definidos em `src/app/globals.css`). Proibido `slate-*`/`zinc-*` diretos. Exceções: `globals.css`, `src/components/theme/`, cores de séries de gráfico e o documento de emissão (`EmissaoFinalForm`/`orcamento/final/[id]`, identidade institucional GIA/ATGC).
+- **Tipografia**: título de página `text-xl font-semibold tracking-tight`; título de seção `text-sm font-semibold`; corpo `text-sm`; meta `text-xs text-muted-foreground`; números sempre `tabular-nums`.
+- Specs e planos do redesign: `docs/superpowers/specs/2026-07-02-redesign-visual-kontrol-design.md` e `docs/superpowers/plans/`.

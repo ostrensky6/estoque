@@ -8,10 +8,10 @@ export function classeEtapaFluxo(estado: EstadoEtapa, isAtual: boolean) {
     return "border border-brand-200 bg-brand-50/70 text-brand-800 dark:border-brand-800 dark:bg-brand-950/25 dark:text-brand-200";
   }
   if (estado === "bloqueado") {
-    return "border border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100";
+    return "border border-warning-strong/30 bg-warning-soft text-warning-strong";
   }
   if (estado === "pulado") {
-    return "border border-zinc-200 bg-zinc-50 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-500";
+    return "border border-border bg-muted/50 text-muted-foreground/80";
   }
-  return "border border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300";
+  return "border border-border bg-card text-muted-foreground";
 }

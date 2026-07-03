@@ -7,11 +7,11 @@ export const metadata = {
 
 export default function AjudaPage() {
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-5xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Central de Ajuda</h1>
-          <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+          <h1 className="text-xl font-semibold tracking-tight">Central de Ajuda</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Orientações de uso de todos os módulos do Kontrol. Pesquise pelo assunto ou abra o
             módulo diretamente para colocar em prática.
           </p>

@@ -70,23 +70,23 @@ export default async function RecebimentoPage() {
   const prontos = rows.filter((row) => row.podeReceber).length;
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-6xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Recebimento</h1>
-            <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+            <h1 className="text-xl font-semibold tracking-tight">Recebimento</h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
               Todos os itens de pedidos internos por estágio, até a chegada. Ao receber um item, a quantidade
               entra em estoque e o item sai desta lista.
             </p>
           </div>
           <div className="grid min-w-56 grid-cols-2 gap-2 text-xs">
-            <div className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-zinc-500">Aguardando</p>
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-muted-foreground">Aguardando</p>
               <p className="mt-1 text-xl font-semibold tabular-nums">{rows.length}</p>
             </div>
-            <div className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-zinc-500">Prontos p/ receber</p>
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-muted-foreground">Prontos p/ receber</p>
               <p className="mt-1 text-xl font-semibold tabular-nums text-leaf-700 dark:text-leaf-400">{prontos}</p>
             </div>
           </div>

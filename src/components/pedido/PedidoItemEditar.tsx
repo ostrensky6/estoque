@@ -31,7 +31,7 @@ export type PedidoItemEdit = {
 };
 
 const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+  "mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm";
 
 export function PedidoItemEditar({
   pedidoId,
@@ -45,7 +45,7 @@ export function PedidoItemEditar({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button className="inline-flex items-center gap-1 text-xs text-zinc-600 hover:underline dark:text-zinc-300">
+        <button className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline">
           <Pencil className="h-3.5 w-3.5" />
           Editar
         </button>
@@ -59,14 +59,14 @@ export function PedidoItemEditar({
           <input type="hidden" name="item_id" value={item.id} />
           <input type="hidden" name="pedido_interno_id" value={pedidoId} />
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Tipo</label>
+            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Tipo</label>
             <select name="tipo" defaultValue={item.tipo} className={inputCls}>
               <option value="material">Material</option>
               <option value="servico">Serviço</option>
             </select>
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Insumo existente</label>
+            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Insumo existente</label>
             <select name="insumo_id" defaultValue={item.insumo_id ?? ""} className={inputCls}>
               <option value="">—</option>
               {insumos.map((insumo) => (
@@ -75,40 +75,40 @@ export function PedidoItemEditar({
             </select>
           </div>
           <div className="sm:col-span-2">
-            <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Especificação</label>
+            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Especificação</label>
             <input name="especificacao" required defaultValue={item.especificacao} className={inputCls} />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Modelo</label>
+            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Modelo</label>
             <input name="modelo" defaultValue={item.modelo ?? ""} className={inputCls} />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Volume</label>
+            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Volume</label>
             <input name="volume" defaultValue={item.volume ?? ""} className={inputCls} />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Qtd</label>
+            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Qtd</label>
             <input name="quantidade" type="number" min="0.0001" step="any" required defaultValue={item.quantidade} className={inputCls} />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Unidade</label>
+            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Unidade</label>
             <input name="unidade" defaultValue={item.unidade ?? ""} className={inputCls} />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Orçamento prévio un.</label>
+            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Orçamento prévio un.</label>
             <input name="orcamento_previo" type="number" min="0" step="0.01" defaultValue={item.orcamento_previo ?? ""} className={inputCls} />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Fornecedor sugerido</label>
+            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Fornecedor sugerido</label>
             <input name="fornecedor_sugerido" defaultValue={item.fornecedor_sugerido ?? ""} className={inputCls} />
           </div>
           <div className="sm:col-span-2">
-            <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Observação</label>
+            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Observação</label>
             <input name="observacao" defaultValue={item.observacao ?? ""} className={inputCls} />
           </div>
           <DialogFooter className="sm:col-span-2">
             <DialogClose asChild>
-              <button type="button" className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">
+              <button type="button" className="rounded-md border border-input px-4 py-2 text-sm font-medium text-foreground hover:bg-muted">
                 Cancelar
               </button>
             </DialogClose>

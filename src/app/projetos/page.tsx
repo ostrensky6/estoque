@@ -4,15 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 const STATUS_PROJETO: Record<string, { label: string; cls: string }> = {
-  proposto: { label: "Proposto", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
+  proposto: { label: "Proposto", cls: "bg-warning-soft text-warning-strong" },
   ativo: { label: "Ativo", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
-  concluido: { label: "Concluído", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
-  cancelado: { label: "Cancelado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
+  concluido: { label: "Concluído", cls: "bg-info-soft text-info-strong" },
+  cancelado: { label: "Cancelado", cls: "bg-muted text-muted-foreground" },
 };
 
 const thCls =
-  "px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400";
-const tdCls = "px-3 py-2 text-sm text-slate-700 dark:text-zinc-200";
+  "px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground";
+const tdCls = "px-3 py-2 text-sm text-foreground";
 
 export default async function ProjetosPage() {
   const supabase = await createClient();
@@ -27,12 +27,12 @@ export default async function ProjetosPage() {
   const clienteNome = new Map((clientes ?? []).map((c) => [c.id, c.nome]));
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-slate-900 dark:bg-zinc-950 dark:text-slate-100">
-      <main className="mx-auto max-w-6xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Projetos</h1>
-            <p className="mt-1 max-w-3xl text-sm text-slate-500 dark:text-zinc-400">
+            <h1 className="text-xl font-semibold tracking-tight">Projetos</h1>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               Visão 360° por projeto: orçamentos, planejamentos, compras e demandas num só lugar.
             </p>
           </div>
@@ -44,9 +44,9 @@ export default async function ProjetosPage() {
           </Link>
         </div>
 
-        <div className="mt-6 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
           {(projetos ?? []).length === 0 ? (
-            <p className="px-3 py-8 text-center text-sm text-slate-400 dark:text-zinc-500">
+            <p className="px-3 py-8 text-center text-sm text-muted-foreground/80">
               Nenhum projeto cadastrado.{" "}
               <Link href="/cadastros/projetos" className="text-brand-700 hover:underline dark:text-brand-400">
                 Cadastrar o primeiro
@@ -55,7 +55,7 @@ export default async function ProjetosPage() {
             </p>
           ) : (
             <table className="min-w-full">
-              <thead className="border-b border-slate-100 dark:border-zinc-800">
+              <thead className="border-b border-border/70">
                 <tr>
                   <th className={thCls}>Projeto</th>
                   <th className={thCls}>Cliente</th>
@@ -68,7 +68,7 @@ export default async function ProjetosPage() {
                 {(projetos ?? []).map((p) => (
                   <tr
                     key={p.id}
-                    className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/40"
+                    className="border-b border-border/50 last:border-b-0 hover:bg-muted/50"
                   >
                     <td className={tdCls}>
                       <Link href={`/projetos/${p.id}`} className="font-medium text-brand-700 hover:underline dark:text-brand-400">
@@ -84,7 +84,7 @@ export default async function ProjetosPage() {
                     </td>
                     <td className={tdCls}>
                       {(() => {
-                        const s = STATUS_PROJETO[p.status] ?? { label: p.status, cls: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800" };
+                        const s = STATUS_PROJETO[p.status] ?? { label: p.status, cls: "bg-muted text-muted-foreground" };
                         return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${s.cls}`}>{s.label}</span>;
                       })()}
                     </td>

@@ -63,16 +63,16 @@ function Botao({
         {open && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 text-left">
             <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-            <div className="relative w-full max-w-sm rounded-xl bg-white p-6 shadow-xl dark:bg-zinc-900">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            <div className="relative w-full max-w-sm rounded-xl bg-card p-6 shadow-xl">
+              <h3 className="text-base font-semibold text-foreground">
                 Confirmar ação
               </h3>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{confirmar}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{confirmar}</p>
               <div className="mt-5 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="rounded-md px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-zinc-800"
+                  className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
                 >
                   Cancelar
                 </button>
@@ -91,7 +91,7 @@ function Botao({
       </form>
       {state.message && (
         <p
-          className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-400" : "text-red-600"}`}
+          className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-400" : "text-danger-strong"}`}
         >
           {state.message}
         </p>
@@ -107,7 +107,7 @@ export function PlanoAcoes({ planId }: { planId: number }) {
         planId={planId}
         action={reservarPlano}
         label="Reservar insumos"
-        cls="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+        cls="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
       />
       <Botao
         planId={planId}
@@ -120,7 +120,7 @@ export function PlanoAcoes({ planId }: { planId: number }) {
         planId={planId}
         action={liberarPlano}
         label="Liberar reservas"
-        cls="rounded-md border border-zinc-300 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        cls="rounded-md border border-input px-4 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
       />
       <Botao
         planId={planId}

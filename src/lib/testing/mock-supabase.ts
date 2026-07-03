@@ -1,6 +1,234 @@
 type Row = Record<string, unknown>;
 type Store = Record<string, Row[]>;
 
+const HISTORICAL_ANALISES: Row[] = [
+  {
+    codigo: "Eletrof_vir_hem",
+    nome: "Eletroforese hemolinfa",
+    nome_simplificado: "Eletroforese hemolinfa",
+    descricao: "Gel para hemolinfa",
+    status: "Ativo - ainda e feito",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "Eletrof_vir_tec",
+    nome: "Eletroforese tecido",
+    nome_simplificado: "Eletroforese tecido",
+    descricao: "Gel para tecido",
+    status: "Ativo - ainda e feito",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "Illumina_16S_AC",
+    nome: "16S alta cobertura",
+    nome_simplificado: "16S alta cobertura",
+    descricao: "Sequenciamento focado em microbioma, com alta cobertura",
+    status: "Ativo - oferecivel; manter alta cobertura",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "Illumina_Sh",
+    nome: "Shotgun",
+    nome_simplificado: "Shotgun",
+    descricao: "Sequenciamento shotgun, com qualquer marcador",
+    status: "Ativo - TODO tecnico: revisar quantificacao de insumos",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "Illumina_Sh_qPCR",
+    nome: "Shotgun com qPCR",
+    nome_simplificado: "Shotgun com qPCR",
+    descricao: "Shotgun substituindo algumas etapas por qPCR para otimizacao de tempo e custo",
+    status: "Experimental - em avaliacao; nao oferecer em orcamentos",
+    ativo: false,
+    ofertavel: false,
+  },
+  {
+    codigo: "RTqPCR_RNA_virus_H",
+    nome: "RT-qPCR virus hemolinfa",
+    nome_simplificado: "RT-qPCR virus hemolinfa",
+    descricao: "PCR em tempo real de virus 1",
+    status: "Ativo - ainda e feito",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "RTqPCR_RNA_virus_T",
+    nome: "RT-qPCR virus tecidos",
+    nome_simplificado: "RT-qPCR virus tecidos",
+    descricao: "PCR em tempo real de virus 2",
+    status: "Ativo - ainda e feito",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "Sanger",
+    nome: "Sanger",
+    nome_simplificado: "Sanger",
+    descricao: "Sequenciamento Sanger",
+    status: "Ativo - ainda pode ser oferecido",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "qPCR_F",
+    nome: "qPCR com filtracao",
+    nome_simplificado: "qPCR com filtracao",
+    descricao: "PCR em tempo real com filtracao",
+    status: "Ativo - ainda e feito",
+    ativo: true,
+    ofertavel: true,
+  },
+  {
+    codigo: "qPCR_SF",
+    nome: "qPCR sem filtracao",
+    nome_simplificado: "qPCR sem filtracao",
+    descricao: "PCR em tempo real sem filtracao",
+    status: "Ativo - ainda e feito",
+    ativo: true,
+    ofertavel: true,
+  },
+];
+
+const HISTORICAL_ANALISE_CODES = HISTORICAL_ANALISES.map((analise) => String(analise.codigo));
+
+const MOCK_PERMISSOES_CATEGORIAS = [
+  {
+    papel: "tecnico",
+    permissoes: {
+      "orcamentos.visualizar": true,
+      "orcamentos.criar_editar": true,
+      "compras.solicitar": true,
+      "estoque.movimentar": true,
+      "analises.ver": true,
+      "insumos.ver": true,
+      "custeio.ver": true,
+      "estoque.ver": true,
+      "planejamento.ver": true,
+      "pedido.ver": true,
+      "pedido.criar": true,
+      "compras.ver": true,
+      "recebimento.ver": true,
+      "projetos.ver": true,
+      "cadastros.ver": true,
+    },
+  },
+  {
+    papel: "coordenador",
+    permissoes: {
+      "orcamentos.visualizar": true,
+      "orcamentos.criar_editar": true,
+      "orcamentos.emitir": true,
+      "compras.solicitar": true,
+      "compras.aprovar": true,
+      "estoque.movimentar": true,
+      "cadastros.editar": true,
+      "analises.ver": true,
+      "analises.editar": true,
+      "insumos.ver": true,
+      "insumos.editar": true,
+      "custeio.ver": true,
+      "estoque.ver": true,
+      "estoque.lote.aceitar": true,
+      "planejamento.ver": true,
+      "planejamento.editar": true,
+      "pedido.ver": true,
+      "pedido.criar": true,
+      "pedido.aprovar": true,
+      "compras.ver": true,
+      "compras.receber": true,
+      "recebimento.ver": true,
+      "recebimento.registrar": true,
+      "projetos.ver": true,
+      "projetos.editar": true,
+      "cadastros.ver": true,
+    },
+  },
+  {
+    papel: "gestor",
+    permissoes: {
+      "orcamentos.visualizar": true,
+      "orcamentos.criar_editar": true,
+      "orcamentos.emitir": true,
+      "orcamentos.cancelar": true,
+      "compras.solicitar": true,
+      "compras.aprovar": true,
+      "estoque.movimentar": true,
+      "estoque.descartar_bloquear": true,
+      "cadastros.editar": true,
+      "auditoria.visualizar": true,
+      "analises.ver": true,
+      "analises.editar": true,
+      "insumos.ver": true,
+      "insumos.editar": true,
+      "custeio.ver": true,
+      "estoque.ver": true,
+      "estoque.lote.aceitar": true,
+      "estoque.lote.gerir": true,
+      "planejamento.ver": true,
+      "planejamento.editar": true,
+      "pedido.ver": true,
+      "pedido.criar": true,
+      "pedido.aprovar": true,
+      "compras.ver": true,
+      "compras.receber": true,
+      "compras.cancelar": true,
+      "recebimento.ver": true,
+      "recebimento.registrar": true,
+      "orcamento.parametros.editar": true,
+      "projetos.ver": true,
+      "projetos.editar": true,
+      "cadastros.ver": true,
+      "configuracoes.ver": true,
+    },
+  },
+  {
+    papel: "admin",
+    permissoes: {
+      "orcamentos.visualizar": true,
+      "orcamentos.criar_editar": true,
+      "orcamentos.emitir": true,
+      "orcamentos.cancelar": true,
+      "compras.solicitar": true,
+      "compras.aprovar": true,
+      "estoque.movimentar": true,
+      "estoque.descartar_bloquear": true,
+      "cadastros.editar": true,
+      "usuarios.gerenciar": true,
+      "auditoria.visualizar": true,
+      "analises.ver": true,
+      "analises.editar": true,
+      "insumos.ver": true,
+      "insumos.editar": true,
+      "custeio.ver": true,
+      "estoque.ver": true,
+      "estoque.lote.aceitar": true,
+      "estoque.lote.gerir": true,
+      "planejamento.ver": true,
+      "planejamento.editar": true,
+      "pedido.ver": true,
+      "pedido.criar": true,
+      "pedido.aprovar": true,
+      "compras.ver": true,
+      "compras.receber": true,
+      "compras.cancelar": true,
+      "recebimento.ver": true,
+      "recebimento.registrar": true,
+      "orcamento.parametros.editar": true,
+      "projetos.ver": true,
+      "projetos.editar": true,
+      "cadastros.ver": true,
+      "backups.gerenciar": true,
+      "privilegios.gerenciar": true,
+      "configuracoes.ver": true,
+    },
+  },
+];
+
 const baseStore = (): Store => {
   const seed: Store = {
   orcamentos: [
@@ -25,7 +253,7 @@ const baseStore = (): Store => {
     {
       id: 1,
       orcamento_id: 1,
-      codigo_analise: "TESTE-16S",
+      codigo_analise: "Illumina_16S_AC",
       n_amostras: 12,
       custo_unitario: 45,
       preco_unitario: 90,
@@ -39,68 +267,37 @@ const baseStore = (): Store => {
   demanda_analises: [],
   projetos: [{ id: 1, nome: "Projeto E2E" }],
   clientes: [{ id: 1, nome: "Cliente Cadastrado", ativo: true }],
-  analises: [
-    { codigo: "TESTE-16S", nome: "Metagenomica 16S", ativo: true, ofertavel: true },
-    { codigo: "TESTE-QPCR", nome: "qPCR marcador alvo", ativo: true, ofertavel: true },
-  ],
-  etapas: [
-    {
-      codigo_analise: "TESTE-16S",
-      nome_etapa: "Preparo",
-      nome_atividade: "PCR",
-      execucoes_por_dia: 1,
-      amostras_por_execucao: 12,
-      tempo_maquina_h: 0,
-      tempo_bancada_h: 6,
-    },
-    {
-      codigo_analise: "TESTE-QPCR",
-      nome_etapa: "Amplificação",
-      nome_atividade: "qPCR",
-      execucoes_por_dia: 2,
-      amostras_por_execucao: 8,
-      tempo_maquina_h: 1,
-      tempo_bancada_h: 2,
-    },
-  ],
-  equipamentos: [],
-  equipamento_analise: [],
+  analises: HISTORICAL_ANALISES,
+  etapas: HISTORICAL_ANALISE_CODES.map((codigo) => ({
+    codigo_analise: codigo,
+    nome_etapa: "Preparo",
+    nome_atividade: codigo.includes("qPCR") ? "qPCR" : "Rotina laboratorial",
+    execucoes_por_dia: 1,
+    amostras_por_execucao: 12,
+    tempo_maquina_h: 1,
+    tempo_bancada_h: 2,
+    escopo_operacional: "laboratorio",
+  })),
+  equipamentos: [{ id: 1, nome: "Equipamento mock", custo_hora: 30, ativo: true }],
+  equipamento_analise: HISTORICAL_ANALISE_CODES.map((codigo) => ({
+    codigo_analise: codigo,
+    equipamento_id: 1,
+    tempo_horas: 1,
+    equipamentos: { custo_hora: 30 },
+  })),
   tecnicos: [],
   overhead: [],
-  insumo_analise: [
-    {
-      codigo_analise: "TESTE-16S",
-      nome_etapa: "Preparo",
-      nome_atividade: "PCR",
-      especificacao_insumo: "Mix PCR",
-      grupo_escolha: null,
-      quantidade_por_amostra: 1,
-      modo_cobranca: "por_amostra",
-      insumos: { custo_unitario: 45 },
-    },
-    {
-      codigo_analise: "TESTE-16S",
-      nome_etapa: "Preparo",
-      nome_atividade: "PCR",
-      especificacao_insumo: "Kit corrida 16S",
-      unidade: "kit",
-      grupo_escolha: null,
-      quantidade_por_amostra: 1,
-      modo_cobranca: "por_execucao",
-      insumos: { custo_unitario: 10 },
-    },
-    {
-      codigo_analise: "TESTE-QPCR",
-      nome_etapa: "Amplificação",
-      nome_atividade: "qPCR",
-      especificacao_insumo: "Master Mix qPCR",
-      unidade: "uL",
-      grupo_escolha: null,
-      quantidade_por_amostra: 2,
-      modo_cobranca: "por_amostra",
-      insumos: { custo_unitario: 20 },
-    },
-  ],
+  insumo_analise: HISTORICAL_ANALISE_CODES.map((codigo, index) => ({
+    codigo_analise: codigo,
+    nome_etapa: "Preparo",
+    nome_atividade: codigo.includes("qPCR") ? "qPCR" : "Rotina laboratorial",
+    especificacao_insumo: `Insumo mock ${codigo}`,
+    unidade: "un",
+    grupo_escolha: null,
+    quantidade_por_amostra: 1,
+    modo_cobranca: "por_amostra",
+    insumos: { custo_unitario: 20 + index },
+  })),
   parametros: [
     { chave: "dias_uteis_ano", valor: 222 },
     { chave: "margem_lucro", valor: 100 },
@@ -138,7 +335,8 @@ const baseStore = (): Store => {
   compras: [],
   movimentacoes_estoque: [],
   lotes_estoque: [],
-  perfis: [{ id: "user-e2e", nome: "Gestor E2E", email: "gestor@example.com", papel: "gestor" }],
+  perfis: [{ id: "user-e2e", nome: "Admin E2E", email: "admin@example.com", papel: "admin" }],
+  permissoes_categorias: MOCK_PERMISSOES_CATEGORIAS,
   notificacoes: [
     {
       id: 1,
@@ -206,7 +404,7 @@ const baseStore = (): Store => {
     seed.orcamento_itens.push({
       id: 2,
       orcamento_id: 2,
-      codigo_analise: "TESTE-16S",
+      codigo_analise: "Illumina_16S_AC",
       n_amostras: 12,
       custo_unitario: 45,
       preco_unitario: 90,
@@ -214,7 +412,7 @@ const baseStore = (): Store => {
     seed.orcamento_itens.push({
       id: 3,
       orcamento_id: 2,
-      codigo_analise: "TESTE-QPCR",
+      codigo_analise: "qPCR_F",
       n_amostras: 5,
       custo_unitario: 40,
       preco_unitario: 80,
@@ -223,7 +421,7 @@ const baseStore = (): Store => {
       {
         id: 1,
         demanda_id: 1,
-        codigo_analise: "TESTE-16S",
+        codigo_analise: "Illumina_16S_AC",
         quantidade_amostras: 12,
         origem_quantidade: "padrao",
         status_custeio: "disponivel",
@@ -231,7 +429,7 @@ const baseStore = (): Store => {
       {
         id: 2,
         demanda_id: 1,
-        codigo_analise: "TESTE-QPCR",
+        codigo_analise: "qPCR_F",
         quantidade_amostras: 5,
         origem_quantidade: "manual",
         status_custeio: "disponivel",
@@ -291,6 +489,13 @@ function valoresIguais(a: unknown, b: unknown) {
   return a === b || String(a) === String(b);
 }
 
+function compararValores(a: unknown, b: unknown) {
+  const numeroA = Number(a);
+  const numeroB = Number(b);
+  if (Number.isFinite(numeroA) && Number.isFinite(numeroB)) return numeroA - numeroB;
+  return String(a).localeCompare(String(b));
+}
+
 function withRelations(table: string, row: Row): Row {
   if (table === "orcamentos") {
     return {
@@ -321,6 +526,7 @@ class MockQuery {
   private inFilters: { column: string; values: unknown[] }[] = [];
   private notFilters: { column: string; values: string[] }[] = [];
   private isFilters: { column: string; value: null }[] = [];
+  private comparisonFilters: { column: string; operator: "gt" | "gte" | "lt" | "lte"; value: unknown }[] = [];
   private mutation: null | { type: "insert" | "update" | "delete" | "upsert"; payload?: Row | Row[] } = null;
 
   constructor(private table: string) {}
@@ -363,11 +569,23 @@ class MockQuery {
     return this;
   }
 
-  gte() {
+  gt(column: string, value: unknown) {
+    this.comparisonFilters.push({ column, operator: "gt", value });
     return this;
   }
 
-  lte() {
+  gte(column: string, value: unknown) {
+    this.comparisonFilters.push({ column, operator: "gte", value });
+    return this;
+  }
+
+  lt(column: string, value: unknown) {
+    this.comparisonFilters.push({ column, operator: "lt", value });
+    return this;
+  }
+
+  lte(column: string, value: unknown) {
+    this.comparisonFilters.push({ column, operator: "lte", value });
     return this;
   }
 
@@ -439,7 +657,7 @@ class MockQuery {
     if (this.mutation?.type === "upsert") {
       const rows = Array.isArray(this.mutation.payload) ? this.mutation.payload : [this.mutation.payload];
       for (const row of rows.filter(Boolean) as Row[]) {
-        const key = "chave" in row ? "chave" : "id";
+        const key = "chave" in row ? "chave" : "papel" in row ? "papel" : "id";
         const index = (store[this.table] ?? []).findIndex((current) => current[key] === row[key]);
         if (index >= 0) store[this.table][index] = { ...store[this.table][index], ...row };
         else store[this.table] = [...(store[this.table] ?? []), { id: row.id ?? nextId(this.table), ...row }];
@@ -459,7 +677,14 @@ class MockQuery {
       this.neqFilters.every((filter) => !valoresIguais(row[filter.column], filter.value)) &&
       this.inFilters.every((filter) => filter.values.some((value) => valoresIguais(row[filter.column], value))) &&
       this.notFilters.every((filter) => !filter.values.includes(String(row[filter.column]))) &&
-      this.isFilters.every((filter) => (row[filter.column] ?? null) === filter.value)
+      this.isFilters.every((filter) => (row[filter.column] ?? null) === filter.value) &&
+      this.comparisonFilters.every((filter) => {
+        const comparison = compararValores(row[filter.column], filter.value);
+        if (filter.operator === "gt") return comparison > 0;
+        if (filter.operator === "gte") return comparison >= 0;
+        if (filter.operator === "lt") return comparison < 0;
+        return comparison <= 0;
+      })
     );
   }
 }
@@ -643,7 +868,7 @@ function emitirOrcamentoFinalTransacional(args: Row) {
 export function createMockSupabaseClient() {
   return {
     auth: {
-      getUser: async () => ({ data: { user: { id: "user-e2e", email: "gestor@example.com" } }, error: null }),
+      getUser: async () => ({ data: { user: { id: "user-e2e", email: "admin@example.com" } }, error: null }),
     },
     from: (table: string) => new MockQuery(table),
     rpc: async (fn: string, args: Row) => {

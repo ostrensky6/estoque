@@ -45,9 +45,9 @@ function AcaoBadge({ acao, label }: { acao: string; label: string }) {
     acao === "insert"
       ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
       : acao === "update"
-        ? "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
+        ? "bg-info-soft text-info-strong"
         : acao === "delete"
-          ? "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300"
+          ? "bg-danger-soft text-danger-strong"
           : "bg-secondary text-secondary-foreground";
   return <Badge className={className}>{label}</Badge>;
 }

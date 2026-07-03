@@ -152,7 +152,7 @@ export default async function PedidoInternoDetalhe({
   // Itens podem ser editados/removidos em rascunho/ajuste (qualquer técnico) ou em qualquer
   // etapa não terminal por coordenador+.
   const podeEditarItens = !itensTerminal && (editavel || podeGerir);
-  const inputCls = "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+  const inputCls = "rounded-md border border-input bg-card px-3 py-2 text-sm";
 
   // Etapas: verde = superada, amarelo = em andamento, branco = futura.
   // Etapa 11 (recebimento) é derivada: o pedido está recebido quando tem itens e
@@ -171,8 +171,8 @@ export default async function PedidoInternoDetalhe({
     estado === "concluido"
       ? "border-leaf-300 bg-leaf-50 dark:border-leaf-900 dark:bg-leaf-950/30"
       : estado === "ativo"
-        ? "border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30"
-        : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900";
+        ? "border-warning-strong/30 bg-warning-soft"
+        : "border-border bg-card";
   const estadoRecebida: "concluido" | "ativo" | "futuro" = recebido
     ? "concluido"
     : aguardandoChegada
@@ -193,27 +193,27 @@ export default async function PedidoInternoDetalhe({
   const temDocumentoFiscal = anexoRows.some((anexo) => ["nota_fiscal", "boleto", "comprovante"].includes(anexo.tipo));
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-6xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <Breadcrumbs items={[{ label: "Pedidos", href: "/pedido" }, { label: pedidoInternoNumero(pedido.id) }]} />
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="font-mono text-xs font-medium text-zinc-400">{pedidoInternoNumero(pedido.id)}</p>
-            <h1 className="text-2xl font-semibold tracking-tight">{pedido.titulo}</h1>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="font-mono text-xs font-medium text-muted-foreground/80">{pedidoInternoNumero(pedido.id)}</p>
+            <h1 className="text-xl font-semibold tracking-tight">{pedido.titulo}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
               Projeto: {projeto} · Solicitante: {pedido.solicitante ?? "—"}
               {pedido.data_necessidade ? ` · Necessidade: ${formatDate(pedido.data_necessidade)}` : ""}
               {pedido.urgencia ? ` · Urgência: ${pedido.urgencia}` : ""}
             </p>
             {pedido.justificativa && (
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-300">{pedido.justificativa}</p>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{pedido.justificativa}</p>
             )}
           </div>
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <span className={`rounded-md px-3 py-1 text-xs font-medium ${statusMeta.className}`}>
               {statusMeta.label}
             </span>
-            <span className="text-xs text-zinc-500">Atualizado {formatDateTime(pedido.atualizado_em)}</span>
+            <span className="text-xs text-muted-foreground">Atualizado {formatDateTime(pedido.atualizado_em)}</span>
             <PedidoInternoCabecalhoAcoes
               pedidoId={pedidoId}
               numero={pedidoInternoNumero(pedido.id)}
@@ -229,7 +229,7 @@ export default async function PedidoInternoDetalhe({
           </div>
         </div>
 
-        <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section className="mt-6 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {PEDIDO_INTERNO_FLUXO.map((status, index) => {
               const meta = pedidoInternoStatus(status);
@@ -241,35 +241,35 @@ export default async function PedidoInternoDetalhe({
                     : "futuro";
               return (
                 <div key={status} className={`min-h-20 rounded-lg border p-3 ${classeEtapa(estado)}`}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Etapa {index + 1}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">Etapa {index + 1}</p>
                   <p className="mt-1 text-sm font-medium">{meta.label}</p>
-                  <p className="mt-1 text-xs leading-4 text-zinc-500">{meta.etapa}</p>
+                  <p className="mt-1 text-xs leading-4 text-muted-foreground">{meta.etapa}</p>
                 </div>
               );
             })}
             <div className={`min-h-20 rounded-lg border p-3 ${classeEtapa(estadoRecebida)}`}>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
                 Etapa {PEDIDO_INTERNO_FLUXO.length + 1}
               </p>
               <p className="mt-1 text-sm font-medium">{PEDIDO_INTERNO_ETAPA_RECEBIDA.label}</p>
-              <p className="mt-1 text-xs leading-4 text-zinc-500">{PEDIDO_INTERNO_ETAPA_RECEBIDA.etapa}</p>
+              <p className="mt-1 text-xs leading-4 text-muted-foreground">{PEDIDO_INTERNO_ETAPA_RECEBIDA.etapa}</p>
             </div>
           </div>
           {pedido.status === "ajuste_solicitante" && (
-            <p className="mt-3 text-sm text-orange-700 dark:text-orange-300">
+            <p className="mt-3 text-sm text-warning-strong">
               Compra não aprovada na validação. Revise os itens com o solicitante e reenvie.
             </p>
           )}
           {pedido.status === "ajuste_compras" && (
-            <p className="mt-3 text-sm text-rose-700 dark:text-rose-300">
+            <p className="mt-3 text-sm text-danger-strong">
               Compra não aprovada na análise administrativa. Revise com compras e/ou solicitante.
             </p>
           )}
-          <div className="mt-4 grid gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800 md:grid-cols-2">
+          <div className="mt-4 grid gap-2 border-t border-border/70 pt-4 md:grid-cols-2">
             {pendencias.map((item) => (
               <div key={item.label} className="flex items-center gap-2 text-xs">
-                <span className={`h-2.5 w-2.5 rounded-full ${item.ok ? "bg-brand-500" : "bg-amber-500"}`} />
-                <span className={item.ok ? "text-zinc-500" : "font-medium text-amber-700 dark:text-amber-300"}>
+                <span className={`h-2.5 w-2.5 rounded-full ${item.ok ? "bg-brand-500" : "bg-warning-strong"}`} />
+                <span className={item.ok ? "text-muted-foreground" : "font-medium text-warning-strong"}>
                   {item.label}
                 </span>
               </div>
@@ -280,17 +280,17 @@ export default async function PedidoInternoDetalhe({
         <section className="mt-8">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Materiais e serviços</h2>
-              <p className="mt-1 text-xs text-zinc-500">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Materiais e serviços</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
                 Inclua especificação, modelo, volume, quantidade e orçamento prévio.
               </p>
             </div>
-            <p className="text-sm text-zinc-500">Total prévio: <b>{brl(total)}</b></p>
+            <p className="text-sm text-muted-foreground">Total prévio: <b>{brl(total)}</b></p>
           </div>
 
-          <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
             <table className="w-full text-sm">
-              <thead className="border-b border-zinc-200 bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60">
+              <thead className="border-b border-border bg-transparent text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 text-left">Item</th>
                   <th className="px-4 py-3 text-left">Modelo/volume</th>
@@ -301,24 +301,24 @@ export default async function PedidoInternoDetalhe({
                   {podeEditarItens && <th className="px-4 py-3 text-right">Ação</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <tbody className="divide-y divide-border/70">
                 {linhas.map((item) => (
                   <tr key={item.id}>
                     <td className="max-w-sm px-4 py-2.5">
                       <p className="font-medium">{item.especificacao}</p>
-                      <p className="text-xs text-zinc-500">
+                      <p className="text-xs text-muted-foreground">
                         {item.tipo === "servico" ? "Serviço" : "Material"}
                         {item.insumos?.especificacao ? ` · vinculado: ${item.insumos.especificacao}` : ""}
                       </p>
                     </td>
-                    <td className="px-4 py-2.5 text-zinc-500">
+                    <td className="px-4 py-2.5 text-muted-foreground">
                       {[item.modelo, item.volume].filter(Boolean).join(" · ") || "—"}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
                       {fmt(item.quantidade)} {item.unidade ?? item.insumos?.unidade ?? ""}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{brl(item.orcamento_previo)}</td>
-                    <td className="px-4 py-2.5 text-zinc-500">{item.fornecedor_sugerido ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{item.fornecedor_sugerido ?? "—"}</td>
                     <td className="px-4 py-2.5">
                       <ItemRecebimentoCell
                         item={{
@@ -344,7 +344,7 @@ export default async function PedidoInternoDetalhe({
                           <form action={removerItemPedidoInterno}>
                             <input type="hidden" name="item_id" value={item.id} />
                             <input type="hidden" name="pedido_interno_id" value={pedidoId} />
-                            <button className="text-xs text-red-600 hover:underline">Remover</button>
+                            <button className="text-xs text-danger-strong hover:underline">Remover</button>
                           </form>
                         </div>
                       </td>
@@ -353,7 +353,7 @@ export default async function PedidoInternoDetalhe({
                 ))}
                 {linhas.length === 0 && (
                   <tr>
-                    <td colSpan={podeEditarItens ? 7 : 6} className="px-4 py-8 text-center text-zinc-400">
+                    <td colSpan={podeEditarItens ? 7 : 6} className="px-4 py-8 text-center text-muted-foreground/80">
                       Nenhum material ou serviço informado.
                     </td>
                   </tr>
@@ -363,21 +363,21 @@ export default async function PedidoInternoDetalhe({
           </div>
 
           {editavel && (
-            <form action={adicionarItemPedidoInterno} className="mt-3 grid gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 md:grid-cols-12">
+            <form action={adicionarItemPedidoInterno} className="mt-3 grid gap-3 rounded-xl border border-border bg-card p-4 shadow-sm md:grid-cols-12">
               <input type="hidden" name="pedido_interno_id" value={pedidoId} />
               <div className="md:col-span-2">
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Tipo</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Tipo</label>
                 <select name="tipo" defaultValue="material" className={`${inputCls} mt-1 w-full`}>
                   <option value="material">Material</option>
                   <option value="servico">Serviço</option>
                 </select>
               </div>
               <div className="md:col-span-4">
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Especificação</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Especificação</label>
                 <input name="especificacao" required className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="md:col-span-3">
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Insumo existente</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Insumo existente</label>
                 <select name="insumo_id" defaultValue="" className={`${inputCls} mt-1 w-full`}>
                   <option value="">—</option>
                   {(insumos ?? []).map((insumo) => (
@@ -386,35 +386,35 @@ export default async function PedidoInternoDetalhe({
                 </select>
               </div>
               <div className="md:col-span-3">
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Fornecedor sugerido</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Fornecedor sugerido</label>
                 <input name="fornecedor_sugerido" className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="md:col-span-3">
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Modelo</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Modelo</label>
                 <input name="modelo" className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Volume</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Volume</label>
                 <input name="volume" className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Qtd</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Qtd</label>
                 <input name="quantidade" type="number" min="0.0001" step="any" defaultValue="1" className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Unidade</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Unidade</label>
                 <input name="unidade" className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="md:col-span-3">
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Orçamento prévio un.</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Orçamento prévio un.</label>
                 <input name="orcamento_previo" type="number" min="0" step="0.01" className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="md:col-span-9">
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Observação</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Observação</label>
                 <input name="observacao" className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="flex items-end md:col-span-3">
-                <button className="h-10 w-full rounded-md bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900">
+                <button className="h-10 w-full rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                   Adicionar item
                 </button>
               </div>
@@ -423,24 +423,24 @@ export default async function PedidoInternoDetalhe({
         </section>
 
         <section className="mt-8 grid gap-6 lg:grid-cols-2">
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Documentos</h2>
-                <p className="mt-1 text-xs text-zinc-500">Orçamentos, propostas, termos, ofícios, boletos, notas e comprovantes.</p>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Documentos</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Orçamentos, propostas, termos, ofícios, boletos, notas e comprovantes.</p>
               </div>
-              <span className={`rounded-md px-2 py-1 text-xs ${temDocumentoCotacao ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"}`}>
+              <span className={`rounded-md px-2 py-1 text-xs ${temDocumentoCotacao ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-warning-soft text-warning-strong"}`}>
                 {anexoRows.length} anexo(s)
               </span>
             </div>
 
             <div className="mt-3 space-y-2">
               {anexoRows.map((anexo) => (
-                <div key={anexo.id} className="rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+                <div key={anexo.id} className="rounded-lg border border-border p-3 text-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-medium">{anexo.titulo}</p>
-                      <p className="mt-1 text-xs text-zinc-500">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {anexo.tipo} · {anexo.etapa ?? "sem etapa"} · {formatDateTime(anexo.criado_em)}
                       </p>
                       {anexo.url && (
@@ -448,25 +448,25 @@ export default async function PedidoInternoDetalhe({
                           Abrir referência
                         </a>
                       )}
-                      {anexo.observacao && <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">{anexo.observacao}</p>}
+                      {anexo.observacao && <p className="mt-1 text-xs text-muted-foreground">{anexo.observacao}</p>}
                     </div>
                     {editavel && (
                       <form action={removerAnexoPedidoInterno}>
                         <input type="hidden" name="anexo_id" value={anexo.id} />
                         <input type="hidden" name="pedido_interno_id" value={pedidoId} />
-                        <button className="text-xs text-red-600 hover:underline">Remover</button>
+                        <button className="text-xs text-danger-strong hover:underline">Remover</button>
                       </form>
                     )}
                   </div>
                 </div>
               ))}
-              {anexoRows.length === 0 && <p className="text-sm text-zinc-400">Nenhum documento registrado.</p>}
+              {anexoRows.length === 0 && <p className="text-sm text-muted-foreground/80">Nenhum documento registrado.</p>}
             </div>
 
-            <form action={adicionarAnexoPedidoInterno} className="mt-4 grid gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 md:grid-cols-2">
+            <form action={adicionarAnexoPedidoInterno} className="mt-4 grid gap-3 border-t border-border/70 pt-4 md:grid-cols-2">
               <input type="hidden" name="pedido_interno_id" value={pedidoId} />
               <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Tipo</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Tipo</label>
                 <select name="tipo" defaultValue="orcamento_previo" className={`${inputCls} mt-1 w-full`}>
                   <option value="orcamento_previo">Orçamento prévio</option>
                   <option value="proposta">Proposta</option>
@@ -481,47 +481,47 @@ export default async function PedidoInternoDetalhe({
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Título</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Título</label>
                 <input name="titulo" required className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Link ou referência interna</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Link ou referência interna</label>
                 <input name="url" placeholder="https://... ou código/local do documento" className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Observação</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Observação</label>
                 <input name="observacao" className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="md:col-span-2">
-                <button className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900">
+                <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                   Registrar documento
                 </button>
               </div>
             </form>
           </div>
 
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Comunicações</h2>
-            <p className="mt-1 text-xs text-zinc-500">Registro interno de e-mails, reuniões, mensagens e encaminhamentos.</p>
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Comunicações</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Registro interno de e-mails, reuniões, mensagens e encaminhamentos.</p>
 
             <div className="mt-3 space-y-2">
               {comunicacaoRows.map((comunicacao) => (
-                <div key={comunicacao.id} className="rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+                <div key={comunicacao.id} className="rounded-lg border border-border p-3 text-sm">
                   <p className="font-medium">{comunicacao.assunto ?? comunicacao.tipo}</p>
-                  <p className="mt-1 text-xs text-zinc-500">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {comunicacao.tipo} · {comunicacao.remetente ?? "—"} → {comunicacao.destinatarios ?? "—"} · {formatDateTime(comunicacao.criado_em)}
                   </p>
                   {comunicacao.referencia && <p className="mt-1 text-xs text-primary">{comunicacao.referencia}</p>}
-                  {comunicacao.observacao && <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">{comunicacao.observacao}</p>}
+                  {comunicacao.observacao && <p className="mt-1 text-xs text-muted-foreground">{comunicacao.observacao}</p>}
                 </div>
               ))}
-              {comunicacaoRows.length === 0 && <p className="text-sm text-zinc-400">Nenhuma comunicação registrada.</p>}
+              {comunicacaoRows.length === 0 && <p className="text-sm text-muted-foreground/80">Nenhuma comunicação registrada.</p>}
             </div>
 
-            <form action={registrarComunicacaoPedidoInterno} className="mt-4 grid gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 md:grid-cols-2">
+            <form action={registrarComunicacaoPedidoInterno} className="mt-4 grid gap-3 border-t border-border/70 pt-4 md:grid-cols-2">
               <input type="hidden" name="pedido_interno_id" value={pedidoId} />
               <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Tipo</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Tipo</label>
                 <select name="tipo" defaultValue="email" className={`${inputCls} mt-1 w-full`}>
                   <option value="email">E-mail</option>
                   <option value="reuniao">Reunião</option>
@@ -531,27 +531,27 @@ export default async function PedidoInternoDetalhe({
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Remetente</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Remetente</label>
                 <input name="remetente" defaultValue="giacompras2025@gmail.com" className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Destinatários</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Destinatários</label>
                 <input name="destinatarios" className={`${inputCls} mt-1 w-full`} />
               </div>
               <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Assunto</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Assunto</label>
                 <input name="assunto" className={`${inputCls} mt-1 w-full`} />
               </div>
               <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Referência</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Referência</label>
                 <input name="referencia" placeholder="ID da mensagem, protocolo, link..." className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Observação</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Observação</label>
                 <input name="observacao" className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="md:col-span-2">
-                <button className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900">
+                <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                   Registrar comunicação
                 </button>
               </div>
@@ -560,20 +560,20 @@ export default async function PedidoInternoDetalhe({
         </section>
 
         <section className="mt-8 grid gap-6 lg:grid-cols-[1fr_22rem]">
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <h2 className="text-sm font-semibold">Próxima ação</h2>
-            <p className="mt-1 text-xs text-zinc-500">{statusMeta.etapa}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{statusMeta.etapa}</p>
             <div className="mt-4">
               {statusMeta && <PedidoInternoAcoes pedidoId={pedidoId} status={pedido.status} podeGerir={podeGerir} />}
               {!podeGerir && !["rascunho", "ajuste_solicitante", "ajuste_compras"].includes(pedido.status) && (
-                <p className="text-sm text-zinc-400">Esta etapa exige papel coordenador ou superior.</p>
+                <p className="text-sm text-muted-foreground/80">Esta etapa exige papel coordenador ou superior.</p>
               )}
             </div>
 
             {aguardandoChegada && (
-              <div className="mt-5 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+              <div className="mt-5 border-t border-border/70 pt-4">
                 <h3 className="text-sm font-semibold">Recebimento (Etapa {PEDIDO_INTERNO_FLUXO.length + 1})</h3>
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Receba cada item na tabela acima ou no módulo{" "}
                   <Link href="/recebimento" className="text-primary hover:underline">
                     Recebimento
@@ -584,22 +584,22 @@ export default async function PedidoInternoDetalhe({
             )}
 
             {pedido.status === "formalizado" && podeGerir && (
-              <form action={registrarAnaliseAdministrativa} className="mt-5 grid gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 md:grid-cols-2">
+              <form action={registrarAnaliseAdministrativa} className="mt-5 grid gap-3 border-t border-border/70 pt-4 md:grid-cols-2">
                 <input type="hidden" name="pedido_interno_id" value={pedidoId} />
                 <div>
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Fonte do recurso</label>
+                  <label className="block text-xs font-medium text-muted-foreground">Fonte do recurso</label>
                   <input name="fonte_recurso" defaultValue={pedido.fonte_recurso ?? ""} className={`${inputCls} mt-1 w-full`} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Rubrica</label>
+                  <label className="block text-xs font-medium text-muted-foreground">Rubrica</label>
                   <input name="rubrica" defaultValue={pedido.rubrica ?? ""} className={`${inputCls} mt-1 w-full`} />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Conformidades administrativas</label>
+                  <label className="block text-xs font-medium text-muted-foreground">Conformidades administrativas</label>
                   <textarea name="conformidade_admin" defaultValue={pedido.conformidade_admin ?? ""} rows={3} className={`${inputCls} mt-1 w-full`} />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Observação</label>
+                  <label className="block text-xs font-medium text-muted-foreground">Observação</label>
                   <input name="observacao" defaultValue={pedido.observacao_compras ?? ""} className={`${inputCls} mt-1 w-full`} />
                 </div>
                 <div className="md:col-span-2">
@@ -611,11 +611,11 @@ export default async function PedidoInternoDetalhe({
             )}
           </div>
 
-          <aside className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <aside className="space-y-3 rounded-xl border border-border bg-card p-4 text-sm shadow-sm">
             <h2 className="text-sm font-semibold">Referências</h2>
             <dl className="space-y-2 text-xs">
               <div className="flex justify-between gap-3">
-                <dt className="text-zinc-500">Compra formal</dt>
+                <dt className="text-muted-foreground">Compra formal</dt>
                 <dd className="text-right">
                   {compraFormal ? (
                     <Link href={`/compras/${compraFormal.id}`} className="text-primary hover:underline">
@@ -625,58 +625,58 @@ export default async function PedidoInternoDetalhe({
                 </dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-zinc-500">Fonte</dt>
+                <dt className="text-muted-foreground">Fonte</dt>
                 <dd className="text-right">{pedido.fonte_recurso ?? "—"}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-zinc-500">Urgência</dt>
+                <dt className="text-muted-foreground">Urgência</dt>
                 <dd className="text-right">{pedido.urgencia ?? "normal"}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-zinc-500">Rubrica</dt>
+                <dt className="text-muted-foreground">Rubrica</dt>
                 <dd className="text-right">{pedido.rubrica ?? "—"}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-zinc-500">Doc. cotação</dt>
+                <dt className="text-muted-foreground">Doc. cotação</dt>
                 <dd className="text-right">{temDocumentoCotacao ? "registrado" : "pendente"}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-zinc-500">Doc. fiscal</dt>
+                <dt className="text-muted-foreground">Doc. fiscal</dt>
                 <dd className="text-right">{temDocumentoFiscal ? "registrado" : "pendente"}</dd>
               </div>
             </dl>
           </aside>
         </section>
 
-        <section className="mt-8 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section className="mt-8 rounded-xl border border-border bg-card p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Aprovações e decisões</h2>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             {aprovacaoRows.map((aprovacao) => (
-              <div key={aprovacao.id} className="rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+              <div key={aprovacao.id} className="rounded-lg border border-border p-3 text-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-medium">{aprovacao.etapa}</p>
-                    <p className="mt-1 text-xs text-zinc-500">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {aprovacao.responsavel ?? "—"} · {aprovacao.papel ?? "—"} · {formatDateTime(aprovacao.criado_em)}
                     </p>
                   </div>
-                  <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">{aprovacao.decisao}</span>
+                  <span className="rounded-md bg-muted px-2 py-1 text-xs">{aprovacao.decisao}</span>
                 </div>
-                <p className="mt-2 text-xs text-zinc-500">
+                <p className="mt-2 text-xs text-muted-foreground">
                   {aprovacao.status_origem ?? "início"} → {aprovacao.status_destino ?? "—"}
                 </p>
                 {aprovacao.comentario && (
-                  <p className="mt-2 text-xs leading-5 text-zinc-700 dark:text-zinc-300">{aprovacao.comentario}</p>
+                  <p className="mt-2 text-xs leading-5 text-foreground">{aprovacao.comentario}</p>
                 )}
               </div>
             ))}
             {aprovacaoRows.length === 0 && (
-              <p className="text-sm text-zinc-400">Nenhuma aprovação formal registrada ainda.</p>
+              <p className="text-sm text-muted-foreground/80">Nenhuma aprovação formal registrada ainda.</p>
             )}
           </div>
         </section>
 
-        <section className="mt-8 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section className="mt-8 rounded-xl border border-border bg-card p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Linha do tempo</h2>
           <div className="mt-3">
             <Timeline eventos={eventos} />

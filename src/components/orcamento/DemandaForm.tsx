@@ -72,10 +72,10 @@ export type AnaliseSelecionadaDemanda = {
 };
 
 const initialState: DemandaFormState = { ok: false };
-const inp = `rounded-md border-2 border-brand-300 bg-white px-3 py-2 text-sm font-medium shadow-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 dark:border-brand-700 dark:bg-zinc-950 dark:focus:ring-brand-900 ${TOM_ENTRADA}`;
-const inheritedInp = "rounded-md border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200";
-const operationalInp = "rounded-md border-2 border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950 shadow-sm outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-200 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100";
-const lbl = "block text-xs font-medium text-zinc-600 dark:text-zinc-300";
+const inp = `rounded-md border-2 border-brand-300 bg-card px-3 py-2 text-sm font-medium shadow-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 dark:border-brand-700 dark:focus:ring-brand-900 ${TOM_ENTRADA}`;
+const inheritedInp = "rounded-md border border-input bg-muted/50 px-3 py-2 text-sm font-medium text-foreground shadow-sm outline-none focus:border-ring focus:ring-2 focus:ring-border";
+const operationalInp = "rounded-md border-2 border-warning-strong/30 bg-warning-soft px-3 py-2 text-sm font-semibold text-warning-strong shadow-sm outline-none focus:border-warning-strong focus:ring-2 focus:ring-warning-strong/30";
+const lbl = "block text-xs font-medium text-muted-foreground";
 
 export function DemandaForm({
   demanda,
@@ -124,7 +124,7 @@ export function DemandaForm({
     }),
   );
   const [, setGrupoAtivo] = useState(() => grupos[0]?.key ?? "grupo-1");
-  const [seletorAberto, setSeletorAberto] = useState<string | null>(() => grupos[0]?.key ?? null);
+  const [seletorAberto, setSeletorAberto] = useState<string | null>(null);
   const exigeAnalises = modalidadeExigeLaboratorio(modalidade);
   const mostraDemanda = modo !== "laboratorio";
   const mostraLaboratorio = modo !== "demanda";
@@ -194,19 +194,19 @@ export function DemandaForm({
           matrizAmostra={grupos.map((grupo) => grupo.tipo_matriz).filter(Boolean).join("; ") || (demanda.matriz_amostra ?? "")}
         />
       )}
-      <div className="flex flex-wrap gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-300">
-        <Legenda texto="Editável" classe="border-brand-300 bg-white" />
-        <Legenda texto="Herdado" classe="border-zinc-300 bg-zinc-100" />
-        <Legenda texto="Calculado" classe="border-dashed border-zinc-300 bg-zinc-100" />
-        <Legenda texto="Operacional" classe="border-amber-300 bg-amber-50" />
-        <Legenda texto="Bloqueado após emissão" classe="border-zinc-400 bg-zinc-200" />
+      <div className="flex flex-wrap gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
+        <Legenda texto="Editável" classe="border-brand-300 bg-card" />
+        <Legenda texto="Herdado" classe="border-input bg-muted" />
+        <Legenda texto="Calculado" classe="border-dashed border-input bg-muted" />
+        <Legenda texto="Operacional" classe="border-warning-strong/30 bg-warning-soft" />
+        <Legenda texto="Bloqueado após emissão" classe="border-input bg-muted" />
       </div>
       {state.message && (
         <div
           className={`rounded-md px-3 py-2 text-sm ${
             state.ok
               ? "bg-brand-50 text-brand-900 dark:bg-brand-950/40 dark:text-brand-200"
-              : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+              : "bg-danger-soft text-danger-strong"
           }`}
           aria-live="polite"
         >
@@ -215,7 +215,7 @@ export function DemandaForm({
         </div>
       )}
       {mostraDemanda && (
-      <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+      <section className="rounded-md border border-border p-3">
         <h3 className="text-sm font-semibold">Identificação do orçamento</h3>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
           <div className="sm:col-span-2">
@@ -232,7 +232,7 @@ export function DemandaForm({
           </div>
           <div>
             <label className={lbl}>Número do orçamento <Selo texto="Calculado" /></label>
-            <div className="mt-1 rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950">
+            <div className="mt-1 rounded-md border border-dashed border-input bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
               {demanda.id > 0 ? `#${demanda.id}` : "Gerado ao salvar"}
             </div>
           </div>
@@ -280,7 +280,7 @@ export function DemandaForm({
       )}
 
       {mostraDemanda && (
-      <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+      <section className="rounded-md border border-border p-3">
         <h3 className="text-sm font-semibold">Cliente</h3>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
           <div className="sm:col-span-2">
@@ -318,12 +318,12 @@ export function DemandaForm({
       )}
 
       {mostraDemanda && (
-      <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+      <section className="rounded-md border border-border p-3">
         <h3 className="text-sm font-semibold">Escopo inicial</h3>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className={lbl}>Descrição do orçamento <Obrigatorio /></label>
-            <textarea id="descricao" name="descricao" rows={3} defaultValue={demanda.descricao ?? ""} className={`${inp} mt-1 w-full ${state.errors?.descricao ? "border-red-400 focus:border-red-600 focus:ring-red-200" : ""}`} />
+            <textarea id="descricao" name="descricao" rows={3} defaultValue={demanda.descricao ?? ""} className={`${inp} mt-1 w-full ${state.errors?.descricao ? "border-danger-strong/40 focus:border-danger-strong focus:ring-danger-strong/30" : ""}`} />
           </div>
           <div>
             <label className={lbl}>Observações gerais</label>
@@ -334,7 +334,7 @@ export function DemandaForm({
       )}
 
       {mostraLaboratorio && exigeAnalises && (
-      <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+      <section className="rounded-md border border-border p-3">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold">Amostras a processar</h3>
           <button type="button" onClick={() => {
@@ -343,24 +343,24 @@ export function DemandaForm({
             setGrupos((atuais) => [...atuais, { key, identificacao: `Grupo ${String.fromCharCode(64 + proximo)}`, tipo_matriz: "", quantidade_amostras: 1, unidade: "amostras", observacao: null }]);
             setGrupoAtivo(key);
             setSeletorAberto(key);
-          }} className="rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">Adicionar tipo de amostra</button>
+          }} className="rounded-md border border-input px-3 py-2 text-xs font-medium hover:bg-muted">Adicionar tipo de amostra</button>
         </div>
         <div className="mt-3 grid gap-3">
           {grupos.map((grupo) => {
             const selecionadasDoGrupo = selecionadas.filter((item) => item.grupoKey === grupo.key);
             return (
-            <div key={grupo.key} id={`grupo-card-${grupo.key}`} className="grid gap-2 rounded-md bg-zinc-50 p-3 dark:bg-zinc-950/50 sm:grid-cols-5">
+            <div key={grupo.key} id={`grupo-card-${grupo.key}`} className="grid gap-2 rounded-md bg-muted/50 p-3 sm:grid-cols-5">
               <input type="hidden" name="grupo_key" value={grupo.key} />
               <div><label className={lbl}>Grupo</label><input name="grupo_identificacao" value={grupo.identificacao} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, identificacao: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
               <div className="sm:col-span-2"><label className={lbl}>Tipo/matriz</label><input name="grupo_tipo_matriz" value={grupo.tipo_matriz ?? ""} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, tipo_matriz: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
               <div><label className={lbl}>Quantidade</label><input name="grupo_quantidade" type="number" min="1" step="1" value={grupo.quantidade_amostras} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, quantidade_amostras: Number(event.target.value) || 1 } : item))} className={`${operationalInp} mt-1 w-full`} /></div>
               <div><label className={lbl}>Unidade</label><input name="grupo_unidade" value={grupo.unidade} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, unidade: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
               <div className="sm:col-span-5"><label className={lbl}>Observação</label><input name="grupo_observacao" value={grupo.observacao ?? ""} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, observacao: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
-              <div className="sm:col-span-5 rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+              <div className="sm:col-span-5 rounded-md border border-border bg-card p-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h4 className="text-xs font-semibold uppercase text-zinc-500">Análises deste grupo</h4>
-                    <p className="mt-1 text-xs text-zinc-500">{selecionadasDoGrupo.length} análise(s) selecionada(s) para {grupo.identificacao || "grupo"}.</p>
+                    <h4 className="text-xs font-semibold uppercase text-muted-foreground">Análises deste grupo</h4>
+                    <p className="mt-1 text-xs text-muted-foreground">{selecionadasDoGrupo.length} análise(s) selecionada(s) para {grupo.identificacao || "grupo"}.</p>
                   </div>
                   <button
                     type="button"
@@ -375,16 +375,16 @@ export function DemandaForm({
                 </div>
                 {selecionadasDoGrupo.length > 0 ? (
                   <div tabIndex={0} aria-label="Análises selecionadas do grupo" className="mt-3 overflow-x-auto">
-                    <table className="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
-                      <thead className="text-left text-xs text-zinc-500">
+                    <table className="min-w-full divide-y divide-border/70 text-sm">
+                      <thead className="text-left text-xs text-muted-foreground">
                         <tr><th className="py-2">Código da análise</th><th>Nome da análise</th><th>Quantidade de amostras para esta análise</th><th className="w-10 text-right"></th></tr>
                       </thead>
-                      <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                      <tbody className="divide-y divide-border/70">
                         {selecionadasDoGrupo.map((item) => {
                           const analise = porCodigo.get(item.codigo);
                           return (
                             <tr key={`${item.grupoKey}-${item.codigo}`}>
-                              <td className="py-2 pr-3 font-mono text-xs text-zinc-600 dark:text-zinc-300">
+                              <td className="py-2 pr-3 font-mono text-xs text-muted-foreground">
                                 <input type="hidden" name="analise_grupo_key" value={item.grupoKey} />
                                 <input type="hidden" name="analise_codigo" value={item.codigo} />
                                 <input type="hidden" name="analise_origem_quantidade" value={item.origem} />
@@ -403,7 +403,7 @@ export function DemandaForm({
                                 />
                               </td>
                               <td className="text-right">
-                                <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" title="Remover análise">
+                                <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-danger-strong hover:text-danger-strong" title="Remover análise">
                                   <Trash2 className="h-4 w-4 inline" />
                                 </button>
                               </td>
@@ -414,25 +414,25 @@ export function DemandaForm({
                     </table>
                   </div>
                 ) : (
-                  <p className="mt-3 rounded-md border border-dashed border-zinc-300 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-700">Nenhuma análise selecionada para este grupo.</p>
+                  <p className="mt-3 rounded-md border border-dashed border-input px-3 py-2 text-xs text-muted-foreground">Nenhuma análise selecionada para este grupo.</p>
                 )}
                 {seletorAberto === grupo.key && (
                   <div className="mt-3 rounded-md border border-brand-200 bg-brand-50/40 p-3 dark:border-brand-900 dark:bg-brand-950/20">
                     <input value={busca} onChange={(event) => setBusca(event.target.value)} placeholder="Buscar por código, nome ou método" className={`${inp} w-full`} />
-                    <div tabIndex={0} aria-label="Catálogo de análises filtradas" className="mt-3 max-h-[56rem] overflow-y-auto rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+                    <div tabIndex={0} aria-label="Catálogo de análises filtradas" className="mt-3 max-h-[56rem] overflow-y-auto rounded-md border border-border bg-card">
                       {filtradas.length === 0 ? (
-                        <p className="px-3 py-4 text-xs text-zinc-500">
+                        <p className="px-3 py-4 text-xs text-muted-foreground">
                           {analises.length === 0 ? "Não existem análises ativas cadastradas ou você não possui permissão para visualizar este catálogo." : "Nenhuma análise corresponde à busca ou à matriz informada."}
                         </p>
                       ) : filtradas.map((analise) => {
                         const marcada = selecionadas.some((item) => item.codigo === analise.codigo && item.grupoKey === grupo.key);
                         const pendenteInsumo = analise.reagentes.some((reagente) => reagente.status_vinculo_insumo === "insumo_sem_cadastro_correspondente");
                         return (
-                          <label key={`${grupo.key}-${analise.codigo}`} className="flex cursor-pointer gap-3 border-b border-zinc-100 px-3 py-2 text-sm last:border-0 hover:bg-brand-50 focus-within:bg-brand-50 dark:border-zinc-800 dark:hover:bg-brand-950/20">
-                            <input type="checkbox" checked={marcada} onChange={() => toggleAnalise(grupo.key, analise.codigo)} className="mt-1 h-4 w-4 rounded border-zinc-300 focus:ring-2 focus:ring-brand-500" />
+                          <label key={`${grupo.key}-${analise.codigo}`} className="flex cursor-pointer gap-3 border-b border-border/70 px-3 py-2 text-sm last:border-0 hover:bg-brand-50 focus-within:bg-brand-50 dark:hover:bg-brand-950/20">
+                            <input type="checkbox" checked={marcada} onChange={() => toggleAnalise(grupo.key, analise.codigo)} className="mt-1 h-4 w-4 rounded border-input focus:ring-2 focus:ring-brand-500" />
                             <span>
                               <span className="font-medium">{analise.codigo} · {analise.nome_simplificado ?? analise.nome ?? "Sem nome"}</span>
-                              <span className="block text-xs text-zinc-500">
+                              <span className="block text-xs text-muted-foreground">
                                 Método: {analise.metodo ?? "não informado"} · Lote: {analise.lote_padrao ?? "a calcular"} amostra(s) · Custeio: {analise.custeio_disponivel ? "disponível" : "pendente"}{pendenteInsumo ? " · insumo sem cadastro" : ""}
                               </span>
                             </span>
@@ -451,11 +451,11 @@ export function DemandaForm({
       )}
 
       {mostraLaboratorio && exigeAnalises && (
-        <section id="analises-solicitadas" className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+        <section id="analises-solicitadas" className="rounded-md border border-border p-3">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold">Análises por grupo de amostra</h3>
-              <p className="mt-1 text-xs text-zinc-500">Resumo consolidado das análises selecionadas nos grupos acima. {analises.length} análise(s) oficial(is) disponível(is).</p>
+              <p className="mt-1 text-xs text-muted-foreground">Resumo consolidado das análises selecionadas nos grupos acima. {analises.length} análise(s) oficial(is) disponível(is).</p>
             </div>
           </div>
           <div className="mt-3 grid gap-2 md:grid-cols-4">
@@ -464,15 +464,15 @@ export function DemandaForm({
             <ResumoLaboratorio titulo="Prazo técnico" valor={prazoMaximoLaboratorio > 0 ? `${prazoMaximoLaboratorio} dia(s)` : "a calcular"} detalhe="maior prazo previsto" />
             <ResumoLaboratorio titulo="Pendências" valor={`${pendentesCusteio}`} detalhe={pendentesCusteio > 0 ? "custeio pendente" : "custeio disponível"} />
           </div>
-          <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          <div className="mt-3 rounded-md border border-warning-strong/30 bg-warning-soft px-3 py-2 text-xs text-warning-strong">
             Compatibilidade por matriz ainda não possui relação oficial no banco. A matriz da demanda é informativa; confirme tecnicamente antes de emitir.
           </div>
           <div tabIndex={0} aria-label="Resumo de análises por grupo" className="mt-3 overflow-x-auto">
-            <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
-              <thead className="text-left text-xs text-zinc-500">
+            <table className="min-w-full divide-y divide-border text-sm">
+              <thead className="text-left text-xs text-muted-foreground">
                 <tr><th className="py-2">Grupo</th><th>Tipo/matriz da amostra</th><th>Código da análise</th><th>Nome da análise</th><th>Quantidade de amostras para esta análise</th><th>Prazo técnico calculated</th><th>Lotes previstos</th><th>Status do custeio</th><th>Status dos insumos</th><th className="w-16 text-right"></th></tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <tbody className="divide-y divide-border/70">
                 {selecionadas.map((item) => {
                   const analise = porCodigo.get(item.codigo);
                   const grupo = grupos.find((grupo) => grupo.key === item.grupoKey);
@@ -481,16 +481,16 @@ export function DemandaForm({
                   return (
                     <tr key={`${item.grupoKey}-${item.codigo}`}>
                       <td className="py-2 pr-3">{grupo?.identificacao ?? "Grupo"}</td>
-                      <td className="pr-3 text-zinc-500">{grupo?.tipo_matriz || "—"}</td>
-                      <td className="pr-3 font-mono text-xs text-zinc-500">{item.codigo}</td>
+                      <td className="pr-3 text-muted-foreground">{grupo?.tipo_matriz || "—"}</td>
+                      <td className="pr-3 font-mono text-xs text-muted-foreground">{item.codigo}</td>
                       <td className="pr-3">{analise?.nome_simplificado ?? analise?.nome ?? "Sem nome"}</td>
                       <td className="pr-3 font-semibold tabular-nums">{item.quantidade}</td>
-                      <td className="pr-3 text-zinc-500">{previsao?.prazoDias ? `${previsao.prazoDias} dia(s)` : "a calcular"}</td>
-                      <td className="pr-3 text-zinc-500">{previsao ? `${previsao.lotes} lote(s) de ${previsao.lotePadrao}` : "a calcular"}</td>
-                      <td className={analise?.custeio_disponivel ? "pr-3 text-brand-700 dark:text-brand-300" : "pr-3 text-amber-700 dark:text-amber-300"}>
+                      <td className="pr-3 text-muted-foreground">{previsao?.prazoDias ? `${previsao.prazoDias} dia(s)` : "a calcular"}</td>
+                      <td className="pr-3 text-muted-foreground">{previsao ? `${previsao.lotes} lote(s) de ${previsao.lotePadrao}` : "a calcular"}</td>
+                      <td className={analise?.custeio_disponivel ? "pr-3 text-brand-700 dark:text-brand-300" : "pr-3 text-warning-strong"}>
                         {analise?.custeio_disponivel ? "Disponível" : "Pendente"}
                       </td>
-                      <td className={statusInsumos === "Mapeados" ? "pr-3 text-brand-700 dark:text-brand-300" : "pr-3 text-amber-700 dark:text-amber-300"}>{statusInsumos}</td>
+                      <td className={statusInsumos === "Mapeados" ? "pr-3 text-brand-700 dark:text-brand-300" : "pr-3 text-warning-strong"}>{statusInsumos}</td>
                       <td className="text-right space-x-2 whitespace-nowrap">
                         <button
                           type="button"
@@ -498,12 +498,12 @@ export function DemandaForm({
                             setSeletorAberto(item.grupoKey);
                             document.getElementById(`grupo-card-${item.grupoKey}`)?.scrollIntoView({ behavior: "smooth" });
                           }}
-                          className="text-zinc-600 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
+                          className="text-muted-foreground hover:text-foreground"
                           title="Editar análises do grupo"
                         >
                           <Pencil className="h-4 w-4 inline" />
                         </button>
-                        <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" title="Remover análise">
+                        <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-danger-strong hover:text-danger-strong" title="Remover análise">
                           <Trash2 className="h-4 w-4 inline" />
                         </button>
                       </td>
@@ -511,25 +511,25 @@ export function DemandaForm({
                   );
                 })}
                 {selecionadas.length === 0 && (
-                  <tr><td colSpan={10} className="py-4 text-xs text-zinc-400">Nenhuma análise selecionada.</td></tr>
+                  <tr><td colSpan={10} className="py-4 text-xs text-muted-foreground/80">Nenhuma análise selecionada.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
           {previsoesOperacionais.length > 0 && (
-            <div className="mt-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
-              <h4 className="text-xs font-semibold uppercase text-zinc-500">Previsão operacional calculada</h4>
+            <div className="mt-3 rounded-md border border-border bg-muted/50 p-3">
+              <h4 className="text-xs font-semibold uppercase text-muted-foreground">Previsão operacional calculada</h4>
               <div className="mt-2 grid gap-2 md:grid-cols-2">
                 {previsoesOperacionais.map((previsao) => (
-                  <div key={previsao.key} className="rounded-md border border-zinc-200 bg-white p-2 text-xs dark:border-zinc-800 dark:bg-zinc-950">
+                  <div key={previsao.key} className="rounded-md border border-border bg-card p-2 text-xs">
                     <div className="flex flex-wrap justify-between gap-2">
                       <span className="font-semibold">{grupos.find((grupo) => grupo.key === previsao.grupoKey)?.identificacao ?? "Grupo"} · {previsao.codigo}</span>
-                      <span className="text-zinc-500">{previsao.quantidade} amostra(s) · {previsao.lotes} lote(s) de {previsao.lotePadrao}</span>
+                      <span className="text-muted-foreground">{previsao.quantidade} amostra(s) · {previsao.lotes} lote(s) de {previsao.lotePadrao}</span>
                     </div>
-                    <ul className="mt-2 space-y-1 text-zinc-600 dark:text-zinc-300">
+                    <ul className="mt-2 space-y-1 text-muted-foreground">
                       {previsao.reagentes.length > 0 ? previsao.reagentes.slice(0, 4).map((reagente, index) => (
                         <li key={`${previsao.codigo}-${reagente.especificacao}-${index}`}>
-                          {reagente.especificacao}: {formatNumber(reagente.consumo)} {reagente.unidade} · {formatCurrency(reagente.custo)} <span className="text-zinc-400">({reagente.modo_cobranca === "por_execucao" ? "por execução" : "por amostra"})</span>
+                          {reagente.especificacao}: {formatNumber(reagente.consumo)} {reagente.unidade} · {formatCurrency(reagente.custo)} <span className="text-muted-foreground/80">({reagente.modo_cobranca === "por_execucao" ? "por execução" : "por amostra"})</span>
                         </li>
                       )) : <li>Sem reagentes configurados na receita técnica oficial.</li>}
                     </ul>
@@ -542,25 +542,25 @@ export function DemandaForm({
       )}
 
       {mostraLaboratorio && exigeAnalises && (
-      <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+      <section className="rounded-md border border-border p-3">
         <h3 className="text-sm font-semibold">Pendências</h3>
         {pendenciasInsumos.length > 0 ? (
-          <ul className="mt-2 space-y-1 text-xs text-amber-800 dark:text-amber-200">
+          <ul className="mt-2 space-y-1 text-xs text-warning-strong">
             {[...new Set(pendenciasInsumos.map((item) => `${item.codigo}: ${item.especificacao}`))].map((item) => (
               <li key={item}><Selo texto="Pendente" /> {item}</li>
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-xs text-zinc-500">Sem pendências de cadastro de insumo para as análises carregadas.</p>
+          <p className="mt-2 text-xs text-muted-foreground">Sem pendências de cadastro de insumo para as análises carregadas.</p>
         )}
       </section>
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <button disabled={pending} className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-wait disabled:bg-zinc-400 dark:bg-white dark:text-zinc-900">
+        <button disabled={pending} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60">
           {pending ? "Salvando..." : demanda.id > 0 ? (modo === "laboratorio" ? "Salvar análises laboratoriais" : "Salvar demanda") : "Criar demanda"}
         </button>
-        {state.errors?.descricao ? <a href="#descricao" className="text-sm font-medium text-red-600">Corrigir descrição</a> : null}
+        {state.errors?.descricao ? <a href="#descricao" className="text-sm font-medium text-danger-strong">Corrigir descrição</a> : null}
       </div>
     </form>
   );
@@ -576,11 +576,11 @@ function CamposDemandaLeitura({
   matrizAmostra: string;
 }) {
   return (
-    <section className="rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+    <section className="rounded-md border border-border bg-muted/50 p-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold">Dados completos da demanda</h3>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Campos herdados do formulário mestre. Edite estes dados na etapa Demanda; aqui eles ficam visíveis para conferência.
           </p>
         </div>
@@ -639,11 +639,11 @@ function CampoLeitura({
 }
 
 function Obrigatorio() {
-  return <span className="text-[10px] font-semibold uppercase tracking-wide text-red-700 dark:text-red-300">Obrigatório</span>;
+  return <span className="text-[10px] font-semibold uppercase tracking-wide text-danger-strong">Obrigatório</span>;
 }
 
 function Selo({ texto }: { texto: string }) {
-  return <span className="rounded border border-zinc-300 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 dark:border-zinc-700 dark:text-zinc-300">{texto}</span>;
+  return <span className="rounded border border-input px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{texto}</span>;
 }
 
 function formatNumber(valor: number) {
@@ -665,10 +665,10 @@ function Legenda({ texto, classe }: { texto: string; classe: string }) {
 
 function ResumoLaboratorio({ titulo, valor, detalhe }: { titulo: string; valor: string; detalhe: string }) {
   return (
-    <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/50">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">{titulo}</p>
-      <p className="mt-1 text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">{valor}</p>
-      <p className="mt-0.5 text-xs text-zinc-500">{detalhe}</p>
+    <div className="rounded-md border border-border bg-muted/50 px-3 py-2">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{titulo}</p>
+      <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">{valor}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{detalhe}</p>
     </div>
   );
 }

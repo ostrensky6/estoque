@@ -68,11 +68,11 @@ function EditarDialog({
         <form action={handle} className="space-y-4">
           <input type="hidden" name="id" value={row.id} />
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Nome</label>
+            <label className="block text-xs font-medium text-muted-foreground">Nome</label>
             <Input name="nome" defaultValue={row.nome === "—" ? "" : row.nome} className="mt-1" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Categoria</label>
+            <label className="block text-xs font-medium text-muted-foreground">Categoria</label>
             <Select name="papel" value={papel} onChange={(event) => setPapel(event.target.value)} className="mt-1 h-9">
               {PAPEIS.map((p) => (
                 <option key={p.value} value={p.value}>
@@ -82,12 +82,12 @@ function EditarDialog({
             </Select>
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Permissões efetivas</p>
+            <p className="text-xs font-medium text-muted-foreground">Permissões efetivas</p>
             <div className="grid gap-2 md:grid-cols-2">
               {PERMISSOES.map((permissao) => (
                 <label
                   key={permissao.key}
-                  className="flex items-start gap-2 rounded-md border border-zinc-200 p-2 text-xs dark:border-zinc-800"
+                  className="flex items-start gap-2 rounded-md border border-border p-2 text-xs"
                 >
                   <Checkbox
                     key={`${papel}-${permissao.key}`}
@@ -98,19 +98,19 @@ function EditarDialog({
                     className="mt-0.5"
                   />
                   <span>
-                    <span className="block font-semibold text-zinc-800 dark:text-zinc-100">
+                    <span className="block font-semibold text-foreground">
                       {permissao.modulo} · {permissao.label}
                     </span>
-                    <span className="block leading-4 text-zinc-500">{permissao.descricao}</span>
+                    <span className="block leading-4 text-muted-foreground">{permissao.descricao}</span>
                   </span>
                 </label>
               ))}
             </div>
             {papel === "admin" && (
-              <p className="text-xs text-zinc-500">Administradores sempre recebem todas as permissões.</p>
+              <p className="text-xs text-muted-foreground">Administradores sempre recebem todas as permissões.</p>
             )}
           </div>
-          {erro && <p className="text-xs text-red-600">{erro}</p>}
+          {erro && <p className="text-xs text-danger-strong">{erro}</p>}
           <DialogFooter>
             <Button type="submit" disabled={pending}>
               {pending ? "Salvando…" : "Salvar"}
@@ -153,7 +153,7 @@ function AssinaturaDialog({
 export function UploadAssinaturaButton({ row }: { row: UsuarioRow }) {
   const [open, setOpen] = useState(false);
   if (!row.temAcesso) {
-    return <span className="text-xs text-zinc-400">Após cadastro</span>;
+    return <span className="text-xs text-muted-foreground/80">Após cadastro</span>;
   }
 
   return (
@@ -189,7 +189,7 @@ function PreAprovarDialog({
         <form action={action} className="space-y-4">
           <input type="hidden" name="pre_aprovado_id" value={row.preAprovadoId ?? ""} />
           {state.message && (
-            <p className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-red-600"}`}>
+            <p className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-danger-strong"}`}>
               {state.message}
             </p>
           )}
@@ -227,7 +227,7 @@ function AlterarSenhaDialog({
         <form action={action} className="space-y-4">
           <input type="hidden" name="id" value={row.id} />
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Nova senha</label>
+            <label className="block text-xs font-medium text-muted-foreground">Nova senha</label>
             <Input
               name="senha"
               type="password"
@@ -238,7 +238,7 @@ function AlterarSenhaDialog({
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Confirmar senha</label>
+            <label className="block text-xs font-medium text-muted-foreground">Confirmar senha</label>
             <Input
               name="confirmar"
               type="password"
@@ -248,10 +248,10 @@ function AlterarSenhaDialog({
               className="mt-1"
             />
           </div>
-          <label className="flex items-start gap-2 rounded-md border border-zinc-200 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+          <label className="flex items-start gap-2 rounded-md border border-border p-3 text-xs text-muted-foreground">
             <Checkbox name="exigir_troca" className="mt-0.5" />
             <span>
-              <span className="block font-medium text-zinc-800 dark:text-zinc-100">
+              <span className="block font-medium text-foreground">
                 Exigir troca no próximo login
               </span>
               <span className="block leading-4">
@@ -260,7 +260,7 @@ function AlterarSenhaDialog({
             </span>
           </label>
           {state.message && (
-            <p className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-red-600"}`}>
+            <p className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-danger-strong"}`}>
               {state.message}
             </p>
           )}
@@ -299,7 +299,7 @@ function ExcluirDialog({
         <form action={action} className="space-y-4">
           <input type="hidden" name="id" value={row.id} />
           <input type="hidden" name="email" value={row.email} />
-          {state.message && !state.ok && <p className="text-xs text-red-600">{state.message}</p>}
+          {state.message && !state.ok && <p className="text-xs text-danger-strong">{state.message}</p>}
           <DialogFooter>
             <Button type="submit" variant="destructive" disabled={pending}>
               {pending ? "Apagando…" : "Apagar definitivamente"}
@@ -344,7 +344,7 @@ export function UsuarioAcoes({ row }: { row: UsuarioRow }) {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => setDialog("apagar")}
-                className="text-red-600 focus:text-red-600"
+                className="text-danger-strong focus:text-danger-strong"
               >
                 Apagar
               </DropdownMenuItem>

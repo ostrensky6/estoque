@@ -284,6 +284,13 @@ export const APP_MODULES: AppModule[] = [
         icon: "UserCog",
         minRole: "admin",
       },
+      {
+        href: "/governanca/privilegios",
+        label: "Privilégios",
+        desc: "matriz granular de permissões por papel",
+        icon: "ShieldCheck",
+        minRole: "admin",
+      },
     ],
   },
 ];

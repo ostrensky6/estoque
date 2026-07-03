@@ -64,12 +64,12 @@ export default async function InsumosPage({
   });
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-6xl px-6 py-12">
-        <h1 className="text-2xl font-semibold tracking-tight">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <h1 className="text-xl font-semibold tracking-tight">
           Insumos por análise
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Edite <b>grupo de escolha</b> (alternativas mutuamente exclusivas) e{" "}
           <b>modo de cobrança</b> (por amostra ou por execução). As mudanças
           recalculam o custeio.
@@ -82,8 +82,8 @@ export default async function InsumosPage({
               href={`/insumos?analise=${encodeURIComponent(a.codigo)}`}
               className={`rounded-full px-3 py-1 text-xs ${
                 a.codigo === atual
-                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                  : "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-foreground"
               }`}
             >
               {a.codigo}
@@ -95,7 +95,7 @@ export default async function InsumosPage({
           <InsumosAnaliseTable rows={rows} grupoOptions={grupoOptions} />
         </div>
 
-        <p className="mt-4 text-xs text-zinc-400">
+        <p className="mt-4 text-xs text-muted-foreground/80">
           {rows.length} linhas · análise {atual}
         </p>
       </main>

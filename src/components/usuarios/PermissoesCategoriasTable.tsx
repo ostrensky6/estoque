@@ -26,19 +26,19 @@ export function PermissoesCategoriasTable({ permissoesPorCategoria }: { permisso
   const [state, action, pending] = useActionState(salvarPermissoesCategoria, initial);
 
   return (
-    <section className="mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <section className="mt-8 rounded-lg border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">Tabela de permissões por categoria</h2>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Edite os padrões por categoria aqui. Usuários específicos continuam podendo ter ajustes em Editar.
           </p>
         </div>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800">
+      <div className="mt-4 overflow-x-auto rounded-md border border-border">
         <table className="w-full min-w-[860px] border-collapse text-sm">
-          <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-950/50">
+          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-3 py-3 text-left">Permissão</th>
               {PAPEIS.map((papel) => (
@@ -53,18 +53,18 @@ export function PermissoesCategoriasTable({ permissoesPorCategoria }: { permisso
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          <tbody className="divide-y divide-border/70">
             {PERMISSOES.map((permissao) => (
               <tr key={permissao.key}>
                 <td className="px-3 py-3">
-                  <p className="font-medium text-zinc-800 dark:text-zinc-100">{permissao.modulo} · {permissao.label}</p>
-                  <p className="mt-0.5 text-xs text-zinc-500">{permissao.descricao}</p>
+                  <p className="font-medium text-foreground">{permissao.modulo} · {permissao.label}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{permissao.descricao}</p>
                 </td>
                 {PAPEIS.map((papel) => {
                   const permitido = permissoesPorCategoria[papel.value][permissao.key];
                   return (
                     <td key={`${permissao.key}-${papel.value}`} className="px-3 py-3 text-center">
-                      <span className={permitido ? "font-semibold text-brand-700 dark:text-brand-300" : "text-zinc-300 dark:text-zinc-700"}>
+                      <span className={permitido ? "font-semibold text-brand-700 dark:text-brand-300" : "text-muted-foreground/70"}>
                         {permitido ? "Sim" : "Não"}
                       </span>
                     </td>
@@ -89,7 +89,7 @@ export function PermissoesCategoriasTable({ permissoesPorCategoria }: { permisso
               <input type="hidden" name="papel" value={categoria.value} />
               <div className="grid gap-2 md:grid-cols-2">
                 {PERMISSOES.map((permissao) => (
-                  <label key={permissao.key} className="flex items-start gap-2 rounded-md border border-zinc-200 p-2 text-xs dark:border-zinc-800">
+                  <label key={permissao.key} className="flex items-start gap-2 rounded-md border border-border p-2 text-xs">
                     <Checkbox
                       name="permissoes"
                       value={permissao.key}
@@ -98,14 +98,14 @@ export function PermissoesCategoriasTable({ permissoesPorCategoria }: { permisso
                       className="mt-0.5"
                     />
                     <span>
-                      <span className="block font-semibold text-zinc-800 dark:text-zinc-100">{permissao.modulo} · {permissao.label}</span>
-                      <span className="block leading-4 text-zinc-500">{permissao.descricao}</span>
+                      <span className="block font-semibold text-foreground">{permissao.modulo} · {permissao.label}</span>
+                      <span className="block leading-4 text-muted-foreground">{permissao.descricao}</span>
                     </span>
                   </label>
                 ))}
               </div>
               {state.message && (
-                <p className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-red-600"}`}>{state.message}</p>
+                <p className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-danger-strong"}`}>{state.message}</p>
               )}
               <DialogFooter>
                 <Button type="submit" disabled={pending}>

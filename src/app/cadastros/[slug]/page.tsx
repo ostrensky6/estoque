@@ -189,12 +189,12 @@ export default async function CadastroPage({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <Breadcrumbs items={[{ label: "Cadastros", href: "/cadastros" }, { label: cfg.titulo }]} />
 
         <CadastrosSubnav cadastros={cadastros} activeSlug={slug} />
 
-        <h1 className="mt-6 text-2xl font-semibold tracking-tight">{cfg.titulo}</h1>
+        <h1 className="mt-6 text-xl font-semibold tracking-tight">{cfg.titulo}</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{cfg.subtitulo}</p>
 
         <div className="mt-6">

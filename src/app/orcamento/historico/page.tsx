@@ -162,19 +162,19 @@ export default async function HistoricoOrcamentosPage({
   const totalHistorico = versoes.reduce((total, item) => total + Number(item.total_final ?? 0), 0);
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-7xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <Breadcrumbs items={[{ label: "Orçamentos", href: "/orcamento" }, { label: "Histórico de Orçamentos" }]} />
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Histórico de Orçamentos</h1>
-            <p className="mt-1 max-w-3xl text-sm text-zinc-500">
+            <h1 className="text-xl font-semibold tracking-tight">Histórico de Orçamentos</h1>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               Área de consulta para registros fechados. Versões finais preservam snapshot técnico, parâmetros e valores emitidos.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href={exportHref} className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+            <Link href={exportHref} className="rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted">
               Exportar CSV
             </Link>
             <Link href="/orcamento/demandas/nova" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
@@ -198,7 +198,7 @@ export default async function HistoricoOrcamentosPage({
               className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
                 (filtros.status ?? "") === value
                   ? "border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-700 dark:bg-brand-950/30 dark:text-brand-300"
-                  : "border-zinc-300 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  : "border-input text-muted-foreground hover:bg-muted"
               }`}
             >
               {label}
@@ -206,7 +206,7 @@ export default async function HistoricoOrcamentosPage({
           ))}
         </nav>
 
-        <form className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <form className="mt-6 rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-8">
             <CampoFiltro label="Texto livre">
               <input name="texto" defaultValue={filtros.texto ?? ""} className={inputCls} placeholder="Número, título ou cliente" />
@@ -249,7 +249,7 @@ export default async function HistoricoOrcamentosPage({
               <button className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
                 Filtrar
               </button>
-              <Link href="/orcamento/historico" className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+              <Link href="/orcamento/historico" className="rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted">
                 Limpar
               </Link>
             </div>
@@ -260,9 +260,9 @@ export default async function HistoricoOrcamentosPage({
           <ComparacaoLadoALado atual={comparada} anterior={comparada.anterior} />
         )}
 
-        <section className="mt-6 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section className="mt-6 overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
           <table className="w-full min-w-[1900px] text-left text-sm">
-            <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
+            <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-3 py-3">Número</th>
                 <th className="px-3 py-3">Título</th>
@@ -284,7 +284,7 @@ export default async function HistoricoOrcamentosPage({
                 <th className="px-3 py-3 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <tbody className="divide-y divide-border/70">
               {versoes.map((item) => {
                 const snapshot = normalizarSnapshot(item.snapshot);
                 const composicao = composicaoEconomica(item, snapshot);
@@ -294,7 +294,7 @@ export default async function HistoricoOrcamentosPage({
                       <Link href={`/orcamento/final/${item.id}`} className="font-medium text-primary hover:underline">
                         {item.numero}
                       </Link>
-                      <p className="text-xs text-zinc-500">v{item.versao}{item.duplicada_de_id ? ` · duplicada de #${item.duplicada_de_id}` : ""}</p>
+                      <p className="text-xs text-muted-foreground">v{item.versao}{item.duplicada_de_id ? ` · duplicada de #${item.duplicada_de_id}` : ""}</p>
                     </td>
                     <td className="px-3 py-3">
                       <Link href={`/orcamento/demandas/${item.demanda_id}`} className="font-medium hover:underline">
@@ -305,18 +305,18 @@ export default async function HistoricoOrcamentosPage({
                     <td className="px-3 py-3"><Badge>{modalidadeLabel(snapshot.demanda?.modalidade ?? item.demandas_propostas?.modalidade)}</Badge></td>
                     <td className="px-3 py-3">
                       <p>{snapshot.demanda?.responsavel_interno ?? item.demandas_propostas?.responsavel_interno ?? item.criado_por ?? "—"}</p>
-                      <p className="text-xs text-zinc-500">{item.criado_por ? `usuário ${item.criado_por}` : "sem usuário registrado"}</p>
+                      <p className="text-xs text-muted-foreground">{item.criado_por ? `usuário ${item.criado_por}` : "sem usuário registrado"}</p>
                     </td>
                     <td className="px-3 py-3">{formatDateTime(item.criado_em)}</td>
                     <td className="px-3 py-3">{formatDateTime(item.criado_em)}</td>
                     <td className="px-3 py-3">
                       <p>{formatDate(item.valido_ate)}</p>
-                      <p className="text-xs text-zinc-500">{item.validade_dias} dias</p>
+                      <p className="text-xs text-muted-foreground">{item.validade_dias} dias</p>
                     </td>
                     <td className="px-3 py-3">
                       <Status status={item.status} />
-                      {item.cancelado_motivo && <p className="mt-1 max-w-40 text-xs text-zinc-500">{item.cancelado_motivo}</p>}
-                      {item.classificacao_motivo && <p className="mt-1 max-w-48 text-xs text-zinc-500">{item.classificacao_motivo}</p>}
+                      {item.cancelado_motivo && <p className="mt-1 max-w-40 text-xs text-muted-foreground">{item.cancelado_motivo}</p>}
+                      {item.classificacao_motivo && <p className="mt-1 max-w-48 text-xs text-muted-foreground">{item.classificacao_motivo}</p>}
                       {!["cancelado", "substituido", "vencido"].includes(item.status) && (
                         <ClassificacaoForm versaoId={item.id} statusAtual={item.status} />
                       )}
@@ -332,7 +332,7 @@ export default async function HistoricoOrcamentosPage({
                       {item.anterior ? (
                         <Comparacao atual={Number(item.total_final ?? 0)} anterior={Number(item.anterior.total_final ?? 0)} />
                       ) : (
-                        <span className="text-zinc-400">primeira versão</span>
+                        <span className="text-muted-foreground/80">primeira versão</span>
                       )}
                     </td>
                     <td className="px-3 py-3 text-right">
@@ -356,7 +356,7 @@ export default async function HistoricoOrcamentosPage({
                             titulo="Cancelar versão final"
                             mensagem={`Cancelar a versão ${item.numero}? O snapshot continuará preservado no histórico.`}
                             confirmLabel="Cancelar versão"
-                            triggerClassName="text-xs text-red-600 hover:underline"
+                            triggerClassName="text-xs text-danger-strong hover:underline"
                           />
                         )}
                       </div>
@@ -366,7 +366,7 @@ export default async function HistoricoOrcamentosPage({
               })}
               {versoes.length === 0 && (
                 <tr>
-                  <td colSpan={18} className="px-3 py-10 text-center text-zinc-400">
+                  <td colSpan={18} className="px-3 py-10 text-center text-muted-foreground/80">
                     Nenhuma versão final encontrada para os filtros atuais.
                   </td>
                 </tr>
@@ -380,7 +380,7 @@ export default async function HistoricoOrcamentosPage({
 }
 
 const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+  "mt-1 w-full rounded-md border border-input bg-card px-2 py-2 text-sm";
 
 function filtrarVersoes(versoes: VersaoComAnterior[], filtros: SearchParams) {
   const texto = (valor: string | null | undefined) => (valor ?? "").toLocaleLowerCase("pt-BR");
@@ -492,7 +492,7 @@ function limparFiltros(filtros: SearchParams) {
 
 function CampoFiltro({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block text-xs font-medium text-zinc-500">
+    <label className="block text-xs font-medium text-muted-foreground">
       {label}
       {children}
     </label>
@@ -501,8 +501,8 @@ function CampoFiltro({ label, children }: { label: string; children: React.React
 
 function Resumo({ titulo, valor, moeda = false }: { titulo: string; valor: number; moeda?: boolean }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <p className="text-xs font-medium text-zinc-500">{titulo}</p>
+    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+      <p className="text-xs font-medium text-muted-foreground">{titulo}</p>
       <p className="mt-1 text-lg font-semibold tabular-nums">{moeda ? brl(valor) : valor.toLocaleString("pt-BR")}</p>
     </div>
   );
@@ -511,7 +511,7 @@ function Resumo({ titulo, valor, moeda = false }: { titulo: string; valor: numbe
 function Comparacao({ atual, anterior }: { atual: number; anterior: number }) {
   const diferenca = atual - anterior;
   const percentual = anterior !== 0 ? (diferenca / anterior) * 100 : 0;
-  const classe = diferenca > 0 ? "text-amber-700 dark:text-amber-300" : diferenca < 0 ? "text-brand-700 dark:text-brand-300" : "text-zinc-500";
+  const classe = diferenca > 0 ? "text-warning-strong" : diferenca < 0 ? "text-brand-700 dark:text-brand-300" : "text-muted-foreground";
   return (
     <div className={classe}>
       <p>{diferenca >= 0 ? "+" : ""}{brl(diferenca)}</p>
@@ -524,22 +524,22 @@ function ComparacaoLadoALado({ atual, anterior }: { atual: VersaoComAnterior; an
   const snapAtual = normalizarSnapshot(atual.snapshot);
   const snapAnterior = anterior ? normalizarSnapshot(anterior.snapshot) : null;
   return (
-    <section className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <section className="mt-6 rounded-lg border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Comparação lado a lado</h2>
-          <p className="mt-1 text-sm text-zinc-500">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Comparação lado a lado</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             {atual.numero} contra {anterior ? anterior.numero : "primeira versão da demanda"}.
           </p>
         </div>
-        <Link href="/orcamento/historico" className="text-sm text-zinc-500 hover:underline">Fechar comparação</Link>
+        <Link href="/orcamento/historico" className="text-sm text-muted-foreground hover:underline">Fechar comparação</Link>
       </div>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <PainelComparado titulo="Versão selecionada" versao={atual} snapshot={snapAtual} />
         {anterior ? (
           <PainelComparado titulo="Versão anterior" versao={anterior} snapshot={snapAnterior ?? {}} />
         ) : (
-          <div className="rounded-lg border border-zinc-200 p-4 text-sm text-zinc-500 dark:border-zinc-800">
+          <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
             Esta demanda não tem versão anterior para comparação.
           </div>
         )}
@@ -563,7 +563,7 @@ function PainelComparado({ titulo, versao, snapshot }: { titulo: string; versao:
     0,
   ) ?? 0;
   return (
-    <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+    <div className="rounded-lg border border-border p-4">
       <h3 className="text-sm font-semibold">{titulo}</h3>
       <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
         <Info label="Número" value={`${versao.numero} · v${versao.versao}`} />
@@ -582,8 +582,8 @@ function PainelComparado({ titulo, versao, snapshot }: { titulo: string; versao:
 function Delta({ titulo, atual, anterior, percentual = false }: { titulo: string; atual: number; anterior: number; percentual?: boolean }) {
   const delta = Number(atual ?? 0) - Number(anterior ?? 0);
   return (
-    <div className="rounded-md bg-zinc-50 p-3 dark:bg-zinc-950/50">
-      <p className="text-xs font-medium text-zinc-500">{titulo}</p>
+    <div className="rounded-md bg-muted/50 p-3">
+      <p className="text-xs font-medium text-muted-foreground">{titulo}</p>
       <p className="mt-1 font-semibold tabular-nums">{percentual ? `${delta.toLocaleString("pt-BR")}%` : brl(delta)}</p>
     </div>
   );
@@ -591,15 +591,15 @@ function Delta({ titulo, atual, anterior, percentual = false }: { titulo: string
 
 function Info({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
   return (
-    <div className={`rounded-md bg-zinc-50 p-2 dark:bg-zinc-950/50 ${wide ? "sm:col-span-2" : ""}`}>
-      <dt className="text-xs text-zinc-500">{label}</dt>
+    <div className={`rounded-md bg-muted/50 p-2 ${wide ? "sm:col-span-2" : ""}`}>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="mt-1 font-medium">{value}</dd>
     </div>
   );
 }
 
 function Badge({ children }: { children: React.ReactNode }) {
-  return <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{children}</span>;
+  return <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{children}</span>;
 }
 
 function ClassificacaoForm({ versaoId, statusAtual }: { versaoId: number; statusAtual: string }) {
@@ -607,12 +607,12 @@ function ClassificacaoForm({ versaoId, statusAtual }: { versaoId: number; status
   return (
     <form action={classificarVersaoFinal} className="mt-2 grid min-w-44 gap-1">
       <input type="hidden" name="versao_id" value={versaoId} />
-      <select name="status" defaultValue={valorAtual} className="h-8 rounded-md border border-zinc-300 bg-white px-2 text-xs dark:border-zinc-700 dark:bg-zinc-950">
+      <select name="status" defaultValue={valorAtual} className="h-8 rounded-md border border-input bg-card px-2 text-xs">
         {classificacaoOptions.map(([value, label]) => (
           <option key={value} value={value}>{label}</option>
         ))}
       </select>
-      <input name="motivo" placeholder="Observação opcional" className="h-8 rounded-md border border-zinc-300 bg-white px-2 text-xs dark:border-zinc-700 dark:bg-zinc-950" />
+      <input name="motivo" placeholder="Observação opcional" className="h-8 rounded-md border border-input bg-card px-2 text-xs" />
       <button className="h-8 rounded-md bg-brand-600 px-2 text-xs font-medium text-white hover:bg-brand-500">
         Classificar
       </button>
@@ -637,11 +637,11 @@ function Status({ status }: { status: string }) {
     ["emitido", "enviado", "alterado_reenviado"].includes(status)
       ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
       : status === "aprovado" || status === "convertido_projeto"
-        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+        ? "bg-success-soft text-success-strong"
       : status === "vencido"
-        ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+        ? "bg-warning-soft text-warning-strong"
         : ["cancelado", "rejeitado", "recusado"].includes(status)
-          ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
-          : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300";
+          ? "bg-danger-soft text-danger-strong"
+          : "bg-muted text-muted-foreground";
   return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{labels[status] ?? status}</span>;
 }
