@@ -53,8 +53,8 @@ export function ExecutiveCharts({
 
   return (
     <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)]">
-      <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Gasto por mês</h3>
+      <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-foreground dark:text-white">Gasto por mês</h3>
         <div className="mt-3 h-64 min-h-64 min-w-0">
           {mounted ? (
             <ResponsiveContainer width="100%" height={256}>
@@ -67,13 +67,13 @@ export function ExecutiveCharts({
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full rounded-md bg-slate-50 dark:bg-zinc-950/40" />
+            <div className="h-full rounded-md bg-muted/50" />
           )}
         </div>
       </section>
 
-      <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Funil de orçamentos</h3>
+      <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-foreground dark:text-white">Funil de orçamentos</h3>
         <div className="mt-3 h-64 min-h-64 min-w-0">
           {mounted ? (
             <ResponsiveContainer width="100%" height={256}>
@@ -87,13 +87,13 @@ export function ExecutiveCharts({
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full rounded-md bg-slate-50 dark:bg-zinc-950/40" />
+            <div className="h-full rounded-md bg-muted/50" />
           )}
         </div>
         <div className="grid gap-2 text-xs">
           {funil.map((f, i) => (
             <div key={f.status} className="flex items-center justify-between gap-3">
-              <span className="flex items-center gap-2 text-slate-600 dark:text-zinc-400">
+              <span className="flex items-center gap-2 text-muted-foreground">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                 {f.status}
               </span>

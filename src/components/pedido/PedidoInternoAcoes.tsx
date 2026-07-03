@@ -46,9 +46,9 @@ function Botao({
 
   const cls =
     variant === "danger"
-      ? "rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/30"
+      ? "rounded-md border border-danger-strong/30 px-4 py-2 text-sm font-medium text-danger-strong hover:bg-danger-soft disabled:opacity-50"
       : variant === "outline"
-        ? "rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        ? "rounded-md border border-input px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
         : "rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500 disabled:opacity-50";
 
   return (
@@ -60,7 +60,7 @@ function Botao({
           <input
             name="observacao"
             placeholder={comentarioPlaceholder}
-            className="mb-2 h-9 w-64 rounded-md border border-zinc-300 bg-white px-3 text-xs dark:border-zinc-700 dark:bg-zinc-950"
+            className="mb-2 h-9 w-64 rounded-md border border-input bg-card px-3 text-xs"
           />
         )}
         <button disabled={pending} className={cls}>
@@ -68,7 +68,7 @@ function Botao({
         </button>
       </form>
       {state.message && (
-        <p className={`max-w-64 text-xs ${state.ok ? "text-brand-700 dark:text-brand-400" : "text-red-600"}`}>
+        <p className={`max-w-64 text-xs ${state.ok ? "text-brand-700 dark:text-brand-400" : "text-danger-strong"}`}>
           {state.message}
         </p>
       )}

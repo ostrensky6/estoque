@@ -10,25 +10,25 @@ import { gerarUrlCurtaKontrol } from "@/lib/scanner/urls";
 export const dynamic = "force-dynamic";
 
 const LOTE_STATUS: Record<string, { label: string; cls: string }> = {
-  quarentena: { label: "Quarentena", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
+  quarentena: { label: "Quarentena", cls: "bg-warning-soft text-warning-strong" },
   aceito: { label: "Aceito", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
-  em_uso: { label: "Em uso", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
-  consumido: { label: "Consumido", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
-  bloqueado: { label: "Bloqueado", cls: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300" },
-  descartado: { label: "Descartado", cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800" },
+  em_uso: { label: "Em uso", cls: "bg-info-soft text-info-strong" },
+  consumido: { label: "Consumido", cls: "bg-muted text-muted-foreground" },
+  bloqueado: { label: "Bloqueado", cls: "bg-danger-soft text-danger-strong" },
+  descartado: { label: "Descartado", cls: "bg-muted text-muted-foreground" },
 };
 
 const TIPO_MOV: Record<string, { label: string; cls: string }> = {
   entrada: { label: "Entrada", cls: "text-brand-700 dark:text-brand-400" },
-  saida: { label: "Saída", cls: "text-red-700 dark:text-red-400" },
-  ajuste: { label: "Ajuste", cls: "text-amber-700 dark:text-amber-400" },
+  saida: { label: "Saída", cls: "text-danger-strong" },
+  ajuste: { label: "Ajuste", cls: "text-warning-strong" },
 };
 
 function Campo({ rotulo, valor }: { rotulo: string; valor: React.ReactNode }) {
   return (
     <div className="flex flex-col">
-      <dt className="text-[11px] uppercase tracking-wide text-zinc-400">{rotulo}</dt>
-      <dd className="text-sm text-zinc-800 dark:text-zinc-100">{valor}</dd>
+      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground/80">{rotulo}</dt>
+      <dd className="text-sm text-foreground">{valor}</dd>
     </div>
   );
 }
@@ -60,7 +60,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
 
   const ins = lote.insumos as { especificacao: string | null; nome_item: string | null; unidade: string | null } | null;
   const unidade = ins?.unidade ?? "";
-  const s = LOTE_STATUS[lote.status] ?? { label: lote.status, cls: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800" };
+  const s = LOTE_STATUS[lote.status] ?? { label: lote.status, cls: "bg-muted text-muted-foreground" };
   const vencido = lote.validade != null && new Date(lote.validade) < new Date();
 
   // Rastreabilidade reversa: planos que consumiram este lote (referencia 'plano N')
@@ -78,70 +78,70 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
   const nomeCurto = ins?.especificacao ?? ins?.nome_item ?? "Lote sem descricao";
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-4xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
         <Breadcrumbs items={[{ label: "Estoque", href: "/estoque" }, { label: `Lote ${codigoEtiqueta}` }]} />
 
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight">Lote {codigoEtiqueta}</h1>
+              <h1 className="text-xl font-semibold tracking-tight">Lote {codigoEtiqueta}</h1>
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${s.cls}`}>{s.label}</span>
               {vencido && (
-                <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-950/50 dark:text-red-300">
+                <span className="rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-semibold text-danger-strong">
                   Vencido
                 </span>
               )}
             </div>
-            <p className="mt-1 text-sm text-zinc-500">{ins?.especificacao ?? ins?.nome_item ?? "—"}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{ins?.especificacao ?? ins?.nome_item ?? "—"}</p>
           </div>
         </div>
 
         {/* Etiqueta imprimível com código de barras */}
-        <section className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section className="mt-6 rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="min-w-56">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Etiqueta do lote</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground/80">Etiqueta do lote</p>
               <p className="mt-1 text-sm font-medium">{nomeCurto}</p>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted-foreground">
                 Validade: {fdata(lote.validade)} · Saldo: {fmt(lote.quantidade_atual)} {unidade}
               </p>
               <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <dt className="uppercase tracking-wide text-zinc-400">Tipo</dt>
-                  <dd className="font-medium text-zinc-700 dark:text-zinc-200">Lote</dd>
+                  <dt className="uppercase tracking-wide text-muted-foreground/80">Tipo</dt>
+                  <dd className="font-medium text-foreground">Lote</dd>
                 </div>
                 <div>
-                  <dt className="uppercase tracking-wide text-zinc-400">ID Kontrol</dt>
-                  <dd className="font-mono text-zinc-700 dark:text-zinc-200">{lote.id}</dd>
+                  <dt className="uppercase tracking-wide text-muted-foreground/80">ID Kontrol</dt>
+                  <dd className="font-mono text-foreground">{lote.id}</dd>
                 </div>
                 <div>
-                  <dt className="uppercase tracking-wide text-zinc-400">Codigo do lote</dt>
-                  <dd className="font-mono text-zinc-700 dark:text-zinc-200">{codigoEtiqueta}</dd>
+                  <dt className="uppercase tracking-wide text-muted-foreground/80">Codigo do lote</dt>
+                  <dd className="font-mono text-foreground">{codigoEtiqueta}</dd>
                 </div>
                 <div>
-                  <dt className="uppercase tracking-wide text-zinc-400">URL interna</dt>
-                  <dd className="font-mono text-zinc-700 dark:text-zinc-200">{qrUrl}</dd>
+                  <dt className="uppercase tracking-wide text-muted-foreground/80">URL interna</dt>
+                  <dd className="font-mono text-foreground">{qrUrl}</dd>
                 </div>
               </dl>
             </div>
             <div className="flex flex-wrap items-center gap-4">
               <div className="text-center">
                 <QrCode value={qrUrl} label={`QR interno do lote ${lote.id}`} />
-                <p className="mt-1 font-mono text-xs text-zinc-700 dark:text-zinc-300">{qrUrl}</p>
+                <p className="mt-1 font-mono text-xs text-foreground">{qrUrl}</p>
               </div>
               <div className="text-center">
                 <Barcode39 value={codigoEtiqueta} height={52} />
-                <p className="mt-0.5 font-mono text-xs tracking-widest text-zinc-700 dark:text-zinc-300">{codigoEtiqueta}</p>
+                <p className="mt-0.5 font-mono text-xs tracking-widest text-foreground">{codigoEtiqueta}</p>
               </div>
             </div>
           </div>
         </section>
 
         {/* Dados do lote (inclui validade dupla) */}
-        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500">Dados do lote</h2>
-        <dl className="mt-3 grid grid-cols-2 gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm sm:grid-cols-3 dark:border-zinc-800 dark:bg-zinc-900">
-          <Campo rotulo="Validade (fabricante)" valor={<span className={vencido ? "font-medium text-red-600" : ""}>{fdata(lote.validade)}</span>} />
+        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dados do lote</h2>
+        <dl className="mt-3 grid grid-cols-2 gap-4 rounded-lg border border-border bg-card p-4 shadow-sm sm:grid-cols-3">
+          <Campo rotulo="Validade (fabricante)" valor={<span className={vencido ? "font-medium text-danger-strong" : ""}>{fdata(lote.validade)}</span>} />
           <Campo rotulo="Data de abertura" valor={fdata(lote.data_abertura)} />
           <Campo rotulo="Validade após abertura" valor={fdata(lote.validade_apos_abertura)} />
           <Campo rotulo="Entrada" valor={fdata(lote.data_entrada)} />
@@ -158,15 +158,15 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
         </dl>
 
         {/* Rastreabilidade reversa */}
-        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Rastreabilidade reversa
         </h2>
-        <div className="mt-3 rounded-lg border border-zinc-200 bg-white p-4 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mt-3 rounded-lg border border-border bg-card p-4 text-sm shadow-sm">
           {planosConsumo.length === 0 ? (
-            <p className="text-zinc-400">Este lote ainda não foi consumido por nenhum plano.</p>
+            <p className="text-muted-foreground/80">Este lote ainda não foi consumido por nenhum plano.</p>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-zinc-500">Consumido pelos planos:</span>
+              <span className="text-muted-foreground">Consumido pelos planos:</span>
               {planosConsumo.map((p) => (
                 <Link
                   key={p}
@@ -181,34 +181,34 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
         </div>
 
         {/* Histórico de movimentações */}
-        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500">Histórico</h2>
-        <div className="mt-3 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Histórico</h2>
+        <div className="mt-3 overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
           <table className="min-w-full text-sm">
-            <thead className="border-b border-zinc-100 dark:border-zinc-800">
+            <thead className="border-b border-border/70">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Data</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Tipo</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">Qtd.</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Motivo</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Referência</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Data</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tipo</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qtd.</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Motivo</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Referência</th>
               </tr>
             </thead>
             <tbody>
               {(movs ?? []).map((m) => {
                 const t = TIPO_MOV[m.tipo] ?? { label: m.tipo, cls: "" };
                 return (
-                  <tr key={m.id} className="border-b border-zinc-50 last:border-b-0 dark:border-zinc-800/50">
-                    <td className="px-3 py-2 text-zinc-600 dark:text-zinc-300">{fdata(m.data)}</td>
+                  <tr key={m.id} className="border-b border-border/50 last:border-b-0">
+                    <td className="px-3 py-2 text-muted-foreground">{fdata(m.data)}</td>
                     <td className={`px-3 py-2 font-medium ${t.cls}`}>{t.label}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{fmt(m.quantidade)} {unidade}</td>
-                    <td className="px-3 py-2 text-zinc-600 dark:text-zinc-300">{m.motivo ?? "—"}</td>
-                    <td className="px-3 py-2 text-zinc-500">{m.referencia ?? "—"}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{m.motivo ?? "—"}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{m.referencia ?? "—"}</td>
                   </tr>
                 );
               })}
               {(movs ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-8 text-center text-zinc-400">Sem movimentações.</td>
+                  <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground/80">Sem movimentações.</td>
                 </tr>
               )}
             </tbody>

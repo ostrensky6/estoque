@@ -55,7 +55,7 @@ export default async function RootLayout({
     >
       <body
         suppressHydrationWarning
-        className="app-canvas min-h-dvh text-slate-900 dark:bg-zinc-950 dark:text-slate-100"
+        className="app-canvas min-h-dvh text-foreground"
       >
         <a href="#conteudo-principal" className="skip-link">
           Ir para o conteúdo principal

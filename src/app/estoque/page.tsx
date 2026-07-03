@@ -28,11 +28,11 @@ type Alerta = {
 };
 
 const ALERTA_META: Record<string, { label: string; cls: string }> = {
-  reposicao: { label: "Repor", cls: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
-  vencimento: { label: "Vence em breve", cls: "bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300" },
-  vencido: { label: "Vencido", cls: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300" },
-  sem_validade: { label: "Sem validade", cls: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300" },
-  quarentena: { label: "Quarentena", cls: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
+  reposicao: { label: "Repor", cls: "bg-warning-soft text-warning-strong" },
+  vencimento: { label: "Vence em breve", cls: "bg-warning-soft text-warning-strong" },
+  vencido: { label: "Vencido", cls: "bg-danger-soft text-danger-strong" },
+  sem_validade: { label: "Sem validade", cls: "bg-danger-soft text-danger-strong" },
+  quarentena: { label: "Quarentena", cls: "bg-info-soft text-info-strong" },
 };
 
 export default async function EstoquePage() {
@@ -109,10 +109,10 @@ export default async function EstoquePage() {
   });
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-6xl px-6 py-10">
-        <h1 className="text-2xl font-semibold tracking-tight">Estoque</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <h1 className="text-xl font-semibold tracking-tight">Estoque</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Saldo por reagente (em mãos · reservado · disponível) e alertas de
           reposição e vencimento. Lotes consumidos por FEFO.
         </p>
@@ -122,7 +122,7 @@ export default async function EstoquePage() {
           {(["reposicao", "vencimento", "vencido", "sem_validade", "quarentena"] as const).map((t) => (
             <div
               key={t}
-              className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+              className="rounded-xl border border-border bg-card p-4 shadow-sm"
             >
               <div className="flex items-center justify-between">
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ALERTA_META[t].cls}`}>
@@ -130,14 +130,14 @@ export default async function EstoquePage() {
                 </span>
                 <span className="text-2xl font-semibold tabular-nums">{porTipo[t].length}</span>
               </div>
-              <ul className="mt-2 space-y-0.5 text-xs text-zinc-500">
+              <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
                 {porTipo[t].slice(0, 4).map((a, i) => (
                   <li key={i} className="truncate" title={a.especificacao ?? ""}>
                     {a.especificacao}
                     {a.validade ? ` · vence ${a.validade}` : ""}
                   </li>
                 ))}
-                {porTipo[t].length === 0 && <li className="text-zinc-400">Nenhum</li>}
+                {porTipo[t].length === 0 && <li className="text-muted-foreground/80">Nenhum</li>}
               </ul>
             </div>
           ))}
@@ -146,17 +146,17 @@ export default async function EstoquePage() {
         <div className="mt-8">
           <SaldoTable rows={saldoRows} />
         </div>
-        <p className="mt-3 text-xs text-zinc-400">
+        <p className="mt-3 text-xs text-muted-foreground/80">
           {saldoRows.length} reagentes · previsão usa consumo dos últimos{" "}
           {previsao?.[0]?.janela_dias ?? 90} dias, lead time e estoque de segurança.
           Ajuste o ponto manual em Cadastros → Insumos quando precisar travar uma política.
         </p>
 
         {/* Lotes (rastreabilidade + estados) */}
-        <h2 className="mt-10 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+        <h2 className="mt-10 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Lotes em estoque
         </h2>
-        <p className="mt-1 text-xs text-zinc-400">
+        <p className="mt-1 text-xs text-muted-foreground/80">
           Material recebido entra em <b>quarentena</b> e só fica disponível após
           aceitação. Consumo por FEFO (vence antes, sai antes).
         </p>

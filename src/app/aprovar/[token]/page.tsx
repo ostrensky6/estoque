@@ -58,10 +58,10 @@ export default async function AprovacaoPublicaPage({
   if (!payload || !payload.orcamento) {
     return (
       <main className="mx-auto max-w-lg px-6 py-24 text-center font-sans">
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+        <h1 className="text-xl font-semibold text-foreground">
           Link indisponível
         </h1>
-        <p className="mt-2 text-sm text-zinc-500">
+        <p className="mt-2 text-sm text-muted-foreground">
           Este link de aprovação é inválido, expirou ou foi revogado. Solicite um
           novo link ao responsável pelo orçamento.
         </p>
@@ -94,12 +94,12 @@ export default async function AprovacaoPublicaPage({
   const aprovado = Boolean(payload.aprovado_em);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10 font-sans text-zinc-900 dark:text-zinc-100">
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60">
+    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8 font-sans text-foreground">
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
           Proposta de orçamento — ATGC Genética Ambiental
         </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">{orc.titulo}</h1>
+        <h1 className="mt-1 text-xl font-semibold tracking-tight">{orc.titulo}</h1>
         <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
           <Linha rotulo="Cliente" valor={orc.cliente_nome} />
           <Linha rotulo="Responsável" valor={orc.responsavel} />
@@ -108,29 +108,29 @@ export default async function AprovacaoPublicaPage({
         </dl>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
-            <p className="text-xs font-medium text-zinc-500">Subtotal (base)</p>
+          <div className="rounded-lg border border-border bg-muted/50 p-4">
+            <p className="text-xs font-medium text-muted-foreground">Subtotal (base)</p>
             <p className="mt-1 text-lg font-semibold tabular-nums">{brl(calculo.subtotal)}</p>
           </div>
           <div className="rounded-lg border border-brand-200 bg-brand-50 p-4 dark:border-brand-900 dark:bg-brand-950/30">
-            <p className="text-xs font-medium text-zinc-500">Total final</p>
+            <p className="text-xs font-medium text-muted-foreground">Total final</p>
             <p className="mt-1 text-lg font-semibold tabular-nums">{brl(calculo.grossTotal)}</p>
           </div>
         </div>
 
-        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Composição por rubrica
         </h2>
-        <div className="mt-2 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <div className="mt-2 overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-right text-sm">
-            <thead className="text-xs uppercase tracking-wide text-zinc-500">
+            <thead className="text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 text-left">Rubrica</th>
                 <th className="px-3 py-2">Itens</th>
                 <th className="px-3 py-2">Subtotal</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <tbody className="divide-y divide-border/70">
               {calculo.summaries
                 .filter((s) => s.count > 0 || s.total > 0)
                 .map((s) => (
@@ -150,20 +150,20 @@ export default async function AprovacaoPublicaPage({
           <div className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
             {orc.escopo && (
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Escopo</h3>
-                <p className="mt-1 whitespace-pre-wrap leading-6 text-zinc-700 dark:text-zinc-300">{orc.escopo}</p>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Escopo</h3>
+                <p className="mt-1 whitespace-pre-wrap leading-6 text-foreground">{orc.escopo}</p>
               </div>
             )}
             {orc.cronograma && (
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Cronograma</h3>
-                <p className="mt-1 whitespace-pre-wrap leading-6 text-zinc-700 dark:text-zinc-300">{orc.cronograma}</p>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cronograma</h3>
+                <p className="mt-1 whitespace-pre-wrap leading-6 text-foreground">{orc.cronograma}</p>
               </div>
             )}
           </div>
         )}
 
-        <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
+        <div className="mt-8 border-t border-border pt-6">
           {aprovado ? (
             <div className="rounded-lg bg-leaf-50 px-4 py-3 text-sm text-leaf-800 dark:bg-leaf-950/40 dark:text-leaf-200">
               ✓ Orçamento aprovado{payload.aprovado_por ? ` por ${payload.aprovado_por}` : ""}
@@ -176,13 +176,13 @@ export default async function AprovacaoPublicaPage({
             <form action={aprovarOrcamentoPublico} className="flex flex-wrap items-end gap-3">
               <input type="hidden" name="token" value={token} />
               <div className="flex-1 min-w-56">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                <label className="block text-xs font-medium text-muted-foreground">
                   Seu nome (para registro da aprovação)
                 </label>
                 <input
                   name="nome"
                   placeholder="Nome de quem aprova"
-                  className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                  className="mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm"
                 />
               </div>
               <button className="rounded-md bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-500">
@@ -192,7 +192,7 @@ export default async function AprovacaoPublicaPage({
           )}
         </div>
       </div>
-      <p className="mt-4 text-center text-xs text-zinc-400">
+      <p className="mt-4 text-center text-xs text-muted-foreground/80">
         Documento gerado pelo Kontrol — ATGC. Valores em reais (BRL).
       </p>
     </main>
@@ -202,7 +202,7 @@ export default async function AprovacaoPublicaPage({
 function Linha({ rotulo, valor }: { rotulo: string; valor: string | null }) {
   return (
     <div className="flex gap-2">
-      <dt className="text-zinc-500">{rotulo}:</dt>
+      <dt className="text-muted-foreground">{rotulo}:</dt>
       <dd className="font-medium">{valor ?? "—"}</dd>
     </div>
   );

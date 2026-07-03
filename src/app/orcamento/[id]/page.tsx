@@ -192,12 +192,12 @@ export default async function OrcamentoDetalhe({
       : null;
 
   const inp =
-    "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"; // §8.2: entrada em azul
-  const lbl = "block text-xs font-medium text-zinc-600 dark:text-zinc-300";
+    "rounded-md border border-input bg-card px-3 py-2 text-sm font-medium text-brand-700 dark:text-brand-300"; // §8.2: entrada em azul
+  const lbl = "block text-xs font-medium text-muted-foreground";
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="print-area mx-auto max-w-6xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="print-area mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="no-print flex items-center justify-between">
           <Breadcrumbs items={[{ label: "Orçamentos não finalizados", href: "/orcamento/demandas" }, { label: `Custos laboratoriais #${orc.id}` }]} />
           <div className="flex items-center gap-2">
@@ -205,14 +205,14 @@ export default async function OrcamentoDetalhe({
             {orc.status === "aprovado" && itens.length > 0 && (
               <form action={gerarPlanejamentoDeOrcamento}>
                 <input type="hidden" name="orcamento_id" value={orcId} />
-                <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500">
+                <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                   Gerar planejamento
                 </button>
               </form>
             )}
             <form action={recalcularOrcamento}>
               <input type="hidden" name="orcamento_id" value={orcId} />
-              <button className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+              <button className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-muted">
                 Recalcular preços
               </button>
             </form>
@@ -222,32 +222,32 @@ export default async function OrcamentoDetalhe({
         {demanda && <FluxoProposta modalidade={demanda.modalidade} atual="laboratorio" />}
 
         {/* Documento imprimível */}
-        <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60 print:border-0 print:shadow-none">
+        <div className="mt-4 rounded-2xl border border-border bg-card p-6 shadow-sm print:border-0 print:shadow-none">
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-xl font-semibold tracking-tight">
                 Custos laboratoriais
               </h1>
-              <p className="text-sm text-zinc-500">
+              <p className="text-sm text-muted-foreground">
                 Laboratório ATGC — Biologia Molecular
               </p>
             </div>
             <div className="text-right text-sm">
               <p className="font-medium">Nº {orc.id}</p>
-              <p className="text-zinc-500">Data: {orc.data_orcamento ?? "—"}</p>
+              <p className="text-muted-foreground">Data: {orc.data_orcamento ?? "—"}</p>
               {validade && (
-                <p className="text-zinc-500">Válido até: {validade}</p>
+                <p className="text-muted-foreground">Válido até: {validade}</p>
               )}
             </div>
           </div>
 
           <dl className="mt-5 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
             <div className="flex gap-2">
-              <dt className="text-zinc-500">Orçamento lab:</dt>
+              <dt className="text-muted-foreground">Orçamento lab:</dt>
               <dd className="font-medium">#{orc.id} · {orc.status}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-zinc-500">Demanda:</dt>
+              <dt className="text-muted-foreground">Demanda:</dt>
               <dd>
                 {demanda ? (
                   <Link href={`/orcamento/demandas/${demanda.id}`} className="font-medium text-primary hover:underline">
@@ -259,59 +259,59 @@ export default async function OrcamentoDetalhe({
               </dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-zinc-500">Cliente:</dt>
+              <dt className="text-muted-foreground">Cliente:</dt>
               <dd className="font-medium">{orc.cliente_nome}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-zinc-500">Matriz/amostra:</dt>
+              <dt className="text-muted-foreground">Matriz/amostra:</dt>
               <dd>{demanda?.matriz_amostra ?? "—"}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-zinc-500">CNPJ:</dt>
+              <dt className="text-muted-foreground">CNPJ:</dt>
               <dd>{orc.cliente_cnpj ?? "—"}</dd>
             </div>
             <div className="flex gap-2 sm:col-span-2">
-              <dt className="text-zinc-500">Endereço:</dt>
+              <dt className="text-muted-foreground">Endereço:</dt>
               <dd>{orc.cliente_endereco ?? "—"}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-zinc-500">Contato:</dt>
+              <dt className="text-muted-foreground">Contato:</dt>
               <dd>{orc.cliente_contato ?? "—"}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-zinc-500">Responsável:</dt>
+              <dt className="text-muted-foreground">Responsável:</dt>
               <dd>{orc.responsavel ?? "—"}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-zinc-500">Snapshot de custo:</dt>
+              <dt className="text-muted-foreground">Snapshot de custo:</dt>
               <dd>{formatDateTime(snapshotGeradoEm)}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-zinc-500">Projeto:</dt>
+              <dt className="text-muted-foreground">Projeto:</dt>
               <dd>{projetoNome ?? "—"}</dd>
             </div>
           </dl>
 
-          <nav className="no-print sticky top-0 z-10 mt-6 overflow-x-auto border-y border-zinc-200 bg-white/95 py-2 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+          <nav className="no-print sticky top-0 z-10 mt-6 overflow-x-auto border-y border-border bg-card/95 py-2 shadow-sm backdrop-blur">
             <div className="flex min-w-max gap-2">
               {tabs.map((tab) => (
-                <a key={tab.href} href={tab.href} className="rounded-md border border-zinc-300 px-3 py-2 text-left text-xs text-zinc-800 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800">
+                <a key={tab.href} href={tab.href} className="rounded-md border border-input px-3 py-2 text-left text-xs text-foreground transition hover:bg-muted">
                   <span className="block font-semibold">{tab.label}</span>
-                  <span className="mt-0.5 block text-[10px] uppercase tracking-wide text-zinc-500">{tab.meta}</span>
+                  <span className="mt-0.5 block text-[10px] uppercase tracking-wide text-muted-foreground">{tab.meta}</span>
                 </a>
               ))}
             </div>
           </nav>
 
-          <section id="totais-tecnicos" className="no-print mt-6 scroll-mt-24 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+          <section id="totais-tecnicos" className="no-print mt-6 scroll-mt-24 rounded-lg border border-border bg-muted/50 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold">Preenchimento interno</h2>
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Base operacional por custo. O preço de saída fica preservado no documento e no orçamento final.
                 </p>
               </div>
-              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-zinc-700">
+              <span className="rounded-full bg-card px-2.5 py-1 text-xs font-medium text-foreground ring-1 ring-border">
                 {statusOperacional}
               </span>
             </div>
@@ -334,18 +334,18 @@ export default async function OrcamentoDetalhe({
           <section id="analises-quantidades" className="mt-6 scroll-mt-24">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   Análises e quantidades
                 </h2>
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Leitura técnica por custo. Valores de preço ficam preservados no resumo e no documento final.
                 </p>
               </div>
-              <span className="text-xs text-zinc-400">{totalAmostras} amostra(s)</span>
+              <span className="text-xs text-muted-foreground/80">{totalAmostras} amostra(s)</span>
             </div>
-          <div className="mt-2 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+          <div className="mt-2 overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-right text-sm">
-              <thead className="bg-transparent text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/60">
+              <thead className="bg-transparent text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2 text-left">Análise</th>
                   <th className="px-3 py-2 text-left">Matriz</th>
@@ -360,17 +360,17 @@ export default async function OrcamentoDetalhe({
                   <th className="px-3 py-2 no-print"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <tbody className="divide-y divide-border/70">
                 {linhasTecnicas.map((linha) => (
                   <tr key={linha.id}>
                     <td className="px-3 py-2 text-left font-medium">
                       <p>{linha.codigo}</p>
-                      <p className="text-xs font-normal text-zinc-500">{linha.nome ?? "—"}</p>
+                      <p className="text-xs font-normal text-muted-foreground">{linha.nome ?? "—"}</p>
                     </td>
-                    <td className="px-3 py-2 text-left text-zinc-500">{demanda?.matriz_amostra ?? "—"}</td>
+                    <td className="px-3 py-2 text-left text-muted-foreground">{demanda?.matriz_amostra ?? "—"}</td>
                     <td className="px-3 py-2 tabular-nums">{linha.lote ?? "—"}</td>
                     <td className="px-3 py-2 tabular-nums">{linha.quantidade}</td>
-                    <td className="px-3 py-2 tabular-nums text-zinc-500 no-print">
+                    <td className="px-3 py-2 tabular-nums text-muted-foreground no-print">
                       {brl(linha.reagentes)}
                     </td>
                     <td className="px-3 py-2 tabular-nums">{brl(linha.equipamentos)}</td>
@@ -379,12 +379,12 @@ export default async function OrcamentoDetalhe({
                     <td className="px-3 py-2 font-semibold tabular-nums">
                       {brl(linha.custo)}
                     </td>
-                    <td className="px-3 py-2 text-left text-xs text-zinc-500">{linha.origem}</td>
+                    <td className="px-3 py-2 text-left text-xs text-muted-foreground">{linha.origem}</td>
                     <td className="px-3 py-2 no-print">
                       <form action={removerItemOrcamento}>
                         <input type="hidden" name="orcamento_id" value={orcId} />
                         <input type="hidden" name="item_id" value={linha.id} />
-                        <button className="text-xs text-red-600 hover:underline">
+                        <button className="text-xs text-danger-strong hover:underline">
                           Remover
                         </button>
                       </form>
@@ -393,20 +393,20 @@ export default async function OrcamentoDetalhe({
                 ))}
                 {itens.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="px-3 py-8 text-center text-zinc-400">
+                    <td colSpan={11} className="px-3 py-8 text-center text-muted-foreground/80">
                       Nenhuma análise. Adicione abaixo.
                     </td>
                   </tr>
                 )}
               </tbody>
               {itens.length > 0 && (
-                <tfoot className="border-t border-zinc-200 bg-transparent dark:border-zinc-800 dark:bg-zinc-900/60">
+                <tfoot className="border-t border-border bg-transparent">
                   <tr>
                     <td className="px-3 py-2.5 text-left font-medium">Total</td>
                     <td></td>
                     <td></td>
                     <td className="px-3 py-2.5 tabular-nums">{totalAmostras}</td>
-                    <td className="px-3 py-2.5 tabular-nums text-zinc-500 no-print">{brl(Number(totaisOperacionais.reagentes ?? 0))}</td>
+                    <td className="px-3 py-2.5 tabular-nums text-muted-foreground no-print">{brl(Number(totaisOperacionais.reagentes ?? 0))}</td>
                     <td className="px-3 py-2.5 tabular-nums">{brl(Number(totaisOperacionais.equipamentos ?? 0))}</td>
                     <td className="px-3 py-2.5 tabular-nums">{brl(Number(totaisOperacionais.mao_obra ?? 0))}</td>
                     <td className="px-3 py-2.5 tabular-nums">{brl(Number(totaisOperacionais.overhead ?? 0))}</td>
@@ -425,10 +425,10 @@ export default async function OrcamentoDetalhe({
           <section id="composicao-tecnica" className="no-print mt-6 scroll-mt-24">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   Composição técnica por bloco
                 </h2>
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Cada subtotal mostra a origem calculada pela engine de custeio e a regra operacional aplicada.
                 </p>
               </div>
@@ -449,10 +449,10 @@ export default async function OrcamentoDetalhe({
 
           {orc.observacoes && (
             <div className="mt-4 text-sm">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Observações
               </p>
-              <p className="mt-1 whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">
+              <p className="mt-1 whitespace-pre-wrap text-foreground">
                 {orc.observacoes}
               </p>
             </div>
@@ -460,28 +460,28 @@ export default async function OrcamentoDetalhe({
         </div>
 
         {desatualizado && (
-          <p className="no-print mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+          <p className="no-print mt-4 rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-strong">
             Os parâmetros de custo mudaram desde a emissão. Use “Recalcular
             preços” para atualizar os valores deste orçamento.
           </p>
         )}
 
         {erroExclusao && (
-          <p className="no-print mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+          <p className="no-print mt-4 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">
             {erroExclusao}
           </p>
         )}
 
         {/* Catálogo visível de análises */}
-        <section id="identificacao-tecnica" className="no-print mt-6 scroll-mt-24 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="identificacao-tecnica" className="no-print mt-6 scroll-mt-24 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Catálogo de análises laboratoriais</h2>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Todas as análises ativas ficam visíveis. Somente análises marcadas entram no subtotal técnico.
               </p>
             </div>
-            <span className="text-xs text-zinc-400">{analises?.length ?? 0} análise(s) ativa(s)</span>
+            <span className="text-xs text-muted-foreground/80">{analises?.length ?? 0} análise(s) ativa(s)</span>
           </div>
           <TabelaCatalogoAnalises
             analises={(analises ?? []).map((analise) => ({
@@ -495,27 +495,27 @@ export default async function OrcamentoDetalhe({
         </section>
 
         {demanda ? (
-          <section className="no-print mt-6 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <section className="no-print mt-6 rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold">Dados comerciais herdados</h2>
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Cliente, documento e contato são lidos da demanda. A versão emitida preserva snapshot próprio.
                 </p>
               </div>
-              <Link href={`/orcamento/demandas/${demanda.id}#demanda`} className="rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+              <Link href={`/orcamento/demandas/${demanda.id}#demanda`} className="rounded-md border border-input px-3 py-2 text-xs font-medium hover:bg-muted">
                 Editar dados da demanda
               </Link>
             </div>
             <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-              <div><dt className="text-xs text-zinc-500">Cliente</dt><dd className="font-medium">{orc.cliente_nome ?? "—"}</dd></div>
-              <div><dt className="text-xs text-zinc-500">Documento</dt><dd>{orc.cliente_cnpj ?? "—"}</dd></div>
-              <div><dt className="text-xs text-zinc-500">Contato</dt><dd>{orc.cliente_contato ?? "—"}</dd></div>
-              <div><dt className="text-xs text-zinc-500">Origem</dt><dd>Demanda nº {demanda.id}</dd></div>
+              <div><dt className="text-xs text-muted-foreground">Cliente</dt><dd className="font-medium">{orc.cliente_nome ?? "—"}</dd></div>
+              <div><dt className="text-xs text-muted-foreground">Documento</dt><dd>{orc.cliente_cnpj ?? "—"}</dd></div>
+              <div><dt className="text-xs text-muted-foreground">Contato</dt><dd>{orc.cliente_contato ?? "—"}</dd></div>
+              <div><dt className="text-xs text-muted-foreground">Origem</dt><dd>Demanda nº {demanda.id}</dd></div>
             </dl>
           </section>
         ) : (
-        <section className="no-print mt-6 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section className="no-print mt-6 rounded-xl border border-border bg-card p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Dados do cliente e do orçamento</h2>
           <form action={salvarCabecalho} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input type="hidden" name="orcamento_id" value={orcId} />
@@ -527,7 +527,7 @@ export default async function OrcamentoDetalhe({
                   <option key={c.id} value={c.id}>{c.nome}</option>
                 ))}
               </select>
-              <p className="mt-1 text-[11px] text-zinc-400">
+              <p className="mt-1 text-[11px] text-muted-foreground/80">
                 Ao vincular, os dados do documento são preenchidos a partir do cadastro.
               </p>
             </div>
@@ -583,7 +583,7 @@ export default async function OrcamentoDetalhe({
               <textarea aria-label="Observações" name="observacoes" rows={3} defaultValue={orc.observacoes ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
             <div className="sm:col-span-2">
-              <button className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900">
+              <button className="rounded-md bg-card px-4 py-2 text-sm font-medium text-white hover:bg-muted dark:bg-card">
                 Salvar dados
               </button>
             </div>
@@ -591,20 +591,20 @@ export default async function OrcamentoDetalhe({
         </section>
         )}
 
-        <section id="revisao-laboratorio" className="no-print mt-6 scroll-mt-24 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="revisao-laboratorio" className="no-print mt-6 scroll-mt-24 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Revisão técnica</h2>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Checklist para marcar o orçamento como enviado, aprovado ou seguir para planejamento.
               </p>
             </div>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${revisaoPendencias.length === 0 ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"}`}>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${revisaoPendencias.length === 0 ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-warning-soft text-warning-strong"}`}>
               {revisaoPendencias.length === 0 ? "Liberado" : `${revisaoPendencias.length} pendência(s)`}
             </span>
           </div>
           {revisaoPendencias.length > 0 ? (
-            <ul className="mt-3 list-disc space-y-1 pl-4 text-xs leading-5 text-amber-800 dark:text-amber-200">
+            <ul className="mt-3 list-disc space-y-1 pl-4 text-xs leading-5 text-warning-strong">
               {revisaoPendencias.map((pendencia) => (
                 <li key={pendencia}>{pendencia}</li>
               ))}
@@ -615,7 +615,7 @@ export default async function OrcamentoDetalhe({
             </p>
           )}
           {demanda && statusOperacional !== "revisado" && orc.status !== "cancelado" && (
-            <form action={revisarOrcamentoLaboratorio} className="mt-4 grid gap-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-950/50 sm:grid-cols-[1fr_180px_auto]">
+            <form action={revisarOrcamentoLaboratorio} className="mt-4 grid gap-3 rounded-md border border-border bg-muted/50 p-3 text-sm sm:grid-cols-[1fr_180px_auto]">
               <input type="hidden" name="orcamento_id" value={orcId} />
               <div>
                 <label className={lbl}>Responsável técnico</label>
@@ -644,16 +644,16 @@ export default async function OrcamentoDetalhe({
                   Marcar revisado
                 </button>
               </div>
-              <p className="sm:col-span-3 text-xs leading-5 text-zinc-500">
+              <p className="sm:col-span-3 text-xs leading-5 text-muted-foreground">
                 Esta ação preserva o snapshot laboratorial e transforma o módulo em revisado; depois disso, a edição direta fica bloqueada.
               </p>
             </form>
           )}
         </section>
 
-        <section id="historico-laboratorio" className="no-print mt-6 scroll-mt-24 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <section id="historico-laboratorio" className="no-print mt-6 scroll-mt-24 rounded-xl border border-border bg-card p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Linha do tempo</h2>
-          <p className="mt-1 mb-3 text-xs text-zinc-500">
+          <p className="mt-1 mb-3 text-xs text-muted-foreground">
             Transições de status registradas (salve mudando o status acima para gerar eventos).
           </p>
           <Timeline eventos={eventos} />
@@ -669,7 +669,7 @@ export default async function OrcamentoDetalhe({
               mensagem={`Cancelar o orçamento de “${orc.cliente_nome}”? O histórico será preservado.`}
               confirmLabel="Cancelar orçamento"
               destrutivo={false}
-              triggerClassName="text-xs text-amber-700 hover:underline dark:text-amber-300"
+              triggerClassName="text-xs text-warning-strong hover:underline"
             />
           ) : (
             <ConfirmActionButton
@@ -701,8 +701,8 @@ function ResumoOperacional({
   numero?: boolean;
 }) {
   return (
-    <div className={`rounded-lg border p-3 ${destaque ? "border-brand-200 bg-brand-50 dark:border-brand-900 dark:bg-brand-950/30" : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"} ${discreto ? "opacity-80" : ""}`}>
-      <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{titulo}</p>
+    <div className={`rounded-lg border p-3 ${destaque ? "border-brand-200 bg-brand-50 dark:border-brand-900 dark:bg-brand-950/30" : "border-border bg-card"} ${discreto ? "opacity-80" : ""}`}>
+      <p className="text-xs font-medium text-muted-foreground">{titulo}</p>
       <p className="mt-1 text-sm font-semibold tabular-nums">
         {numero ? valor.toLocaleString("pt-BR") : brl(valor)}
       </p>
@@ -733,12 +733,12 @@ function TabelaCatalogoAnalises({
 }) {
   const itensPorCodigo = new Map(itens.map((item) => [item.codigo_analise, item]));
   const inputClass =
-    "w-24 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-right text-sm font-medium text-brand-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300";
+    "w-24 rounded-md border border-input bg-card px-2 py-1.5 text-right text-sm font-medium text-brand-700 dark:text-brand-300";
 
   return (
-    <div className="mt-3 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+    <div className="mt-3 overflow-x-auto rounded-lg border border-border">
       <table className="w-full min-w-[980px] text-right text-sm">
-        <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-950/60">
+        <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-3 py-2 text-left">Incluir</th>
             <th className="px-3 py-2 text-left">Código</th>
@@ -751,7 +751,7 @@ function TabelaCatalogoAnalises({
             <th className="px-3 py-2"></th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+        <tbody className="divide-y divide-border/70">
           {analises.map((analise) => {
             const item = itensPorCodigo.get(analise.codigo);
             const selecionada = Boolean(item);
@@ -769,7 +769,7 @@ function TabelaCatalogoAnalises({
                     <button
                       className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
                         selecionada
-                          ? "border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300"
+                          ? "border-danger-strong/30 text-danger-strong hover:bg-danger-soft"
                           : "border-brand-200 text-brand-700 hover:bg-brand-50 dark:border-brand-900 dark:text-brand-300"
                       }`}
                     >
@@ -778,10 +778,10 @@ function TabelaCatalogoAnalises({
                   </form>
                 </td>
                 <td className="px-3 py-2 text-left font-semibold">{analise.codigo}</td>
-                <td className="max-w-xs px-3 py-2 text-left text-zinc-700 dark:text-zinc-200">{analise.nome ?? "—"}</td>
+                <td className="max-w-xs px-3 py-2 text-left text-foreground">{analise.nome ?? "—"}</td>
                 <td className="px-3 py-2 tabular-nums">{analise.breakdown?.lote ?? "—"}</td>
                 <td className="px-3 py-2 tabular-nums">{brl(custoUnitario)}</td>
-                <td className="px-3 py-2 text-xs text-zinc-500">
+                <td className="px-3 py-2 text-xs text-muted-foreground">
                   R {brl(Number(analise.breakdown?.reagentes ?? 0))} · E {brl(Number(analise.breakdown?.equipamento ?? 0))} · P {brl(Number(analise.breakdown?.pessoal ?? 0))} · O {brl(Number(analise.breakdown?.overhead ?? 0))}
                 </td>
                 <td className="px-3 py-2">
@@ -799,16 +799,16 @@ function TabelaCatalogoAnalises({
                         defaultValue={amostras}
                         className={inputClass}
                       />
-                      <button className="rounded-md border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                      <button className="rounded-md border border-input px-2 py-1 text-xs hover:bg-muted">
                         Salvar
                       </button>
                     </form>
                   ) : (
-                    <span className="text-zinc-400">—</span>
+                    <span className="text-muted-foreground/80">—</span>
                   )}
                 </td>
                 <td className="px-3 py-2 font-semibold tabular-nums">{brl(subtotal)}</td>
-                <td className="px-3 py-2 text-left text-xs text-zinc-400">
+                <td className="px-3 py-2 text-left text-xs text-muted-foreground/80">
                   {selecionada ? "Snapshot preservado" : "Visível, fora do subtotal"}
                 </td>
               </tr>
@@ -830,9 +830,9 @@ function TabelaResumoTecnico({
   vazio: string;
 }) {
   return (
-    <div className="mt-3 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+    <div className="mt-3 overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-left text-sm">
-        <thead className="text-xs uppercase tracking-wide text-zinc-500">
+        <thead className="text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             {colunas.map((coluna) => (
               <th key={coluna} className="px-3 py-2">
@@ -841,12 +841,12 @@ function TabelaResumoTecnico({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+        <tbody className="divide-y divide-border/70">
           {linhas.length > 0 ? (
             linhas.map((linha, index) => (
               <tr key={index}>
                 {linha.map((celula, celulaIndex) => (
-                  <td key={celulaIndex} className="max-w-lg px-3 py-2 text-zinc-700 dark:text-zinc-200">
+                  <td key={celulaIndex} className="max-w-lg px-3 py-2 text-foreground">
                     {celula}
                   </td>
                 ))}
@@ -854,7 +854,7 @@ function TabelaResumoTecnico({
             ))
           ) : (
             <tr>
-              <td colSpan={colunas.length} className="px-3 py-8 text-center text-zinc-400">
+              <td colSpan={colunas.length} className="px-3 py-8 text-center text-muted-foreground/80">
                 {vazio}
               </td>
             </tr>

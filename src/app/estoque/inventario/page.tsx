@@ -92,33 +92,33 @@ export default async function InventarioPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="mx-auto max-w-7xl px-6 py-10">
+    <div className="min-h-dvh bg-transparent font-sans text-foreground">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <Breadcrumbs items={[{ label: "Estoque", href: "/estoque" }, { label: "Inventário" }]} />
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Inventário cíclico</h1>
-            <p className="mt-1 max-w-3xl text-sm text-zinc-500">
+            <h1 className="text-xl font-semibold tracking-tight">Inventário cíclico</h1>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               Abra uma campanha, escaneie local e lote, registre a quantidade contada e aplique ajuste
               somente depois de justificar divergências.
             </p>
           </div>
           {podeCriar && (
-            <form action={criarCiclo} className="flex flex-wrap items-end gap-2 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <form action={criarCiclo} className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-card p-3 shadow-sm">
               <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Campanha</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Campanha</label>
                 <input
                   name="nome"
                   placeholder="Inventário semanal"
-                  className="mt-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                  className="mt-1 rounded-md border border-input bg-card px-3 py-2 text-sm"
                 />
               </div>
               <div>
-                <label className="block text-[10px] uppercase tracking-wide text-zinc-400">Local</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Local</label>
                 <select
                   name="local_id"
                   defaultValue=""
-                  className="mt-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                  className="mt-1 rounded-md border border-input bg-card px-3 py-2 text-sm"
                 >
                   <option value="">Todos</option>
                   {locaisOpcoes.map((local) => (
@@ -128,7 +128,7 @@ export default async function InventarioPage() {
                   ))}
                 </select>
               </div>
-              <button className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900">
+              <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                 Criar
               </button>
             </form>
@@ -139,13 +139,13 @@ export default async function InventarioPage() {
           <InventarioScannerPanel ciclos={ciclosOpcoes} locais={locaisOpcoes} lotes={lotesOpcoes} />
         </div>
 
-        <section className="mt-8 rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Contagens recentes</h2>
+        <section className="mt-8 rounded-xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-4 py-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Contagens recentes</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
+              <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 text-left">Campanha</th>
                   <th className="px-4 py-3 text-left">Lote</th>
@@ -157,7 +157,7 @@ export default async function InventarioPage() {
                   <th className="px-4 py-3 text-right">Ação</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <tbody className="divide-y divide-border/70">
                 {((contagens ?? []) as unknown as ContagemRow[]).map((contagem) => {
                   const ciclo = firstRelation(contagem.inventario_ciclos);
                   const local = firstRelation(contagem.locais);
@@ -175,7 +175,7 @@ export default async function InventarioPage() {
                       <td className="px-4 py-3">{local?.nome ?? "—"}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{Number(contagem.quantidade_sistema)}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{Number(contagem.quantidade_contada)}</td>
-                      <td className={`px-4 py-3 text-right tabular-nums ${divergente ? "text-amber-700 dark:text-amber-300" : "text-brand-700 dark:text-brand-300"}`}>
+                      <td className={`px-4 py-3 text-right tabular-nums ${divergente ? "text-warning-strong" : "text-brand-700 dark:text-brand-300"}`}>
                         {Number(contagem.divergencia)}
                       </td>
                       <td className="max-w-xs truncate px-4 py-3" title={contagem.justificativa ?? ""}>
@@ -189,7 +189,7 @@ export default async function InventarioPage() {
                         ) : divergente && podeAjustar ? (
                           <InventarioAjusteButton contagemId={contagem.id} />
                         ) : (
-                          <span className="text-xs text-zinc-400">—</span>
+                          <span className="text-xs text-muted-foreground/80">—</span>
                         )}
                       </td>
                     </tr>
@@ -197,7 +197,7 @@ export default async function InventarioPage() {
                 })}
                 {(contagens ?? []).length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-zinc-400">
+                    <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground/80">
                       Nenhuma contagem registrada.
                     </td>
                   </tr>

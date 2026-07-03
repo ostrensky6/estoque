@@ -91,7 +91,7 @@ export function ParametrosEconomicosForm({
 
   // §8.2: o percentual/valor que o usuário define é entrada -> azul (TOM_ENTRADA).
   const inputBase =
-    `mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm font-medium tabular-nums dark:bg-zinc-950 focus:outline-none focus:ring-1 focus:ring-brand-500 ${TOM_ENTRADA}`;
+    `mt-1 w-full rounded-md border bg-card px-3 py-2 text-sm font-medium tabular-nums focus:outline-none focus:ring-1 focus:ring-brand-500 ${TOM_ENTRADA}`;
 
   return (
     <form action={action} className="space-y-6">
@@ -101,11 +101,11 @@ export function ParametrosEconomicosForm({
           return (
             <div
               key={campo.chave}
-              className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+              className="rounded-lg border border-border bg-card p-4 shadow-sm"
             >
               <label
                 htmlFor={campo.chave}
-                className="block text-sm font-semibold text-zinc-800 dark:text-zinc-100"
+                className="block text-sm font-semibold text-foreground"
               >
                 {campo.label}
               </label>
@@ -121,18 +121,18 @@ export function ParametrosEconomicosForm({
                   defaultValue={valores[campo.chave]}
                   className={`${inputBase} ${
                     erro
-                      ? "border-red-400 focus:border-red-500"
-                      : "border-zinc-300 focus:border-brand-500 dark:border-zinc-700"
+                      ? "border-danger-strong/40 focus:border-danger-strong"
+                      : "border-input focus:border-brand-500"
                   }`}
                 />
-                <span className="min-w-10 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-2 text-center text-xs font-medium text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950">
+                <span className="min-w-10 rounded-md border border-border bg-muted/50 px-2 py-2 text-center text-xs font-medium text-muted-foreground">
                   {campo.unidade}
                 </span>
               </div>
               {erro ? (
-                <p className="mt-2 text-xs text-red-600">{erro}</p>
+                <p className="mt-2 text-xs text-danger-strong">{erro}</p>
               ) : (
-                <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                   {campo.ajuda}
                 </p>
               )}
@@ -146,7 +146,7 @@ export function ParametrosEconomicosForm({
           className={`rounded-md px-3 py-2 text-sm ${
             state.ok
               ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300"
-              : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+              : "bg-danger-soft text-danger-strong"
           }`}
         >
           {state.message}

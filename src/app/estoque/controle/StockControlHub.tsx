@@ -244,77 +244,77 @@ export function StockControlHub({
   ].filter((d) => d.value > 0);
 
   const TONE_CLASSES = {
-    red: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200",
-    amber: "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200",
-    blue: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200",
-    emerald: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200",
-    slate: "border-slate-200 bg-slate-50 text-slate-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200",
+    red: "border-danger-strong/30 bg-danger-soft text-danger-strong",
+    amber: "border-warning-strong/30 bg-warning-soft text-warning-strong",
+    blue: "border-info-strong/30 bg-info-soft text-info-strong",
+    emerald: "border-success-strong/30 bg-success-soft text-success-strong",
+    slate: "border-border bg-muted/50 text-foreground",
   };
 
   return (
     <div className="grid gap-6">
       {/* 1. Visão Geral / KPIs Visuais */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase text-slate-500">Sem Estoque</p>
-            <span className="rounded-md bg-red-100 p-1 text-red-600 dark:bg-red-950/50">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">Sem Estoque</p>
+            <span className="rounded-md bg-danger-soft p-1 text-danger-strong">
               <XCircle className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-red-600">{countSemEstoque}</p>
-          <p className="mt-1 text-xs text-slate-500">críticos sem saldo</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-danger-strong">{countSemEstoque}</p>
+          <p className="mt-1 text-xs text-muted-foreground">críticos sem saldo</p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase text-slate-500">Reposição</p>
-            <span className="rounded-md bg-amber-100 p-1 text-amber-600 dark:bg-amber-950/50">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">Reposição</p>
+            <span className="rounded-md bg-warning-soft p-1 text-warning-strong">
               <TrendingDown className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-amber-600">{countRepor}</p>
-          <p className="mt-1 text-xs text-slate-500">abaixo do ponto</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-warning-strong">{countRepor}</p>
+          <p className="mt-1 text-xs text-muted-foreground">abaixo do ponto</p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase text-slate-500">Validade</p>
-            <span className="rounded-md bg-orange-100 p-1 text-orange-600 dark:bg-orange-950/50">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">Validade</p>
+            <span className="rounded-md bg-warning-soft p-1 text-warning-strong">
               <CalendarClock className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-orange-600">{countVencidos + countVencendo}</p>
-          <p className="mt-1 text-xs text-slate-500">{countVencidos} lotes vencidos</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-warning-strong">{countVencidos + countVencendo}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{countVencidos} lotes vencidos</p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase text-slate-500">Quarentena</p>
-            <span className="rounded-md bg-emerald-100 p-1 text-emerald-600 dark:bg-emerald-950/50">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">Quarentena</p>
+            <span className="rounded-md bg-success-soft p-1 text-success-strong">
               <Boxes className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-emerald-600">{countQuarentena}</p>
-          <p className="mt-1 text-xs text-slate-500">lotes aguardando aceite</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-success-strong">{countQuarentena}</p>
+          <p className="mt-1 text-xs text-muted-foreground">lotes aguardando aceite</p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase text-slate-500">Saúde do Estoque</p>
-            <span className="rounded-md bg-blue-100 p-1 text-blue-600 dark:bg-blue-950/50">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">Saúde do Estoque</p>
+            <span className="rounded-md bg-info-soft p-1 text-info-strong">
               <ShieldAlert className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-blue-600">{Math.round((countOk / totalInsumos) * 100)}%</p>
-          <p className="mt-1 text-xs text-slate-500">dos itens sem alertas</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-info-strong">{Math.round((countOk / totalInsumos) * 100)}%</p>
+          <p className="mt-1 text-xs text-muted-foreground">dos itens sem alertas</p>
         </div>
       </section>
 
       {/* 2. Filtros e Visualizações */}
       <section className="grid gap-4 lg:grid-cols-[2.2fr_0.8fr]">
         {/* Barra de Filtros / Seleções */}
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 flex flex-col justify-between">
+        <div className="rounded-lg border border-border bg-card p-5 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-zinc-50 flex items-center gap-2">
-                <ListFilter className="h-4 w-4 text-slate-400" /> Seleções do Estoque
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <ListFilter className="h-4 w-4 text-muted-foreground/80" /> Seleções do Estoque
               </h2>
               {/* Toggles de Visualização */}
               <div className="inline-flex rounded-md shadow-sm" role="group">
@@ -323,7 +323,7 @@ export function StockControlHub({
                   className={`px-3 py-1.5 text-xs font-medium rounded-l-md border ${
                     viewMode === "insumo"
                       ? "bg-brand-50 border-brand-200 text-brand-700 dark:bg-brand-950/20 dark:border-brand-900 dark:text-brand-300"
-                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-zinc-900 dark:border-zinc-850 dark:text-zinc-300"
+                      : "bg-card border-border text-muted-foreground hover:bg-muted/50"
                   }`}
                 >
                   <span className="flex items-center gap-1"><Boxes className="h-3.5 w-3.5" /> Por Insumo</span>
@@ -333,7 +333,7 @@ export function StockControlHub({
                   className={`px-3 py-1.5 text-xs font-medium border-t border-b ${
                     viewMode === "lote"
                       ? "bg-brand-50 border-brand-200 text-brand-700 dark:bg-brand-950/20 dark:border-brand-900 dark:text-brand-300"
-                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-zinc-900 dark:border-zinc-850 dark:text-zinc-300"
+                      : "bg-card border-border text-muted-foreground hover:bg-muted/50"
                   }`}
                 >
                   <span className="flex items-center gap-1"><Layers className="h-3.5 w-3.5" /> Por Lote</span>
@@ -343,7 +343,7 @@ export function StockControlHub({
                   className={`px-3 py-1.5 text-xs font-medium rounded-r-md border ${
                     viewMode === "grafica"
                       ? "bg-brand-50 border-brand-200 text-brand-700 dark:bg-brand-950/20 dark:border-brand-900 dark:text-brand-300"
-                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-zinc-900 dark:border-zinc-850 dark:text-zinc-300"
+                      : "bg-card border-border text-muted-foreground hover:bg-muted/50"
                   }`}
                 >
                   <span className="flex items-center gap-1"><BarChart3 className="h-3.5 w-3.5" /> Visão Gráfica</span>
@@ -354,26 +354,26 @@ export function StockControlHub({
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
               {/* Busca */}
               <div className="relative">
-                <label className="block text-xs font-medium text-slate-500 mb-1">Buscar Insumo</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Buscar Insumo</label>
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground/80" />
                   <input
                     type="text"
                     placeholder={viewMode === "lote" ? "Insumo ou lote..." : "Insumo ou ID..."}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full rounded-md border border-slate-200 bg-white pl-8 pr-3 py-1.5 text-sm outline-none focus:border-brand-500 dark:border-zinc-800 dark:bg-zinc-900"
+                    className="w-full rounded-md border border-border bg-card pl-8 pr-3 py-1.5 text-sm outline-none focus:border-brand-500"
                   />
                 </div>
               </div>
 
               {/* Alerta de Estoque */}
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Estado Físico / Alerta</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Estado Físico / Alerta</label>
                 <select
                   value={selectedAlertType}
                   onChange={(e) => setSelectedAlertType(e.target.value)}
-                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 dark:border-zinc-800 dark:bg-zinc-900"
+                  className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-brand-500"
                   disabled={viewMode === "grafica"}
                 >
                   <option value="todos">Todos</option>
@@ -387,11 +387,11 @@ export function StockControlHub({
 
               {/* Criticidade */}
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Criticidade</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Criticidade</label>
                 <select
                   value={selectedCriticidade}
                   onChange={(e) => setSelectedCriticidade(e.target.value)}
-                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 dark:border-zinc-800 dark:bg-zinc-900"
+                  className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-brand-500"
                   disabled={viewMode === "lote" || viewMode === "grafica"}
                 >
                   <option value="todos">Todas</option>
@@ -402,11 +402,11 @@ export function StockControlHub({
 
               {/* Status Notificações */}
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Estado Administrativo</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Estado Administrativo</label>
                 <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 dark:border-zinc-800 dark:bg-zinc-900"
+                  className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-brand-500"
                   disabled={viewMode === "lote" || viewMode === "grafica"}
                 >
                   <option value="todos">Todos</option>
@@ -418,7 +418,7 @@ export function StockControlHub({
             </div>
           </div>
 
-          <div className="mt-4 flex justify-between items-center text-xs text-slate-500">
+          <div className="mt-4 flex justify-between items-center text-xs text-muted-foreground">
             <span>
               {viewMode === "lote"
                 ? `Mostrando ${filteredLotes.length} de ${lotes.length} lotes filtrados`
@@ -441,10 +441,10 @@ export function StockControlHub({
         </div>
 
         {/* Mini gráfico */}
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 flex flex-col justify-between">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm flex flex-col justify-between">
           <div>
-            <h3 className="text-xs font-bold uppercase text-slate-500">Alertas Ativos</h3>
-            <p className="text-[10px] text-slate-400">Total de eventos operacionais críticos</p>
+            <h3 className="text-xs font-bold uppercase text-muted-foreground">Alertas Ativos</h3>
+            <p className="text-[10px] text-muted-foreground/80">Total de eventos operacionais críticos</p>
           </div>
           <div className="h-24 mt-2">
             {chartData.length > 0 ? (
@@ -461,7 +461,7 @@ export function StockControlHub({
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-xs text-slate-400">
+              <div className="h-full flex items-center justify-center text-xs text-muted-foreground/80">
                 Nenhum alerta ativo
               </div>
             )}
@@ -470,22 +470,22 @@ export function StockControlHub({
       </section>
 
       {/* 3. Renderização Principal Baseada no ViewMode */}
-      <section className="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950 overflow-hidden">
+      <section className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
         {/* CABEÇALHO DO MÓDULO */}
-        <div className="border-b border-slate-100 px-5 py-4 dark:border-zinc-900 bg-slate-50/50 dark:bg-zinc-900/10 flex justify-between items-center">
+        <div className="border-b border-border/70 px-5 py-4 bg-muted/50/50 flex justify-between items-center">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-zinc-50">
+            <h2 className="text-sm font-semibold text-foreground">
               {viewMode === "insumo" && "Visão Consolidada de Insumos"}
               {viewMode === "lote" && "Listagem Detalhada por Lote"}
               {viewMode === "grafica" && "Relatórios de Estoque"}
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               {viewMode === "insumo" && "Saldos do insumo consolidado, ideais para análise de compras e reposições."}
               {viewMode === "lote" && "Lotes individuais ativos, validades e ações físicas de movimentação."}
               {viewMode === "grafica" && "Análise macro do estoque por faixas, alertas e status físico."}
             </p>
           </div>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-muted-foreground/80">
             {viewMode === "insumo" && `${filteredInsumos.length} reagentes`}
             {viewMode === "lote" && `${filteredLotes.length} lotes`}
           </span>
@@ -494,11 +494,11 @@ export function StockControlHub({
         {/* VISÃO 1: POR INSUMO */}
         {viewMode === "insumo" && (
           filteredInsumos.length === 0 ? (
-            <div className="p-10 text-center text-sm text-slate-500">
+            <div className="p-10 text-center text-sm text-muted-foreground">
               Nenhum insumo ou alerta localizado com os filtros selecionados.
             </div>
           ) : (
-            <div className="divide-y divide-slate-100 dark:divide-zinc-900">
+            <div className="divide-y divide-border/70">
               {filteredInsumos.map((item, idx) => {
                 const disponivel = item.disponivel ?? 0;
                 const emMaos = item.em_maos ?? 0;
@@ -506,27 +506,27 @@ export function StockControlHub({
                 const pctMin = puntoPct(disponivel, ponto);
 
                 return (
-                  <article key={item.insumo_id ?? idx} className="p-5 hover:bg-slate-50/40 dark:hover:bg-zinc-900/10 transition-colors">
+                  <article key={item.insumo_id ?? idx} className="p-5 hover:bg-muted/50/40 transition-colors">
                     <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr_1.5fr]">
                       {/* Nome do Insumo e Detalhes */}
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-mono text-slate-400 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+                          <span className="text-xs font-mono text-muted-foreground/80 bg-muted px-1.5 py-0.5 rounded">
                             #{item.insumo_id ?? "—"}
                           </span>
                           <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${TONE_CLASSES[item.tone]}`}>
                             {item.statusLabel}
                           </span>
                           {item.categoria_compra === "critico" && (
-                            <span className="rounded-md border border-red-200 bg-red-50 text-red-700 px-2 py-0.5 text-[10px] font-bold dark:border-red-950 dark:bg-red-950/20 dark:text-red-400">
+                            <span className="rounded-md border border-danger-strong/30 bg-danger-soft text-danger-strong px-2 py-0.5 text-[10px] font-bold">
                               Crítico
                             </span>
                           )}
                         </div>
-                        <h3 className="mt-2 text-base font-semibold text-slate-900 dark:text-zinc-50 truncate" title={item.especificacao ?? ""}>
+                        <h3 className="mt-2 text-base font-semibold text-foreground truncate" title={item.especificacao ?? ""}>
                           {item.especificacao ?? "Insumo sem nome"}
                         </h3>
-                        <div className="mt-1 text-xs text-slate-500 flex flex-wrap gap-x-4">
+                        <div className="mt-1 text-xs text-muted-foreground flex flex-wrap gap-x-4">
                           <span>Em mãos: {formatNumber(emMaos)} {item.unidade}</span>
                           <span>Reservado: {formatNumber(item.reservado)} {item.unidade}</span>
                         </div>
@@ -535,25 +535,25 @@ export function StockControlHub({
                       {/* Progresso do Saldo */}
                       <div className="flex flex-col justify-center">
                         <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-slate-500 font-medium">Disponível: {formatNumber(disponivel)} {item.unidade}</span>
+                          <span className="text-muted-foreground font-medium">Disponível: {formatNumber(disponivel)} {item.unidade}</span>
                           {ponto > 0 && (
-                            <span className="text-slate-400">Ponto: {formatNumber(ponto)} {item.unidade}</span>
+                            <span className="text-muted-foreground/80">Ponto: {formatNumber(ponto)} {item.unidade}</span>
                           )}
                         </div>
-                        <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-zinc-900 relative">
+                        <div className="h-2 w-full rounded-full bg-muted relative">
                           <div
                             className={`h-full rounded-full ${
                               item.status === "sem_disponivel"
-                                ? "bg-red-500"
+                                ? "bg-danger-strong"
                                 : item.status === "reposicao"
-                                  ? "bg-amber-500"
+                                  ? "bg-warning-strong"
                                   : "bg-brand-600"
                             }`}
                             style={{ width: `${Math.min(100, pctMin)}%` }}
                           />
                         </div>
                         {ponto > 0 && disponivel <= ponto && (
-                          <p className="mt-1.5 text-[11px] text-amber-600 font-medium flex items-center gap-1">
+                          <p className="mt-1.5 text-[11px] text-warning-strong font-medium flex items-center gap-1">
                             <TrendingDown className="h-3 w-3" /> Falta comprar: {formatNumber(ponto - disponivel)} {item.unidade}
                           </p>
                         )}
@@ -564,16 +564,16 @@ export function StockControlHub({
                         <div className="space-y-1.5">
                           {item.notifications.length > 0 ? (
                             item.notifications.map((n) => (
-                              <div key={n.id} className="rounded-md border border-slate-100 bg-slate-50 p-2 dark:border-zinc-800 dark:bg-zinc-900 text-xs">
+                              <div key={n.id} className="rounded-md border border-border/70 bg-muted/50 p-2 text-xs">
                                 <div className="flex justify-between items-start gap-2">
-                                  <span className="font-semibold text-slate-800 dark:text-zinc-200 flex items-center gap-1">
-                                    <Bell className="h-3 w-3 text-slate-400" /> {n.titulo}
+                                  <span className="font-semibold text-foreground flex items-center gap-1">
+                                    <Bell className="h-3 w-3 text-muted-foreground/80" /> {n.titulo}
                                   </span>
-                                  <span className="text-[10px] text-slate-400 shrink-0">
+                                  <span className="text-[10px] text-muted-foreground/80 shrink-0">
                                     {new Date(n.criado_em).toLocaleDateString("pt-BR")}
                                   </span>
                                 </div>
-                                {n.corpo && <p className="text-slate-500 mt-0.5 line-clamp-1">{n.corpo}</p>}
+                                {n.corpo && <p className="text-muted-foreground mt-0.5 line-clamp-1">{n.corpo}</p>}
                                 
                                 <div className="mt-2 flex justify-end gap-2">
                                   {n.status === "nao_lida" && (
@@ -587,7 +587,7 @@ export function StockControlHub({
                                         });
                                       }}
                                     >
-                                      <button type="submit" disabled={isPending} className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 font-semibold hover:text-emerald-700">
+                                      <button type="submit" disabled={isPending} className="inline-flex items-center gap-0.5 text-[10px] text-success-strong font-semibold hover:text-success-strong">
                                         <Check className="h-3 w-3" /> Tratar Alerta
                                       </button>
                                     </form>
@@ -602,7 +602,7 @@ export function StockControlHub({
                                       });
                                     }}
                                   >
-                                    <button type="submit" disabled={isPending} className="inline-flex items-center gap-0.5 text-[10px] text-slate-500 font-semibold hover:text-slate-700">
+                                    <button type="submit" disabled={isPending} className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground font-semibold hover:text-foreground">
                                       <Archive className="h-3 w-3" /> Arquivar
                                     </button>
                                   </form>
@@ -610,11 +610,11 @@ export function StockControlHub({
                               </div>
                             ))
                           ) : (
-                            <p className="text-xs text-slate-400 italic">Sem notificações ativas.</p>
+                            <p className="text-xs text-muted-foreground/80 italic">Sem notificações ativas.</p>
                           )}
 
                           {item.alerts.filter((a) => a.tipo === "vencido" || a.tipo === "vencimento").map((a, idx) => (
-                            <div key={idx} className="text-xs text-red-600 font-semibold flex items-center gap-1.5">
+                            <div key={idx} className="text-xs text-danger-strong font-semibold flex items-center gap-1.5">
                               <CalendarClock className="h-3.5 w-3.5" />
                               {a.tipo === "vencido" ? "Vencido em:" : "Vence em:"} {a.validade ? new Date(a.validade).toLocaleDateString("pt-BR") : "sem data"}
                             </div>
@@ -624,7 +624,7 @@ export function StockControlHub({
                         <div className="flex flex-wrap items-center gap-2 justify-end mt-auto">
                           <Link
                             href={`/cadastros`}
-                            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted/50"
                           >
                             <ExternalLink className="h-3.5 w-3.5" /> Ficha
                           </Link>
@@ -649,13 +649,13 @@ export function StockControlHub({
         {/* VISÃO 2: POR LOTE */}
         {viewMode === "lote" && (
           filteredLotes.length === 0 ? (
-            <div className="p-10 text-center text-sm text-slate-500">
+            <div className="p-10 text-center text-sm text-muted-foreground">
               Nenhum lote localizado com os filtros selecionados.
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-500 dark:text-zinc-400">
-                <thead className="bg-slate-50 text-xs uppercase text-slate-700 dark:bg-zinc-900 dark:text-zinc-400">
+              <table className="w-full text-left text-sm text-muted-foreground">
+                <thead className="bg-muted/50 text-xs uppercase text-foreground">
                   <tr>
                     <th scope="col" className="px-6 py-3">Insumo / Especificação</th>
                     <th scope="col" className="px-6 py-3">Código do Lote</th>
@@ -665,10 +665,10 @@ export function StockControlHub({
                     <th scope="col" className="px-6 py-3 text-right">Ações Operacionais (Auditoria)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-zinc-900">
+                <tbody className="divide-y divide-border/70">
                   {filteredLotes.map((lote) => (
-                    <tr key={lote.id} className="bg-white hover:bg-slate-50/50 dark:bg-zinc-950 dark:hover:bg-zinc-900/10 transition-colors">
-                      <td className="px-6 py-4 font-semibold text-slate-900 dark:text-zinc-100">
+                    <tr key={lote.id} className="bg-card hover:bg-muted/50/50 transition-colors">
+                      <td className="px-6 py-4 font-semibold text-foreground">
                         {lote.especificacao}
                       </td>
                       <td className="px-6 py-4 font-mono text-xs">
@@ -677,10 +677,10 @@ export function StockControlHub({
                       <td className="px-6 py-4">
                         <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
                           lote.status === "quarentena"
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                            ? "bg-info-soft text-info-strong"
                             : lote.status === "bloqueado"
-                              ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300"
-                              : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                              ? "bg-danger-soft text-danger-strong"
+                              : "bg-success-soft text-success-strong"
                         }`}>
                           {lote.statusLabel}
                         </span>
@@ -688,7 +688,7 @@ export function StockControlHub({
                       <td className="px-6 py-4 tabular-nums">
                         {formatNumber(lote.quantidadeAtual)} {lote.unidade}
                       </td>
-                      <td className={`px-6 py-4 text-xs font-semibold ${lote.vencido ? "text-red-600" : ""}`}>
+                      <td className={`px-6 py-4 text-xs font-semibold ${lote.vencido ? "text-danger-strong" : ""}`}>
                         {formatDate(lote.validade)}
                         {lote.vencido && " (Vencido)"}
                       </td>
@@ -714,8 +714,8 @@ export function StockControlHub({
         {viewMode === "grafica" && (
           <div className="p-6 grid gap-6 md:grid-cols-2">
             {/* Gráfico 1: Situação Geral */}
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-5 dark:border-zinc-900 dark:bg-zinc-900/10">
-              <h3 className="text-sm font-semibold text-slate-800 dark:text-zinc-200 mb-4">Situação Física dos Insumos</h3>
+            <div className="rounded-lg border border-border/70 bg-muted/50/50 p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Situação Física dos Insumos</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -741,7 +741,7 @@ export function StockControlHub({
                 {chartData.map((d, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                    <span className="text-slate-600 truncate">{d.name}:</span>
+                    <span className="text-muted-foreground truncate">{d.name}:</span>
                     <span className="font-bold tabular-nums ml-auto">{d.value}</span>
                   </div>
                 ))}
@@ -749,37 +749,37 @@ export function StockControlHub({
             </div>
 
             {/* Quadro de Resumo de Cobertura */}
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-5 dark:border-zinc-900 dark:bg-zinc-900/10 flex flex-col justify-between">
+            <div className="rounded-lg border border-border/70 bg-muted/50/50 p-5 flex flex-col justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 dark:text-zinc-200 flex items-center gap-1.5 mb-2">
-                  <Info className="h-4 w-4 text-slate-400" /> Notas Operacionais de Controle
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5 mb-2">
+                  <Info className="h-4 w-4 text-muted-foreground/80" /> Notas Operacionais de Controle
                 </h3>
-                <ul className="space-y-3 text-xs text-slate-600 mt-4 leading-relaxed">
+                <ul className="space-y-3 text-xs text-muted-foreground mt-4 leading-relaxed">
                   <li className="flex items-start gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 mt-1.5 shrink-0" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-danger-strong mt-1.5 shrink-0" />
                     <span><b>{countSemEstoque} insumos críticos estão totalmente sem saldo disponível</b> no estoque. A abertura imediata de pedidos de compra é recomendada.</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-warning-strong mt-1.5 shrink-0" />
                     <span>Existem <b>{countRepor} insumos abaixo do ponto de reposição</b>, o que pode comprometer reservas e planejamentos operacionais em andamento.</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-success-strong mt-1.5 shrink-0" />
                     <span><b>{countQuarentena} lotes estão aguardando inspeção/aceite técnico</b>. Use a <i>Visão por Lote</i> para liberar os insumos para uso operacional.</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-info-strong mt-1.5 shrink-0" />
                     <span><b>{countOk} reagentes e insumos estão com estoque saudável</b>, satisfazendo a demanda estipulada de segurança.</span>
                   </li>
                 </ul>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-200/60 dark:border-zinc-800">
-                <div className="flex justify-between items-center text-xs font-semibold text-slate-800 mb-1">
+              <div className="mt-6 pt-4 border-t border-border/60">
+                <div className="flex justify-between items-center text-xs font-semibold text-foreground mb-1">
                   <span>Taxa de Saúde de Estoque:</span>
                   <span>{Math.round((countOk / totalInsumos) * 100)}%</span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-zinc-800">
+                <div className="h-2 w-full rounded-full bg-muted">
                   <div
                     className="h-full rounded-full bg-brand-600"
                     style={{ width: `${Math.round((countOk / totalInsumos) * 100)}%` }}

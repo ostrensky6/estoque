@@ -163,16 +163,16 @@ export function InventarioScannerPanel({
   }
 
   const inp =
-    "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-zinc-700 dark:bg-zinc-950";
+    "mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500";
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="inline-flex items-center gap-2 text-sm font-semibold">
           <ScanLine className="h-4 w-4 text-brand-600 dark:text-brand-300" />
           Contagem por scanner
         </h2>
-        <span className="rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+        <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
           {cameraStatus === "ativa"
             ? "Camera ativa"
             : cameraStatus === "iniciando"
@@ -183,15 +183,15 @@ export function InventarioScannerPanel({
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
         <div>
-          <div className="overflow-hidden rounded-md border border-zinc-200 bg-zinc-950 dark:border-zinc-800">
-            <video ref={videoRef} muted playsInline className="aspect-video w-full bg-zinc-950 object-cover" />
+          <div className="overflow-hidden rounded-md border border-border bg-card">
+            <video ref={videoRef} muted playsInline className="aspect-video w-full bg-card object-cover" />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={iniciarCamera}
               disabled={cameraStatus === "iniciando" || scanPending || submitPending}
-              className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {cameraStatus === "iniciando" ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -204,14 +204,14 @@ export function InventarioScannerPanel({
               type="button"
               onClick={() => pararCamera()}
               disabled={cameraStatus === "parada" || submitPending}
-              className="rounded-md px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
             >
               Parar camera
             </button>
           </div>
 
           {cameraMessage && (
-            <p className="mt-3 flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+            <p className="mt-3 flex items-start gap-2 rounded-md bg-warning-soft px-3 py-2 text-xs text-warning-strong">
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               {cameraMessage}
             </p>
@@ -219,7 +219,7 @@ export function InventarioScannerPanel({
 
           <div className="mt-3 flex gap-2">
             <div className="relative min-w-0 flex-1">
-              <Keyboard className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+              <Keyboard className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/80" />
               <input
                 value={codigoScanner}
                 onChange={(event) => setCodigoScanner(event.target.value)}
@@ -243,7 +243,7 @@ export function InventarioScannerPanel({
               className={`mt-3 rounded-md px-3 py-2 text-xs ${
                 resultadoScanner.ok && resultadoScanner.encontrado
                   ? "bg-brand-50 text-brand-800 dark:bg-brand-950/30 dark:text-brand-300"
-                  : "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                  : "bg-warning-soft text-warning-strong"
               }`}
             >
               <p>{resultadoScanner.message}</p>
@@ -267,7 +267,7 @@ export function InventarioScannerPanel({
 
         <form action={salvarContagem} className="grid gap-3">
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Campanha</label>
+            <label className="block text-xs font-medium text-muted-foreground">Campanha</label>
             <select
               name="ciclo_id"
               value={cicloId}
@@ -284,7 +284,7 @@ export function InventarioScannerPanel({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Local</label>
+            <label className="block text-xs font-medium text-muted-foreground">Local</label>
             <select
               name="local_id"
               value={localId}
@@ -300,7 +300,7 @@ export function InventarioScannerPanel({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Lote</label>
+            <label className="block text-xs font-medium text-muted-foreground">Lote</label>
             <select
               name="lote_id"
               value={loteId}
@@ -322,14 +322,14 @@ export function InventarioScannerPanel({
           </div>
 
           {loteSelecionado && (
-            <p className="rounded-md bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-950/40 dark:text-zinc-300">
+            <p className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
               Sistema: <b>{loteSelecionado.quantidadeAtual}</b> {loteSelecionado.unidade ?? ""}
               {loteSelecionado.localNome ? ` · ${loteSelecionado.localNome}` : ""}
             </p>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Quantidade contada</label>
+            <label className="block text-xs font-medium text-muted-foreground">Quantidade contada</label>
             <input
               name="quantidade_contada"
               type="number"
@@ -346,7 +346,7 @@ export function InventarioScannerPanel({
             <p
               className={`rounded-md px-3 py-2 text-xs ${
                 divergencia.temDivergencia
-                  ? "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                  ? "bg-warning-soft text-warning-strong"
                   : "bg-brand-50 text-brand-800 dark:bg-brand-950/30 dark:text-brand-300"
               }`}
             >
@@ -356,7 +356,7 @@ export function InventarioScannerPanel({
           )}
 
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Justificativa</label>
+            <label className="block text-xs font-medium text-muted-foreground">Justificativa</label>
             <textarea
               name="justificativa"
               rows={3}
@@ -366,7 +366,7 @@ export function InventarioScannerPanel({
               className={inp}
             />
             {state.errors?.justificativa && (
-              <p className="mt-1 text-xs text-red-600">{state.errors.justificativa}</p>
+              <p className="mt-1 text-xs text-danger-strong">{state.errors.justificativa}</p>
             )}
           </div>
 
@@ -375,7 +375,7 @@ export function InventarioScannerPanel({
               className={`rounded-md px-3 py-2 text-sm ${
                 state.ok
                   ? "bg-brand-50 text-brand-800 dark:bg-brand-950/30 dark:text-brand-300"
-                  : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                  : "bg-danger-soft text-danger-strong"
               }`}
             >
               {state.message}

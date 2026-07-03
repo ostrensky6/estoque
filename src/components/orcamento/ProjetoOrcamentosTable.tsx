@@ -68,13 +68,13 @@ const columns: ColumnDef<ProjetoOrcamentoRow, unknown>[] = [
 function StatusBadge({ status, label }: { status: string; label: string }) {
   const className =
     status === "rascunho" || status === "em_preparacao"
-      ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+      ? "bg-warning-soft text-warning-strong"
       : status === "enviado" || status === "em_analise_cliente"
-        ? "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
+        ? "bg-info-soft text-info-strong"
         : status === "aprovado"
           ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
           : status === "cancelado"
-            ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+            ? "bg-danger-soft text-danger-strong"
             : "bg-secondary text-secondary-foreground";
   return <Badge className={className}>{label}</Badge>;
 }

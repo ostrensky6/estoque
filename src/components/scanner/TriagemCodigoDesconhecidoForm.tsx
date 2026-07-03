@@ -25,7 +25,7 @@ export function TriagemCodigoDesconhecidoForm({ codigo }: { codigo: string }) {
         Registrar triagem
       </Button>
       {!state.ok && state.message && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300">
+        <p className="rounded-md border border-danger-strong/30 bg-danger-soft px-3 py-2 text-sm text-danger-strong">
           {state.message}
         </p>
       )}

@@ -48,9 +48,9 @@ const num = (v: number, casas = 2) =>
   });
 
 const inp =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium tabular-nums text-brand-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300"; // §8.2: entrada em azul
-const lbl = "block text-xs font-medium text-zinc-600 dark:text-zinc-300";
-const sec = "text-sm font-semibold uppercase tracking-wide text-zinc-500";
+  "mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm font-medium tabular-nums text-brand-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:text-brand-300"; // §8.2: entrada em azul
+const lbl = "block text-xs font-medium text-muted-foreground";
+const sec = "text-sm font-semibold uppercase tracking-wide text-muted-foreground";
 
 function ordenar(a: Param, b: Param) {
   const ia = ORDEM.indexOf(a.chave);
@@ -101,7 +101,7 @@ export function ParametrosForm({ params }: { params: Param[] }) {
       <div key={p.chave}>
         <label htmlFor={`valor_${p.chave}`} className={lbl}>
           {LABELS[p.chave] ?? p.chave}
-          {p.unidade ? <span className="ml-1 text-zinc-400">({p.unidade})</span> : null}
+          {p.unidade ? <span className="ml-1 text-muted-foreground/80">({p.unidade})</span> : null}
         </label>
         <input
           id={`valor_${p.chave}`}
@@ -115,9 +115,9 @@ export function ParametrosForm({ params }: { params: Param[] }) {
           onChange={(e) => set(p.chave, e.target.value)}
           className={inp}
         />
-        {p.descricao && <p className="mt-1 text-[11px] text-zinc-400">{p.descricao}</p>}
+        {p.descricao && <p className="mt-1 text-[11px] text-muted-foreground/80">{p.descricao}</p>}
         {state.errors?.[p.chave] && (
-          <p className="mt-1 text-xs text-red-600">{state.errors[p.chave]}</p>
+          <p className="mt-1 text-xs text-danger-strong">{state.errors[p.chave]}</p>
         )}
       </div>
     );
@@ -129,9 +129,9 @@ export function ParametrosForm({ params }: { params: Param[] }) {
 
       <section>
         <h2 className={sec}>Fatores de preço</h2>
-        <p className="mt-1 text-xs text-zinc-400">
+        <p className="mt-1 text-xs text-muted-foreground/80">
           Aplicados sobre o custo total para chegar ao preço de venda:{" "}
-          <span className="font-medium text-zinc-500">preço = custo x (1 + soma / 100)</span>.
+          <span className="font-medium text-muted-foreground">preço = custo x (1 + soma / 100)</span>.
         </p>
         <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {fatores.map((p) => campo(p))}
@@ -140,7 +140,7 @@ export function ParametrosForm({ params }: { params: Param[] }) {
         <div
           className={`mt-4 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border px-4 py-3 text-sm ${
             somaFatores === 0
-              ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
+              ? "border-warning-strong/30 bg-warning-soft text-warning-strong"
               : "border-brand-200 bg-brand-50 text-brand-800 dark:border-brand-900/40 dark:bg-brand-950/20 dark:text-brand-300"
           }`}
         >
@@ -162,7 +162,7 @@ export function ParametrosForm({ params }: { params: Param[] }) {
       {operacionais.length > 0 && (
         <section>
           <h2 className={sec}>Parâmetros operacionais</h2>
-          <p className="mt-1 text-xs text-zinc-400">
+          <p className="mt-1 text-xs text-muted-foreground/80">
             Bases de rateio e constantes usadas por custeio, estoque e alertas.
           </p>
           <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -176,7 +176,7 @@ export function ParametrosForm({ params }: { params: Param[] }) {
           className={`rounded-md px-3 py-2 text-sm ${
             state.ok
               ? "bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
-              : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+              : "bg-danger-soft text-danger-strong"
           }`}
         >
           {state.message}
