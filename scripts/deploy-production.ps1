@@ -5,11 +5,11 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$ProductionAlias = "kontrol-gia.vercel.app"
-$VercelScope = "team_HYxJGUZ1QLz2P0H2U4l9Ayn8"
-$VercelTeamName = "Ostrensky's projects"
-$ExpectedVercelOrgId = "team_HYxJGUZ1QLz2P0H2U4l9Ayn8"
-$ExpectedVercelProjectId = "prj_EnHPskP6CjuCv8UCzC6iXjQpcwQi"
+$ProductionAlias = "kontrol-atgc.vercel.app"
+$VercelScope = "giaufpr"
+$VercelTeamName = "Gia"
+$ExpectedVercelOrgId = "team_N5uHkBDu4hLjI9Yx2gmtpg4L"
+$ExpectedVercelProjectId = "prj_3l6QuGqsG63Lna4pTZ5Di1vV8RZc"
 
 function Assert-ProductionVercelTarget([string]$RepoRoot) {
   $projectPath = Join-Path $RepoRoot ".vercel/project.json"

@@ -5,7 +5,7 @@ Este repositório local oficial fica em `D:\Aplicativos\Kontrol`.
 ## Identidade
 
 - App: Kontrol
-- Produção: https://kontrol-gia.vercel.app
+- Produção: https://kontrol-atgc.vercel.app
 - Admin: `ostrensky@ufpr.br`
 - Papel do admin: `admin`
 
@@ -21,31 +21,29 @@ Observação: a pasta antiga `D:\Aplicativos\Estoque` está depreciada e não de
 
 ## Vercel
 
-- Projeto: `kontrol-gia`
-- Project ID: `prj_EnHPskP6CjuCv8UCzC6iXjQpcwQi`
-- Scope: `ostrensky-s-projects`
-- Team ID: `team_HYxJGUZ1QLz2P0H2U4l9Ayn8`
-- Dashboard: https://vercel.com/ostrensky-s-projects/kontrol-gia
-- URL de produção: https://kontrol-gia.vercel.app
-- Domínio default: https://kontrol-gia-nine.vercel.app
-
-Não usar o slug antigo `ostrenskys-projects-17ce406b`.
+- Projeto oficial: `kontrol`
+- Project ID: `prj_3l6QuGqsG63Lna4pTZ5Di1vV8RZc`
+- Scope: `giaufpr`
+- Team ID: `team_N5uHkBDu4hLjI9Yx2gmtpg4L`
+- Dashboard: https://vercel.com/giaufpr/kontrol
+- URL de produção canônica: https://kontrol-atgc.vercel.app
+- Domínio alternativo validado: https://kontrol-lac.vercel.app
+- Commit validado em produção: `aa1e470d771b111420f124ec29f016455f1522e5`
 
 ## Supabase
 
 - Projeto: `estoque`
-- Project ref: `gkcjzwfsnoknxgpsumxi`
+- Project ref: `hhxwdcwphitfxywbgtju`
 - Região: `sa-east-1`
-- API URL: https://gkcjzwfsnoknxgpsumxi.supabase.co
-- Dashboard: https://supabase.com/dashboard/project/gkcjzwfsnoknxgpsumxi
+- API URL: https://hhxwdcwphitfxywbgtju.supabase.co
+- Dashboard: https://supabase.com/dashboard/project/hhxwdcwphitfxywbgtju
 - Pooler host: `aws-1-sa-east-1.pooler.supabase.com`
 - Pooler port: `5432`
-- Pooler user: `postgres.gkcjzwfsnoknxgpsumxi`
+- Pooler user: `postgres.hhxwdcwphitfxywbgtju`
 - Database: `postgres`
 
-Nota operacional (2026-07-03): referências anteriores a `hhxwdcwphitfxywbgtju`
-devem ser tratadas como obsoletas/incorretas para o Kontrol até prova
-documental contrária.
+Nota operacional (2026-07-03): `hhxwdcwphitfxywbgtju` foi validado como
+Supabase de producao para o projeto Vercel `kontrol`.
 
 ## Segurança
 

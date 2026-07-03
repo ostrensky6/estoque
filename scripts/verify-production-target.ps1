@@ -6,14 +6,14 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $Expected = @{
-  VercelOrgId = "team_HYxJGUZ1QLz2P0H2U4l9Ayn8"
-  VercelProjectId = "prj_EnHPskP6CjuCv8UCzC6iXjQpcwQi"
-  VercelScope = "team_HYxJGUZ1QLz2P0H2U4l9Ayn8"
-  VercelTeamName = "Ostrensky's projects"
-  VercelProject = "kontrol-gia"
-  ProductionUrl = "https://kontrol-gia.vercel.app"
-  SupabaseRef = "gkcjzwfsnoknxgpsumxi"
-  SupabaseUrl = "https://gkcjzwfsnoknxgpsumxi.supabase.co"
+  VercelOrgId = "team_N5uHkBDu4hLjI9Yx2gmtpg4L"
+  VercelProjectId = "prj_3l6QuGqsG63Lna4pTZ5Di1vV8RZc"
+  VercelScope = "giaufpr"
+  VercelTeamName = "Gia"
+  VercelProject = "kontrol"
+  ProductionUrl = "https://kontrol-atgc.vercel.app"
+  SupabaseRef = "hhxwdcwphitfxywbgtju"
+  SupabaseUrl = "https://hhxwdcwphitfxywbgtju.supabase.co"
 }
 
 $Failures = New-Object System.Collections.Generic.List[string]
