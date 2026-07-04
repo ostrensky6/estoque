@@ -1,8 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Porta configurável para não colidir com o dev server do desenvolvedor
-// (ex.: E2E_PORT=3099 para uma auditoria isolada em modo mock).
-const PORT = process.env.E2E_PORT ?? "3001";
+// Porta configurável e isolada para não reaproveitar o dev server manual do app.
+const PORT = process.env.E2E_PORT ?? "3107";
 const BASE_URL = `http://localhost:${PORT}`;
 
 export default defineConfig({
@@ -20,9 +19,9 @@ export default defineConfig({
   },
   outputDir: "output/playwright",
   webServer: {
-    command: `npm run dev -- -p ${PORT}`,
+    command: `npm run start -- -p ${PORT}`,
     url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
     env: {
       PLAYWRIGHT_MOCK_SUPABASE: "1",

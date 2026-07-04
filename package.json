@@ -10,7 +10,7 @@
     "test": "vitest run",
     "version:bump": "node scripts/bump-app-version.mjs",
     "version:check": "node scripts/check-app-version-changed.mjs",
-    "test:e2e": "playwright test",
+    "test:e2e": "next build && playwright test",
     "lab:import": "node scripts/import-laboratorio1.mjs",
     "prod:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-production-target.ps1",
     "prod:deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-production.ps1"

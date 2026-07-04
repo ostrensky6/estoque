@@ -36,7 +36,7 @@ test("admin acessa itens de Governança incluindo Privilégios", async ({ page }
 
 test("tela administrativa lista as 10 análises históricas", async ({ page }) => {
   await page.goto("/analises");
-  await expect(page.getByRole("heading", { name: "Analises", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /An[aá]lises/, exact: true })).toBeVisible();
 
   for (const codigo of HISTORICAL_CODES) {
     await expect(page.getByText(new RegExp(`^${codigo}$`)).first()).toBeVisible();
