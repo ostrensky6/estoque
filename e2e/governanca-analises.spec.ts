@@ -38,10 +38,11 @@ test("tela administrativa lista as 10 análises históricas", async ({ page }) =
   await page.goto("/analises");
   await expect(page.getByRole("heading", { name: /An[aá]lises/, exact: true })).toBeVisible();
 
+  const catalogo = page.getByRole("combobox", { name: "Análise" });
   for (const codigo of HISTORICAL_CODES) {
-    await expect(page.getByText(new RegExp(`^${codigo}$`)).first()).toBeVisible();
+    await expect(catalogo).toContainText(codigo);
   }
-  await expect(page.getByText("Shotgun com qPCR")).toBeVisible();
+  await expect(catalogo).toContainText("Shotgun com qPCR");
 });
 
 test("orçamento mostra ofertáveis e oculta análise não ofertável", async ({ page }) => {
