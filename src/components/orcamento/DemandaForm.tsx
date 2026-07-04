@@ -470,7 +470,7 @@ export function DemandaForm({
           <div tabIndex={0} aria-label="Resumo de análises por grupo" className="mt-3 overflow-x-auto">
             <table className="min-w-full divide-y divide-border text-sm">
               <thead className="text-left text-xs text-muted-foreground">
-                <tr><th className="py-2">Grupo</th><th>Tipo/matriz da amostra</th><th>Código da análise</th><th>Nome da análise</th><th>Quantidade de amostras para esta análise</th><th>Prazo técnico calculated</th><th>Lotes previstos</th><th>Status do custeio</th><th>Status dos insumos</th><th className="w-16 text-right"></th></tr>
+                <tr><th className="py-2">Grupo</th><th>Tipo/matriz da amostra</th><th>Código da análise</th><th>Nome da análise</th><th>Quantidade de amostras para esta análise</th><th>Prazo técnico calculado</th><th>Lotes previstos</th><th>Status do custeio</th><th>Status dos insumos</th><th className="w-16 text-right"></th></tr>
               </thead>
               <tbody className="divide-y divide-border/70">
                 {selecionadas.map((item) => {

@@ -45,6 +45,8 @@ export function ExecutiveCharts({
       return acc;
     }, {}),
   );
+  const temGastos = gastosPorMes.length > 0;
+  const temFunil = funil.some((item) => item.total > 0);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -56,7 +58,7 @@ export function ExecutiveCharts({
       <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-foreground dark:text-white">Gasto por mês</h3>
         <div className="mt-3 h-64 min-h-64 min-w-0">
-          {mounted ? (
+          {mounted && temGastos ? (
             <ResponsiveContainer width="100%" height={256}>
               <BarChart data={gastosPorMes}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -67,7 +69,9 @@ export function ExecutiveCharts({
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full rounded-md bg-muted/50" />
+            <div className="flex h-full items-center justify-center rounded-md bg-muted/50 text-xs text-muted-foreground">
+              Sem dados de gastos
+            </div>
           )}
         </div>
       </section>
@@ -75,7 +79,7 @@ export function ExecutiveCharts({
       <section className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-foreground dark:text-white">Funil de orçamentos</h3>
         <div className="mt-3 h-64 min-h-64 min-w-0">
-          {mounted ? (
+          {mounted && temFunil ? (
             <ResponsiveContainer width="100%" height={256}>
               <PieChart>
                 <Pie data={funil} dataKey="total" nameKey="status" innerRadius={56} outerRadius={88} paddingAngle={2}>
@@ -87,7 +91,9 @@ export function ExecutiveCharts({
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full rounded-md bg-muted/50" />
+            <div className="flex h-full items-center justify-center rounded-md bg-muted/50 text-xs text-muted-foreground">
+              Sem dados de funil
+            </div>
           )}
         </div>
         <div className="grid gap-2 text-xs">

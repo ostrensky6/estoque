@@ -116,26 +116,26 @@ export default async function AnalisesPage() {
   const grupos = [
     {
       id: "ofertaveis",
-      titulo: "Ofertaveis sem ressalva",
-      descricao: "Analises com ativo=true e ofertavel=true, sem marcador textual de revisao.",
+      titulo: "Ofertáveis sem ressalva",
+      descricao: "Análises com ativo=true e ofertavel=true, sem marcador textual de revisão.",
       itens: ofertaveisSemRessalva,
     },
     {
       id: "ativas_nao_ofertaveis",
-      titulo: "Ativas, mas nao ofertaveis",
-      descricao: "Cadastros operacionais ativos que nao devem entrar em novos orcamentos.",
+      titulo: "Ativas, mas não ofertáveis",
+      descricao: "Cadastros operacionais ativos que não devem entrar em novos orçamentos.",
       itens: diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "ativas_nao_ofertaveis"),
     },
     {
       id: "revisao",
-      titulo: "Experimentais ou em revisao",
-      descricao: "Agrupamento visual por status textual; o card mostra se ainda esta ofertavel.",
+      titulo: "Experimentais ou em revisão",
+      descricao: "Agrupamento visual por status textual; o card mostra se ainda está ofertável.",
       itens: diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "revisao"),
     },
     {
       id: "inativas",
       titulo: "Inativas ou fora da oferta",
-      descricao: "Analises com ativo=false, ainda visiveis para administracao e historico.",
+      descricao: "Análises com ativo=false, ainda visíveis para administração e histórico.",
       itens: diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "inativas"),
     },
   ];
@@ -144,18 +144,18 @@ export default async function AnalisesPage() {
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="max-w-3xl">
-          <h1 className="text-xl font-semibold tracking-tight">Analises</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Análises</h1>
           <p className={`mt-2 ${subtle}`}>
-            Ficha tecnica operacional em modo somente leitura. Esta etapa reorganiza a visao do cadastro atual
-            sem criar tabelas, aplicar migrations ou alterar regras de orcamento, estoque e compras.
+            Ficha técnica operacional em modo somente leitura. Esta etapa reorganiza a visão do cadastro atual
+            sem criar tabelas, aplicar migrations ou alterar regras de orçamento, estoque e compras.
           </p>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-5">
-          <Stat label="Ofertaveis totais" value={String(totalOfertaveis.length)} />
-          <Stat label="Ofertaveis sem ressalva" value={String(ofertaveisSemRessalva.length)} />
-          <Stat label="Ofertaveis em revisao" value={String(ofertaveisEmRevisao.length)} />
-          <Stat label="Ativas nao ofertaveis" value={String(grupos[1].itens.length)} />
+          <Stat label="Ofertáveis totais" value={String(totalOfertaveis.length)} />
+          <Stat label="Ofertáveis sem ressalva" value={String(ofertaveisSemRessalva.length)} />
+          <Stat label="Ofertáveis em revisão" value={String(ofertaveisEmRevisao.length)} />
+          <Stat label="Ativas não ofertáveis" value={String(grupos[1].itens.length)} />
           <Stat label="Inativas" value={String(grupos[3].itens.length)} />
         </div>
 
@@ -169,7 +169,7 @@ export default async function AnalisesPage() {
                   </h2>
                   <p className="mt-1 text-xs text-muted-foreground">{grupo.descricao}</p>
                 </div>
-                <span className="text-xs font-medium text-muted-foreground">{grupo.itens.length} analises</span>
+                <span className="text-xs font-medium text-muted-foreground">{grupo.itens.length} análises</span>
               </div>
 
               <div className="mt-3 grid gap-3 lg:grid-cols-2">
@@ -178,7 +178,7 @@ export default async function AnalisesPage() {
                 ))}
                 {grupo.itens.length === 0 && (
                   <div className="rounded-lg border border-dashed border-input p-6 text-sm text-muted-foreground">
-                    Nenhuma analise neste grupo.
+                    Nenhuma análise neste grupo.
                   </div>
                 )}
               </div>
@@ -213,7 +213,7 @@ function AnaliseCard({ item }: { item: DiagnosticoAnalise }) {
           {analise.ativo ? "Ativa" : "Inativa"}
         </span>
         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${analise.ofertavel ? "bg-brand-50 text-brand-700 ring-brand-200 dark:bg-brand-950/40 dark:text-brand-300 dark:ring-brand-900" : "bg-muted text-muted-foreground ring-border"}`}>
-          {analise.ofertavel ? "Ofertavel" : "Nao ofertavel"}
+          {analise.ofertavel ? "Ofertável" : "Não ofertável"}
         </span>
       </div>
 
@@ -221,10 +221,10 @@ function AnaliseCard({ item }: { item: DiagnosticoAnalise }) {
         <Mini label="Etapas" value={String(item.nEtapas)} />
         <Mini label="Insumos" value={String(item.nInsumos)} />
         <Mini label="Equip." value={String(item.nEquipamentos)} />
-        <Mini label="Preco" value={item.preco != null && item.preco > 0 ? formatCurrency(item.preco) : "-"} />
+        <Mini label="Preço" value={item.preco != null && item.preco > 0 ? formatCurrency(item.preco) : "-"} />
       </div>
       <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-        <span>{item.amostrasDia > 0 ? `${formatNumber(item.amostrasDia)} amostras/dia` : "capacidade nao calculada"}</span>
+        <span>{item.amostrasDia > 0 ? `${formatNumber(item.amostrasDia)} amostras/dia` : "capacidade não calculada"}</span>
         <span>{item.tempoBancada > 0 ? `${formatNumber(item.tempoBancada)} h bancada/amostra` : "tempo de bancada incompleto"}</span>
         {analise.status && <span>Status: {analise.status}</span>}
       </div>

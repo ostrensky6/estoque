@@ -284,7 +284,7 @@ export default async function Home() {
       </section>
 
       <section className="flex flex-wrap gap-3" aria-label="Acoes rapidas">
-        <AcaoRapida href="/orcamento" titulo="Novo orçamento" desc="Montar analises e preco" icon={TestTube2} />
+        <AcaoRapida href="/orcamento/demandas/nova" titulo="Novo orçamento" desc="Montar análises e preço" icon={TestTube2} />
         <AcaoRapida href="/planejamento" titulo="Planejar campanha" desc="Reservas e consumo" icon={ClipboardList} />
         <AcaoRapida href="/estoque" titulo="Revisar estoque" desc="Saldos, lotes e validade" icon={PackageSearch} />
         <AcaoRapida href="/compras" titulo="Abrir compras" desc="Reposicao e recebimento" icon={ShoppingCart} />

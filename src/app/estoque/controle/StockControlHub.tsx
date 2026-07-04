@@ -454,8 +454,8 @@ export function StockControlHub({
                   <XAxis dataKey="name" fontSize={8} tickLine={false} axisLine={false} />
                   <YAxis fontSize={8} tickLine={false} axisLine={false} />
                   <Bar dataKey="value" radius={[2, 2, 0, 0]}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    {chartData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -613,8 +613,8 @@ export function StockControlHub({
                             <p className="text-xs text-muted-foreground/80 italic">Sem notificações ativas.</p>
                           )}
 
-                          {item.alerts.filter((a) => a.tipo === "vencido" || a.tipo === "vencimento").map((a, idx) => (
-                            <div key={idx} className="text-xs text-danger-strong font-semibold flex items-center gap-1.5">
+                          {item.alerts.filter((a) => a.tipo === "vencido" || a.tipo === "vencimento").map((a) => (
+                            <div key={`${item.insumo_id ?? item.especificacao}-${a.tipo}-${a.validade ?? "sem-data"}`} className="text-xs text-danger-strong font-semibold flex items-center gap-1.5">
                               <CalendarClock className="h-3.5 w-3.5" />
                               {a.tipo === "vencido" ? "Vencido em:" : "Vence em:"} {a.validade ? new Date(a.validade).toLocaleDateString("pt-BR") : "sem data"}
                             </div>
@@ -729,8 +729,8 @@ export function StockControlHub({
                       outerRadius={85}
                       paddingAngle={3}
                     >
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      {chartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(value) => [value, "Insumos"]} />
@@ -738,8 +738,8 @@ export function StockControlHub({
                 </ResponsiveContainer>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                {chartData.map((d, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
+                {chartData.map((d) => (
+                  <div key={d.name} className="flex items-center gap-2">
                     <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
                     <span className="text-muted-foreground truncate">{d.name}:</span>
                     <span className="font-bold tabular-nums ml-auto">{d.value}</span>
