@@ -33,17 +33,25 @@ Observação: a pasta antiga `D:\Aplicativos\Estoque` está depreciada e não de
 ## Supabase
 
 - Projeto: `estoque`
-- Project ref: `hhxwdcwphitfxywbgtju`
+- Project ref: `gkcjzwfsnoknxgpsumxi`
 - Região: `sa-east-1`
-- API URL: https://hhxwdcwphitfxywbgtju.supabase.co
-- Dashboard: https://supabase.com/dashboard/project/hhxwdcwphitfxywbgtju
+- API URL: https://gkcjzwfsnoknxgpsumxi.supabase.co
+- Dashboard: https://supabase.com/dashboard/project/gkcjzwfsnoknxgpsumxi
 - Pooler host: `aws-1-sa-east-1.pooler.supabase.com`
 - Pooler port: `5432`
-- Pooler user: `postgres.hhxwdcwphitfxywbgtju`
+- Pooler user: `postgres.gkcjzwfsnoknxgpsumxi`
 - Database: `postgres`
 
-Nota operacional (2026-07-03): `hhxwdcwphitfxywbgtju` foi validado como
-Supabase de producao para o projeto Vercel `kontrol`.
+Nota operacional (2026-07-04): `gkcjzwfsnoknxgpsumxi` e o Supabase atual
+do projeto Vercel `kontrol`.
+
+### LEGADO / NAO USAR
+
+- Project ref legado: `hhxwdcwphitfxywbgtju`
+- API URL legada: https://hhxwdcwphitfxywbgtju.supabase.co
+- Dashboard legado: https://supabase.com/dashboard/project/hhxwdcwphitfxywbgtju
+- Pooler user legado: `postgres.hhxwdcwphitfxywbgtju`
+- Nao usar como producao, default, alvo esperado, homologacao ou exemplo ativo.
 
 ## Segurança
 

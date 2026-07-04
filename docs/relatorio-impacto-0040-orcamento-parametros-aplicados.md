@@ -25,10 +25,15 @@ Observacao: o dump de dados emitiu avisos de chaves estrangeiras circulares em `
 ## Validacao pre-migration
 
 - `scripts/verify-production-target.ps1 -AllowNonMain` confirmou:
-  - Supabase linkado no projeto `hhxwdcwphitfxywbgtju`.
+  - Supabase linkado no projeto entao vigente em 2026-06-21.
   - migrations sem versoes duplicadas.
   - Vercel local linkado no projeto esperado.
 - `supabase migration list --linked` mostrou producao alinhada de `0001` a `0039` e `0040` pendente.
+
+### LEGADO / NAO USAR
+
+- O Supabase citado originalmente neste relatorio de impacto era `hhxwdcwphitfxywbgtju`.
+- Esse ref e legado e nao deve ser usado como producao, default, alvo esperado ou exemplo ativo.
 
 ## Plano de rollback
 

@@ -40,15 +40,15 @@ npm run build
 
 > [!CAUTION]
 > **PROIBIDO ENQUANTO O BLOQUEADOR `INFRA-001` ESTIVER ABERTO.**
-> Verificado em 2026-06-25 (read-only): o CLI logado reporta como **LINKED** o projeto de **PRODUÇÃO** `hhxwdcwphitfxywbgtju`. Portanto, `supabase db push --linked` resolveria para **PRODUÇÃO** — o que é terminantemente proibido.
+> Registro legado de 2026-06-25 (read-only): o CLI logado reportava como **LINKED** o projeto hoje classificado como **LEGADO / NAO USAR** `hhxwdcwphitfxywbgtju`. Portanto, `supabase db push --linked` resolveria para um alvo incorreto — o que e terminantemente proibido.
 > - **NÃO** executar `supabase db push --linked`, `supabase db reset` remoto, `supabase link`, SQL remoto ou alteração de secrets.
 > - Só é permitido executar este passo **depois** que o link remoto estiver comprovadamente apontando para um ambiente **Staging** formalmente identificado (ver checklist de retomada na seção 6 e o bloqueador `INFRA-001` em `2026-06-25-evidencias-homologacao-staging.md`).
-> - Pré-condição obrigatória antes de rodar este passo: `supabase projects list` deve mostrar o **ref de Staging** marcado como `LINKED ●` e **NÃO** o ref de produção `hhxwdcwphitfxywbgtju`.
+> - Pré-condição obrigatória antes de rodar este passo: `supabase projects list` deve mostrar o **ref de Staging** marcado como `LINKED ●` e **NÃO** o ref legado `hhxwdcwphitfxywbgtju`.
 
 Configure as credenciais locais do Supabase CLI para apontar para o banco de Staging (Homologação) e execute a aplicação de migrações **(somente após desbloquear `INFRA-001`)**:
 ```bash
 # (BLOQUEADO até INFRA-001 resolvido) Aplicar as migrations 0045, 0046, 0047 no banco de Staging
-# Confirmar antes: `supabase projects list` deve marcar o ref de STAGING como LINKED (nunca hhxwdcwphitfxywbgtju).
+# Confirmar antes: `supabase projects list` deve marcar o ref de STAGING como LINKED (nunca o ref legado hhxwdcwphitfxywbgtju).
 supabase db push --linked
 ```
 

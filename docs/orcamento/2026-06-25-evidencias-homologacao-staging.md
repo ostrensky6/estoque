@@ -5,7 +5,7 @@
 
 ---
 
-## Cadastro Canônico do App Kontrol (confirmado pelo responsável 2026-06-25)
+## Cadastro Canonico Legado (registro historico de 2026-06-25)
 
 | Item | Valor |
 |---|---|
@@ -13,12 +13,12 @@
 | GitHub | `ostrensky6/estoque` |
 | Branch de produção | `main` |
 | Vercel produção | projeto `kontrol-gia` |
-| **Supabase PRODUÇÃO — projeto** | `estoque` |
-| **Supabase PRODUÇÃO — ref** | `hhxwdcwphitfxywbgtju` |
-| Supabase PRODUÇÃO — região | `sa-east-1` |
-| Supabase PRODUÇÃO — URL | `https://hhxwdcwphitfxywbgtju.supabase.co` |
+| **Supabase LEGADO / NAO USAR — projeto** | `estoque` |
+| **Supabase LEGADO / NAO USAR — ref** | `hhxwdcwphitfxywbgtju` |
+| Supabase LEGADO / NAO USAR — região | `sa-east-1` |
+| Supabase LEGADO / NAO USAR — URL | `https://hhxwdcwphitfxywbgtju.supabase.co` |
 
-> ⛔ **`hhxwdcwphitfxywbgtju` é PRODUÇÃO.** Proibido para homologação, migrations, `db push`, `db reset`, testes destrutivos, limpeza ou qualquer operação remota de Staging.
+> ⛔ **`hhxwdcwphitfxywbgtju` e LEGADO / NAO USAR.** Proibido para producao, homologacao, migrations, `db push`, `db reset`, testes destrutivos, limpeza ou qualquer operacao remota.
 > O ref `hxrzgisczusgqzwixrhk` permanece **NÃO confirmado** como Staging → também não autorizado para migrations.
 > **Não existe, até o momento, um Supabase Staging formalmente identificado.**
 
@@ -52,7 +52,7 @@
 | Stack LOCAL docker | `supabase_db_Estoque` (porta 54522), kong 54521 | rodando; `supabase_db_Estoque` "Up 51 min" (recriado = assinatura de `db reset` local) |
 | `.env.local` (usado pelo app) | aponta **somente** para `http://127.0.0.1` | app roda contra LOCAL ✅ |
 | Remote **linkado** (`supabase/.temp/linked-project.json`) | ref `hxrzgisczusgqzwixrhk` (name "estoque") | linkado no checkout principal |
-| Remote citado em `.env.example` | ref `hhxwdcwphitfxywbgtju` | **ref DIFERENTE** do linkado |
+| Remote citado em `.env.example` na epoca | ref legado `hhxwdcwphitfxywbgtju` | **ref DIFERENTE** do linkado |
 | Identificação staging vs produção | **DESCONHECIDA / NÃO CONFIRMADA** | nenhum dos dois refs documentado como staging |
 
 ### 0.3 Reset anterior — local ou remoto?
@@ -65,7 +65,7 @@
 ### 0.4 Algum comando contra Staging/Produção?
 
 - **Nenhuma evidência** de comando contra remote no transcript ou no estado inspecionado.
-- **Produção: nada executado** (confirmado dentro dos limites observáveis).
+- **Projeto legado: nada executado** (confirmado dentro dos limites observáveis).
 
 ---
 
@@ -93,7 +93,7 @@
 ### INFRA-001 — Supabase Staging — **DESBLOQUEADO PARA VERIFICAÇÃO** (Staging oficial identificado) — **PUSH/LINK AINDA NÃO AUTORIZADOS**
 
 > **Status:** DESBLOQUEADO PARA VERIFICAÇÃO · **Severidade:** (rebaixada) · **Bloqueia merge:** Sim, até concluir homologação · **Atualizado em:** 2026-06-25
-> **Resumo:** Staging oficial identificado e confirmado read-only na org correta. Produção continua **proibida**. `supabase link`/`db push`/migrations **ainda não autorizados**.
+> **Resumo:** Staging oficial identificado e confirmado read-only na org correta. Projeto legado continua **proibido**. `supabase link`/`db push`/migrations **ainda não autorizados**.
 
 **Staging OFICIAL do Kontrol (confirmado read-only via `supabase projects list` em 2026-06-25):**
 
@@ -105,19 +105,19 @@
 | Org | `syexigkdeqzrlgpsbgtt` ("ostrensky6") — mesma org da produção, **projeto separado** |
 | Região | South America / São Paulo (`sa-east-1`) — igual à produção |
 | Criado em | 2026-06-25 15:01:11 UTC |
-| **≠ Produção?** | ✅ Sim — Staging `bebeqqrrmdvqaabkqfhp` **≠** Produção `hhxwdcwphitfxywbgtju` |
+| **≠ Produção?** | ✅ Sim — Staging `bebeqqrrmdvqaabkqfhp` **≠** Projeto legado `hhxwdcwphitfxywbgtju` |
 
 **✅ Relink concluído (2026-06-25):** `supabase link --project-ref bebeqqrrmdvqaabkqfhp` executado com sucesso (`Finished supabase link.`). Confirmado read-only via `supabase projects list`:
 - `LINKED ●` agora aponta para **STAGING** `bebeqqrrmdvqaabkqfhp` (teste_kontrol_provisorio).
-- Produção `hhxwdcwphitfxywbgtju` **NÃO está mais linkada** (sem marcador) e permanece intocada.
+- Projeto legado `hhxwdcwphitfxywbgtju` **NAO esta mais linkado** (sem marcador) e permanece intocado.
 - Nenhum `db push`, migration, SQL ou preflight executado. Nenhum secret/senha impresso ou registrado.
 
 **⚠️ `db push` ainda NÃO autorizado.** Mesmo com o CLI agora linkado ao Staging, qualquer `supabase db push`/migration aguarda autorização explícita do responsável.
 
-**Proibições mantidas:** produção `hhxwdcwphitfxywbgtju` intocável; sem `link`, `db push`, migrations, preflight, limpeza, constraints, merge ou cópia de dados de produção até autorização explícita.
+**Proibições mantidas:** projeto legado `hhxwdcwphitfxywbgtju` intocavel; sem `link`, `db push`, migrations, preflight, limpeza, constraints, merge ou copia de dados ate autorizacao explicita.
 
 **Decisão humana registrada (2026-06-25):**
-- `hhxwdcwphitfxywbgtju` = **PRODUÇÃO** (Kontrol/estoque). **Não tocar.**
+- `hhxwdcwphitfxywbgtju` = **LEGADO / NAO USAR**. **Nao tocar.**
 - `hxrzgisczusgqzwixrhk` = **não confirmado** como Staging. Sem operação remota de migration até confirmação no Supabase Dashboard.
 - Supabase local **não** substitui Staging (apenas conferência técnica preliminar).
 
@@ -127,17 +127,17 @@
 |---|---|---|---|---|
 | `supabase projects list` (CLI ao vivo) — marcado **LINKED ●** | **`hhxwdcwphitfxywbgtju`** | `syexigkdeqzrlgpsbgtt` | "ostrensky6's Project" (São Paulo, criado 2026-06-11) | ✅ visível |
 | `supabase/.temp/linked-project.json` (arquivo, possivelmente stale) | `hxrzgisczusgqzwixrhk` | `gjkxxhfwezicjasqowji` | "estoque" | ❌ inacessível (`get_project` → "no permission") |
-| `.env.example` | `hhxwdcwphitfxywbgtju` | — | — | (= produção) |
+| `.env.example` na epoca | `hhxwdcwphitfxywbgtju` | — | — | (= legado / nao usar) |
 | MCP Supabase (outra conta) | `qbqjpercvmncxcjppmvt` | `jbaraiyuoerevocmnigb` | "Sanepar Project" | irrelevante ao estoque |
 
 **Conclusões críticas:**
-1. **Não há ambiente de Staging acessível.** O token do CLI do usuário enxerga **somente PRODUÇÃO** (`hhxwdcwphitfxywbgtju`).
-2. **`supabase db push --linked` (Passo 3) resolveria para PRODUÇÃO**, pois é o projeto que o CLI reporta como LINKED. O `hxrzgisczusgqzwixrhk` do arquivo está em org inacessível e não pode ser alvo efetivo com este token. → **Passo 3 do plano é perigoso neste ambiente.**
+1. **Não há ambiente de Staging acessível.** O token do CLI do usuário enxergava **somente o projeto hoje legado** (`hhxwdcwphitfxywbgtju`).
+2. **`supabase db push --linked` (Passo 3) resolveria para o projeto legado**, pois é o projeto que o CLI reporta como LINKED. O `hxrzgisczusgqzwixrhk` do arquivo está em org inacessível e não pode ser alvo efetivo com este token. → **Passo 3 do plano é perigoso neste ambiente.**
 3. Divergência entre `linked-project.json` (`hxrz…`) e o que o CLI reporta como linkado (`hhxw…`) — estado de link inconsistente, reforça o risco.
 
 **Ações de proteção tomadas:**
 - **NÃO** executei `supabase db push`, `link`, `db reset` remoto, nem qualquer mutação remota.
-- `hhxwdcwphitfxywbgtju` (produção) **não foi tocado** — apenas listado por metadados read-only.
+- `hhxwdcwphitfxywbgtju` (legado) **não foi tocado** — apenas listado por metadados read-only.
 - Homologação remota **PARADA**, conforme regra: "Se não for possível comprovar que hxrzgisczusgqzwixrhk é Staging, pare e solicite criação/identificação formal do ambiente Staging antes de qualquer migration."
 
 **Solicitação ao responsável humano:**
@@ -150,10 +150,10 @@
 ## Execução em Staging — Migrations + Testes (2026-06-25)
 
 ### Migrations aplicadas no Staging `bebeqqrrmdvqaabkqfhp`
-- **Pré-condição verificada:** `supabase projects list` → `LINKED ●` em `bebeqqrrmdvqaabkqfhp`; produção `hhxwdcwphitfxywbgtju` **sem** marcador. ✅
+- **Pré-condição verificada:** `supabase projects list` → `LINKED ●` em `bebeqqrrmdvqaabkqfhp`; projeto legado `hhxwdcwphitfxywbgtju` **sem** marcador. ✅
 - **`supabase db push --linked`** → EXIT 0. Banco de Staging estava vazio → aplicou toda a cadeia `0001`→`0047`, **incluindo 0045, 0046, 0047** (0044 não existe).
 - **`supabase migration list --linked`** → Local = Remote para todas as versões, incluindo 0045/0046/0047. ✅
-- **Produção intocada:** push direcionado por `--linked` ao Staging; nenhum comando contra `hhxwdcwphitfxywbgtju`. ✅
+- **Projeto legado intocado:** push direcionado por `--linked` ao Staging; nenhum comando contra `hhxwdcwphitfxywbgtju`. ✅
 - Sem SQL manual, sem preflight, sem limpeza, sem constraints definitivas, sem merge.
 
 ### Testes automatizados (working tree da RC, com alterações NÃO commitadas de outro fluxo)
@@ -216,9 +216,9 @@ Clone limpo `D:/Aplicativos/estoque-rc-clean` da branch RC `claude/rls-permissoe
 **Resultado:** 15/15 checks com **0 ocorrências** (esperado — Staging recém-migrado, sem dados). Nenhum bloqueador; nenhuma decisão manual exigida; nenhuma limpeza executada.
 
 ### Re-validação read-only do Staging (pós suíte limpa)
-- `supabase projects list` → `LINKED ●` em `bebeqqrrmdvqaabkqfhp`; produção `hhxwdcwphitfxywbgtju` **sem** LINKED. ✅
+- `supabase projects list` → `LINKED ●` em `bebeqqrrmdvqaabkqfhp`; projeto legado `hhxwdcwphitfxywbgtju` **sem** LINKED. ✅
 - `supabase migration list --linked` → 0045/0046/0047 com Local=Remote (aplicadas no Staging). ✅
-- Produção intocada; sem preflight (não autorizado).
+- Projeto legado intocado; sem preflight (não autorizado).
 
 ---
 
@@ -231,7 +231,7 @@ Clone limpo `D:/Aplicativos/estoque-rc-clean` da branch RC `claude/rls-permissoe
 - [ ] **Confirmação visual/documental no Supabase Dashboard** de que o ref é o ambiente de Staging/Homologação (print/registro anexado a este doc).
 - [ ] **Access token** com acesso à organização correta do Staging (o token atual NÃO acessa a org `gjkxxhfwezicjasqowji`).
 - [ ] **`supabase link`** apontando explicitamente para o ref de Staging.
-- [ ] **Verificação read-only** de que produção `hhxwdcwphitfxywbgtju` **NÃO** está linkada:
+- [ ] **Verificação read-only** de que projeto legado `hhxwdcwphitfxywbgtju` **NAO** esta linkado:
       `supabase projects list` deve marcar `LINKED ●` no ref de Staging e nunca em `hhxwdcwphitfxywbgtju`.
 - [ ] Conferir `supabase/.temp/linked-project.json` consistente com o ref de Staging (eliminar divergência atual `hxrz…` vs `hhxw…`).
 
@@ -246,7 +246,7 @@ Clone limpo `D:/Aplicativos/estoque-rc-clean` da branch RC `claude/rls-permissoe
 - [ ] Etapa 6 — preencher matriz de evidências por cenário.
 
 ### Salvaguardas permanentes (não negociáveis nesta etapa)
-- Não tocar produção `hhxwdcwphitfxywbgtju`.
+- Não tocar projeto legado `hhxwdcwphitfxywbgtju`.
 - Não `db reset`/`db push` remoto fora de Staging.
 - Não relinkar para produção. Não alterar secrets de produção. Não fazer merge. Não recalcular propostas históricas. Não aplicar constraints definitivas fora do escopo. Local não substitui Staging.
 
