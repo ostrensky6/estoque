@@ -2,12 +2,10 @@ import { notFound } from "next/navigation";
 import { createClientUntyped } from "@/lib/supabase/server";
 import {
   CADASTROS,
-  getCadastrosOrdenados,
   type Campo,
 } from "@/lib/cadastros/config";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { CrudShell } from "@/components/cadastros/CrudShell";
-import { CadastrosSubnav } from "@/components/cadastros/CadastrosSubnav";
 import { equipCustoDia } from "@/lib/costing/engine";
 
 export const dynamic = "force-dynamic";
@@ -125,7 +123,6 @@ export default async function CadastroPage({
   const { slug } = await params;
   const cfg = CADASTROS[slug];
   if (!cfg) notFound();
-  const cadastros = getCadastrosOrdenados();
 
   const supabase = await createClientUntyped();
   const [{ data: rows }, { data: parametros }] = await Promise.all([
@@ -191,8 +188,6 @@ export default async function CadastroPage({
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <Breadcrumbs items={[{ label: "Cadastros", href: "/cadastros" }, { label: cfg.titulo }]} />
-
-        <CadastrosSubnav cadastros={cadastros} activeSlug={slug} />
 
         <h1 className="mt-6 text-xl font-semibold tracking-tight">{cfg.titulo}</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{cfg.subtitulo}</p>

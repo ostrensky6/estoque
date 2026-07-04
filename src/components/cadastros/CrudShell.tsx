@@ -8,7 +8,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   type ColumnDef,
@@ -23,7 +22,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp, ChevronsUpDown, Download, MoreHorizontal, Plus, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronsUpDown, MoreHorizontal, Plus, Search } from "lucide-react";
 import type { Campo, Coluna } from "@/lib/cadastros/config";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -389,14 +388,7 @@ export function CrudShell({
           {temFiltro ? `${totalFiltrado} de ${rows.length}` : `${rows.length} registro(s)`}
         </Badge>
 
-        <Button asChild variant="outline" className="ml-auto">
-          <Link href={`/cadastros/${slug}/export`}>
-            <Download />
-            XLSX
-          </Link>
-        </Button>
-
-        <Button onClick={novo}>
+        <Button onClick={novo} className="ml-auto">
           <Plus />
           Novo {singular}
         </Button>
@@ -483,7 +475,7 @@ export function CrudShell({
               <TableRow>
                 <TableCell
                   colSpan={colunas.length + 1}
-                  className="py-10 text-center text-muted-foreground"
+                  className="py-6 text-center text-muted-foreground"
                 >
                   {temFiltro
                     ? "Nenhum registro encontrado para a busca/filtro."

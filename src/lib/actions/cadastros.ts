@@ -1,13 +1,32 @@
 "use server";
 
+import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getCadastrosOrdenados, type CadastroConfig, type Campo } from "@/lib/cadastros/config";
+import { TECH_ID_HEADER, TECH_SUFFIX, opcoesParaCampos } from "@/lib/cadastros/xlsx";
 import { createClientUntyped } from "@/lib/supabase/server";
 
 export type FormState = {
   ok: boolean;
   message?: string;
   errors?: Record<string, string>;
+};
+
+export type ImportCadastroResumo = {
+  aba: string;
+  inseridos: number;
+  atualizados: number;
+  removidos: number;
+  ignorados: number;
+  erros: string[];
+  naoRemovidosPorVinculo: string[];
+};
+
+export type ImportCadastrosState = {
+  ok: boolean;
+  message?: string;
+  resumo?: ImportCadastroResumo[];
 };
 
 // ---- helpers de coerção ----
@@ -179,6 +198,12 @@ const SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
     observacoes: optStr,
     ativo: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
   }),
+  locais: z.object({
+    nome: reqStr,
+    tipo: optStr,
+    parent_id: optNum({ min: 0 }),
+    condicao_armazenamento: optStr,
+  }),
 };
 
 const TABELAS: Record<string, string> = {
@@ -190,10 +215,12 @@ const TABELAS: Record<string, string> = {
   tecnicos: "tecnicos",
   overhead: "overhead",
   fornecedores: "fornecedores",
+  locais: "locais",
 };
 
 /** Páginas que derivam dados dos cadastros — revalidadas a cada alteração. */
 const DEPENDENTES = [
+  "/cadastros",
   "/custeio",
   "/analises",
   "/orcamento",
@@ -217,6 +244,32 @@ function formToObject(formData: FormData): Record<string, unknown> {
   return o;
 }
 
+function aplicarPadroesCadastro(slug: string, obj: Record<string, unknown>) {
+  if (slug === "equipamentos" && !("possui" in obj)) obj.possui = "false";
+  if (slug === "tipo_insumos" && !("ativo" in obj)) obj.ativo = "false";
+  if ((slug === "clientes" || slug === "fornecedores") && !("ativo" in obj)) obj.ativo = "false";
+  if (slug === "insumos") {
+    if (!("fator_conversao" in obj) || obj.fator_conversao === "") obj.fator_conversao = "1";
+    if (
+      (!("unidade_consumo" in obj) || obj.unidade_consumo === "") &&
+      typeof obj.unidade === "string" &&
+      obj.unidade.trim()
+    ) {
+      obj.unidade_consumo = obj.unidade;
+    }
+  }
+  return obj;
+}
+
+function errosZod(error: z.ZodError) {
+  const errors: Record<string, string> = {};
+  for (const issue of error.issues) {
+    const path = String(issue.path[0] ?? "");
+    if (path && !errors[path]) errors[path] = issue.message;
+  }
+  return errors;
+}
+
 export async function salvarRegistro(
   _prev: FormState,
   formData: FormData,
@@ -230,28 +283,11 @@ export async function salvarRegistro(
   if (!schema || !tabela) return { ok: false, message: "Cadastro inválido." };
 
   // checkbox ausente não vem no FormData
-  const obj = formToObject(formData);
-  if (slug === "equipamentos" && !("possui" in obj)) obj.possui = "false";
-  if (slug === "tipo_insumos" && !("ativo" in obj)) obj.ativo = "false";
-  if (slug === "insumos") {
-    if (!("fator_conversao" in obj) || obj.fator_conversao === "") obj.fator_conversao = "1";
-    if (
-      (!("unidade_consumo" in obj) || obj.unidade_consumo === "") &&
-      typeof obj.unidade === "string" &&
-      obj.unidade.trim()
-    ) {
-      obj.unidade_consumo = obj.unidade;
-    }
-  }
+  const obj = aplicarPadroesCadastro(slug, formToObject(formData));
 
   const parsed = schema.safeParse(obj);
   if (!parsed.success) {
-    const errors: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
-      const path = String(issue.path[0] ?? "");
-      if (path && !errors[path]) errors[path] = issue.message;
-    }
-    return { ok: false, message: "Verifique os campos destacados.", errors };
+    return { ok: false, message: "Verifique os campos destacados.", errors: errosZod(parsed.error) };
   }
 
   const supabase = await createClientUntyped();
@@ -289,4 +325,343 @@ export async function excluirRegistro(
 
   revalidarDependentes(slug);
   return { ok: true, message: "Excluído." };
+}
+
+function normalizarChave(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function valorCelula(cell: ExcelJS.Cell) {
+  const value = cell.value;
+  if (value == null) return null;
+  if (value instanceof Date) return dateToInput(value);
+  if (typeof value !== "object") return value;
+  if ("text" in value && typeof value.text === "string") return value.text;
+  if ("hyperlink" in value && "text" in value && typeof value.text === "string") return value.text;
+  if ("result" in value) return value.result ?? null;
+  if ("richText" in value && Array.isArray(value.richText)) {
+    return value.richText.map((part) => part.text).join("");
+  }
+  return String(cell.text ?? "");
+}
+
+function valorParaCampo(value: unknown, campo: Campo, opcoes?: Map<string, string>) {
+  if (value == null || value === "") return "";
+  if (campo.tipo === "checkbox") {
+    const normalized = normalizarChave(value);
+    return ["sim", "true", "1", "x", "yes", "on"].includes(normalized) ? "true" : "false";
+  }
+  if (campo.tipo === "date") {
+    if (value instanceof Date) return dateToInput(value);
+    return String(value).slice(0, 10);
+  }
+  if (campo.tipo === "percent") {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 && n <= 1 ? n * 100 : value;
+  }
+  if (campo.tipo === "select") {
+    const raw = String(value).trim();
+    if (!opcoes) return raw;
+    if (opcoes.has(raw)) return raw;
+    const idPorLabel = new Map(
+      [...opcoes.entries()].map(([id, label]) => [normalizarChave(label), id]),
+    );
+    return idPorLabel.get(normalizarChave(raw)) ?? raw;
+  }
+  return value;
+}
+
+function mapaCabecalhos(cfg: CadastroConfig) {
+  const mapa = new Map<string, string>();
+  mapa.set(normalizarChave(TECH_ID_HEADER), "id");
+  mapa.set("id", "id");
+  for (const campo of cfg.campos) {
+    mapa.set(normalizarChave(campo.label), campo.name);
+    mapa.set(normalizarChave(campo.name), campo.name);
+    if (campo.tipo === "select" && campo.opcoesDe) {
+      mapa.set(normalizarChave(`${campo.label} ID`), `${campo.name}${TECH_SUFFIX}`);
+      mapa.set(normalizarChave(`${campo.name}${TECH_SUFFIX}`), `${campo.name}${TECH_SUFFIX}`);
+    }
+  }
+  return mapa;
+}
+
+function registrosDaAba(
+  sheet: ExcelJS.Worksheet,
+  cfg: CadastroConfig,
+  opcoes: Record<string, Map<string, string>>,
+) {
+  const headers: string[] = [];
+  const headerMap = mapaCabecalhos(cfg);
+  sheet.getRow(1).eachCell((cell, colNumber) => {
+    headers[colNumber] = headerMap.get(normalizarChave(valorCelula(cell))) ?? "";
+  });
+
+  const campoPorNome = new Map(cfg.campos.map((campo) => [campo.name, campo]));
+  const rows: { excelRow: number; id: number | null; obj: Record<string, unknown> }[] = [];
+
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const obj: Record<string, unknown> = {};
+    const technicalIds: Record<string, unknown> = {};
+
+    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      const key = headers[colNumber];
+      if (!key) return;
+      const value = valorCelula(cell);
+      if (value == null || value === "") return;
+      if (key === "id") {
+        obj.id = value;
+        return;
+      }
+      if (key.endsWith(TECH_SUFFIX)) {
+        technicalIds[key.slice(0, -TECH_SUFFIX.length)] = value;
+        return;
+      }
+      const campo = campoPorNome.get(key);
+      obj[key] = campo ? valorParaCampo(value, campo, opcoes[key]) : value;
+    });
+
+    for (const [key, value] of Object.entries(technicalIds)) {
+      if (value != null && value !== "") obj[key] = value;
+    }
+
+    const temValor = Object.entries(obj).some(([key, value]) => key !== "id" && value != null && value !== "");
+    if (!temValor) return;
+
+    rows.push({
+      excelRow: rowNumber,
+      id: obj.id == null || obj.id === "" ? null : Number(obj.id),
+      obj: aplicarPadroesCadastro(cfg.slug, obj),
+    });
+  });
+
+  return rows;
+}
+
+function mapaNatural(existingRows: Record<string, unknown>[], rotulo: string) {
+  const map = new Map<string, Record<string, unknown> | null>();
+  for (const row of existingRows) {
+    const key = normalizarChave(row[rotulo]);
+    if (!key) continue;
+    map.set(key, map.has(key) ? null : row);
+  }
+  return map;
+}
+
+const REFERENCIAS_CADASTROS: Record<string, { tabela: string; coluna: string; label: string }[]> = {
+  clientes: [{ tabela: "projetos", coluna: "cliente_id", label: "projetos" }],
+  projetos: [
+    { tabela: "orcamentos", coluna: "projeto_id", label: "orçamentos" },
+    { tabela: "demandas_propostas", coluna: "projeto_id", label: "demandas" },
+  ],
+  tipo_insumos: [{ tabela: "insumos", coluna: "tipo_insumo_id", label: "insumos" }],
+  insumos: [
+    { tabela: "insumo_analise", coluna: "insumo_id", label: "insumos por análise" },
+    { tabela: "lotes_estoque", coluna: "insumo_id", label: "lotes de estoque" },
+  ],
+  equipamentos: [
+    { tabela: "equipamento_analise", coluna: "equipamento_id", label: "equipamentos por análise" },
+    { tabela: "equipamentos_unidades", coluna: "equipamento_id", label: "unidades de equipamento" },
+  ],
+  fornecedores: [
+    { tabela: "insumos", coluna: "fornecedor_id", label: "insumos" },
+    { tabela: "insumos", coluna: "fornecedor_alt_id", label: "insumos" },
+    { tabela: "pedidos_compra", coluna: "fornecedor_id", label: "pedidos de compra" },
+  ],
+  locais: [
+    { tabela: "locais", coluna: "parent_id", label: "locais filhos" },
+    { tabela: "lotes_estoque", coluna: "local_id", label: "lotes de estoque" },
+    { tabela: "equipamentos_unidades", coluna: "local_id", label: "unidades de equipamento" },
+    { tabela: "inventario_ciclos", coluna: "local_id", label: "inventário" },
+    { tabela: "inventario_contagens", coluna: "local_id", label: "contagens de inventário" },
+  ],
+};
+
+async function motivoVinculoExistente(
+  supabase: Awaited<ReturnType<typeof createClientUntyped>>,
+  slug: string,
+  id: number,
+) {
+  for (const referencia of REFERENCIAS_CADASTROS[slug] ?? []) {
+    const { data, error } = await supabase
+      .from(referencia.tabela)
+      .select("id")
+      .eq(referencia.coluna, id)
+      .limit(1);
+    if (error) continue;
+    if (Array.isArray(data) && data.length > 0) return referencia.label;
+  }
+  return null;
+}
+
+async function importarCadastro(
+  cfg: CadastroConfig,
+  sheet: ExcelJS.Worksheet,
+): Promise<ImportCadastroResumo> {
+  const resumo: ImportCadastroResumo = {
+    aba: cfg.titulo,
+    inseridos: 0,
+    atualizados: 0,
+    removidos: 0,
+    ignorados: 0,
+    erros: [],
+    naoRemovidosPorVinculo: [],
+  };
+  const schema = SCHEMAS[cfg.slug];
+  const tabela = TABELAS[cfg.slug];
+  if (!schema || !tabela) {
+    resumo.erros.push("Cadastro sem schema/tabela configurado.");
+    return resumo;
+  }
+
+  const supabase = await createClientUntyped();
+  const { data: existing, error: selectError } = await supabase.from(tabela).select("*").order("id");
+  if (selectError) {
+    resumo.erros.push(selectError.message);
+    return resumo;
+  }
+
+  const existingRows = (existing ?? []) as Record<string, unknown>[];
+  const existingById = new Map(existingRows.map((row) => [Number(row.id), row]));
+  const existingByNatural = mapaNatural(existingRows, cfg.rotulo);
+  const opcoes = await opcoesParaCampos(cfg.campos, existingRows);
+  const importedRows = registrosDaAba(sheet, cfg, opcoes);
+  const vistos = new Set<number>();
+  const naturaisImportados = new Set<string>();
+
+  for (const row of importedRows) {
+    const parsed = schema.safeParse(row.obj);
+    if (!parsed.success) {
+      resumo.ignorados += 1;
+      const fields = Object.entries(errosZod(parsed.error))
+        .map(([field, message]) => `${field}: ${message}`)
+        .join("; ");
+      resumo.erros.push(`Linha ${row.excelRow}: ${fields || "dados inválidos"}`);
+      continue;
+    }
+
+    const naturalKey = normalizarChave(row.obj[cfg.rotulo]);
+    if (!row.id && naturalKey && naturaisImportados.has(naturalKey)) {
+      resumo.ignorados += 1;
+      resumo.erros.push(`Linha ${row.excelRow}: chave natural repetida na planilha.`);
+      continue;
+    }
+    const naturalMatch = naturalKey ? existingByNatural.get(naturalKey) : null;
+    if (!row.id && naturalKey && existingByNatural.has(naturalKey) && naturalMatch == null) {
+      resumo.ignorados += 1;
+      resumo.erros.push(
+        `Linha ${row.excelRow}: chave natural duplicada em ${cfg.titulo}; informe o ID para atualizar com segurança.`,
+      );
+      continue;
+    }
+    const targetId =
+      row.id && existingById.has(row.id)
+        ? row.id
+        : naturalMatch && naturalMatch.id != null
+          ? Number(naturalMatch.id)
+          : null;
+
+    if (targetId) {
+      const { error } = await supabase.from(tabela).update(parsed.data).eq("id", targetId);
+      if (error) {
+        resumo.ignorados += 1;
+        resumo.erros.push(`Linha ${row.excelRow}: ${error.message}`);
+        continue;
+      }
+      vistos.add(targetId);
+      if (naturalKey) naturaisImportados.add(naturalKey);
+      resumo.atualizados += 1;
+      continue;
+    }
+
+    const { data, error } = await supabase.from(tabela).insert(parsed.data).select("id").single();
+    if (error) {
+      resumo.ignorados += 1;
+      resumo.erros.push(`Linha ${row.excelRow}: ${error.message}`);
+      continue;
+    }
+    if (data && typeof data === "object" && "id" in data) vistos.add(Number(data.id));
+    if (naturalKey) naturaisImportados.add(naturalKey);
+    resumo.inseridos += 1;
+  }
+
+  if (resumo.erros.length === 0) {
+    for (const existingRow of existingRows) {
+      const id = Number(existingRow.id);
+      if (!id || vistos.has(id)) continue;
+      const label = String(existingRow[cfg.rotulo] ?? `ID ${id}`);
+      const vinculo = await motivoVinculoExistente(supabase, cfg.slug, id);
+      if (vinculo) {
+        resumo.naoRemovidosPorVinculo.push(`${label}: não removido por vínculo existente (${vinculo}).`);
+        continue;
+      }
+      const { error } = await supabase.from(tabela).delete().eq("id", id);
+      if (error) {
+        const msg =
+          error.code === "23503"
+            ? `${label}: não removido por vínculo existente.`
+            : `${label}: ${error.message}`;
+        if (error.code === "23503") resumo.naoRemovidosPorVinculo.push(msg);
+        else resumo.erros.push(msg);
+        continue;
+      }
+      resumo.removidos += 1;
+    }
+  }
+
+  revalidarDependentes(cfg.slug);
+  return resumo;
+}
+
+export async function importarCadastrosWorkbook(
+  _prev: ImportCadastrosState,
+  formData: FormData,
+): Promise<ImportCadastrosState> {
+  const file = formData.get("arquivo");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, message: "Selecione uma planilha XLSX para importar." };
+  }
+
+  try {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(await file.arrayBuffer());
+
+    const resumo: ImportCadastroResumo[] = [];
+    for (const cfg of getCadastrosOrdenados()) {
+      const sheet = workbook.getWorksheet(cfg.titulo) ?? workbook.getWorksheet(cfg.titulo.slice(0, 31));
+      if (!sheet) {
+        resumo.push({
+          aba: cfg.titulo,
+          inseridos: 0,
+          atualizados: 0,
+          removidos: 0,
+          ignorados: 0,
+          erros: ["Aba não encontrada; cadastro ignorado."],
+          naoRemovidosPorVinculo: [],
+        });
+        continue;
+      }
+      resumo.push(await importarCadastro(cfg, sheet));
+    }
+
+    const totalErros = resumo.reduce((acc, item) => acc + item.erros.length, 0);
+    return {
+      ok: totalErros === 0,
+      message:
+        totalErros === 0
+          ? "Importação concluída."
+          : "Importação concluída com avisos ou erros. Revise o relatório.",
+      resumo,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Não foi possível ler a planilha.",
+    };
+  }
 }

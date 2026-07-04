@@ -278,7 +278,17 @@ const baseStore = (): Store => {
     tempo_bancada_h: 2,
     escopo_operacional: "laboratorio",
   })),
-  equipamentos: [{ id: 1, nome: "Equipamento mock", custo_hora: 30, ativo: true }],
+  equipamentos: [{
+    id: 1,
+    nome: "Equipamento mock",
+    quantidade: 1,
+    custo_unitario: 30,
+    vida_util_anos: 5,
+    percentual_manutencao_anual: 0.05,
+    manutencao_anual_fixa: 0,
+    custo_hora: 30,
+    ativo: true,
+  }],
   equipamento_analise: HISTORICAL_ANALISE_CODES.map((codigo) => ({
     codigo_analise: codigo,
     equipamento_id: 1,
