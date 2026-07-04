@@ -24,7 +24,7 @@ export function CadastrosCards({ cadastros }: { cadastros: CadastroConfig[] }) {
     slugs.length === 0 ? cadastros : cadastros.filter((cadastro) => slugs.includes(cadastro.slug));
 
   return (
-    <Tabs defaultValue="todos" className="mt-8">
+    <Tabs defaultValue="todos" className="mt-6">
       <TabsList className="flex w-full justify-start overflow-x-auto sm:w-auto">
         {GRUPOS.map((grupo) => (
           <TabsTrigger key={grupo.value} value={grupo.value}>
@@ -34,7 +34,7 @@ export function CadastrosCards({ cadastros }: { cadastros: CadastroConfig[] }) {
       </TabsList>
       {GRUPOS.map((grupo) => (
         <TabsContent key={grupo.value} value={grupo.value}>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {cardsPorGrupo(grupo.slugs).map((cadastro) => (
               <Link
                 key={cadastro.slug}

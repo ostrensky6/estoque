@@ -38,7 +38,7 @@ export function ConfirmActionButton({
       {aberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 text-left">
           <div className="absolute inset-0 bg-black/40" onClick={() => setAberto(false)} />
-          <div className="relative w-full max-w-sm rounded-xl bg-card p-6 shadow-xl">
+          <div className="relative w-full max-w-sm rounded-xl bg-card p-5 shadow-xl">
             <h3 className="text-base font-semibold">{titulo}</h3>
             <p className="mt-2 text-sm text-muted-foreground">{mensagem}</p>
             <div className="mt-5 flex justify-end gap-2">

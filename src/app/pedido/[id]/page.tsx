@@ -194,7 +194,7 @@ export default async function PedidoInternoDetalhe({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Pedidos", href: "/pedido" }, { label: pedidoInternoNumero(pedido.id) }]} />
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -353,7 +353,7 @@ export default async function PedidoInternoDetalhe({
                 ))}
                 {linhas.length === 0 && (
                   <tr>
-                    <td colSpan={podeEditarItens ? 7 : 6} className="px-4 py-8 text-center text-muted-foreground/80">
+                    <td colSpan={podeEditarItens ? 7 : 6} className="px-4 py-6 text-center text-muted-foreground/80">
                       Nenhum material ou serviço informado.
                     </td>
                   </tr>
@@ -422,7 +422,7 @@ export default async function PedidoInternoDetalhe({
           )}
         </section>
 
-        <section className="mt-8 grid gap-6 lg:grid-cols-2">
+        <section className="mt-6 grid gap-4 lg:grid-cols-2">
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -559,7 +559,7 @@ export default async function PedidoInternoDetalhe({
           </div>
         </section>
 
-        <section className="mt-8 grid gap-6 lg:grid-cols-[1fr_22rem]">
+        <section className="mt-6 grid gap-4 lg:grid-cols-[1fr_22rem]">
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <h2 className="text-sm font-semibold">Próxima ação</h2>
             <p className="mt-1 text-xs text-muted-foreground">{statusMeta.etapa}</p>

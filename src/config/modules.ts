@@ -64,7 +64,7 @@ export const APP_MODULES: AppModule[] = [
       {
         href: "/cadastros",
         label: "Todos os cadastros",
-        desc: "índice de dados mestres e bases operacionais",
+        desc: "índice, exportação e importação dos dados mestres",
         icon: "LayoutGrid",
         shortcut: "D",
       },

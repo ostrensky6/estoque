@@ -151,7 +151,7 @@ export function ReceberItemPedidoInterno({
               }
             }}
           />
-          <div className="relative max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-card p-6 shadow-xl">
+          <div className="relative max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-card p-5 shadow-xl">
             <h3 className="text-base font-semibold">Receber item</h3>
             <p className="mt-1 text-xs text-muted-foreground">
               {item.especificacao}

@@ -83,6 +83,7 @@ export async function atualizarCatalogoAnalise(formData: FormData) {
     .eq("codigo", codigo);
   if (error) throw new Error(error.message);
   revalidatePath("/analises");
+  revalidatePath(`/analises/${codigo}`);
 }
 
 export async function inativarAnalise(formData: FormData) {

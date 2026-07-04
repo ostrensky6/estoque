@@ -164,7 +164,7 @@ export default async function EquipamentosPage({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -276,7 +276,7 @@ export default async function EquipamentosPage({
               })}
               {unidades.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground/80">
+                  <td colSpan={8} className="px-4 py-6 text-center text-muted-foreground/80">
                     {scanId ? `Nenhuma unidade encontrada para #${scanId}.` : "Nenhuma unidade patrimonial cadastrada."}
                   </td>
                 </tr>
@@ -301,7 +301,7 @@ export default async function EquipamentosPage({
             </Link>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="mt-4 grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
             {unidades.map((unidade) => {
               const equipamento = asOne(unidade.equipamentos);
               const meta = statusMeta(unidade.status_operacional, unidade.ativo);

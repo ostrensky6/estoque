@@ -62,7 +62,7 @@ export default async function PlanejamentoPage() {
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <h1 className="text-xl font-semibold tracking-tight">Planejamento</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Planeje análises, reserve os insumos e dê baixa ao iniciar. A demanda é

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageShell } from "@/components/app/PageShell";
 import {
   arquivarNotificacao,
   marcarNotificacaoLida,
@@ -64,7 +65,7 @@ export default async function NotificacoesPage() {
   const reposicao = notificacoes.filter((item) => item.tipo === "reposicao").length;
 
   return (
-    <div className="space-y-6">
+    <PageShell>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -87,7 +88,7 @@ export default async function NotificacoesPage() {
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3 2xl:grid-cols-4">
         <div className="rounded-md border border-border bg-card p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Não lidas
@@ -109,7 +110,7 @@ export default async function NotificacoesPage() {
       </div>
 
       {notificacoes.length === 0 ? (
-        <div className="rounded-md border border-dashed border-input bg-card p-8 text-sm text-muted-foreground">
+        <div className="rounded-md border border-dashed border-input bg-card p-5 text-sm text-muted-foreground">
           Nenhuma notificação operacional pendente.
         </div>
       ) : (
@@ -181,6 +182,6 @@ export default async function NotificacoesPage() {
           })}
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

@@ -6,7 +6,18 @@ import { gargalo, horasBancadaPorAmostra, type Etapa } from "@/lib/costing/engin
 import { calcularTodas } from "@/lib/costing/loader";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
-import { inativarAnalise } from "@/lib/actions/receita";
+import {
+  adicionarEquipamento,
+  adicionarEtapa,
+  adicionarMaterial,
+  atualizarCatalogoAnalise,
+  atualizarEtapa,
+  atualizarMaterial,
+  inativarAnalise,
+  removerEquipamento,
+  removerEtapa,
+  removerMaterial,
+} from "@/lib/actions/receita";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -57,9 +68,24 @@ type SaldoEstoque = {
   unidade: string | null;
 };
 
+type InsumoOpcao = {
+  id: number;
+  especificacao: string | null;
+  nome_item: string | null;
+  unidade: string | null;
+};
+
+type EquipamentoOpcao = {
+  id: number;
+  nome: string;
+};
+
 const panel = "rounded-lg border border-border bg-card p-4 shadow-sm";
 const th = "px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80";
 const td = "px-3 py-2 align-top text-sm";
+const labelClass = "text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
+const inputClass = "mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-medium text-foreground";
+const primaryButtonClass = "rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90";
 
 export default async function AnaliseDetalhe({
   params,
@@ -77,7 +103,13 @@ export default async function AnaliseDetalhe({
     .single();
   if (!analise) notFound();
 
-  const [{ data: etapas }, { data: equipamentos }, { data: materiais }] = await Promise.all([
+  const [
+    { data: etapas },
+    { data: equipamentos },
+    { data: materiais },
+    { data: insumosCatalogo },
+    { data: equipamentosCatalogo },
+  ] = await Promise.all([
     supabase
       .from("etapas")
       .select("*")
@@ -96,6 +128,14 @@ export default async function AnaliseDetalhe({
       )
       .eq("codigo_analise", codigo)
       .order("nome_etapa"),
+    supabase
+      .from("insumos")
+      .select("id, especificacao, nome_item, unidade")
+      .order("especificacao"),
+    supabase
+      .from("equipamentos")
+      .select("id, nome")
+      .order("nome"),
   ]);
 
   const etapasT = (etapas ?? []) as unknown as Etapa[];
@@ -103,6 +143,8 @@ export default async function AnaliseDetalhe({
   const etapasPosAnalise = etapasT.filter((etapa) => isEtapaPosAnalise(etapa));
   const materiaisT = (materiais ?? []) as unknown as MaterialVinculado[];
   const equipamentosT = (equipamentos ?? []) as unknown as EquipamentoVinculado[];
+  const insumosOpcoes = (insumosCatalogo ?? []) as InsumoOpcao[];
+  const equipamentosOpcoes = (equipamentosCatalogo ?? []) as EquipamentoOpcao[];
   const idsInsumos = [...new Set(materiaisT.map((m) => m.insumo_id).filter((id): id is number => id != null))];
 
   const saldoResult =
@@ -150,7 +192,7 @@ export default async function AnaliseDetalhe({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Analises", href: "/analises" }, { label: codigo }]} />
 
         <section className="mt-3 grid gap-4 lg:grid-cols-[1fr_280px]">
@@ -166,11 +208,24 @@ export default async function AnaliseDetalhe({
           </div>
 
           <div className={panel}>
-            <h2 className="text-sm font-semibold">Administracao segura</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Esta ficha esta em modo leitura. A remocao fisica foi retirada da interface normal.
-            </p>
-            <div className="mt-3">
+            <h2 className="text-sm font-semibold">Gerenciamento</h2>
+            <form action={atualizarCatalogoAnalise} className="mt-3 grid gap-2">
+              <input type="hidden" name="codigo" value={codigo} />
+              <label className="block">
+                <span className={labelClass}>Nome curto</span>
+                <input name="nome_simplificado" defaultValue={analise.nome_simplificado ?? ""} className={inputClass} />
+              </label>
+              <label className="block">
+                <span className={labelClass}>Status</span>
+                <input name="status" defaultValue={analise.status ?? ""} className={inputClass} />
+              </label>
+              <label className="block">
+                <span className={labelClass}>Descrição</span>
+                <textarea name="descricao" defaultValue={analise.descricao ?? ""} className={`${inputClass} min-h-20`} />
+              </label>
+              <button className={primaryButtonClass}>Salvar cadastro</button>
+            </form>
+            <div className="mt-4">
               {analise.ativo ? (
                 <ConfirmActionButton
                   action={inativarAnalise}
@@ -260,6 +315,7 @@ export default async function AnaliseDetalhe({
             </tbody>
           </Table>
           {etapasPosAnalise.length === 0 && <p className="mt-3 text-sm text-muted-foreground">Nenhuma etapa pos-analise cadastrada.</p>}
+          <EditableEtapas codigo={codigo} etapas={etapasT} />
         </Section>
 
         <Section id="materiais-insumos" title="Materiais/Insumos">
@@ -291,6 +347,7 @@ export default async function AnaliseDetalhe({
               ))}
             </tbody>
           </Table>
+          <EditableMateriais codigo={codigo} materiais={materiaisT} insumos={insumosOpcoes} />
         </Section>
 
         <Section id="equipamentos" title="Equipamentos">
@@ -326,6 +383,7 @@ export default async function AnaliseDetalhe({
               ))}
             </tbody>
           </Table>
+          <EditableEquipamentos codigo={codigo} equipamentos={equipamentosT} opcoes={equipamentosOpcoes} />
         </Section>
 
         <Section id="custeio" title="Custeio">
@@ -476,4 +534,230 @@ function Stat({ label, value, compact = false }: { label: string; value: string;
 
 function Table({ children }: { children: ReactNode }) {
   return <div className="mt-3 overflow-x-auto"><table className="min-w-full border-collapse">{children}</table></div>;
+}
+
+function EditableEtapas({ codigo, etapas }: { codigo: string; etapas: Etapa[] }) {
+  return (
+    <div className="mt-6 border-t border-border pt-5">
+      <h3 className="text-sm font-semibold">Editar etapas</h3>
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        {etapas.map((etapa) => {
+          const e = etapa as Etapa & { id: number; tipo_limitacao?: string | null };
+          return (
+            <form key={e.id} action={atualizarEtapa} className="rounded-md border border-border/70 bg-muted/30 p-3">
+              <input type="hidden" name="codigo_analise" value={codigo} />
+              <input type="hidden" name="id" value={e.id} />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Field name="nome_etapa" label="Etapa" defaultValue={e.nome_etapa} />
+                <Field name="nome_atividade" label="Atividade" defaultValue={e.nome_atividade} />
+                <Field name="execucoes_por_dia" label="Exec/dia" type="number" step="0.0001" defaultValue={fmtInput(e.execucoes_por_dia)} />
+                <Field name="amostras_por_execucao" label="Amostras/exec." type="number" step="0.0001" defaultValue={fmtInput(e.amostras_por_execucao)} />
+                <Field name="tempo_maquina_h" label="Máquina h" type="number" step="0.0001" defaultValue={fmtInput(e.tempo_maquina_h)} />
+                <Field name="tempo_bancada_h" label="Bancada h" type="number" step="0.0001" defaultValue={fmtInput(e.tempo_bancada_h)} />
+                <Field name="tipo_limitacao" label="Limitação" defaultValue={e.tipo_limitacao ?? ""} />
+                <label className="mt-6 flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="atividade_opcional" defaultChecked={(e as unknown as { atividade_opcional?: boolean }).atividade_opcional} />
+                  Opcional
+                </label>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <button className={primaryButtonClass}>Salvar etapa</button>
+                <ConfirmActionButton
+                  action={removerEtapa}
+                  fields={{ codigo_analise: codigo, id: e.id }}
+                  trigger="Remover"
+                  titulo="Remover etapa"
+                  mensagem={`Remover a etapa "${e.nome_etapa} / ${e.nome_atividade}" desta análise?`}
+                  confirmLabel="Remover"
+                />
+              </div>
+            </form>
+          );
+        })}
+      </div>
+
+      <form action={adicionarEtapa} className="mt-4 rounded-md border border-dashed border-input p-3">
+        <input type="hidden" name="codigo_analise" value={codigo} />
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <Field name="nome_etapa" label="Nova etapa" />
+          <Field name="nome_atividade" label="Atividade" />
+          <Field name="ordem" label="Ordem" type="number" step="1" />
+          <Field name="execucoes_por_dia" label="Exec/dia" type="number" step="0.0001" />
+          <Field name="amostras_por_execucao" label="Amostras/exec." type="number" step="0.0001" />
+          <Field name="tempo_maquina_h" label="Máquina h" type="number" step="0.0001" />
+          <Field name="tempo_bancada_h" label="Bancada h" type="number" step="0.0001" />
+          <Field name="tipo_limitacao" label="Limitação" />
+        </div>
+        <button className={`${primaryButtonClass} mt-3`}>Adicionar etapa</button>
+      </form>
+    </div>
+  );
+}
+
+function EditableMateriais({
+  codigo,
+  materiais,
+  insumos,
+}: {
+  codigo: string;
+  materiais: MaterialVinculado[];
+  insumos: InsumoOpcao[];
+}) {
+  return (
+    <div className="mt-6 border-t border-border pt-5">
+      <h3 className="text-sm font-semibold">Editar materiais</h3>
+      <div className="mt-3 grid gap-3">
+        {materiais.map((material) => (
+          <form key={material.id} action={atualizarMaterial} className="rounded-md border border-border/70 bg-muted/30 p-3">
+            <input type="hidden" name="codigo_analise" value={codigo} />
+            <input type="hidden" name="id" value={material.id} />
+            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
+              <Field name="especificacao_insumo" label="Material técnico" defaultValue={material.especificacao_insumo ?? ""} />
+              <InsumoSelect insumos={insumos} defaultValue={material.insumo_id} />
+              <Field name="quantidade_por_amostra" label="Qtd/amostra" type="number" step="0.000001" defaultValue={fmtInput(material.quantidade_por_amostra)} />
+              <Field name="unidade" label="Unidade" defaultValue={material.unidade ?? ""} />
+              <Field name="grupo_escolha" label="Grupo" defaultValue={material.grupo_escolha ?? ""} />
+              <ModoSelect defaultValue={material.modo_cobranca ?? ""} />
+              <label className="mt-6 flex items-center gap-2 text-sm">
+                <input type="checkbox" name="preferencial" defaultChecked={Boolean(material.preferencial)} />
+                Preferencial
+              </label>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button className={primaryButtonClass}>Salvar material</button>
+              <ConfirmActionButton
+                action={removerMaterial}
+                fields={{ codigo_analise: codigo, id: material.id }}
+                trigger="Remover"
+                titulo="Remover material"
+                mensagem={`Remover "${material.especificacao_insumo ?? "material"}" desta análise?`}
+                confirmLabel="Remover"
+              />
+            </div>
+          </form>
+        ))}
+      </div>
+
+      <form action={adicionarMaterial} className="mt-4 rounded-md border border-dashed border-input p-3">
+        <input type="hidden" name="codigo_analise" value={codigo} />
+        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
+          <Field name="nome_etapa" label="Etapa" />
+          <Field name="nome_atividade" label="Atividade" />
+          <Field name="especificacao_insumo" label="Material técnico" />
+          <InsumoSelect insumos={insumos} />
+          <Field name="quantidade_por_amostra" label="Qtd/amostra" type="number" step="0.000001" />
+          <Field name="unidade" label="Unidade" />
+          <Field name="grupo_escolha" label="Grupo" />
+          <ModoSelect />
+        </div>
+        <button className={`${primaryButtonClass} mt-3`}>Adicionar material</button>
+      </form>
+    </div>
+  );
+}
+
+function EditableEquipamentos({
+  codigo,
+  equipamentos,
+  opcoes,
+}: {
+  codigo: string;
+  equipamentos: EquipamentoVinculado[];
+  opcoes: EquipamentoOpcao[];
+}) {
+  return (
+    <div className="mt-6 border-t border-border pt-5">
+      <h3 className="text-sm font-semibold">Gerenciar equipamentos vinculados</h3>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {equipamentos.map((linha) => (
+          <div key={linha.id} className="rounded-md border border-border/70 bg-muted/30 p-3">
+            <p className="text-sm font-medium">{linha.equipamentos?.nome ?? "Equipamento"}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Peso: {fmt(linha.peso_alocacao)}</p>
+            <div className="mt-3">
+              <ConfirmActionButton
+                action={removerEquipamento}
+                fields={{ codigo_analise: codigo, id: linha.id }}
+                trigger="Remover vínculo"
+                titulo="Remover equipamento"
+                mensagem={`Remover "${linha.equipamentos?.nome ?? "equipamento"}" desta análise?`}
+                confirmLabel="Remover"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <form action={adicionarEquipamento} className="mt-4 rounded-md border border-dashed border-input p-3">
+        <input type="hidden" name="codigo_analise" value={codigo} />
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_160px_auto]">
+          <label className="block">
+            <span className={labelClass}>Equipamento</span>
+            <select name="equipamento_id" className={inputClass}>
+              <option value="">Selecione</option>
+              {opcoes.map((opcao) => (
+                <option key={opcao.id} value={opcao.id}>
+                  {opcao.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Field name="peso_alocacao" label="Peso" type="number" step="0.0001" defaultValue="1" />
+          <button className={`${primaryButtonClass} self-end`}>Adicionar</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function Field({
+  name,
+  label,
+  type = "text",
+  step,
+  defaultValue,
+}: {
+  name: string;
+  label: string;
+  type?: string;
+  step?: string;
+  defaultValue?: string | number | null;
+}) {
+  return (
+    <label className="block">
+      <span className={labelClass}>{label}</span>
+      <input name={name} type={type} step={step} defaultValue={defaultValue ?? ""} className={inputClass} />
+    </label>
+  );
+}
+
+function InsumoSelect({ insumos, defaultValue }: { insumos: InsumoOpcao[]; defaultValue?: number | null }) {
+  return (
+    <label className="block">
+      <span className={labelClass}>Item de estoque</span>
+      <select name="insumo_id" defaultValue={defaultValue ?? ""} className={inputClass}>
+        <option value="">Sem vínculo</option>
+        {insumos.map((insumo) => (
+          <option key={insumo.id} value={insumo.id}>
+            {insumo.especificacao ?? insumo.nome_item ?? `Insumo ${insumo.id}`}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function ModoSelect({ defaultValue = "" }: { defaultValue?: string }) {
+  return (
+    <label className="block">
+      <span className={labelClass}>Cobrança</span>
+      <select name="modo_cobranca" defaultValue={defaultValue} className={inputClass}>
+        <option value="">por amostra (padrão)</option>
+        <option value="por_amostra">por amostra</option>
+        <option value="por_execucao">por execução</option>
+      </select>
+    </label>
+  );
+}
+
+function fmtInput(value: number | null | undefined) {
+  return value == null ? "" : String(value);
 }

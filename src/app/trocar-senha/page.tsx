@@ -12,7 +12,7 @@ export default function TrocarSenhaPage() {
 
   return (
     <div className="app-canvas flex min-h-dvh items-center justify-center px-6 font-sans">
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 shadow-lg ring-1 ring-foreground/5">
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-lg ring-1 ring-foreground/5">
         <div className="flex justify-center">
           <Image
             src="/logos/kontrol-app.png"

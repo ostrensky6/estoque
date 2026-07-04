@@ -339,7 +339,7 @@ export default async function DemandaDetalhe({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <Breadcrumbs
           items={[
             { label: "Demandas/Propostas", href: "/orcamento/demandas" },
@@ -347,7 +347,7 @@ export default async function DemandaDetalhe({
           ]}
         />
 
-        <section className="mt-4 rounded-lg border border-border bg-card p-6 shadow-sm">
+        <section className="mt-4 rounded-lg border border-border bg-card p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
@@ -368,7 +368,7 @@ export default async function DemandaDetalhe({
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-4">
+          <div className="mt-5 grid gap-3 md:grid-cols-4 2xl:grid-cols-6">
             <Info titulo="Cliente" texto={demanda.cliente_nome} />
             <Info titulo="Contato" texto={demanda.cliente_contato} />
             <Info titulo="Solicitação" texto={demanda.data_solicitacao} />
@@ -417,7 +417,7 @@ export default async function DemandaDetalhe({
           </div>
         </nav>
 
-        <section id="acoes" className={`mt-6 scroll-mt-20 grid gap-4 lg:grid-cols-3 ${passo("demanda")}`}>
+        <section id="acoes" className={`mt-6 scroll-mt-20 grid gap-4 lg:grid-cols-3 2xl:grid-cols-4 ${passo("demanda")}`}>
           <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
             <h2 className="text-sm font-semibold">Próximos módulos</h2>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">

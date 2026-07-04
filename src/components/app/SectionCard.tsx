@@ -33,7 +33,7 @@ export function SectionCard({
           {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
         </div>
       )}
-      <div className={cn("p-4 sm:p-5", contentClassName)}>{children}</div>
+      <div className={cn("p-4", contentClassName)}>{children}</div>
     </section>
   );
 }

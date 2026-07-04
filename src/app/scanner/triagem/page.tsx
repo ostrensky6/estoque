@@ -71,7 +71,7 @@ export default async function ScannerTriagemPage({
   const mensagem = statusMessage(status);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+    <main className="app-page-container">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-foreground">
@@ -108,7 +108,7 @@ export default async function ScannerTriagemPage({
           />
         ))}
         {triagens.length === 0 && (
-          <p className="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+          <p className="rounded-lg border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
             Nenhuma triagem pendente.
           </p>
         )}

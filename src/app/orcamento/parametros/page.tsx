@@ -197,7 +197,7 @@ export default async function ParametrosEconomicosPage() {
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <Link
@@ -269,7 +269,7 @@ export default async function ParametrosEconomicosPage() {
           />
           <div className={card}>
             <h2 className="text-sm font-semibold">Fórmula e validação</h2>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
               <InfoParametro label="Laboratório" value={`Preço = custo x (1 + ${pct(fatorTotal)})`} />
               <InfoParametro label="Projeto" value="Total = custo / (1 - soma dos percentuais)" />
               <InfoParametro label="Base laboratório" value={`${brl(custoMedio)} -> ${brl(precoMedio)}`} />
@@ -311,7 +311,7 @@ export default async function ParametrosEconomicosPage() {
           <ParametrosEconomicosForm valores={valores} />
         </section>
 
-        <section className="mt-8 grid gap-4 lg:grid-cols-2">
+        <section className="mt-6 grid gap-4 xl:grid-cols-2">
           <TabelaParametros
             titulo="Impacto dos parâmetros globais"
             subtitulo="Simulação sobre o custo médio calculado do catálogo laboratorial."

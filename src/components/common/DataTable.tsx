@@ -299,7 +299,7 @@ export function DataTable<TData>({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="py-10 text-center text-muted-foreground"
+                  className="py-6 text-center text-muted-foreground"
                 >
                   <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
                     <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
@@ -336,7 +336,7 @@ export function DataTable<TData>({
           </div>
         ))}
         {table.getRowModel().rows.length === 0 && (
-          <div className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-lg border border-border bg-card p-5 text-center text-sm text-muted-foreground">
             <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
                 <Search className="h-4 w-4" aria-hidden="true" />

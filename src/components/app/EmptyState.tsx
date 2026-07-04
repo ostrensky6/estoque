@@ -18,7 +18,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "mx-auto flex max-w-sm flex-col items-center gap-2 py-8 text-center",
+        "mx-auto flex max-w-sm flex-col items-center gap-2 py-6 text-center",
         className,
       )}
     >

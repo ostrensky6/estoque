@@ -74,7 +74,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Compras", href: "/compras" }, { label: `Pedido #${pedido.id}` }]} />
         <div className="mt-2 flex items-center justify-between">
           <h1 className="text-xl font-semibold tracking-tight">Pedido #{pedido.id}</h1>
@@ -153,7 +153,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                   );
                 })}
                 {(itens ?? []).length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground/80">Nenhum item.</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground/80">Nenhum item.</td></tr>
                 )}
               </tbody>
             </table>

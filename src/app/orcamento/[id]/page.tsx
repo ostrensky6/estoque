@@ -197,7 +197,7 @@ export default async function OrcamentoDetalhe({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="print-area mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="print-area app-page-container">
         <div className="no-print flex items-center justify-between">
           <Breadcrumbs items={[{ label: "Orçamentos não finalizados", href: "/orcamento/demandas" }, { label: `Custos laboratoriais #${orc.id}` }]} />
           <div className="flex items-center gap-2">
@@ -222,7 +222,7 @@ export default async function OrcamentoDetalhe({
         {demanda && <FluxoProposta modalidade={demanda.modalidade} atual="laboratorio" />}
 
         {/* Documento imprimível */}
-        <div className="mt-4 rounded-2xl border border-border bg-card p-6 shadow-sm print:border-0 print:shadow-none">
+        <div className="mt-4 rounded-2xl border border-border bg-card p-5 shadow-sm print:border-0 print:shadow-none">
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-xl font-semibold tracking-tight">
@@ -393,7 +393,7 @@ export default async function OrcamentoDetalhe({
                 ))}
                 {itens.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="px-3 py-8 text-center text-muted-foreground/80">
+                    <td colSpan={11} className="px-3 py-6 text-center text-muted-foreground/80">
                       Nenhuma análise. Adicione abaixo.
                     </td>
                   </tr>
@@ -854,7 +854,7 @@ function TabelaResumoTecnico({
             ))
           ) : (
             <tr>
-              <td colSpan={colunas.length} className="px-3 py-8 text-center text-muted-foreground/80">
+              <td colSpan={colunas.length} className="px-3 py-6 text-center text-muted-foreground/80">
                 {vazio}
               </td>
             </tr>

@@ -179,7 +179,7 @@ export default async function FundosPage() {
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Orçamentos", href: "/orcamento" }, { label: "Fundos e taxas" }]} />
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
@@ -313,7 +313,7 @@ export default async function FundosPage() {
                 ))}
                 {linhas.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="px-3 py-8 text-center text-sm text-muted-foreground/80">
+                    <td colSpan={11} className="px-3 py-6 text-center text-sm text-muted-foreground/80">
                       Nenhum orçamento aprovado para acompanhar. Classifique uma versão final como Aprovado no Histórico de orçamentos.
                     </td>
                   </tr>

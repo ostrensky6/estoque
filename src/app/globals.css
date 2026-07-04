@@ -210,6 +210,43 @@ html:not(.dark) .text-brand-500 {
   background: #0a0a0a;
 }
 
+.app-page-container,
+.app-topnav-container {
+  width: 100%;
+  margin-inline: auto;
+  max-width: 1680px;
+  padding-inline: 1rem;
+}
+
+.app-page-container {
+  padding-block: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .app-page-container,
+  .app-topnav-container {
+    padding-inline: 1.25rem;
+  }
+
+  .app-page-container {
+    padding-block: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-page-container,
+  .app-topnav-container {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .app-page-container,
+  .app-topnav-container {
+    padding-inline: 2rem;
+  }
+}
+
 /* Impressão de orçamentos: esconde navegação e controles de edição,
    mostra só o documento (.print-area). */
 @media print {

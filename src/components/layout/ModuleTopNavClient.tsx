@@ -28,7 +28,7 @@ export function ModuleTopNavClient({
       aria-label={`Navegacao de ${appModule.label}`}
       className="border-b border-border bg-card/90 py-2 backdrop-blur"
     >
-      <div className="mx-auto max-w-7xl px-6 flex w-full gap-2 overflow-x-auto">
+      <div className="app-topnav-container flex gap-2 overflow-x-auto">
         {items.map((child) => {
           const ativo = childIsActive(child, pathname, exactActiveHref);
           const Icon = child.icon ? NAV_ICONS[child.icon] : undefined;

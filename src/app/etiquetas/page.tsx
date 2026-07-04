@@ -96,7 +96,7 @@ export default async function EtiquetasPage({
           @page { size: A4; margin: 12mm; }
         }
       `}</style>
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 print:max-w-none print:px-0 print:py-0">
+      <main className="app-page-container print:max-w-none print:px-0 print:py-0">
         <div className="no-print flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -186,7 +186,7 @@ export default async function EtiquetasPage({
           })}
 
           {total === 0 && (
-            <div className="rounded-md border border-dashed border-input px-4 py-10 text-center text-sm text-muted-foreground">
+            <div className="rounded-md border border-dashed border-input px-4 py-6 text-center text-sm text-muted-foreground">
               Nenhuma etiqueta encontrada para o filtro atual.
             </div>
           )}

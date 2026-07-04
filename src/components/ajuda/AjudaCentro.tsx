@@ -60,7 +60,7 @@ export function AjudaCentro() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[19rem_1fr]">
+    <div className="grid gap-5 lg:grid-cols-[19rem_1fr]">
       {/* Lista navegável */}
       <aside className={`${mostrarDetalheMobile ? "hidden lg:block" : "block"} lg:sticky lg:top-6 lg:self-start`}>
         <div className="relative">
@@ -110,7 +110,7 @@ export function AjudaCentro() {
       {/* Conteúdo do tópico selecionado */}
       <section className={`${mostrarDetalheMobile ? "block" : "hidden lg:block"}`}>
         {selecionado ? (
-          <article className="rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
+          <article className="rounded-2xl border border-border bg-card p-5 shadow-sm md:p-6">
             <button
               type="button"
               onClick={() => setMostrarDetalheMobile(false)}

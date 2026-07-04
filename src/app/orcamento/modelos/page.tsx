@@ -80,7 +80,7 @@ export default async function OrcamentoModelosPage({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <Link href="/orcamento" className="text-xs text-muted-foreground hover:underline">Orçamentos</Link>
@@ -219,7 +219,7 @@ export default async function OrcamentoModelosPage({
                 ))}
                 {templatesFiltrados.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground/80">Nenhum template encontrado.</td>
+                    <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground/80">Nenhum template encontrado.</td>
                   </tr>
                 )}
               </tbody>
@@ -277,7 +277,7 @@ export default async function OrcamentoModelosPage({
                 ))}
                 {catalogoFiltrado.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-3 py-8 text-center text-muted-foreground/80">Nenhum item de catálogo encontrado.</td>
+                    <td colSpan={10} className="px-3 py-6 text-center text-muted-foreground/80">Nenhum item de catálogo encontrado.</td>
                   </tr>
                 )}
               </tbody>

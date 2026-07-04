@@ -219,4 +219,52 @@ describe("calcularAnalise — cascata custo→preço", () => {
     expect(b.totais.overhead).toBeCloseTo(10, 6);
     expect(b.custoTotal).toBeCloseTo(420 / 11, 6);
   });
+
+  it("recalcula mão de obra por etapa, respeitando a capacidade própria de cada etapa", () => {
+    const b = calcularAnaliseOrcamento({
+      ...base,
+      params: params0,
+      numeroAmostras: 25,
+      etapas: [
+        etapa({ nome_etapa: "Extração", nome_atividade: "Batch 24", execucoes_por_dia: 1, amostras_por_execucao: 24, tempo_bancada_h: 10 }),
+        etapa({ nome_etapa: "PCR", nome_atividade: "Batch 96", execucoes_por_dia: 1, amostras_por_execucao: 96, tempo_bancada_h: 5 }),
+      ],
+      equip: [],
+      insumos: [],
+      valorHoraPessoal: 10,
+      custoHoraOverhead: 0,
+    });
+
+    expect(b.numeroExecucoes).toBe(2);
+    expect(b.totais.pessoal).toBeCloseTo(250, 6);
+    expect(b.pessoal).toBeCloseTo(10, 6);
+  });
+
+  it("rateia insumo por execução pelo lote da etapa da linha, não pelo gargalo global", () => {
+    const b = calcularAnaliseOrcamento({
+      ...base,
+      params: params0,
+      numeroAmostras: 25,
+      etapas: [
+        etapa({ nome_etapa: "Extração", nome_atividade: "Batch 24", execucoes_por_dia: 1, amostras_por_execucao: 24, tempo_bancada_h: 0 }),
+        etapa({ nome_etapa: "PCR", nome_atividade: "Batch 96", execucoes_por_dia: 1, amostras_por_execucao: 96, tempo_bancada_h: 0 }),
+      ],
+      equip: [],
+      insumos: [
+        ins({
+          nome_etapa: "PCR",
+          nome_atividade: "Batch 96",
+          custo_unitario: 960,
+          quantidade_por_amostra: 1,
+          modo_cobranca: "por_execucao",
+        }),
+      ],
+      valorHoraPessoal: 0,
+      custoHoraOverhead: 0,
+    });
+
+    expect(b.numeroExecucoes).toBe(2);
+    expect(b.totais.reagentes).toBeCloseTo(960, 6);
+    expect(b.reagentes).toBeCloseTo(38.4, 6);
+  });
 });

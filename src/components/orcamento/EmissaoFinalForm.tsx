@@ -326,7 +326,7 @@ export function EmissaoFinalForm({
   return (
     <div className="min-h-screen bg-transparent">
       {/* Grid lateral */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         {/* Painel Esquerdo: Configurações */}
         <form onSubmit={handleSalvarEmissao} className="no-print lg:col-span-5 space-y-6">
           <input type="hidden" name="demanda_id" value={demanda.id} />

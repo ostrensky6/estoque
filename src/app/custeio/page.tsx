@@ -1,4 +1,5 @@
 import { calcularTodas, carregarSimuladorCusteio } from "@/lib/costing/loader";
+import { CusteioAmostrasChart } from "@/components/custeio/CusteioAmostrasChart";
 import { CusteioTable, type CusteioRow } from "@/components/custeio/CusteioTable";
 import { CusteioSimulator } from "@/components/custeio/CusteioSimulator";
 import { formatCurrency as brl } from "@/lib/formatters";
@@ -34,7 +35,7 @@ export default async function CusteioPage() {
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <h1 className="text-xl font-semibold tracking-tight">
           Custeio por análise
         </h1>
@@ -51,6 +52,13 @@ export default async function CusteioPage() {
         <div className="mt-8">
           <CusteioTable rows={linhas} />
         </div>
+
+        <CusteioAmostrasChart
+          analises={simulador.analises}
+          params={simulador.params}
+          valorHoraPessoal={simulador.valorHoraPessoal}
+          custoHoraOverhead={simulador.custoHoraOverhead}
+        />
 
         <CusteioSimulator
           analises={simulador.analises}

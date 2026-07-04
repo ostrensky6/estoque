@@ -177,13 +177,15 @@ export function reagentesTotal(
   linhas: InsumoLinha[],
   numeroAmostras: number,
   loteAmostras: number,
+  lotePorLinha?: (linha: InsumoLinha) => number | null | undefined,
 ): { total: number; detalhe: { nome: string; porAmostra: boolean; valor: number }[] } {
   const amostras = Math.max(0, numeroAmostras);
-  const lote = loteAmostras > 0 ? loteAmostras : 1;
-  const execucoes = amostras > 0 ? Math.ceil(amostras / lote) : 0;
+  const loteFallback = loteAmostras > 0 ? loteAmostras : 1;
   const detalhe = linhas.map((l) => {
     const base = n(l.custo_unitario) * n(l.quantidade_por_amostra);
     const porExec = l.modo_cobranca === "por_execucao";
+    const loteLinha = n(lotePorLinha?.(l)) > 0 ? n(lotePorLinha?.(l)) : loteFallback;
+    const execucoes = amostras > 0 ? Math.ceil(amostras / loteLinha) : 0;
     const valor = porExec ? base * execucoes : base * amostras;
     return {
       nome: l.especificacao_insumo ?? "(sem insumo)",
@@ -192,6 +194,31 @@ export function reagentesTotal(
     };
   });
   return { total: detalhe.reduce((a, d) => a + d.valor, 0), detalhe };
+}
+
+function chaveEtapa(nomeEtapa: string | null | undefined, nomeAtividade: string | null | undefined) {
+  return `${nomeEtapa ?? ""}\u0000${nomeAtividade ?? ""}`;
+}
+
+function lotePorEtapa(etapas: Etapa[]) {
+  const lotes = new Map<string, number>();
+  for (const etapa of etapasLaboratorio(etapas)) {
+    const lote = n(etapa.amostras_por_execucao);
+    if (lote > 0) {
+      lotes.set(chaveEtapa(etapa.nome_etapa, etapa.nome_atividade), lote);
+    }
+  }
+  return lotes;
+}
+
+function horasBancadaTotal(etapas: Etapa[], numeroAmostras: number, loteFallback: number): number {
+  const amostras = Math.max(0, numeroAmostras);
+  const fallback = loteFallback > 0 ? loteFallback : 1;
+  return etapasSemQubit(etapas).reduce((total, etapa) => {
+    const loteEtapa = n(etapa.amostras_por_execucao) > 0 ? n(etapa.amostras_por_execucao) : fallback;
+    const execucoesEtapa = amostras > 0 ? Math.ceil(amostras / loteEtapa) : 0;
+    return total + n(etapa.tempo_bancada_h) * execucoesEtapa;
+  }, 0);
 }
 
 export type Breakdown = {
@@ -292,11 +319,17 @@ export function calcularAnaliseOrcamento(args: {
   const loteSeguro = lote > 0 ? lote : 1;
   const numeroExecucoes = amostras > 0 ? Math.ceil(amostras / loteSeguro) : 0;
   const sel = insumosSelecionados(args.insumos, args.cenario?.escolhasGrupo);
-  const reagentes = reagentesTotal(sel, amostras, loteSeguro).total;
+  const lotesPorEtapa = lotePorEtapa(args.etapas);
+  const reagentes = reagentesTotal(
+    sel,
+    amostras,
+    loteSeguro,
+    (linha) => lotesPorEtapa.get(chaveEtapa(linha.nome_etapa, linha.nome_atividade)),
+  ).total;
   const equipamento = base.equipamento * amostras;
-  const horasBancada = horasBancadaPorExecucao(args.etapas);
-  const pessoal = horasBancada * args.valorHoraPessoal * numeroExecucoes;
-  const overhead = horasBancada * args.custoHoraOverhead * numeroExecucoes;
+  const horasBancada = horasBancadaTotal(args.etapas, amostras, loteSeguro);
+  const pessoal = horasBancada * args.valorHoraPessoal;
+  const overhead = horasBancada * args.custoHoraOverhead;
   const custoAnalitico = reagentes + equipamento + pessoal;
   const custoTotal = custoAnalitico + overhead;
   const preco = custoTotal * (1 + base.fatores);

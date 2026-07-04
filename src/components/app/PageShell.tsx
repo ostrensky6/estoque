@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
 
 const WIDTHS = {
-  default: "max-w-6xl",
+  default: "max-w-[1720px]",
   wide: "max-w-none",
-  narrow: "max-w-3xl",
+  narrow: "max-w-5xl",
 } as const;
 
 export type PageShellWidth = keyof typeof WIDTHS;
@@ -21,7 +21,7 @@ export function PageShell({
   return (
     <main
       className={cn(
-        "mx-auto w-full space-y-6 px-4 py-6 sm:px-6 sm:py-8",
+        "app-page-container space-y-5",
         WIDTHS[width],
         className,
       )}

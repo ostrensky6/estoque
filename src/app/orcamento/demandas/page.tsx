@@ -103,7 +103,7 @@ export default async function DemandasPage({
       </section>
 
       <SectionCard title="Nova demanda" description="Registre a entrada comercial antes do orçamento formal.">
-        <form action={criarDemanda} className="grid gap-3 md:grid-cols-4 md:items-end">
+        <form action={criarDemanda} className="grid gap-3 md:grid-cols-4 2xl:grid-cols-6 md:items-end">
           <div className="md:col-span-2">
             <label htmlFor="titulo" className="block text-xs font-medium text-muted-foreground">Título da demanda</label>
             <input id="titulo" name="titulo" placeholder="Ex.: Sequenciamento de amostras ambientais" className={`${inp} mt-1 w-full`} />
@@ -146,7 +146,7 @@ export default async function DemandasPage({
               ))}
             </select>
           </div>
-          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 md:col-start-4 2xl:col-start-auto">
             Nova demanda
           </button>
         </form>

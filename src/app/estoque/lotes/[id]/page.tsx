@@ -79,7 +79,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Estoque", href: "/estoque" }, { label: `Lote ${codigoEtiqueta}` }]} />
 
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
@@ -208,7 +208,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
               })}
               {(movs ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground/80">Sem movimentações.</td>
+                  <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground/80">Sem movimentações.</td>
                 </tr>
               )}
             </tbody>

@@ -115,7 +115,7 @@ export default async function GovernancaOrcamentoPage() {
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
@@ -178,7 +178,7 @@ export default async function GovernancaOrcamentoPage() {
           <Painel titulo="Eventos sensíveis">
             <div className="divide-y divide-border/70">
               {eventosRecentes.length === 0 ? (
-                <p className="px-4 py-8 text-sm text-muted-foreground">Nenhum evento de orçamento encontrado.</p>
+                <p className="px-4 py-6 text-sm text-muted-foreground">Nenhum evento de orçamento encontrado.</p>
               ) : (
                 eventosRecentes.slice(0, 18).map((evento) => (
                   <div key={evento.id} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[8rem_1fr_10rem]">
@@ -201,7 +201,7 @@ export default async function GovernancaOrcamentoPage() {
           <Painel titulo="Auditoria por campo">
             <div className="divide-y divide-border/70">
               {auditoriaRecente.length === 0 ? (
-                <p className="px-4 py-8 text-sm text-muted-foreground">Nenhuma alteração auditada nas tabelas de orçamento.</p>
+                <p className="px-4 py-6 text-sm text-muted-foreground">Nenhuma alteração auditada nas tabelas de orçamento.</p>
               ) : (
                 auditoriaRecente.slice(0, 18).map((item) => (
                   <div key={item.id} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[8rem_1fr_10rem]">

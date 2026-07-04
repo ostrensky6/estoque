@@ -51,7 +51,12 @@ function badgeAtivo(ativo: boolean) {
     : "bg-muted text-muted-foreground ring-border";
 }
 
-export default async function AnalisesPage() {
+export default async function AnalisesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ codigo?: string }>;
+}) {
+  const { codigo: codigoSelecionado } = await searchParams;
   const supabase = await createClient();
   const [{ data: analises }, { data: etapas }, { data: insumosAnalise }, { data: equipamentosAnalise }] =
     await Promise.all([
@@ -108,83 +113,54 @@ export default async function AnalisesPage() {
   });
 
   const totalOfertaveis = diagnosticos.filter((item) => item.analise.ativo && item.analise.ofertavel);
-  const ofertaveisSemRessalva = diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "ofertaveis");
   const ofertaveisEmRevisao = diagnosticos.filter(
     (item) => item.analise.ativo && item.analise.ofertavel && statusTextualIndicaRevisao(item.analise.status),
   );
-
-  const grupos = [
-    {
-      id: "ofertaveis",
-      titulo: "Ofertáveis sem ressalva",
-      descricao: "Análises com ativo=true e ofertavel=true, sem marcador textual de revisão.",
-      itens: ofertaveisSemRessalva,
-    },
-    {
-      id: "ativas_nao_ofertaveis",
-      titulo: "Ativas, mas não ofertáveis",
-      descricao: "Cadastros operacionais ativos que não devem entrar em novos orçamentos.",
-      itens: diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "ativas_nao_ofertaveis"),
-    },
-    {
-      id: "revisao",
-      titulo: "Experimentais ou em revisão",
-      descricao: "Agrupamento visual por status textual; o card mostra se ainda está ofertável.",
-      itens: diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "revisao"),
-    },
-    {
-      id: "inativas",
-      titulo: "Inativas ou fora da oferta",
-      descricao: "Análises com ativo=false, ainda visíveis para administração e histórico.",
-      itens: diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "inativas"),
-    },
-  ];
+  const ativasNaoOfertaveis = diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "ativas_nao_ofertaveis");
+  const inativas = diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "inativas");
+  const selecionada =
+    diagnosticos.find((item) => item.analise.codigo === codigoSelecionado) ??
+    diagnosticos.find((item) => item.analise.ativo && item.analise.ofertavel) ??
+    diagnosticos[0];
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <div className="max-w-3xl">
           <h1 className="text-xl font-semibold tracking-tight">Análises</h1>
           <p className={`mt-2 ${subtle}`}>
-            Ficha técnica operacional em modo somente leitura. Esta etapa reorganiza a visão do cadastro atual
-            sem criar tabelas, aplicar migrations ou alterar regras de orçamento, estoque e compras.
+            Gerencie a receita técnica de uma análise por vez: etapas, materiais, equipamentos, capacidade e custeio.
           </p>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-5">
+        <form action="/analises" className={`${card} mt-6 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]`}>
+          <label className="block">
+            <span className="text-xs font-medium text-muted-foreground">Análise</span>
+            <select
+              name="codigo"
+              defaultValue={selecionada?.analise.codigo}
+              className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground"
+            >
+              {diagnosticos.map((item) => (
+                <option key={item.analise.codigo} value={item.analise.codigo}>
+                  {item.analise.codigo} · {rotuloPrincipal(item.analise)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="self-end rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
+            Abrir
+          </button>
+        </form>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-4">
           <Stat label="Ofertáveis totais" value={String(totalOfertaveis.length)} />
-          <Stat label="Ofertáveis sem ressalva" value={String(ofertaveisSemRessalva.length)} />
           <Stat label="Ofertáveis em revisão" value={String(ofertaveisEmRevisao.length)} />
-          <Stat label="Ativas não ofertáveis" value={String(grupos[1].itens.length)} />
-          <Stat label="Inativas" value={String(grupos[3].itens.length)} />
+          <Stat label="Ativas não ofertáveis" value={String(ativasNaoOfertaveis.length)} />
+          <Stat label="Inativas" value={String(inativas.length)} />
         </div>
 
-        <div className="mt-8 space-y-8">
-          {grupos.map((grupo) => (
-            <section key={grupo.id}>
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    {grupo.titulo}
-                  </h2>
-                  <p className="mt-1 text-xs text-muted-foreground">{grupo.descricao}</p>
-                </div>
-                <span className="text-xs font-medium text-muted-foreground">{grupo.itens.length} análises</span>
-              </div>
-
-              <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                {grupo.itens.map((item) => (
-                  <AnaliseCard key={item.analise.codigo} item={item} />
-                ))}
-                {grupo.itens.length === 0 && (
-                  <div className="rounded-lg border border-dashed border-input p-6 text-sm text-muted-foreground">
-                    Nenhuma análise neste grupo.
-                  </div>
-                )}
-              </div>
-            </section>
-          ))}
-        </div>
+        {selecionada ? <AnaliseSelecionada item={selecionada} /> : null}
       </main>
     </div>
   );
@@ -199,37 +175,36 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function AnaliseCard({ item }: { item: DiagnosticoAnalise }) {
+function AnaliseSelecionada({ item }: { item: DiagnosticoAnalise }) {
   const { analise } = item;
   return (
-    <Link href={`/analises/${encodeURIComponent(analise.codigo)}`} className={`${card} block hover:border-brand-300`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+    <section className={`${card} mt-6`}>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
           <p className="font-mono text-xs font-medium text-muted-foreground">{analise.codigo}</p>
-          <h3 className="mt-1 text-base font-semibold">{rotuloPrincipal(analise)}</h3>
-          {analise.descricao && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{analise.descricao}</p>}
+          <h2 className="mt-1 text-xl font-semibold">{rotuloPrincipal(analise)}</h2>
+          {analise.descricao && <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{analise.descricao}</p>}
         </div>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${badgeAtivo(analise.ativo)}`}>
-          {analise.ativo ? "Ativa" : "Inativa"}
-        </span>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${analise.ofertavel ? "bg-brand-50 text-brand-700 ring-brand-200 dark:bg-brand-950/40 dark:text-brand-300 dark:ring-brand-900" : "bg-muted text-muted-foreground ring-border"}`}>
-          {analise.ofertavel ? "Ofertável" : "Não ofertável"}
-        </span>
+        <div className="flex flex-wrap gap-2">
+          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${badgeAtivo(analise.ativo)}`}>
+            {analise.ativo ? "Ativa" : "Inativa"}
+          </span>
+          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${analise.ofertavel ? "bg-brand-50 text-brand-700 ring-brand-200 dark:bg-brand-950/40 dark:text-brand-300 dark:ring-brand-900" : "bg-muted text-muted-foreground ring-border"}`}>
+            {analise.ofertavel ? "Ofertável" : "Não ofertável"}
+          </span>
+        </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Mini label="Etapas" value={String(item.nEtapas)} />
         <Mini label="Insumos" value={String(item.nInsumos)} />
-        <Mini label="Equip." value={String(item.nEquipamentos)} />
+        <Mini label="Equipamentos" value={String(item.nEquipamentos)} />
+        <Mini label="Capacidade" value={item.amostrasDia > 0 ? `${formatNumber(item.amostrasDia)}/dia` : "-"} />
         <Mini label="Preço" value={item.preco != null && item.preco > 0 ? formatCurrency(item.preco) : "-"} />
       </div>
-      <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-        <span>{item.amostrasDia > 0 ? `${formatNumber(item.amostrasDia)} amostras/dia` : "capacidade não calculada"}</span>
-        <span>{item.tempoBancada > 0 ? `${formatNumber(item.tempoBancada)} h bancada/amostra` : "tempo de bancada incompleto"}</span>
-        {analise.status && <span>Status: {analise.status}</span>}
-      </div>
+
       {item.avisos.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-4 flex flex-wrap gap-1.5">
           {item.avisos.map((aviso) => (
             <span key={aviso} className="rounded-full bg-warning-soft px-2 py-1 text-xs text-warning-strong">
               {aviso}
@@ -237,7 +212,19 @@ function AnaliseCard({ item }: { item: DiagnosticoAnalise }) {
           ))}
         </div>
       )}
-    </Link>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        <Link href={`/analises/${encodeURIComponent(analise.codigo)}`} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
+          Gerenciar ficha técnica
+        </Link>
+        <Link href={`/insumos?analise=${encodeURIComponent(analise.codigo)}`} className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-muted/50">
+          Insumos da análise
+        </Link>
+        <Link href="/custeio" className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-muted/50">
+          Ver custeio
+        </Link>
+      </div>
+    </section>
   );
 }
 

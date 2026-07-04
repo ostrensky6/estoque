@@ -186,7 +186,7 @@ export default async function CadastroPage({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Cadastros", href: "/cadastros" }, { label: cfg.titulo }]} />
 
         <h1 className="mt-6 text-xl font-semibold tracking-tight">{cfg.titulo}</h1>

@@ -154,7 +154,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
       {aberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 text-left">
           <div className="absolute inset-0 bg-black/40" onClick={fechar} />
-          <div className="relative max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-card p-6 shadow-xl">
+          <div className="relative max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-card p-5 shadow-xl">
             <h3 className="text-base font-semibold">Receber item de compra</h3>
             <p className="mt-1 text-xs text-muted-foreground">
               {item.insumoDescricao ?? `Insumo #${item.insumoId ?? "-"}`}

@@ -65,7 +65,7 @@ export default async function InsumosPage({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <h1 className="text-xl font-semibold tracking-tight">
           Insumos por análise
         </h1>

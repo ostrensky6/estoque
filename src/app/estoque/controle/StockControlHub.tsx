@@ -252,7 +252,7 @@ export function StockControlHub({
   };
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-5">
       {/* 1. Visão Geral / KPIs Visuais */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
@@ -351,7 +351,7 @@ export function StockControlHub({
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 2xl:grid-cols-5">
               {/* Busca */}
               <div className="relative">
                 <label className="block text-xs font-medium text-muted-foreground mb-1">Buscar Insumo</label>
@@ -712,7 +712,7 @@ export function StockControlHub({
 
         {/* VISÃO 3: VISÃO GRÁFICA */}
         {viewMode === "grafica" && (
-          <div className="p-6 grid gap-6 md:grid-cols-2">
+          <div className="grid gap-5 p-5 md:grid-cols-2">
             {/* Gráfico 1: Situação Geral */}
             <div className="rounded-lg border border-border/70 bg-muted/50/50 p-5">
               <h3 className="text-sm font-semibold text-foreground mb-4">Situação Física dos Insumos</h3>

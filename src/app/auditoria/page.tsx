@@ -85,7 +85,7 @@ export default async function AuditoriaPage({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <h1 className="text-xl font-semibold tracking-tight">Auditoria</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Trilha de alterações (quem · quando · o quê). Imutável — gravada

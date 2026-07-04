@@ -124,7 +124,7 @@ export function ParametrosForm({ params }: { params: Param[] }) {
   }
 
   return (
-    <form action={action} className="space-y-8">
+    <form action={action} className="space-y-6">
       <input suppressHydrationWarning type="hidden" name="chaves" value={params.map((p) => p.chave).join(",")} />
 
       <section>
@@ -133,7 +133,7 @@ export function ParametrosForm({ params }: { params: Param[] }) {
           Aplicados sobre o custo total para chegar ao preço de venda:{" "}
           <span className="font-medium text-muted-foreground">preço = custo x (1 + soma / 100)</span>.
         </p>
-        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
           {fatores.map((p) => campo(p))}
         </div>
 
@@ -165,7 +165,7 @@ export function ParametrosForm({ params }: { params: Param[] }) {
           <p className="mt-1 text-xs text-muted-foreground/80">
             Bases de rateio e constantes usadas por custeio, estoque e alertas.
           </p>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {operacionais.map((p) => campo(p))}
           </div>
         </section>

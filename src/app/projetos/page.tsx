@@ -28,7 +28,7 @@ export default async function ProjetosPage() {
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Projetos</h1>
@@ -46,7 +46,7 @@ export default async function ProjetosPage() {
 
         <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
           {(projetos ?? []).length === 0 ? (
-            <p className="px-3 py-8 text-center text-sm text-muted-foreground/80">
+            <p className="px-3 py-6 text-center text-sm text-muted-foreground/80">
               Nenhum projeto cadastrado.{" "}
               <Link href="/cadastros/projetos" className="text-brand-700 hover:underline dark:text-brand-400">
                 Cadastrar o primeiro

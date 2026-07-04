@@ -21,7 +21,7 @@ function formatDate(date: Date) {
 function EmptyRow({ children }: { children: React.ReactNode }) {
   return (
     <tr>
-      <td colSpan={3} className="px-4 py-8 text-center text-sm text-muted-foreground/80">
+      <td colSpan={3} className="px-4 py-6 text-center text-sm text-muted-foreground/80">
         {children}
       </td>
     </tr>
@@ -45,7 +45,7 @@ export default async function BackupsPage() {
   const ultimoDb = resumo.dbBackups[0];
 
   return (
-    <main className="mx-auto max-w-6xl px-5 py-8 font-sans text-foreground sm:px-6">
+    <main className="mx-auto max-w-[1720px] px-3 py-5 font-sans text-foreground sm:px-4 sm:py-6 lg:px-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Backups</h1>

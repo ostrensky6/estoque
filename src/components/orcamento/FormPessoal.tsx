@@ -545,7 +545,7 @@ export function FormPessoal({
             <h4 className="text-sm font-bold text-foreground uppercase tracking-wide">Sumário de Custos do Orçamento</h4>
             <p className="mt-0.5 text-xs text-muted-foreground font-medium">Valores totais consolidados no momento.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-6 text-right justify-end">
+          <div className="flex flex-wrap items-center justify-end gap-4 text-right">
             <div className="flex flex-col">
               <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">Subtotal PE (Pessoal)</span>
               <span className="text-base font-extrabold text-foreground tabular-nums">{brl(totalRubrica)}</span>

@@ -158,7 +158,7 @@ export default async function OrcamentoFinalPage({
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <main className="print-area mx-auto max-w-6xl px-6 py-10">
+      <main className="print-area app-page-container">
         <div className="no-print flex flex-wrap items-center justify-between gap-3">
           <Breadcrumbs
             items={[
@@ -297,7 +297,7 @@ export default async function OrcamentoFinalPage({
           </div>
         </section>
 
-        <section id="modo-interno" className="mt-6 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60 print:hidden">
+        <section id="modo-interno" className="mt-5 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60 print:hidden">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">

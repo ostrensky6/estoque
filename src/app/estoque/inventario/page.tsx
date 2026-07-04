@@ -93,7 +93,7 @@ export default async function InventarioPage() {
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Estoque", href: "/estoque" }, { label: "Inventário" }]} />
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -197,7 +197,7 @@ export default async function InventarioPage() {
                 })}
                 {(contagens ?? []).length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground/80">
+                    <td colSpan={8} className="px-4 py-6 text-center text-muted-foreground/80">
                       Nenhuma contagem registrada.
                     </td>
                   </tr>
