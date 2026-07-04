@@ -40,9 +40,13 @@ try {
     & (Join-Path $PSScriptRoot "verify-production-target.ps1")
   }
   if ($LASTEXITCODE -ne 0) {
-    throw "Validacao de producao falhou; deploy cancelado antes de incrementar versao."
+    throw "Validacao de producao falhou; deploy cancelado."
   }
-  & (Join-Path $PSScriptRoot "bump-app-version.ps1")
+
+  & npm run version:check -- origin/main
+  if ($LASTEXITCODE -ne 0) {
+    throw "APP_VERSION nao foi incrementado em relacao a origin/main; deploy cancelado."
+  }
 
   Write-Host "Publicando producao Vercel em $VercelTeamName [$VercelScope]..."
   $oldEap = $ErrorActionPreference
