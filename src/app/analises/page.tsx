@@ -27,6 +27,11 @@ type DiagnosticoAnalise = {
   avisos: string[];
 };
 
+type ConsultaIssue = {
+  tabela: string;
+  mensagem: string;
+};
+
 const card =
   "rounded-lg border border-border bg-card p-4 shadow-sm";
 const subtle = "text-sm text-muted-foreground";
@@ -51,6 +56,14 @@ function badgeAtivo(ativo: boolean) {
     : "bg-muted text-muted-foreground ring-border";
 }
 
+function erroConsulta(tabela: string, error: { message?: string | null; code?: string | null } | null) {
+  if (!error) return null;
+  return {
+    tabela,
+    mensagem: [error.code, error.message].filter(Boolean).join(" - ") || "Falha ao consultar dados.",
+  };
+}
+
 export default async function AnalisesPage({
   searchParams,
 }: {
@@ -58,7 +71,12 @@ export default async function AnalisesPage({
 }) {
   const { codigo: codigoSelecionado } = await searchParams;
   const supabase = await createClient();
-  const [{ data: analises }, { data: etapas }, { data: insumosAnalise }, { data: equipamentosAnalise }] =
+  const [
+    analisesResult,
+    etapasResult,
+    insumosAnaliseResult,
+    equipamentosAnaliseResult,
+  ] =
     await Promise.all([
       supabase
         .from("analises")
@@ -71,11 +89,25 @@ export default async function AnalisesPage({
       supabase.from("equipamento_analise").select("codigo_analise, equipamento_id"),
     ]);
 
+  const consultaIssues = [
+    erroConsulta("analises", analisesResult.error),
+    erroConsulta("etapas", etapasResult.error),
+    erroConsulta("insumo_analise", insumosAnaliseResult.error),
+    erroConsulta("equipamento_analise", equipamentosAnaliseResult.error),
+  ].filter((issue): issue is ConsultaIssue => issue != null);
+
+  const analises = analisesResult.data;
+  const etapas = etapasResult.data;
+  const insumosAnalise = insumosAnaliseResult.data;
+  const equipamentosAnalise = equipamentosAnaliseResult.data;
+
   let custos = new Map<string, number>();
+  let erroCusteio = false;
   try {
     const { breakdowns } = await calcularTodas();
     custos = new Map(breakdowns.map((b) => [b.codigo, b.preco]));
   } catch {
+    erroCusteio = true;
     custos = new Map();
   }
 
@@ -133,25 +165,38 @@ export default async function AnalisesPage({
           </p>
         </div>
 
-        <form action="/analises" className={`${card} mt-6 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]`}>
-          <label className="block">
-            <span className="text-xs font-medium text-muted-foreground">Análise</span>
-            <select
-              name="codigo"
-              defaultValue={selecionada?.analise.codigo}
-              className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground"
-            >
-              {diagnosticos.map((item) => (
-                <option key={item.analise.codigo} value={item.analise.codigo}>
-                  {item.analise.codigo} · {rotuloPrincipal(item.analise)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button className="self-end rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
-            Abrir
-          </button>
-        </form>
+        {consultaIssues.length > 0 && <ConsultaAlert issues={consultaIssues} />}
+
+        {erroCusteio && (
+          <div className="mt-4 rounded-lg border border-warning-strong/30 bg-warning-soft p-4 text-sm text-warning-strong">
+            <p className="font-medium">Custeio indisponível</p>
+            <p className="mt-1">As análises foram carregadas, mas o preço calculado não pôde ser obtido agora.</p>
+          </div>
+        )}
+
+        {diagnosticos.length > 0 ? (
+          <form action="/analises" className={`${card} mt-6 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]`}>
+            <label className="block">
+              <span className="text-xs font-medium text-muted-foreground">Análise</span>
+              <select
+                name="codigo"
+                defaultValue={selecionada?.analise.codigo}
+                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground"
+              >
+                {diagnosticos.map((item) => (
+                  <option key={item.analise.codigo} value={item.analise.codigo}>
+                    {item.analise.codigo} · {rotuloPrincipal(item.analise)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="self-end rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
+              Abrir
+            </button>
+          </form>
+        ) : (
+          <EmptyAnalises />
+        )}
 
         <div className="mt-6 grid gap-3 sm:grid-cols-4">
           <Stat label="Ofertáveis totais" value={String(totalOfertaveis.length)} />
@@ -163,6 +208,35 @@ export default async function AnalisesPage({
         {selecionada ? <AnaliseSelecionada item={selecionada} /> : null}
       </main>
     </div>
+  );
+}
+
+function ConsultaAlert({ issues }: { issues: ConsultaIssue[] }) {
+  return (
+    <section className="mt-6 rounded-lg border border-danger-strong/30 bg-danger-soft p-4 text-sm text-danger-strong">
+      <p className="font-medium">Falha ao carregar dados de análises</p>
+      <p className="mt-1">
+        Algumas consultas ao Supabase não retornaram corretamente. Nenhum dado sensível foi exibido.
+      </p>
+      <ul className="mt-3 space-y-1">
+        {issues.map((issue) => (
+          <li key={issue.tabela}>
+            <span className="font-mono text-xs">{issue.tabela}</span>: {issue.mensagem}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function EmptyAnalises() {
+  return (
+    <section className={`${card} mt-6`}>
+      <p className="font-medium">Nenhuma análise cadastrada.</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        O módulo está acessível, mas o catálogo técnico não retornou registros para seleção.
+      </p>
+    </section>
   );
 }
 
