@@ -190,6 +190,8 @@ export default async function OrcamentoFinalPage({
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-start gap-4">
                 <div className="rounded-md bg-white p-2">
+                  {/* Mantem <img> no documento imprimivel/PDF para preservar a renderizacao do logo institucional. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={identidade.logoSrc} alt={identidade.logoAlt} className="h-12 w-auto" />
                 </div>
                 <div>

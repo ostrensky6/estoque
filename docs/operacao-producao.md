@@ -17,6 +17,24 @@
 - Fluxo atual: deploy automatico pela integracao GitHub/Vercel do projeto `kontrol` na branch `main`.
 - Antes de publicar, rode `npm run prod:check`.
 
+### Ambiente local corrompido
+
+Use este procedimento quando `node_modules` existir, mas comandos como
+`npm run lint` ou `npm run test` falharem por nao encontrar binarios locais
+como `eslint` ou `vitest`.
+
+```powershell
+Remove-Item node_modules -Recurse -Force
+npm ci
+npm ls eslint vitest next --depth=0
+npm run lint
+npm run test
+```
+
+Se `Remove-Item` falhar por arquivo em uso, feche servidores locais,
+terminais e editores que possam estar mantendo handles abertos no projeto e
+repita o procedimento.
+
 ## Hospedagem - Vercel
 
 - Conta/time: `Gia`
