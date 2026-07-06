@@ -1,78 +1,123 @@
 import Link from "next/link";
-import { createClient, createClientUntyped } from "@/lib/supabase/server";
+import { createClientUntyped } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
 import { GerarReposicaoButton } from "@/components/compras/GerarReposicaoButton";
 import { formatDate, formatNumber as fmt } from "@/lib/formatters";
+import { pedidoInternoNumero, pedidoInternoStatus } from "@/lib/pedido/status";
 
 export const dynamic = "force-dynamic";
 
-type LoteOperacional = {
+type PlanejamentoRow = {
+  id: number;
+  nome: string;
+  data_alvo: string | null;
+  status_operacional: string | null;
+  projeto_id: number | null;
+  projetos: { nome: string | null; coordenador?: string | null; coordenador_nome?: string | null; coordenador_email?: string | null } | Array<{ nome: string | null; coordenador?: string | null; coordenador_nome?: string | null; coordenador_email?: string | null }> | null;
+  reservas_estoque: Array<{ status: string; quantidade: number; lote_id?: number | null }> | null;
+};
+
+type PedidoInternoRow = {
+  id: number;
+  titulo: string;
+  status: string;
+  solicitante: string | null;
+  data_necessidade: string | null;
+  urgencia: string | null;
+  tipo_demanda: string | null;
+  modalidade_compra: string | null;
+  instituicao_destino: string | null;
+  pedido_compra_id: number | null;
+  coordenador_projeto_nome: string | null;
+  coordenador_projeto_email: string | null;
+  projetos: { nome: string | null; coordenador?: string | null; coordenador_nome?: string | null; coordenador_email?: string | null } | Array<{ nome: string | null; coordenador?: string | null; coordenador_nome?: string | null; coordenador_email?: string | null }> | null;
+  pedidos_compra: { id: number; status: string } | Array<{ id: number; status: string }> | null;
+  pedidos_internos_itens: Array<{ id: number; tipo: string; recebido_em: string | null; lote_id?: number | null }>;
+  pedidos_internos_anexos: Array<{ id: number; tipo: string }>;
+};
+
+type CompraRow = {
+  id: number;
+  status: string;
+  data_solicitacao: string | null;
+  data_prevista_entrega: string | null;
+  fornecedores: { nome: string | null } | null;
+  projetos: { nome: string | null } | null;
+  pedidos_compra_itens: Array<{ id: number; lote_id: number | null; pedido_interno_item_id: number | null }>;
+};
+
+type LoteRow = {
   id: number;
   codigo_lote: string | null;
   validade: string | null;
   validade_apos_abertura: string | null;
   quantidade_atual: number | null;
   status: string;
-  insumos: { especificacao: string | null; unidade: string | null } | { especificacao: string | null; unidade: string | null }[] | null;
+  insumos: { especificacao: string | null; unidade: string | null; categoria_compra?: string | null } | null;
 };
 
-type CompraAberta = {
+type EquipamentoRow = {
   id: number;
-  status: string;
-  data_solicitacao: string | null;
-  data_prevista_entrega: string | null;
-  fornecedores: { nome: string | null } | { nome: string | null }[] | null;
+  status_operacional: string;
+  ativo: boolean;
+  codigo_patrimonio: string | null;
+  equipamentos: { nome: string | null } | null;
+  equipamento_reservas: Array<{ id: number; status: string; data_inicio: string; data_fim: string; planejamento_id: number | null }> | null;
 };
 
-type InsumoCadastro = {
+type NotificacaoRow = {
   id: number;
-  especificacao: string | null;
-  fator_conversao: number | null;
-  quantidade_embalagem: number | null;
-  categoria_compra: string | null;
-  unidade: string | null;
-  unidade_consumo: string | null;
-};
-
-type FilaHojeItem = {
-  key: string;
-  prioridade: "critica" | "alta" | "media";
   tipo: string;
-  item: string;
-  problema: string;
-  proximaAcao: string;
-  href: string;
+  titulo: string;
+  corpo: string | null;
+  entidade_tipo: string | null;
+  entidade_id: number | null;
+  status: string;
+  criado_em: string;
 };
 
-function asOne<T>(value: T | T[] | null | undefined): T | null {
-  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
-}
+type PrevisaoRow = {
+  insumo_id: number;
+  especificacao: string | null;
+  unidade: string | null;
+  disponivel: number | null;
+  qtd_sugerida_compra: number | null;
+  qtd_pedida_aberta: number | null;
+};
 
-function validadeEfetiva(lote: Pick<LoteOperacional, "validade" | "validade_apos_abertura">) {
+const STATUS_PLANO: Record<string, string> = {
+  rascunho: "Rascunho",
+  reservado: "Reservado",
+  em_execucao: "Em execução",
+  concluido: "Concluído",
+  cancelado: "Cancelado",
+};
+
+const MODALIDADE: Record<string, string> = {
+  compra_direta: "Compra direta",
+  fundacao: "Fundação",
+  universidade: "Universidade",
+  outra: "Outra",
+};
+
+function validadeEfetiva(lote: Pick<LoteRow, "validade" | "validade_apos_abertura">) {
   if (lote.validade && lote.validade_apos_abertura) {
     return lote.validade <= lote.validade_apos_abertura ? lote.validade : lote.validade_apos_abertura;
   }
   return lote.validade ?? lote.validade_apos_abertura;
 }
 
-function pendenciasInsumo(row: InsumoCadastro) {
-  const pendencias: string[] = [];
-  const fator = Number(row.fator_conversao);
-  const quantidadeEmbalagem = Number(row.quantidade_embalagem);
-
-  if (!Number.isFinite(fator) || fator <= 0) pendencias.push("fator de conversão");
-  if (!Number.isFinite(quantidadeEmbalagem) || quantidadeEmbalagem <= 0) pendencias.push("quantidade da embalagem");
-  if (!row.categoria_compra) pendencias.push("categoria de compra");
-  if (!row.unidade) pendencias.push("unidade de estoque");
-  if (!row.unidade_consumo) pendencias.push("unidade de consumo");
-
-  return pendencias;
+function asOne<T>(value: T | T[] | null | undefined) {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 }
 
-function prioridadeCompra(status: string, dataPrevista: string | null) {
-  if (!dataPrevista) return 0;
-  const hoje = new Date().toISOString().slice(0, 10);
-  return dataPrevista < hoje && status !== "recebido" && status !== "cancelado" ? 1 : 0;
+function erroSchemaCache(error: { message?: string; code?: string } | null | undefined) {
+  return Boolean(
+    error &&
+      (error.code === "PGRST204" ||
+        error.message?.includes("schema cache") ||
+        error.message?.includes("Could not find the")),
+  );
 }
 
 function adicionarDias(data: string, dias: number) {
@@ -81,61 +126,86 @@ function adicionarDias(data: string, dias: number) {
   return base.toISOString().slice(0, 10);
 }
 
-function prioridadeTone(prioridade: FilaHojeItem["prioridade"]) {
-  return prioridade === "critica" ? "red" : prioridade === "alta" ? "amber" : "blue";
+function isAtrasada(data: string | null, status: string) {
+  if (!data || ["recebido", "cancelado"].includes(status)) return false;
+  return data < new Date().toISOString().slice(0, 10);
 }
 
-function prioridadeLabel(prioridade: FilaHojeItem["prioridade"]) {
-  return prioridade === "critica" ? "Crítica" : prioridade === "alta" ? "Alta" : "Média";
+function docsCotacao(pedido: PedidoInternoRow) {
+  return pedido.pedidos_internos_anexos.some((doc) => ["orcamento_previo", "proposta", "print", "email"].includes(doc.tipo));
 }
 
-function StatusPill({ children, tone = "zinc" }: { children: React.ReactNode; tone?: "red" | "amber" | "blue" | "brand" | "zinc" }) {
-  const cls = {
+function coordenadorPedido(pedido: PedidoInternoRow) {
+  const projeto = Array.isArray(pedido.projetos) ? (pedido.projetos[0] ?? null) : pedido.projetos;
+  return (
+    pedido.coordenador_projeto_nome ??
+    pedido.coordenador_projeto_email ??
+    projeto?.coordenador_nome ??
+    projeto?.coordenador ??
+    projeto?.coordenador_email ??
+    "—"
+  );
+}
+
+function proximaAcaoPedido(status: string) {
+  const map: Record<string, { acao: string; responsavel: string }> = {
+    rascunho: { acao: "Enviar para validação", responsavel: "Solicitante" },
+    ajuste_solicitante: { acao: "Corrigir pedido", responsavel: "Solicitante" },
+    em_validacao: { acao: "Aprovar coordenador", responsavel: "Coordenador" },
+    validado: { acao: "Formalizar em compras", responsavel: "Coordenador/Compras" },
+    formalizado: { acao: "Análise administrativa", responsavel: "Administrativo" },
+    analise_administrativa: { acao: "Aprovar para cotação", responsavel: "Coordenador/Admin." },
+    ajuste_compras: { acao: "Corrigir administrativo", responsavel: "Compras/Admin." },
+    aprovado_compra: { acao: "Registrar orçamentos", responsavel: "Compras/Admin." },
+    orcamentos: { acao: "Anexar orçamentos", responsavel: "Compras/Admin." },
+    orcamentos_recebidos: { acao: "Enviar aprovação final", responsavel: "Coordenador" },
+    aguardando_aprovacao_final: { acao: "Aprovar compra final", responsavel: "Coordenador" },
+    aprovado_para_compra: { acao: "Definir modalidade", responsavel: "Compras/Admin." },
+    compra_fechada: { acao: "Aguardar pagamento/NF", responsavel: "Compras/Admin." },
+    encaminhado_instituicao: { acao: "Acompanhar instituição", responsavel: "Administrativo" },
+    aguardando_pagamento_nf: { acao: "Anexar NF/comprovante", responsavel: "Compras/Admin." },
+    compra_concluida: { acao: "Concluído", responsavel: "—" },
+    cancelado: { acao: "Encerrado", responsavel: "—" },
+  };
+  return map[status] ?? { acao: "Revisar", responsavel: "Operação" };
+}
+
+function pendenciasPedido(pedido: PedidoInternoRow) {
+  const pendencias: string[] = [];
+  if (!pedido.projetos) pendencias.push("sem projeto");
+  if (!pedido.pedidos_internos_itens.length) pendencias.push("sem itens");
+  if (["aprovado_compra", "orcamentos"].includes(pedido.status) && !docsCotacao(pedido)) pendencias.push("orçamento pendente");
+  if (pedido.status === "aprovado_para_compra" && !pedido.modalidade_compra) pendencias.push("modalidade pendente");
+  return pendencias;
+}
+
+function statusTone(kind: "red" | "amber" | "blue" | "green" | "zinc") {
+  return {
     red: "bg-danger-soft text-danger-strong",
     amber: "bg-warning-soft text-warning-strong",
     blue: "bg-info-soft text-info-strong",
-    brand: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300",
-    zinc: "bg-muted text-foreground",
-  }[tone];
-
-  return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{children}</span>;
+    green: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300",
+    zinc: "bg-muted text-muted-foreground",
+  }[kind];
 }
 
-function KpiCard({
-  label,
-  value,
-  detail,
-  href,
-  tone,
-}: {
-  label: string;
-  value: number;
-  detail: string;
-  href: string;
-  tone: "red" | "amber" | "blue" | "brand";
-}) {
+function Pill({ children, tone = "zinc" }: { children: React.ReactNode; tone?: "red" | "amber" | "blue" | "green" | "zinc" }) {
+  return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusTone(tone)}`}>{children}</span>;
+}
+
+function Kpi({ label, value, detail, href, tone }: { label: string; value: number; detail: string; href: string; tone: "red" | "amber" | "blue" | "green" | "zinc" }) {
   return (
     <Link href={href} className="rounded-lg border border-border bg-card p-4 shadow-sm hover:border-brand-300">
-      <div className="flex items-center justify-between gap-3">
-        <StatusPill tone={tone}>{label}</StatusPill>
-        <span className="text-2xl font-semibold tabular-nums">{value}</span>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <span className={`text-2xl font-semibold tabular-nums ${tone === "red" ? "text-danger-strong" : ""}`}>{value}</span>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">{detail}</p>
     </Link>
   );
 }
 
-function Section({
-  id,
-  title,
-  action,
-  children,
-}: {
-  id: string;
-  title: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
+function Section({ id, title, action, children }: { id: string; title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section id={id} className="border-t border-border py-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -147,156 +217,154 @@ function Section({
   );
 }
 
-function EmptyState({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border border-dashed border-input px-4 py-6 text-sm text-muted-foreground">
-      {children}
-    </div>
-  );
+function Empty({ children }: { children: React.ReactNode }) {
+  return <div className="rounded-lg border border-dashed border-input px-4 py-6 text-sm text-muted-foreground">{children}</div>;
+}
+
+function TableShell({ children }: { children: React.ReactNode }) {
+  return <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">{children}</div>;
+}
+
+const th = "px-4 py-3 text-left";
+const td = "px-4 py-3";
+
+async function consultarPedidosSuprimentos(supabase: Awaited<ReturnType<typeof createClientUntyped>>) {
+  const full = await supabase
+    .from("pedidos_internos")
+    .select("id, titulo, status, solicitante, data_necessidade, urgencia, tipo_demanda, modalidade_compra, instituicao_destino, pedido_compra_id, coordenador_projeto_nome, coordenador_projeto_email, projetos(nome, coordenador, coordenador_nome, coordenador_email), pedidos_compra(id, status), pedidos_internos_itens(id, tipo, recebido_em, lote_id), pedidos_internos_anexos(id, tipo)")
+    .order("criado_em", { ascending: false })
+    .limit(80);
+
+  if (!erroSchemaCache(full.error)) return full;
+
+  return supabase
+    .from("pedidos_internos")
+    .select("id, titulo, status, solicitante, data_necessidade, urgencia, pedido_compra_id, projetos(nome, coordenador), pedidos_compra(id, status), pedidos_internos_itens(id, tipo, recebido_em, lote_id), pedidos_internos_anexos(id, tipo)")
+    .order("criado_em", { ascending: false })
+    .limit(80);
 }
 
 export default async function SuprimentosPage() {
-  const supabase = await createClient();
-  const supabaseUntyped = await createClientUntyped();
-  const hoje = new Date().toISOString().slice(0, 10);
+  const supabase = await createClientUntyped();
   const podeGerarReposicao = await temPapel("coordenador");
+  const hoje = new Date().toISOString().slice(0, 10);
+  const limiteVencimento = adicionarDias(hoje, 30);
 
   const [
-    { data: previsao },
-    { data: lotes },
-    { data: compras },
-    { data: insumos },
+    { data: planejamentosRaw },
+    { data: pedidosRaw },
+    { data: comprasRaw },
+    { data: recebimentosRaw },
+    { data: lotesRaw },
+    { data: equipamentosRaw },
+    { data: notificacoesRaw },
+    { data: previsaoRaw },
   ] = await Promise.all([
-    supabase.from("v_previsao_suprimentos").select("*").order("qtd_sugerida_compra", { ascending: false }),
     supabase
-      .from("lotes_estoque")
-      .select("id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status, insumos(especificacao, unidade)")
-      .gt("quantidade_atual", 0)
-      .not("status", "in", "(consumido,descartado)")
-      .order("validade", { nullsFirst: false }),
+      .from("planejamento")
+      .select("id, nome, data_alvo, status_operacional, projeto_id, projetos(nome, coordenador), reservas_estoque(status, quantidade)")
+      .order("criado_em", { ascending: false })
+      .limit(60),
+    consultarPedidosSuprimentos(supabase),
     supabase
       .from("pedidos_compra")
-      .select("id, status, data_solicitacao, data_prevista_entrega, fornecedores(nome)")
+      .select("id, status, data_solicitacao, data_prevista_entrega, fornecedores(nome), projetos(nome), pedidos_compra_itens(id, lote_id, pedido_interno_item_id)")
       .in("status", ["solicitado", "aprovado", "enviado", "em_transito"])
-      .order("data_prevista_entrega", { ascending: true, nullsFirst: false }),
-    supabaseUntyped
-      .from("insumos")
-      .select("id, especificacao, fator_conversao, quantidade_embalagem, categoria_compra, unidade, unidade_consumo")
-      .order("especificacao"),
+      .order("data_prevista_entrega", { ascending: true, nullsFirst: false })
+      .limit(80),
+    supabase
+      .from("pedidos_internos_itens")
+      .select("id, especificacao, recebido_em, pedido_interno_id, pedidos_internos!inner(id, titulo, status, projetos(nome))")
+      .is("recebido_em", null)
+      .limit(80),
+    supabase
+      .from("lotes_estoque")
+      .select("id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status, insumos(especificacao, unidade, categoria_compra)")
+      .gt("quantidade_atual", 0)
+      .not("status", "in", "(consumido,descartado)")
+      .order("validade", { nullsFirst: false })
+      .limit(100),
+    supabase
+      .from("equipamento_unidades")
+      .select("id, status_operacional, ativo, codigo_patrimonio, equipamentos(nome)")
+      .limit(80),
+    supabase
+      .from("notificacoes")
+      .select("id, tipo, titulo, corpo, entidade_tipo, entidade_id, status, criado_em")
+      .in("status", ["nao_lida"])
+      .order("criado_em", { ascending: false })
+      .limit(50),
+    supabase
+      .from("v_previsao_suprimentos")
+      .select("insumo_id, especificacao, unidade, disponivel, qtd_sugerida_compra, qtd_pedida_aberta")
+      .order("qtd_sugerida_compra", { ascending: false })
+      .limit(40),
   ]);
 
-  const limiteVencimento = adicionarDias(hoje, 30);
-  const previsoes = previsao ?? [];
-  const rupturas = previsoes.filter((item) => Number(item.disponivel ?? 0) <= 0);
-  const abaixoReposicao = previsoes.filter((item) => {
-    const disponivel = Number(item.disponivel ?? 0);
-    const ponto = Number(item.ponto_reposicao_configurado ?? item.ponto_reposicao_sugerido ?? 0);
-    return ponto > 0 && disponivel > 0 && disponivel <= ponto;
-  });
-  const comprasAbertas = ((compras ?? []) as CompraAberta[])
-    .map((compra) => ({
-      ...compra,
-      fornecedorNome: asOne(compra.fornecedores)?.nome ?? "Fornecedor não informado",
-      atrasada: prioridadeCompra(compra.status, compra.data_prevista_entrega) > 0,
-    }))
-    .sort((a, b) => Number(b.atrasada) - Number(a.atrasada));
-  const comprasAtrasadas = comprasAbertas.filter((compra) => compra.atrasada);
-  const comprasAguardandoRecebimento = comprasAbertas.filter((compra) => ["aprovado", "enviado", "em_transito"].includes(compra.status));
-  const lotesOperacionais = (lotes ?? []) as LoteOperacional[];
-  const lotesVencidos = lotesOperacionais.filter((lote) => {
-    const validade = validadeEfetiva(lote);
-    return validade != null && validade < hoje;
-  });
-  const lotesVencendo = lotesOperacionais.filter((lote) => {
-    const validade = validadeEfetiva(lote);
-    return validade != null && validade >= hoje && validade <= limiteVencimento;
-  });
-  const lotesQuarentena = lotesOperacionais.filter((lote) => lote.status === "quarentena");
-  const cadastrosCriticosPendentes = ((insumos ?? []) as InsumoCadastro[])
-    .map((insumo) => ({ ...insumo, pendencias: pendenciasInsumo(insumo) }))
-    .filter((insumo) => insumo.categoria_compra === "critico" && insumo.pendencias.length > 0);
+  const planejamentos = (planejamentosRaw ?? []) as unknown as PlanejamentoRow[];
+  const pedidos = (pedidosRaw ?? []) as unknown as PedidoInternoRow[];
+  const compras = (comprasRaw ?? []) as unknown as CompraRow[];
+  const recebimentos = (recebimentosRaw ?? []) as unknown as Array<{
+    id: number;
+    especificacao: string;
+    pedido_interno_id: number;
+    pedidos_internos: { id: number; titulo: string; status: string; projetos: { nome: string | null } | Array<{ nome: string | null }> | null } | Array<{ id: number; titulo: string; status: string; projetos: { nome: string | null } | Array<{ nome: string | null }> | null }> | null;
+  }>;
+  const lotes = (lotesRaw ?? []) as unknown as LoteRow[];
+  const equipamentos = (equipamentosRaw ?? []) as unknown as EquipamentoRow[];
+  const notificacoes = (notificacoesRaw ?? []) as unknown as NotificacaoRow[];
+  const previsao = (previsaoRaw ?? []) as unknown as PrevisaoRow[];
 
-  const filaHoje: FilaHojeItem[] = [
-    ...rupturas.map((item) => ({
-      key: `ruptura-${item.insumo_id}`,
-      prioridade: "critica" as const,
-      tipo: "Ruptura",
-      item: item.especificacao ?? `Insumo #${item.insumo_id}`,
-      problema: `Saldo utilizável ${fmt(item.disponivel)} ${item.unidade ?? ""}`,
-      proximaAcao: Number(item.qtd_pedida_aberta ?? 0) > 0 ? "Acompanhar compra aberta" : "Abrir compra formal",
-      href: "/compras",
-    })),
-    ...comprasAtrasadas.map((compra) => ({
-      key: `compra-atrasada-${compra.id}`,
-      prioridade: "alta" as const,
-      tipo: "Compra atrasada",
-      item: `Compra formal #${compra.id}`,
-      problema: `${compra.fornecedorNome} · previsão ${formatDate(compra.data_prevista_entrega)}`,
-      proximaAcao: "Acompanhar fornecedor",
-      href: `/compras/${compra.id}`,
-    })),
-    ...comprasAguardandoRecebimento.filter((compra) => !compra.atrasada).map((compra) => ({
-      key: `receber-${compra.id}`,
-      prioridade: "media" as const,
-      tipo: "Recebimento",
-      item: `Compra formal #${compra.id}`,
-      problema: `${compra.status} · ${compra.fornecedorNome}`,
-      proximaAcao: "Receber pela compra formal",
-      href: `/compras/${compra.id}`,
-    })),
-    ...lotesVencidos.map((lote) => ({
-      key: `lote-vencido-${lote.id}`,
-      prioridade: "critica" as const,
-      tipo: "Lote vencido",
-      item: asOne(lote.insumos)?.especificacao ?? `Lote #${lote.id}`,
-      problema: `Lote ${lote.codigo_lote ?? lote.id} · venceu ${formatDate(validadeEfetiva(lote))}`,
-      proximaAcao: "Revisar, bloquear ou descartar",
-      href: `/estoque/lotes/${lote.id}`,
-    })),
-    ...lotesQuarentena
-      .filter((lote) => !lotesVencidos.some((vencido) => vencido.id === lote.id))
-      .map((lote) => ({
-        key: `quarentena-${lote.id}`,
-        prioridade: "media" as const,
-        tipo: "Liberação",
-        item: asOne(lote.insumos)?.especificacao ?? `Lote #${lote.id}`,
-        problema: `Lote ${lote.codigo_lote ?? lote.id} aguardando conferência`,
-        proximaAcao: "Liberar lote para uso",
-        href: `/estoque/lotes/${lote.id}`,
-      })),
-    ...cadastrosCriticosPendentes.map((insumo) => ({
-      key: `cadastro-critico-${insumo.id}`,
-      prioridade: "alta" as const,
-      tipo: "Cadastro crítico",
-      item: insumo.especificacao ?? `Insumo #${insumo.id}`,
-      problema: insumo.pendencias.join(", "),
-      proximaAcao: "Completar cadastro",
-      href: "/cadastros/insumos",
-    })),
-    ...abaixoReposicao.slice(0, 6).map((item) => ({
-      key: `reposicao-${item.insumo_id}`,
-      prioridade: "media" as const,
-      tipo: "Reposição",
-      item: item.especificacao ?? `Insumo #${item.insumo_id}`,
-      problema: `Disponível ${fmt(item.disponivel)} · comprar ${fmt(item.qtd_sugerida_compra)}`,
-      proximaAcao: "Revisar compra formal",
-      href: "/compras",
-    })),
-    ...lotesVencendo.slice(0, 4).map((lote) => ({
-      key: `vencendo-${lote.id}`,
-      prioridade: "media" as const,
-      tipo: "Validade",
-      item: asOne(lote.insumos)?.especificacao ?? `Lote #${lote.id}`,
-      problema: `Vence ${formatDate(validadeEfetiva(lote))}`,
-      proximaAcao: "Revisar FEFO",
-      href: `/estoque/lotes/${lote.id}`,
-    })),
-  ].slice(0, 15);
+  const planosRascunho = planejamentos.filter((p) => (p.status_operacional ?? "rascunho") === "rascunho");
+  const planosReservados = planejamentos.filter((p) => p.status_operacional === "reservado");
+  const planosExecucao = planejamentos.filter((p) => p.status_operacional === "em_execucao");
+  const planosComReservaParcial = planejamentos.filter((p) => (p.reservas_estoque ?? []).some((r) => r.status === "parcial"));
+  const planosAguardandoReserva = planejamentos.filter((p) => (p.status_operacional ?? "rascunho") === "rascunho" && !(p.reservas_estoque ?? []).some((r) => r.status === "reservado"));
 
-  const critico = rupturas.length + comprasAtrasadas.length + lotesVencidos.length + cadastrosCriticosPendentes.length;
-  const comprar = rupturas.length + abaixoReposicao.length;
-  const receber = comprasAguardandoRecebimento.length;
-  const liberar = lotesQuarentena.length;
+  const aguardandoCoordenador = pedidos.filter((p) => p.status === "em_validacao");
+  const aguardandoOrcamento = pedidos.filter((p) => ["aprovado_compra", "orcamentos"].includes(p.status) && !docsCotacao(p));
+  const noAdministrativo = pedidos.filter((p) => ["formalizado", "analise_administrativa", "ajuste_compras"].includes(p.status));
+  const enviadosInstituicao = pedidos.filter((p) => p.status === "encaminhado_instituicao" || ["fundacao", "universidade"].includes(p.modalidade_compra ?? ""));
+  const compraDireta = pedidos.filter((p) => ["compra_fechada", "aguardando_pagamento_nf"].includes(p.status) || p.modalidade_compra === "compra_direta");
+  const comprasAtrasadas = compras.filter((c) => isAtrasada(c.data_prevista_entrega, c.status));
+
+  const lotesQuarentena = lotes.filter((l) => l.status === "quarentena");
+  const lotesVencidos = lotes.filter((l) => {
+    const v = validadeEfetiva(l);
+    return v != null && v < hoje;
+  });
+  const lotesVencendo = lotes.filter((l) => {
+    const v = validadeEfetiva(l);
+    return v != null && v >= hoje && v <= limiteVencimento;
+  });
+
+  const equipamentosIndisponiveis = equipamentos.filter((e) => !e.ativo || ["em_manutencao", "calibracao_vencida", "inativo", "descartado"].includes(e.status_operacional));
+  const equipamentosReservados = equipamentos.filter((e) => e.status_operacional === "reservado" || (e.equipamento_reservas ?? []).some((r) => ["reservado", "em_uso"].includes(r.status)));
+  const comprarAgora = previsao.filter((p) => Number(p.qtd_sugerida_compra ?? 0) > 0);
+
+  const pedidosPrioritarios = [
+    ...aguardandoCoordenador,
+    ...aguardandoOrcamento,
+    ...noAdministrativo,
+    ...enviadosInstituicao,
+    ...compraDireta,
+  ].filter((pedido, index, arr) => arr.findIndex((item) => item.id === pedido.id) === index).slice(0, 18);
+
+  const rastreabilidade = pedidos
+    .filter((pedido) => pedido.pedido_compra_id || pedido.pedidos_internos_itens.some((item) => item.lote_id))
+    .slice(0, 12);
+
+  const nav = [
+    ["Visão geral", "#visao-geral"],
+    ["Planejamentos e reservas", "#planejamentos"],
+    ["Pedidos laboratório/campo", "#pedidos"],
+    ["Compras", "#compras"],
+    ["Recebimentos", "#recebimentos"],
+    ["Quarentena", "#quarentena"],
+    ["Equipamentos", "#equipamentos"],
+    ["Notificações", "#notificacoes"],
+    ["Rastreabilidade", "#rastreabilidade"],
+  ];
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
@@ -305,95 +373,330 @@ export default async function SuprimentosPage() {
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Suprimentos</h1>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Central compacta de exceções para decidir o que precisa de atenção hoje.
-              O detalhe operacional continua nas telas próprias de solicitação, compra, recebimento e estoque.
+              Central operacional de planejamento, reservas, pedidos internos, compras, recebimento, quarentena e rastreabilidade.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
             {podeGerarReposicao && <GerarReposicaoButton />}
-            <Link href="#hoje" className="rounded-md border border-border px-3 py-1.5 hover:bg-muted/50">Hoje</Link>
+            <Link href="/pedido" className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+              Novo pedido
+            </Link>
           </div>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard label="Crítico" value={critico} detail="ruptura, atraso, vencido ou cadastro crítico" href="#hoje" tone={critico > 0 ? "red" : "brand"} />
-          <KpiCard label="Comprar" value={comprar} detail="ruptura ou reposição recomendada" href="/compras" tone={rupturas.length > 0 ? "red" : comprar > 0 ? "amber" : "brand"} />
-          <KpiCard label="Receber" value={receber} detail="compras aguardando chegada" href="/recebimento" tone={receber > 0 ? "blue" : "brand"} />
-          <KpiCard label="Liberar" value={liberar} detail="lotes aguardando conferência" href="/estoque" tone={liberar > 0 ? "blue" : "brand"} />
-        </div>
+        <nav className="mt-5 flex flex-wrap gap-2 text-sm" aria-label="Seções de suprimentos">
+          {nav.map(([label, href]) => (
+            <Link key={href} href={href} className="rounded-md border border-border px-3 py-1.5 text-muted-foreground hover:bg-muted/50 hover:text-foreground">
+              {label}
+            </Link>
+          ))}
+        </nav>
 
-        <Section id="hoje" title="Hoje" action={<span className="text-sm text-muted-foreground">{filaHoje.length} ação(ões)</span>}>
-          {filaHoje.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
-              <table className="w-full text-sm">
-                <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3 text-left">Prioridade</th>
-                    <th className="px-4 py-3 text-left">Tipo</th>
-                    <th className="px-4 py-3 text-left">Item/processo</th>
-                    <th className="px-4 py-3 text-left">Problema</th>
-                    <th className="px-4 py-3 text-right">Próxima ação</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/70">
-                  {filaHoje.map((acao) => (
-                    <tr key={acao.key}>
-                      <td className="px-4 py-3">
-                        <StatusPill tone={prioridadeTone(acao.prioridade)}>{prioridadeLabel(acao.prioridade)}</StatusPill>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{acao.tipo}</td>
-                      <td className="max-w-xs truncate px-4 py-3 font-medium" title={acao.item}>{acao.item}</td>
-                      <td className="max-w-sm truncate px-4 py-3 text-muted-foreground" title={acao.problema}>{acao.problema}</td>
-                      <td className="px-4 py-3 text-right">
-                        <Link href={acao.href} className="font-medium text-brand-700 hover:underline dark:text-brand-300">
-                          {acao.proximaAcao}
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <EmptyState>Nenhuma exceção operacional prioritária para hoje.</EmptyState>
-          )}
+        <Section id="visao-geral" title="Visão geral">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Kpi label="Planos em rascunho" value={planosRascunho.length} detail="ainda sem reserva final" href="#planejamentos" tone="zinc" />
+            <Kpi label="Aguardando reserva" value={planosAguardandoReserva.length} detail="planos prontos para imobilizar lotes" href="#planejamentos" tone={planosAguardandoReserva.length ? "amber" : "green"} />
+            <Kpi label="Planos reservados" value={planosReservados.length} detail="com lotes imobilizados" href="#planejamentos" tone="blue" />
+            <Kpi label="Planos com falta" value={planosComReservaParcial.length} detail="reservas parciais ou pendências de estoque" href="#planejamentos" tone={planosComReservaParcial.length ? "red" : "green"} />
+            <Kpi label="Em execução" value={planosExecucao.length} detail="baixa já iniciada" href="#planejamentos" tone="blue" />
+            <Kpi label="Aguardando coordenador" value={aguardandoCoordenador.length} detail="pedidos internos em validação" href="#pedidos" tone={aguardandoCoordenador.length ? "amber" : "green"} />
+            <Kpi label="Orçamento pendente" value={aguardandoOrcamento.length} detail="cotação/documento ainda não registrado" href="#pedidos" tone={aguardandoOrcamento.length ? "amber" : "green"} />
+            <Kpi label="No administrativo" value={noAdministrativo.length} detail="fonte, rubrica, conformidade e cotação" href="#pedidos" tone="blue" />
+            <Kpi label="Fundação/Universidade" value={enviadosInstituicao.length} detail="processos enviados ou nessa modalidade" href="#pedidos" tone="blue" />
+            <Kpi label="Compra direta" value={compraDireta.length} detail="fornecedor/pagamento/NF em andamento" href="#pedidos" tone="blue" />
+            <Kpi label="Compras atrasadas" value={comprasAtrasadas.length} detail="previsão de entrega vencida" href="#compras" tone={comprasAtrasadas.length ? "red" : "green"} />
+            <Kpi label="Aguardando recebimento" value={recebimentos.length} detail="itens internos ainda não recebidos" href="#recebimentos" tone={recebimentos.length ? "amber" : "green"} />
+            <Kpi label="Lotes em quarentena" value={lotesQuarentena.length} detail="aguardando liberação" href="#quarentena" tone={lotesQuarentena.length ? "amber" : "green"} />
+            <Kpi label="Vencendo/vencidos" value={lotesVencendo.length + lotesVencidos.length} detail="janela de 30 dias ou já vencidos" href="#quarentena" tone={lotesVencidos.length ? "red" : lotesVencendo.length ? "amber" : "green"} />
+            <Kpi label="Equipamentos críticos" value={equipamentosIndisponiveis.length + equipamentosReservados.length} detail="indisponíveis, reservados ou em manutenção" href="#equipamentos" tone={equipamentosIndisponiveis.length ? "red" : equipamentosReservados.length ? "blue" : "green"} />
+            <Kpi label="Notificações" value={notificacoes.length} detail="pendências não lidas" href="#notificacoes" tone={notificacoes.length ? "amber" : "green"} />
+          </div>
         </Section>
 
-        <Section
-          id="cadastros"
-          title="Cadastros críticos"
-          action={<Link href="/cadastros/insumos" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">Abrir insumos</Link>}
-        >
-          {cadastrosCriticosPendentes.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+        <Section id="planejamentos" title="Planejamentos e reservas" action={<Link href="/planejamento" className="text-sm font-medium text-primary hover:underline">Abrir planejamento</Link>}>
+          {planejamentos.length ? (
+            <TableShell>
               <table className="w-full text-sm">
                 <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3 text-left">Insumo</th>
-                    <th className="px-4 py-3 text-left">Pendências</th>
-                    <th className="px-4 py-3 text-right">Ação</th>
+                    <th className={th}>Plano</th>
+                    <th className={th}>Projeto</th>
+                    <th className={th}>Data alvo</th>
+                    <th className={th}>Status</th>
+                    <th className={th}>Reservas</th>
+                    <th className={`${th} text-right`}>Ação</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/70">
-                  {cadastrosCriticosPendentes.slice(0, 10).map((insumo) => (
-                    <tr key={insumo.id}>
-                      <td className="max-w-xs truncate px-4 py-3 font-medium" title={insumo.especificacao ?? undefined}>
-                        {insumo.especificacao ?? `Insumo #${insumo.id}`}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{insumo.pendencias.join(", ")}</td>
-                      <td className="px-4 py-3 text-right">
-                        <Link href="/cadastros/insumos" className="font-medium text-brand-700 hover:underline dark:text-brand-300">
-                          Completar cadastro
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
+                  {planejamentos.slice(0, 12).map((plano) => {
+                    const reservas = plano.reservas_estoque ?? [];
+                    const reservadas = reservas.filter((r) => r.status === "reservado").length;
+                    const parciais = reservas.filter((r) => r.status === "parcial").length;
+                    return (
+                      <tr key={plano.id}>
+                        <td className={`${td} font-medium`}><Link href={`/planejamento/${plano.id}`} className="text-primary hover:underline">{plano.nome}</Link></td>
+                        <td className={td}>{asOne(plano.projetos)?.nome ?? "—"}</td>
+                        <td className={td}>{formatDate(plano.data_alvo)}</td>
+                        <td className={td}><Pill tone={plano.status_operacional === "em_execucao" ? "blue" : plano.status_operacional === "reservado" ? "green" : "zinc"}>{STATUS_PLANO[plano.status_operacional ?? "rascunho"] ?? plano.status_operacional ?? "Rascunho"}</Pill></td>
+                        <td className={td}>{reservadas} lote(s){parciais ? ` · ${parciais} parcial` : ""}</td>
+                        <td className={`${td} text-right`}><Link href={`/planejamento/${plano.id}`} className="font-medium text-primary hover:underline">Ver plano</Link></td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
+            </TableShell>
+          ) : <Empty>Nenhum planejamento encontrado.</Empty>}
+        </Section>
+
+        <Section id="pedidos" title="Pedidos do laboratório/campo" action={<Link href="/pedido" className="text-sm font-medium text-primary hover:underline">Abrir pedidos</Link>}>
+          {pedidosPrioritarios.length ? (
+            <TableShell>
+              <table className="w-full text-sm">
+                <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className={th}>Pedido</th>
+                    <th className={th}>Projeto</th>
+                    <th className={th}>Coordenador</th>
+                    <th className={th}>Etapa</th>
+                    <th className={th}>Próxima ação</th>
+                    <th className={th}>Responsável</th>
+                    <th className={th}>Docs</th>
+                    <th className={th}>Modalidade</th>
+                    <th className={th}>Recebido</th>
+                    <th className={th}>Pendências</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/70">
+                  {pedidosPrioritarios.map((pedido) => {
+                    const status = pedidoInternoStatus(pedido.status);
+                    const prox = proximaAcaoPedido(pedido.status);
+                    const materiais = pedido.pedidos_internos_itens.filter((item) => item.tipo === "material");
+                    const recebidos = materiais.filter((item) => item.recebido_em).length;
+                    const pendencias = pendenciasPedido(pedido);
+                    return (
+                      <tr key={pedido.id}>
+                        <td className={`${td} min-w-56`}>
+                          <Link href={`/pedido/${pedido.id}`} className="font-medium text-primary hover:underline">{pedidoInternoNumero(pedido.id)}</Link>
+                          <p className="mt-0.5 max-w-xs truncate text-xs text-muted-foreground" title={pedido.titulo}>{pedido.titulo}</p>
+                        </td>
+                        <td className={td}>{asOne(pedido.projetos)?.nome ?? "—"}</td>
+                        <td className={td}>{coordenadorPedido(pedido)}</td>
+                        <td className={td}><span className={`rounded-md px-2 py-1 text-xs ${status.className}`}>{status.label}</span></td>
+                        <td className={td}>{prox.acao}</td>
+                        <td className={td}>{prox.responsavel}</td>
+                        <td className={td}>{docsCotacao(pedido) ? <Pill tone="green">ok</Pill> : <Pill tone="amber">pendente</Pill>}</td>
+                        <td className={td}>{pedido.modalidade_compra ? MODALIDADE[pedido.modalidade_compra] ?? pedido.modalidade_compra : "—"}</td>
+                        <td className={td}>{materiais.length ? `${recebidos}/${materiais.length}` : "—"}</td>
+                        <td className={td}>{pendencias.length ? <span className="text-warning-strong">{pendencias.join(", ")}</span> : "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableShell>
+          ) : <Empty>Nenhum pedido interno com pendência prioritária.</Empty>}
+        </Section>
+
+        <Section id="compras" title="Compras" action={<Link href="/compras" className="text-sm font-medium text-primary hover:underline">Abrir compras</Link>}>
+          <div className="grid gap-4 lg:grid-cols-[1.2fr_.8fr]">
+            <div>
+              {compras.length ? (
+                <TableShell>
+                  <table className="w-full text-sm">
+                    <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                      <tr>
+                        <th className={th}>Compra</th>
+                        <th className={th}>Fornecedor</th>
+                        <th className={th}>Projeto</th>
+                        <th className={th}>Status</th>
+                        <th className={th}>Previsão</th>
+                        <th className={th}>Itens</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/70">
+                      {compras.slice(0, 12).map((compra) => (
+                        <tr key={compra.id}>
+                          <td className={`${td} font-medium`}><Link href={`/compras/${compra.id}`} className="text-primary hover:underline">Compra #{compra.id}</Link></td>
+                          <td className={td}>{compra.fornecedores?.nome ?? "—"}</td>
+                          <td className={td}>{compra.projetos?.nome ?? "—"}</td>
+                          <td className={td}><Pill tone={isAtrasada(compra.data_prevista_entrega, compra.status) ? "red" : "blue"}>{compra.status}</Pill></td>
+                          <td className={td}>{formatDate(compra.data_prevista_entrega)}</td>
+                          <td className={td}>{compra.pedidos_compra_itens.length}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </TableShell>
+              ) : <Empty>Nenhuma compra formal aberta.</Empty>}
             </div>
-          ) : (
-            <EmptyState>Nenhum insumo crítico com cadastro operacional incompleto.</EmptyState>
-          )}
+            <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+              <h3 className="text-sm font-semibold">Sugestões de reposição</h3>
+              <div className="mt-3 space-y-2 text-sm">
+                {comprarAgora.slice(0, 8).map((item) => (
+                  <div key={item.insumo_id} className="flex justify-between gap-3 border-b border-border/60 pb-2 last:border-b-0">
+                    <span className="truncate">{item.especificacao ?? `Insumo #${item.insumo_id}`}</span>
+                    <span className="shrink-0 tabular-nums">comprar {fmt(item.qtd_sugerida_compra)} {item.unidade ?? ""}</span>
+                  </div>
+                ))}
+                {!comprarAgora.length && <p className="text-muted-foreground">Sem reposição sugerida agora.</p>}
+              </div>
+            </div>
+          </div>
+        </Section>
+
+        <Section id="recebimentos" title="Recebimentos" action={<Link href="/recebimento" className="text-sm font-medium text-primary hover:underline">Abrir recebimento</Link>}>
+          {recebimentos.length ? (
+            <TableShell>
+              <table className="w-full text-sm">
+                <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className={th}>Item</th>
+                    <th className={th}>Pedido</th>
+                    <th className={th}>Projeto</th>
+                    <th className={th}>Etapa</th>
+                    <th className={`${th} text-right`}>Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/70">
+                  {recebimentos.slice(0, 12).map((item) => {
+                    const pedido = asOne(item.pedidos_internos);
+                    const projeto = asOne(pedido?.projetos);
+                    return (
+                      <tr key={item.id}>
+                        <td className={`${td} font-medium`}>{item.especificacao}</td>
+                        <td className={td}><Link href={`/pedido/${item.pedido_interno_id}`} className="text-primary hover:underline">{pedido?.titulo ?? `Pedido #${item.pedido_interno_id}`}</Link></td>
+                        <td className={td}>{projeto?.nome ?? "—"}</td>
+                        <td className={td}>{pedido ? pedidoInternoStatus(pedido.status).label : "—"}</td>
+                        <td className={`${td} text-right`}><Link href="/recebimento" className="font-medium text-primary hover:underline">Receber</Link></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableShell>
+          ) : <Empty>Nenhum item aguardando recebimento.</Empty>}
+        </Section>
+
+        <Section id="quarentena" title="Quarentena e liberação" action={<Link href="/estoque" className="text-sm font-medium text-primary hover:underline">Abrir estoque</Link>}>
+          {lotesQuarentena.length || lotesVencendo.length || lotesVencidos.length ? (
+            <TableShell>
+              <table className="w-full text-sm">
+                <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className={th}>Lote</th>
+                    <th className={th}>Insumo</th>
+                    <th className={th}>Status</th>
+                    <th className={th}>Validade efetiva</th>
+                    <th className={th}>Saldo</th>
+                    <th className={`${th} text-right`}>Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/70">
+                  {[...lotesVencidos, ...lotesQuarentena, ...lotesVencendo].filter((lote, index, arr) => arr.findIndex((item) => item.id === lote.id) === index).slice(0, 14).map((lote) => {
+                    const validade = validadeEfetiva(lote);
+                    return (
+                      <tr key={lote.id}>
+                        <td className={`${td} font-mono text-xs`}><Link href={`/estoque/lotes/${lote.id}`} className="text-primary hover:underline">{lote.codigo_lote ?? `#${lote.id}`}</Link></td>
+                        <td className={td}>{lote.insumos?.especificacao ?? "—"}</td>
+                        <td className={td}><Pill tone={lote.status === "quarentena" ? "amber" : validade && validade < hoje ? "red" : "blue"}>{lote.status}</Pill></td>
+                        <td className={td}>{formatDate(validade)}</td>
+                        <td className={td}>{fmt(lote.quantidade_atual)} {lote.insumos?.unidade ?? ""}</td>
+                        <td className={`${td} text-right`}><Link href={`/estoque/lotes/${lote.id}`} className="font-medium text-primary hover:underline">Ver lote</Link></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableShell>
+          ) : <Empty>Nenhum lote em quarentena, vencido ou vencendo nos próximos 30 dias.</Empty>}
+        </Section>
+
+        <Section id="equipamentos" title="Equipamentos" action={<Link href="/estoque/equipamentos" className="text-sm font-medium text-primary hover:underline">Abrir equipamentos</Link>}>
+          {equipamentos.length ? (
+            <TableShell>
+              <table className="w-full text-sm">
+                <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className={th}>Unidade</th>
+                    <th className={th}>Patrimônio</th>
+                    <th className={th}>Status</th>
+                    <th className={th}>Reserva ativa</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/70">
+                  {equipamentos.filter((e) => !e.ativo || e.status_operacional !== "operacional" || (e.equipamento_reservas ?? []).length > 0).slice(0, 12).map((equip) => {
+                    const reserva = (equip.equipamento_reservas ?? []).find((r) => ["reservado", "em_uso"].includes(r.status));
+                    return (
+                      <tr key={equip.id}>
+                        <td className={`${td} font-medium`}><Link href={`/estoque/equipamentos?scan=${equip.id}`} className="text-primary hover:underline">{equip.equipamentos?.nome ?? `Equipamento #${equip.id}`}</Link></td>
+                        <td className={td}>{equip.codigo_patrimonio ?? "—"}</td>
+                        <td className={td}><Pill tone={!equip.ativo || ["em_manutencao", "calibracao_vencida", "inativo", "descartado"].includes(equip.status_operacional) ? "red" : equip.status_operacional === "reservado" ? "blue" : "green"}>{equip.status_operacional}</Pill></td>
+                        <td className={td}>{reserva ? `${formatDate(reserva.data_inicio)} → ${formatDate(reserva.data_fim)}` : "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableShell>
+          ) : <Empty>Nenhuma unidade de equipamento cadastrada.</Empty>}
+        </Section>
+
+        <Section id="notificacoes" title="Notificações e pendências" action={<Link href="/notificacoes" className="text-sm font-medium text-primary hover:underline">Abrir notificações</Link>}>
+          {notificacoes.length ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {notificacoes.slice(0, 12).map((n) => (
+                <Link key={n.id} href={n.entidade_tipo === "pedido_compra" && n.entidade_id ? `/compras/${n.entidade_id}` : n.entidade_tipo === "planejamento" && n.entidade_id ? `/planejamento/${n.entidade_id}` : "/notificacoes"} className="rounded-lg border border-border bg-card p-4 shadow-sm hover:border-brand-300">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{n.titulo}</p>
+                      {n.corpo && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{n.corpo}</p>}
+                    </div>
+                    <Pill tone="amber">{n.tipo}</Pill>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">{formatDate(n.criado_em)}</p>
+                </Link>
+              ))}
+            </div>
+          ) : <Empty>Sem notificações não lidas.</Empty>}
+        </Section>
+
+        <Section id="rastreabilidade" title="Rastreabilidade">
+          {rastreabilidade.length ? (
+            <TableShell>
+              <table className="w-full text-sm">
+                <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className={th}>Pedido interno</th>
+                    <th className={th}>Compra formal</th>
+                    <th className={th}>Itens recebidos</th>
+                    <th className={th}>Lotes</th>
+                    <th className={th}>Modalidade</th>
+                    <th className={th}>Instituição</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/70">
+                  {rastreabilidade.map((pedido) => {
+                    const lotesRecebidos = pedido.pedidos_internos_itens.filter((item) => item.lote_id);
+                    return (
+                      <tr key={pedido.id}>
+                        <td className={`${td} font-medium`}><Link href={`/pedido/${pedido.id}`} className="text-primary hover:underline">{pedidoInternoNumero(pedido.id)} · {pedido.titulo}</Link></td>
+                        <td className={td}>{asOne(pedido.pedidos_compra)?.id ? <Link href={`/compras/${asOne(pedido.pedidos_compra)?.id}`} className="text-primary hover:underline">#{asOne(pedido.pedidos_compra)?.id} · {asOne(pedido.pedidos_compra)?.status}</Link> : "—"}</td>
+                        <td className={td}>{pedido.pedidos_internos_itens.filter((item) => item.recebido_em).length}/{pedido.pedidos_internos_itens.length}</td>
+                        <td className={td}>
+                          {lotesRecebidos.length ? lotesRecebidos.map((item) => (
+                            <Link key={item.id} href={`/estoque/lotes/${item.lote_id}`} className="mr-2 text-primary hover:underline">#{item.lote_id}</Link>
+                          )) : "—"}
+                        </td>
+                        <td className={td}>{pedido.modalidade_compra ? MODALIDADE[pedido.modalidade_compra] ?? pedido.modalidade_compra : "—"}</td>
+                        <td className={td}>{pedido.instituicao_destino ?? "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableShell>
+          ) : <Empty>Ainda não há processos com compra/lote suficientes para rastreabilidade item-a-item.</Empty>}
         </Section>
       </main>
     </div>

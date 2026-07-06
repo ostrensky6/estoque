@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createClientUntyped } from "@/lib/supabase/server";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
@@ -21,6 +22,29 @@ import {
 
 export const dynamic = "force-dynamic";
 
+function erroSchemaCache(error: { message?: string; code?: string } | null | undefined) {
+  return Boolean(
+    error &&
+      (error.code === "PGRST204" ||
+        error.message?.includes("schema cache") ||
+        error.message?.includes("Could not find the")),
+  );
+}
+
+async function consultarReservasPlano(supabase: Awaited<ReturnType<typeof createClientUntyped>>, planId: number) {
+  const full = await supabase
+    .from("reservas_estoque")
+    .select("id, status, insumo_id, lote_id, quantidade, quantidade_consumida, lotes_estoque(codigo_lote, validade, validade_apos_abertura)")
+    .eq("planejamento_id", planId);
+
+  if (!erroSchemaCache(full.error)) return full;
+
+  return supabase
+    .from("reservas_estoque")
+    .select("id, status, insumo_id, quantidade")
+    .eq("planejamento_id", planId);
+}
+
 export default async function PlanoDetalhe({
   params,
 }: {
@@ -41,7 +65,7 @@ export default async function PlanoDetalhe({
   const [{ data: itens }, { data: analises }, { data: reservas }] = await Promise.all([
     supabase.from("planejamento_itens").select("id, codigo_analise, n_amostras, n_controles, repeticoes, perda_percentual").eq("planejamento_id", planId).order("id"),
     supabase.from("analises").select("codigo, nome").order("codigo"),
-    supabase.from("reservas_estoque").select("status").eq("planejamento_id", planId),
+    consultarReservasPlano(supabaseUntyped, planId),
   ]);
 
   const demanda = await computarDemandaPlano(supabase, planId);
@@ -61,7 +85,20 @@ export default async function PlanoDetalhe({
       ])
     : [{ data: [] }, { data: [] }];
 
-  const rs = (reservas ?? []) as { status: string }[];
+  const rs = (reservas ?? []) as Array<{
+    id: number;
+    status: string;
+    insumo_id: number;
+    lote_id: number | null;
+    quantidade: number;
+    quantidade_consumida?: number | null;
+    lotes_estoque?: { codigo_lote: string | null; validade: string | null; validade_apos_abertura: string | null } | null;
+  }>;
+  const reservasPorInsumo = new Map<number, typeof rs>();
+  for (const reserva of rs) {
+    const insumoId = Number(reserva.insumo_id);
+    reservasPorInsumo.set(insumoId, [...(reservasPorInsumo.get(insumoId) ?? []), reserva]);
+  }
   const status = rs.some((r) => r.status === "consumido")
     ? "Iniciado"
     : rs.some((r) => r.status === "reservado")
@@ -236,24 +273,45 @@ export default async function PlanoDetalhe({
                   <th className="px-4 py-3 text-left">Un.</th>
                   <th className="px-4 py-3 text-right">Demanda</th>
                   <th className="px-4 py-3 text-right">Disponível</th>
+                  <th className="px-4 py-3 text-left">Lote reservado</th>
                   <th className="px-4 py-3 text-right">Falta</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/70">
-                {demanda.map((d) => (
-                  <tr key={d.insumo_id} className={d.falta > 0 ? "bg-warning-soft/60" : ""}>
-                    <td className="px-4 py-2 max-w-sm truncate" title={d.especificacao}>{d.especificacao}</td>
-                    <td className="px-4 py-2 text-muted-foreground">{d.unidade ?? "—"}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{fmt(d.demanda)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">{fmt(d.disponivel)}</td>
-                    <td className={`px-4 py-2 text-right tabular-nums font-medium ${d.falta > 0 ? "text-warning-strong" : "text-muted-foreground/80"}`}>
-                      {d.falta > 0 ? fmt(d.falta) : "—"}
-                    </td>
-                  </tr>
-                ))}
+                {demanda.map((d) => {
+                  const reservasInsumo = reservasPorInsumo.get(d.insumo_id) ?? [];
+                  return (
+                    <tr key={d.insumo_id} className={d.falta > 0 ? "bg-warning-soft/60" : ""}>
+                      <td className="px-4 py-2 max-w-sm truncate" title={d.especificacao}>{d.especificacao}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{d.unidade ?? "—"}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{fmt(d.demanda)}</td>
+                      <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">{fmt(d.disponivel)}</td>
+                      <td className="px-4 py-2 text-xs text-muted-foreground">
+                        {reservasInsumo.length > 0 ? (
+                          <div className="space-y-1">
+                            {reservasInsumo.map((reserva) => (
+                              <div key={reserva.id}>
+                                {reserva.lote_id ? (
+                                  <Link href={`/estoque/lotes/${reserva.lote_id}`} className="font-medium text-primary hover:underline">
+                                    #{reserva.lote_id}
+                                  </Link>
+                                ) : "sem lote"}
+                                {" · "}
+                                {fmt(reserva.quantidade)} · {reserva.status}
+                              </div>
+                            ))}
+                          </div>
+                        ) : "—"}
+                      </td>
+                      <td className={`px-4 py-2 text-right tabular-nums font-medium ${d.falta > 0 ? "text-warning-strong" : "text-muted-foreground/80"}`}>
+                        {d.falta > 0 ? fmt(d.falta) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {demanda.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground/80">
+                    <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground/80">
                       Adicione análises para calcular a demanda.
                     </td>
                   </tr>

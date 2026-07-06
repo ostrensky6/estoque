@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClientUntyped } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
 import { criarPedidoInterno } from "@/lib/actions/pedidos-internos";
 import { PedidosInternosTable, type PedidoInternoRow } from "@/components/pedido/PedidosInternosTable";
@@ -8,30 +8,133 @@ import { formatCurrency as brl, formatDate } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
+type ProjetoOption = {
+  id: number;
+  nome: string;
+  coordenador?: string | null;
+  coordenador_nome?: string | null;
+  coordenador_email?: string | null;
+};
+
+type PedidoInternoListRow = {
+  id: number;
+  titulo: string;
+  status: string;
+  solicitante: string | null;
+  data_necessidade: string | null;
+  urgencia: string | null;
+  tipo_demanda?: string | null;
+  modalidade_compra?: string | null;
+  pedido_compra_id: number | null;
+  criado_em: string;
+  coordenador_projeto_nome?: string | null;
+  coordenador_projeto_email?: string | null;
+  projetos: { nome: string | null; coordenador?: string | null; coordenador_nome?: string | null; coordenador_email?: string | null } | Array<{ nome: string | null; coordenador?: string | null; coordenador_nome?: string | null; coordenador_email?: string | null }> | null;
+  pedidos_compra?: { id: number; status: string } | Array<{ id: number; status: string }> | null;
+  pedidos_internos_itens: Array<PedidoItemView & { recebido_em?: string | null }>;
+  pedidos_internos_anexos: Array<{ id: number; tipo: string }>;
+};
+
+function asOne<T>(value: T | T[] | null | undefined) {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+}
+
+const LABEL_TIPO: Record<string, string> = {
+  laboratorio: "Laboratório",
+  campo: "Campo",
+  laboratorio_campo: "Lab./campo",
+  administrativo: "Administrativo",
+  outro: "Outro",
+};
+
+const LABEL_MODALIDADE: Record<string, string> = {
+  compra_direta: "Compra direta",
+  fundacao: "Fundação",
+  universidade: "Universidade",
+  outra: "Outra",
+};
+
+function proximaAcao(status: string) {
+  const map: Record<string, { acao: string; responsavel: string }> = {
+    rascunho: { acao: "Enviar para validação", responsavel: "Solicitante" },
+    ajuste_solicitante: { acao: "Corrigir pedido", responsavel: "Solicitante" },
+    ajuste_compras: { acao: "Corrigir dados administrativos", responsavel: "Compras/Admin." },
+    em_validacao: { acao: "Aprovar coordenador", responsavel: "Coordenador do projeto" },
+    validado: { acao: "Formalizar compra", responsavel: "Coordenador/Compras" },
+    formalizado: { acao: "Análise administrativa", responsavel: "Administrativo" },
+    analise_administrativa: { acao: "Aprovar para cotação", responsavel: "Coordenador/Admin." },
+    aprovado_compra: { acao: "Registrar orçamentos", responsavel: "Compras/Admin." },
+    orcamentos: { acao: "Anexar orçamentos", responsavel: "Compras/Admin." },
+    orcamentos_recebidos: { acao: "Enviar aprovação final", responsavel: "Coordenador" },
+    aguardando_aprovacao_final: { acao: "Aprovar compra final", responsavel: "Coordenador" },
+    aprovado_para_compra: { acao: "Definir modalidade", responsavel: "Compras/Admin." },
+    compra_fechada: { acao: "Aguardar pagamento/NF", responsavel: "Compras/Admin." },
+    encaminhado_instituicao: { acao: "Acompanhar instituição", responsavel: "Administrativo" },
+    aguardando_pagamento_nf: { acao: "Anexar NF/comprovante", responsavel: "Compras/Admin." },
+    compra_concluida: { acao: "Concluído", responsavel: "—" },
+    cancelado: { acao: "Encerrado", responsavel: "—" },
+  };
+  return map[status] ?? { acao: "Revisar", responsavel: "Operação" };
+}
+
+function pendenciasPedido(row: PedidoInternoListRow) {
+  const pendencias: string[] = [];
+  const docsCotacao = row.pedidos_internos_anexos.some((doc) => ["orcamento_previo", "proposta", "print", "email"].includes(doc.tipo));
+  if (!docsCotacao && ["orcamentos", "aprovado_compra"].includes(row.status)) pendencias.push("orçamento");
+  if (!row.projetos) pendencias.push("projeto");
+  if (!row.pedidos_internos_itens.length) pendencias.push("itens");
+  if (row.status === "aprovado_para_compra" && !row.modalidade_compra) pendencias.push("modalidade");
+  return pendencias.length ? pendencias.join(", ") : "—";
+}
+
 export default async function PedidoPage() {
-  const supabase = await createClient();
-  const [{ data: pedidos }, { data: projetos }, podeExcluir] = await Promise.all([
+  const supabase = await createClientUntyped();
+  const [pedidosFull, projetosFull, podeExcluir] = await Promise.all([
     supabase
       .from("pedidos_internos")
-      .select("id, titulo, status, solicitante, data_necessidade, urgencia, criado_em, projetos(nome), pedidos_internos_itens(id, tipo, especificacao, modelo, volume, quantidade, unidade, orcamento_previo, fornecedor_sugerido)")
+      .select("id, titulo, status, solicitante, data_necessidade, urgencia, tipo_demanda, modalidade_compra, pedido_compra_id, criado_em, coordenador_projeto_nome, coordenador_projeto_email, projetos(nome, coordenador, coordenador_nome, coordenador_email), pedidos_compra(id, status), pedidos_internos_itens(id, tipo, especificacao, modelo, volume, quantidade, unidade, orcamento_previo, fornecedor_sugerido, recebido_em), pedidos_internos_anexos(id, tipo)")
       .order("criado_em", { ascending: false }),
-    supabase.from("projetos").select("id, nome").order("nome"),
+    supabase.from("projetos").select("id, nome, coordenador, coordenador_nome, coordenador_email").order("nome"),
     temPapel("coordenador"),
   ]);
+  const { data: pedidos } = pedidosFull.error
+    ? await supabase
+        .from("pedidos_internos")
+        .select("id, titulo, status, solicitante, data_necessidade, urgencia, pedido_compra_id, criado_em, projetos(nome, coordenador), pedidos_compra(id, status), pedidos_internos_itens(id, tipo, especificacao, modelo, volume, quantidade, unidade, orcamento_previo, fornecedor_sugerido, recebido_em), pedidos_internos_anexos(id, tipo)")
+        .order("criado_em", { ascending: false })
+    : pedidosFull;
+  const { data: projetos } = projetosFull.error
+    ? await supabase.from("projetos").select("id, nome, coordenador").order("nome")
+    : projetosFull;
 
-  const rows: PedidoInternoRow[] = (pedidos ?? []).map((pedido) => {
+  const rows: PedidoInternoRow[] = ((pedidos ?? []) as unknown as PedidoInternoListRow[]).map((pedido) => {
     const itens = ((pedido.pedidos_internos_itens ?? []) as PedidoItemView[]) ?? [];
     const total = itens.reduce(
       (acc, item) => acc + Number(item.quantidade ?? 0) * Number(item.orcamento_previo ?? 0),
       0,
     );
     const status = pedidoInternoStatus(pedido.status);
-    const projeto = (pedido.projetos as { nome: string | null } | null)?.nome ?? "—";
+    const projetoRow = asOne(pedido.projetos);
+    const compraRow = asOne(pedido.pedidos_compra);
+    const projeto = projetoRow?.nome ?? "—";
+    const coordenador =
+      pedido.coordenador_projeto_nome ??
+      pedido.coordenador_projeto_email ??
+      projetoRow?.coordenador_nome ??
+      projetoRow?.coordenador ??
+      projetoRow?.coordenador_email ??
+      "—";
+    const docsCotacao = pedido.pedidos_internos_anexos.some((doc) => ["orcamento_previo", "proposta", "print", "email"].includes(doc.tipo));
+    const recebidos = pedido.pedidos_internos_itens.filter((item) => item.recebido_em).length;
+    const proxima = proximaAcao(pedido.status);
+    const compraFormal = compraRow?.id ? `#${compraRow.id} · ${compraRow.status}` : "—";
     return {
       id: pedido.id,
       numero: pedidoInternoNumero(pedido.id),
       titulo: pedido.titulo,
+      tipoDemanda: LABEL_TIPO[pedido.tipo_demanda ?? "laboratorio"] ?? pedido.tipo_demanda ?? "—",
       projeto,
+      coordenador,
       solicitante: pedido.solicitante ?? "—",
       necessidade: formatDate(pedido.data_necessidade),
       urgencia: pedido.urgencia ?? "normal",
@@ -40,6 +143,13 @@ export default async function PedidoPage() {
       total: brl(total),
       status: pedido.status,
       statusLabel: status.label,
+      proximaAcao: proxima.acao,
+      responsavelAtual: proxima.responsavel,
+      documentos: docsCotacao ? "ok" : "pendente",
+      modalidade: pedido.modalidade_compra ? LABEL_MODALIDADE[pedido.modalidade_compra] ?? pedido.modalidade_compra : "—",
+      compraFormal,
+      recebimento: itens.length ? `${recebidos}/${itens.length}` : "—",
+      pendencias: pendenciasPedido(pedido),
     };
   });
 
@@ -80,9 +190,21 @@ export default async function PedidoPage() {
             <label className="block text-xs font-medium text-muted-foreground">Projeto</label>
             <select name="projeto_id" defaultValue="" className={inputCls}>
               <option value="">—</option>
-              {(projetos ?? []).map((projeto) => (
-                <option key={projeto.id} value={projeto.id}>{projeto.nome}</option>
+              {((projetos ?? []) as ProjetoOption[]).map((projeto) => (
+                <option key={projeto.id} value={projeto.id}>
+                  {projeto.nome}{projeto.coordenador_nome || projeto.coordenador ? ` · ${projeto.coordenador_nome ?? projeto.coordenador}` : ""}
+                </option>
               ))}
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-xs font-medium text-muted-foreground">Tipo</label>
+            <select name="tipo_demanda" defaultValue="laboratorio" className={inputCls}>
+              <option value="laboratorio">Laboratório</option>
+              <option value="campo">Campo</option>
+              <option value="laboratorio_campo">Lab./campo</option>
+              <option value="administrativo">Administrativo</option>
+              <option value="outro">Outro</option>
             </select>
           </div>
           <div className="md:col-span-2">

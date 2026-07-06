@@ -38,7 +38,7 @@ test("tela administrativa lista as 10 análises históricas", async ({ page }) =
   await page.goto("/analises");
   await expect(page.getByRole("heading", { name: /An[aá]lises/, exact: true })).toBeVisible();
 
-  const catalogo = page.getByRole("combobox", { name: "Análise" });
+  const catalogo = page.getByRole("table");
   for (const codigo of HISTORICAL_CODES) {
     await expect(catalogo).toContainText(codigo);
   }

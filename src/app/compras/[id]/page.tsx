@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
+import { createClientUntyped } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
 import {
   adicionarItemPedido,
@@ -29,8 +30,10 @@ type PedidoCompraItemRow = {
   divergencia_recebimento: string | null;
   custo_unitario_estimado: number | null;
   lote_id: number | null;
+  pedido_interno_item_id: number | null;
   insumo_id: number | null;
   insumos: { especificacao: string | null; unidade: string | null } | null;
+  pedidos_internos_itens?: { pedido_interno_id: number | null } | null;
 };
 
 type PedidoCompraItensQuery = {
@@ -44,7 +47,7 @@ type PedidoCompraItensQuery = {
 export default async function PedidoDetalhe({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const pedidoId = Number(id);
-  const supabase = await createClient();
+  const supabase = await createClientUntyped();
 
   const { data: pedido } = await supabase
     .from("pedidos_compra")
@@ -55,7 +58,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
 
   const [{ data: itens }, { data: insumos }, podeGerir] = await Promise.all([
     (supabase.from("pedidos_compra_itens") as unknown as PedidoCompraItensQuery)
-      .select("id, quantidade, quantidade_recebida, divergencia_recebimento, custo_unitario_estimado, lote_id, insumo_id, insumos(especificacao, unidade)")
+      .select("id, quantidade, quantidade_recebida, divergencia_recebimento, custo_unitario_estimado, lote_id, pedido_interno_item_id, insumo_id, insumos(especificacao, unidade), pedidos_internos_itens(pedido_interno_id)")
       .eq("pedido_id", pedidoId)
       .order("id"),
     supabase.from("insumos").select("id, especificacao").order("especificacao"),
@@ -98,6 +101,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
               <thead className="border-b border-border bg-transparent text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 text-left">Insumo</th>
+                  <th className="px-4 py-3 text-left">Origem</th>
                   <th className="px-4 py-3 text-right">Qtd</th>
                   <th className="px-4 py-3 text-right">Custo est.</th>
                   <th className="px-4 py-3 text-center">Recebido</th>
@@ -110,6 +114,13 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                   return (
                     <tr key={it.id}>
                       <td className="px-4 py-2.5 max-w-xs truncate" title={ins?.especificacao ?? ""}>{ins?.especificacao}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">
+                        {it.pedidos_internos_itens?.pedido_interno_id ? (
+                          <Link href={`/pedido/${it.pedidos_internos_itens.pedido_interno_id}`} className="text-primary hover:underline">
+                            Pedido interno #{it.pedidos_internos_itens.pedido_interno_id}
+                          </Link>
+                        ) : "—"}
+                      </td>
                       <td className="px-4 py-2.5 text-right tabular-nums">{fmt(it.quantidade)} {ins?.unidade ?? ""}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums">{brl(it.custo_unitario_estimado)}</td>
                       <td className="px-4 py-2.5 text-center">
@@ -153,7 +164,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                   );
                 })}
                 {(itens ?? []).length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground/80">Nenhum item.</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-6 text-center text-muted-foreground/80">Nenhum item.</td></tr>
                 )}
               </tbody>
             </table>

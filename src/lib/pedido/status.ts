@@ -5,8 +5,8 @@ export const PEDIDO_INTERNO_STATUS = {
     className: "bg-muted text-muted-foreground",
   },
   em_validacao: {
-    label: "Em validação",
-    etapa: "Validação do coordenador",
+    label: "Aguardando coordenador",
+    etapa: "Validação pelo coordenador do projeto",
     className: "bg-warning-soft text-warning-strong",
   },
   ajuste_solicitante: {
@@ -15,13 +15,13 @@ export const PEDIDO_INTERNO_STATUS = {
     className: "bg-warning-soft text-warning-strong",
   },
   validado: {
-    label: "Validado",
-    etapa: "Informações confirmadas",
+    label: "Aprovado pelo coordenador",
+    etapa: "Informações confirmadas pelo coordenador",
     className: "bg-info-soft text-info-strong",
   },
   formalizado: {
-    label: "Formalizado",
-    etapa: "Pedido formal em compras",
+    label: "Aguardando administrativo",
+    etapa: "Pedido formal em compras/administração",
     className: "bg-info-soft text-info-strong",
   },
   analise_administrativa: {
@@ -35,7 +35,7 @@ export const PEDIDO_INTERNO_STATUS = {
     className: "bg-warning-soft text-warning-strong",
   },
   aprovado_compra: {
-    label: "Aprovado para orçamento",
+    label: "Aguardando orçamento",
     etapa: "Aprovação administrativa",
     className: "bg-success-soft text-success-strong",
   },
@@ -56,16 +56,16 @@ export const PEDIDO_INTERNO_STATUS = {
   },
   aprovado_para_compra: {
     label: "Aprovado para compra",
-    etapa: "Fornecedor ou instituição definido",
+    etapa: "Definir compra direta ou instituição",
     className: "bg-success-soft text-success-strong",
   },
   compra_fechada: {
-    label: "Compra fechada",
+    label: "Compra direta em andamento",
     etapa: "Fornecedor e documentos",
     className: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300",
   },
   encaminhado_instituicao: {
-    label: "Encaminhado",
+    label: "Enviado à Fundação/Universidade",
     etapa: "Instituição compradora",
     className: "bg-info-soft text-info-strong",
   },

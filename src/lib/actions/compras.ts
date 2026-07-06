@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createClientUntyped } from "@/lib/supabase/server";
 import { temPapel, usuarioAtual } from "@/lib/auth/roles";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
 import { registrarEvento } from "./eventos";
@@ -13,6 +13,15 @@ const SEM_PERMISSAO: FormState = {
   message: "Sem permissão — requer papel coordenador ou superior.",
 };
 const MSG_VALIDADE_CRITICO = "Validade é obrigatória para receber insumo crítico.";
+
+function erroSchemaCache(error: { message?: string; code?: string } | null | undefined) {
+  return Boolean(
+    error &&
+      (error.code === "PGRST204" ||
+        error.message?.includes("schema cache") ||
+        error.message?.includes("Could not find the")),
+  );
+}
 
 function leadTimeEfetivo(
   leadTimeInsumo: unknown,
@@ -71,14 +80,14 @@ export async function gerarRascunhosReposicao(_prev: FormState): Promise<FormSta
 }
 
 /**
- * 2.3 — Falta do plano → pedido de compra. Gera pedido(s) pré-preenchidos com
- * os insumos em falta pela demanda real ainda não atendida. Um pedido por
- * fornecedor.
+ * 2.3 — Falta do plano → pedido interno. A falta operacional nasce como
+ * demanda rastreável do laboratório/campo; a formalização em compra acontece
+ * depois da aprovação do coordenador.
  */
 export async function comprarFaltasDoPlano(formData: FormData) {
   const planId = Number(formData.get("planejamento_id"));
   if (!planId) return;
-  const supabase = await createClient();
+  const supabase = await createClientUntyped();
   const u = await usuarioAtual();
 
   const demanda = await computarDemandaPlano(supabase, planId);
@@ -87,58 +96,80 @@ export async function comprarFaltasDoPlano(formData: FormData) {
     throw new Error("Este plano não tem faltas para comprar.");
 
   const [{ data: plano }, { data: insumos }] = await Promise.all([
-    supabase.from("planejamento").select("projeto_id").eq("id", planId).single(),
-    supabase
-      .from("insumos")
-      .select("id, fornecedor_id, estoque_seguranca, custo_unitario")
-      .in("id", faltas.map((f) => f.insumo_id)),
+    supabase.from("planejamento").select("id, nome, projeto_id, projetos(coordenador)").eq("id", planId).single(),
+    supabase.from("insumos").select("id, fornecedor_id, custo_unitario, fornecedores(nome)").in("id", faltas.map((f) => f.insumo_id)),
   ]);
   const infoMap = new Map((insumos ?? []).map((i) => [i.id, i]));
 
-  // agrupa as faltas pelo fornecedor principal (null = sem fornecedor definido)
-  const porFornecedor = new Map<
-    number | null,
-    { insumo_id: number; quantidade: number; custo: number | null }[]
-  >();
-  for (const f of faltas) {
-    const info = infoMap.get(f.insumo_id);
-    const fornecedor = info?.fornecedor_id ?? null;
-    const quantidade = f.falta;
-    const arr = porFornecedor.get(fornecedor) ?? [];
-    arr.push({ insumo_id: f.insumo_id, quantidade, custo: info?.custo_unitario ?? null });
-    porFornecedor.set(fornecedor, arr);
-  }
-
-  let primeiroPedidoId: number | null = null;
-  for (const [fornecedor, itens] of porFornecedor) {
-    const { data: pedido, error } = await supabase
-      .from("pedidos_compra")
+  const projeto = Array.isArray(plano?.projetos) ? plano?.projetos[0] : plano?.projetos;
+  const payload = {
+    titulo: `Faltas do planejamento #${planId}${plano?.nome ? ` · ${plano.nome}` : ""}`,
+    status: "rascunho",
+    solicitante: u?.email ?? null,
+    projeto_id: plano?.projeto_id ?? null,
+    planejamento_id: planId,
+    tipo_demanda: "laboratorio",
+    urgencia: "alta",
+    fonte_recurso: "A definir pelo projeto",
+    justificativa: `Pedido gerado porque o planejamento #${planId} não tinha saldo suficiente para iniciar.`,
+    coordenador_projeto_nome: projeto?.coordenador ?? null,
+    coordenador_projeto_email: String(projeto?.coordenador ?? "").includes("@") ? projeto?.coordenador ?? null : null,
+  };
+  let { data: pedido, error } = await supabase
+    .from("pedidos_internos")
+    .insert(payload)
+    .select("id")
+    .single();
+  if (erroSchemaCache(error)) {
+    const retry = await supabase
+      .from("pedidos_internos")
       .insert({
-        fornecedor_id: fornecedor,
-        projeto_id: plano?.projeto_id ?? null,
-        solicitante: u?.email ?? null,
-        status: "solicitado",
-        observacao: `Gerado das faltas do planejamento #${planId}`,
+        titulo: payload.titulo,
+        status: payload.status,
+        solicitante: payload.solicitante,
+        projeto_id: payload.projeto_id,
+        planejamento_id: payload.planejamento_id,
+        urgencia: payload.urgencia,
+        fonte_recurso: payload.fonte_recurso,
+        justificativa: payload.justificativa,
       })
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
-    primeiroPedidoId ??= pedido.id;
-
-    const { error: itensErr } = await supabase.from("pedidos_compra_itens").insert(
-      itens.map((it) => ({
-        pedido_id: pedido.id,
-        insumo_id: it.insumo_id,
-        quantidade: it.quantidade,
-        custo_unitario_estimado: it.custo,
-      })),
-    );
-    if (itensErr) throw new Error(itensErr.message);
+    pedido = retry.data;
+    error = retry.error;
   }
+  if (error) throw new Error(error.message);
+  if (!pedido) throw new Error("Não foi possível criar o pedido interno para as faltas do planejamento.");
 
-  revalidatePath("/compras");
+  const { error: itensErr } = await supabase.from("pedidos_internos_itens").insert(
+    faltas.map((f) => {
+      const info = infoMap.get(f.insumo_id) as {
+        custo_unitario?: number | null;
+        fornecedores?: { nome: string | null } | { nome: string | null }[] | null;
+      } | undefined;
+      const fornecedor = Array.isArray(info?.fornecedores)
+        ? info?.fornecedores[0]?.nome
+        : info?.fornecedores?.nome;
+      return {
+        pedido_interno_id: pedido.id,
+        tipo: "material",
+        insumo_id: f.insumo_id,
+        especificacao: f.especificacao,
+        quantidade: f.falta,
+        unidade: f.unidade,
+        orcamento_previo: info?.custo_unitario ?? null,
+        fornecedor_sugerido: fornecedor ?? null,
+        observacao: `Falta gerada pelo planejamento #${planId}`,
+      };
+    }),
+  );
+  if (itensErr) throw new Error(itensErr.message);
+
+  await registrarEvento("pedido_interno", pedido.id, null, "rascunho", `Gerado pelas faltas do planejamento #${planId}.`);
+  revalidatePath("/pedido");
   revalidatePath(`/planejamento/${planId}`);
-  redirect(porFornecedor.size === 1 && primeiroPedidoId ? `/compras/${primeiroPedidoId}` : "/compras");
+  revalidatePath("/suprimentos");
+  redirect(`/pedido/${pedido.id}`);
 }
 
 export async function adicionarItemPedido(formData: FormData) {

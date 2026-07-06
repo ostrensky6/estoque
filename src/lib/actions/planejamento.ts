@@ -194,7 +194,7 @@ export async function reservarPlano(
     return { ok: false, message: "Adicione análises ao plano antes de reservar." };
 
   const itens = demanda.map((d) => ({ insumo_id: d.insumo_id, quantidade: d.demanda }));
-  const { error } = await supabase.rpc("reservar_plano", {
+  const { data, error } = await supabase.rpc("reservar_plano", {
     p_planejamento_id: planId,
     p_itens: itens,
   });
@@ -203,7 +203,17 @@ export async function reservarPlano(
     p_planejamento_id: planId,
   } as never);
 
-  const faltasPlano = demanda.filter((d) => d.falta > 0);
+  const shortfalls = parseShortfalls((data as unknown as { shortfalls?: unknown } | null)?.shortfalls);
+  const faltaPorInsumo = new Map<number, number>();
+  for (const item of demanda.filter((d) => d.falta > 0)) {
+    faltaPorInsumo.set(item.insumo_id, item.falta);
+  }
+  for (const item of shortfalls) {
+    faltaPorInsumo.set(item.insumo_id, Math.max(faltaPorInsumo.get(item.insumo_id) ?? 0, item.falta));
+  }
+  const faltasPlano = demanda
+    .filter((item) => faltaPorInsumo.has(item.insumo_id))
+    .map((item) => ({ ...item, falta: faltaPorInsumo.get(item.insumo_id) ?? item.falta }));
   await notificarFaltasPlano(supabase, planId, faltasPlano, "reserva");
   revalidatePath(`/planejamento/${planId}`);
   revalidatePath("/notificacoes");

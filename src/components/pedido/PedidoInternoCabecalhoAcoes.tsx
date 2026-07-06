@@ -14,7 +14,13 @@ import {
 } from "@/components/ui/dialog";
 import { atualizarPedidoInterno, excluirPedidoInterno } from "@/lib/actions/pedidos-internos";
 
-type Opcao = { id: number; nome: string | null };
+type Opcao = {
+  id: number;
+  nome: string | null;
+  coordenador?: string | null;
+  coordenador_nome?: string | null;
+  coordenador_email?: string | null;
+};
 
 const inputCls =
   "mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm";
@@ -26,6 +32,7 @@ export function PedidoInternoCabecalhoAcoes({
   projetoId,
   dataNecessidade,
   urgencia,
+  tipoDemanda,
   fonteRecurso,
   justificativa,
   projetos,
@@ -37,6 +44,7 @@ export function PedidoInternoCabecalhoAcoes({
   projetoId: number | null;
   dataNecessidade: string | null;
   urgencia: string | null;
+  tipoDemanda: string | null;
   fonteRecurso: string | null;
   justificativa: string | null;
   projetos: Opcao[];
@@ -69,7 +77,10 @@ export function PedidoInternoCabecalhoAcoes({
                 <select name="projeto_id" defaultValue={projetoId ?? ""} className={inputCls}>
                   <option value="">—</option>
                   {projetos.map((projeto) => (
-                    <option key={projeto.id} value={projeto.id}>{projeto.nome}</option>
+                    <option key={projeto.id} value={projeto.id}>
+                      {projeto.nome}
+                      {projeto.coordenador_nome || projeto.coordenador ? ` · ${projeto.coordenador_nome ?? projeto.coordenador}` : ""}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -84,6 +95,16 @@ export function PedidoInternoCabecalhoAcoes({
                   <option value="normal">Normal</option>
                   <option value="alta">Alta</option>
                   <option value="critica">Crítica</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground">Tipo</label>
+                <select name="tipo_demanda" defaultValue={tipoDemanda ?? "laboratorio"} className={inputCls}>
+                  <option value="laboratorio">Laboratório</option>
+                  <option value="campo">Campo</option>
+                  <option value="laboratorio_campo">Lab./campo</option>
+                  <option value="administrativo">Administrativo</option>
+                  <option value="outro">Outro</option>
                 </select>
               </div>
             </div>
