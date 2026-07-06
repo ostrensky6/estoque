@@ -112,8 +112,8 @@ export default async function ComprasPage() {
                 Reposição automática
               </h2>
               <p className="mt-1 max-w-2xl text-xs leading-5 text-info-strong">
-                A mesma rotina que será agendada no Supabase cron pode ser disparada manualmente aqui.
-                Agendamento diário e e-mail externo dependem das credenciais/configuração do Supabase cron e Resend.
+                A rotina diária roda pelo cron protegido /api/cron/reposicao-suprimentos às 07:15.
+                E-mail externo ainda depende das credenciais/configuração do Resend.
               </p>
             </div>
             <GerarReposicaoButton />

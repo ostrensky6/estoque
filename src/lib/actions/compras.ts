@@ -59,7 +59,9 @@ export async function gerarRascunhosReposicao(_prev: FormState): Promise<FormSta
     notificacoes_criadas?: number;
   } | null;
   revalidatePath("/compras");
+  revalidatePath("/suprimentos");
   revalidatePath("/estoque");
+  revalidatePath("/estoque/controle");
   revalidatePath("/notificacoes");
   revalidatePath("/");
   return {

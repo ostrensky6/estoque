@@ -358,6 +358,43 @@ export default async function SuprimentosPage() {
             <EmptyState>Nenhuma exceção operacional prioritária para hoje.</EmptyState>
           )}
         </Section>
+
+        <Section
+          id="cadastros"
+          title="Cadastros críticos"
+          action={<Link href="/cadastros/insumos" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">Abrir insumos</Link>}
+        >
+          {cadastrosCriticosPendentes.length > 0 ? (
+            <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+              <table className="w-full text-sm">
+                <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Insumo</th>
+                    <th className="px-4 py-3 text-left">Pendências</th>
+                    <th className="px-4 py-3 text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/70">
+                  {cadastrosCriticosPendentes.slice(0, 10).map((insumo) => (
+                    <tr key={insumo.id}>
+                      <td className="max-w-xs truncate px-4 py-3 font-medium" title={insumo.especificacao ?? undefined}>
+                        {insumo.especificacao ?? `Insumo #${insumo.id}`}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">{insumo.pendencias.join(", ")}</td>
+                      <td className="px-4 py-3 text-right">
+                        <Link href="/cadastros/insumos" className="font-medium text-brand-700 hover:underline dark:text-brand-300">
+                          Completar cadastro
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState>Nenhum insumo crítico com cadastro operacional incompleto.</EmptyState>
+          )}
+        </Section>
       </main>
     </div>
   );

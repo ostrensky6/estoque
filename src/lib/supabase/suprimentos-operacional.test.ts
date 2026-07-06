@@ -66,4 +66,13 @@ describe("migrations operacionais de suprimentos", () => {
     expect(sql).toContain("v_responsavel is null or v_criterio is null");
     expect(sql).toContain("Lote critico exige responsavel e criterio de aceitacao.");
   });
+
+  it("mantem controle aditivo de envio externo de notificacoes", () => {
+    const sql = migration("0080_notificacoes_email_operacional.sql");
+
+    expect(sql).toContain("email_enviado_em");
+    expect(sql).toContain("email_erro");
+    expect(sql).toContain("email_tentativas");
+    expect(sql).toContain("notificacoes_email_pendentes_idx");
+  });
 });
