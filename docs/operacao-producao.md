@@ -14,6 +14,9 @@
 - Repositorio: https://github.com/ostrensky6/estoque
 - Conta GitHub: `ostrensky6`
 - Branch de producao: `main`
+- Baseline estavel pos-auditoria: `efa20f15205ea3d12b7bd9b0f72444d27561173a`
+- Tag local do baseline: `baseline-producao-pos-auditoria-20260704`
+- Main atual validada apos blindagem: `1f03603c69c7915c5e702b0115525eaa71da80e1`
 - Fluxo atual: deploy automatico pela integracao GitHub/Vercel do projeto `kontrol` na branch `main`.
 - Antes de publicar, rode `npm run prod:check`.
 
@@ -48,8 +51,8 @@ repita o procedimento.
 - Output directory: padrao Next.js
 - Production URL canonica: https://kontrol-atgc.vercel.app
 - Dominio alternativo validado: https://kontrol-lac.vercel.app
-- Commit validado em producao: `aa1e470d771b111420f124ec29f016455f1522e5`
-- Redeploy production validado: `dpl_7HcBoiUdAG2JHCrGF7ycj1SM2z5V`
+- Commit validado em producao: `1f03603c69c7915c5e702b0115525eaa71da80e1`
+- Status do commit validado: CI success, Vercel success, login e `/analises` validados em producao.
 - Deploy: preferir merge/push em `main` para acionar a integracao GitHub/Vercel. Deploy manual pela CLI/API deve ser excecao controlada, com `VERCEL_TOKEN` definido no ambiente e sem colar tokens em chat/logs.
 - Se o Node local falhar com erro de certificado do proxy, configure `NODE_EXTRA_CA_CERTS` para a cadeia corporativa/local. Evite `NODE_TLS_REJECT_UNAUTHORIZED=0`, salvo diagnostico pontual.
 - Variaveis de ambiente configuradas e verificadas em producao (Production scope):
@@ -82,15 +85,18 @@ repita o procedimento.
 - Historico de migrations em producao: conferir sempre com `supabase migration list --linked` antes de qualquer operacao; nao assumir um intervalo fixo a partir da documentacao.
 - Senha Postgres: armazenada no gerenciador de senhas. Nunca versionar.
 
-Nota operacional (2026-07-04): `gkcjzwfsnoknxgpsumxi` e o Supabase atual
-de producao do Kontrol no projeto Vercel `kontrol`.
+Nota operacional (2026-07-05): `gkcjzwfsnoknxgpsumxi` e o Supabase atual
+de producao do Kontrol no projeto Vercel `kontrol`. O ref legado
+`hhxwdcwphitfxywbgtju` foi removido apos validacao de producao e nao deve ser
+usado como alvo de producao, homologacao, migrations ou exemplos ativos.
 
 ### LEGADO / NAO USAR
 
 - Project ref legado: `hhxwdcwphitfxywbgtju`
 - API URL legada: https://hhxwdcwphitfxywbgtju.supabase.co
 - Pooler user legado: `postgres.hhxwdcwphitfxywbgtju`
-- Nao usar como producao, default, alvo esperado, homologacao ou exemplo ativo.
+- Status: projeto legado apagado em 2026-07-05 apos validacao de producao.
+- Manter apenas como referencia historica. Nao usar como producao, default, alvo esperado, homologacao ou exemplo ativo.
 
 ## Checklist operacional
 

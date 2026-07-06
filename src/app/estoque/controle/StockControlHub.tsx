@@ -80,6 +80,7 @@ type LoteDbRow = {
   especificacao: string;
   unidade: string;
   vencido: boolean;
+  critico: boolean;
 };
 
 type StockControlHubProps = {
@@ -233,6 +234,7 @@ export function StockControlHub({
   const countVencendo = items.filter((i) => i.status === "vencendo").length;
   const countQuarentena = items.filter((i) => i.status === "quarentena").length;
   const countOk = items.filter((i) => i.status === "ok").length;
+  const saudePct = totalInsumos > 0 ? Math.round((countOk / totalInsumos) * 100) : 0;
 
   const chartData = [
     { name: "Sem Estoque", value: countSemEstoque, color: "#ef4444" },
@@ -302,7 +304,7 @@ export function StockControlHub({
               <ShieldAlert className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-info-strong">{Math.round((countOk / totalInsumos) * 100)}%</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-info-strong">{saudePct}%</p>
           <p className="mt-1 text-xs text-muted-foreground">dos itens sem alertas</p>
         </div>
       </section>
@@ -472,7 +474,7 @@ export function StockControlHub({
       {/* 3. Renderização Principal Baseada no ViewMode */}
       <section className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
         {/* CABEÇALHO DO MÓDULO */}
-        <div className="border-b border-border/70 px-5 py-4 bg-muted/50/50 flex justify-between items-center">
+        <div className="border-b border-border/70 px-5 py-4 bg-muted/50 flex justify-between items-center">
           <div>
             <h2 className="text-sm font-semibold text-foreground">
               {viewMode === "insumo" && "Visão Consolidada de Insumos"}
@@ -503,10 +505,10 @@ export function StockControlHub({
                 const disponivel = item.disponivel ?? 0;
                 const emMaos = item.em_maos ?? 0;
                 const ponto = item.ponto_reposicao ?? 0;
-                const pctMin = puntoPct(disponivel, ponto);
+                const pctMin = pontoPct(disponivel, ponto);
 
                 return (
-                  <article key={item.insumo_id ?? idx} className="p-5 hover:bg-muted/50/40 transition-colors">
+                  <article key={item.insumo_id ?? idx} className="p-5 hover:bg-muted/40 transition-colors">
                     <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr_1.5fr]">
                       {/* Nome do Insumo e Detalhes */}
                       <div className="min-w-0">
@@ -667,7 +669,7 @@ export function StockControlHub({
                 </thead>
                 <tbody className="divide-y divide-border/70">
                   {filteredLotes.map((lote) => (
-                    <tr key={lote.id} className="bg-card hover:bg-muted/50/50 transition-colors">
+                    <tr key={lote.id} className="bg-card hover:bg-muted/50 transition-colors">
                       <td className="px-6 py-4 font-semibold text-foreground">
                         {lote.especificacao}
                       </td>
@@ -698,6 +700,7 @@ export function StockControlHub({
                           status={lote.status}
                           quantidadeAtual={lote.quantidadeAtual}
                           unidade={lote.unidade}
+                          critico={lote.critico}
                           podeAceitar={podeAceitar}
                           podeGerir={podeGerir}
                         />
@@ -714,7 +717,7 @@ export function StockControlHub({
         {viewMode === "grafica" && (
           <div className="grid gap-5 p-5 md:grid-cols-2">
             {/* Gráfico 1: Situação Geral */}
-            <div className="rounded-lg border border-border/70 bg-muted/50/50 p-5">
+            <div className="rounded-lg border border-border/70 bg-muted/50 p-5">
               <h3 className="text-sm font-semibold text-foreground mb-4">Situação Física dos Insumos</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -749,7 +752,7 @@ export function StockControlHub({
             </div>
 
             {/* Quadro de Resumo de Cobertura */}
-            <div className="rounded-lg border border-border/70 bg-muted/50/50 p-5 flex flex-col justify-between">
+            <div className="rounded-lg border border-border/70 bg-muted/50 p-5 flex flex-col justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5 mb-2">
                   <Info className="h-4 w-4 text-muted-foreground/80" /> Notas Operacionais de Controle
@@ -777,12 +780,12 @@ export function StockControlHub({
               <div className="mt-6 pt-4 border-t border-border/60">
                 <div className="flex justify-between items-center text-xs font-semibold text-foreground mb-1">
                   <span>Taxa de Saúde de Estoque:</span>
-                  <span>{Math.round((countOk / totalInsumos) * 100)}%</span>
+                  <span>{saudePct}%</span>
                 </div>
                 <div className="h-2 w-full rounded-full bg-muted">
                   <div
                     className="h-full rounded-full bg-brand-600"
-                    style={{ width: `${Math.round((countOk / totalInsumos) * 100)}%` }}
+                    style={{ width: `${saudePct}%` }}
                   />
                 </div>
               </div>
@@ -794,7 +797,7 @@ export function StockControlHub({
   );
 }
 
-function puntoPct(disponivel: number, ponto: number) {
+function pontoPct(disponivel: number, ponto: number) {
   if (ponto <= 0) return disponivel > 0 ? 100 : 0;
   return (disponivel / ponto) * 100;
 }

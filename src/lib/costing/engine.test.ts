@@ -9,6 +9,7 @@ import {
   reagentesPorAmostra,
   reagentesTotal,
   calcularAnalise,
+  calcularCurvaCustoAmostras,
   type Etapa,
   type InsumoLinha,
   type Parametros,
@@ -192,6 +193,21 @@ describe("calcularAnalise — cascata custo→preço", () => {
     expect(b.custoTotal).toBeCloseTo(12, 6);
   });
 
+  it("ignora equipamentos com peso zero, negativo ou invalido", () => {
+    const b = calcularAnalise({
+      ...base,
+      params: params0,
+      equip: [
+        { peso: 0, custoDia: 1000 },
+        { peso: -1, custoDia: 1000 },
+        { peso: Number.NaN, custoDia: 1000 },
+        { peso: 0.5, custoDia: 100 },
+      ],
+    });
+
+    expect(b.equipamento).toBeCloseTo(5, 6);
+  });
+
   it("com fatores = 0, preço == custo total (regressão do achado da auditoria)", () => {
     const b = calcularAnalise({ ...base, params: params0 });
     expect(b.preco).toBeCloseTo(b.custoTotal, 6);
@@ -266,5 +282,21 @@ describe("calcularAnalise — cascata custo→preço", () => {
     expect(b.numeroExecucoes).toBe(2);
     expect(b.totais.reagentes).toBeCloseTo(960, 6);
     expect(b.reagentes).toBeCloseTo(38.4, 6);
+  });
+
+  it("gera curva operacional que dilui dentro da capacidade e reinicia no ciclo seguinte", () => {
+    const curva = calcularCurvaCustoAmostras({
+      ...base,
+      params: params0,
+      maxAmostras: 12,
+    });
+
+    expect(curva[0].capacidadeOperacional).toBe(10);
+    expect(curva[0].custoUnitarioCiclo).toBeCloseTo(102, 6);
+    expect(curva[9].custoUnitarioCiclo).toBeCloseTo(12, 6);
+    expect(curva[10].ciclo).toBe(2);
+    expect(curva[10].amostrasNoCiclo).toBe(1);
+    expect(curva[10].custoUnitarioCiclo).toBeCloseTo(102, 6);
+    expect(curva[10].custoUnitarioMedio).toBeCloseTo(222 / 11, 6);
   });
 });

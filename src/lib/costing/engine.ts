@@ -249,6 +249,25 @@ export type BreakdownOrcamento = Breakdown & {
   escolhasGrupo: Record<string, string>;
 };
 
+export type CurvaCustoAmostrasPonto = {
+  amostras: number;
+  ciclo: number;
+  amostrasNoCiclo: number;
+  capacidadeOperacional: number;
+  custoUnitarioCiclo: number;
+  custoUnitarioMedio: number;
+  custoTotalPedido: number;
+  custoTotalCiclo: number;
+};
+
+function equipamentoDiaTotal(equip: EquipAlloc[]) {
+  return equip.reduce((a, e) => {
+    const peso = Number.isFinite(e.peso) && e.peso > 0 ? e.peso : 0;
+    const custoDia = Number.isFinite(e.custoDia) && e.custoDia > 0 ? e.custoDia : 0;
+    return a + peso * custoDia;
+  }, 0);
+}
+
 export function calcularAnalise(args: {
   codigo: string;
   etapas: Etapa[];
@@ -268,7 +287,7 @@ export function calcularAnalise(args: {
   );
   const reagentes = reagentesPorAmostra(selic, lote).total;
 
-  const equipDia = args.equip.reduce((a, e) => a + e.peso * e.custoDia, 0);
+  const equipDia = equipamentoDiaTotal(args.equip);
   const equipamento = g.amostrasDia > 0 ? equipDia / g.amostrasDia : 0;
 
   const hBancada = horasBancadaPorAmostra(args.etapas);
@@ -300,6 +319,61 @@ export function calcularAnalise(args: {
     fatores,
     preco,
   };
+}
+
+export function calcularCurvaCustoAmostras(args: {
+  codigo: string;
+  etapas: Etapa[];
+  equip: EquipAlloc[];
+  insumos: InsumoLinha[];
+  valorHoraPessoal: number;
+  custoHoraOverhead: number;
+  params: Parametros;
+  maxAmostras?: number;
+}): CurvaCustoAmostrasPonto[] {
+  const g = gargalo(args.etapas);
+  const capacidadeOperacional = Math.max(1, Math.floor(g.amostrasDia || g.amostrasPorExecucao || 1));
+  const maxAmostras = Math.max(1, Math.min(1000, Math.floor(args.maxAmostras ?? capacidadeOperacional * 3)));
+  const equipamentoDia = equipamentoDiaTotal(args.equip);
+  const custoPorTamanhoDeCiclo = new Map<number, number>();
+
+  const custoTotalDoCiclo = (amostrasNoCiclo: number) => {
+    const amostras = Math.max(1, Math.floor(amostrasNoCiclo));
+    const cached = custoPorTamanhoDeCiclo.get(amostras);
+    if (cached != null) return cached;
+
+    const parcial = calcularAnaliseOrcamento({
+      ...args,
+      numeroAmostras: amostras,
+    });
+    const equipamento = equipamentoDia > 0 ? equipamentoDia : parcial.totais.equipamento;
+    const custoAnalitico = parcial.totais.reagentes + equipamento + parcial.totais.pessoal;
+    const custoTotal = custoAnalitico + parcial.totais.overhead;
+    custoPorTamanhoDeCiclo.set(amostras, custoTotal);
+    return custoTotal;
+  };
+
+  const custoCicloCheio = custoTotalDoCiclo(capacidadeOperacional);
+
+  return Array.from({ length: maxAmostras }, (_, index) => {
+    const amostras = index + 1;
+    const ciclosCheiosAntes = Math.floor((amostras - 1) / capacidadeOperacional);
+    const amostrasNoCiclo = amostras - ciclosCheiosAntes * capacidadeOperacional;
+    const ciclo = ciclosCheiosAntes + 1;
+    const custoTotalCiclo = custoTotalDoCiclo(amostrasNoCiclo);
+    const custoTotalPedido = ciclosCheiosAntes * custoCicloCheio + custoTotalCiclo;
+
+    return {
+      amostras,
+      ciclo,
+      amostrasNoCiclo,
+      capacidadeOperacional,
+      custoUnitarioCiclo: custoTotalCiclo / amostrasNoCiclo,
+      custoUnitarioMedio: custoTotalPedido / amostras,
+      custoTotalPedido,
+      custoTotalCiclo,
+    };
+  });
 }
 
 export function calcularAnaliseOrcamento(args: {

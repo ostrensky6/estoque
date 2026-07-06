@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "./cadastros";
+import { usuarioAtual } from "@/lib/auth/roles";
 
 const schema = z.object({
   insumo_id: z.preprocess((v) => Number(v), z.number().int().positive()),
@@ -120,9 +121,10 @@ async function rpcLote(
 }
 
 export async function aceitarLote(formData: FormData): Promise<FormState> {
+  const u = await usuarioAtual();
   return rpcLote("aceitar_lote", {
     p_lote_id: Number(formData.get("lote_id")),
-    p_responsavel: (formData.get("responsavel") as string) || null,
+    p_responsavel: (formData.get("responsavel") as string) || u?.nome || u?.email || null,
     p_criterio: (formData.get("criterio") as string) || null,
   });
 }

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { createClient, createClientUntyped } from "@/lib/supabase/server";
+import { temPapel } from "@/lib/auth/roles";
+import { GerarReposicaoButton } from "@/components/compras/GerarReposicaoButton";
 import { formatDate, formatNumber as fmt } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -22,14 +24,6 @@ type CompraAberta = {
   fornecedores: { nome: string | null } | { nome: string | null }[] | null;
 };
 
-type TriagemPendente = {
-  id: number;
-  codigo: string | null;
-  tipo_sugerido: string | null;
-  status: string | null;
-  criado_em: string | null;
-};
-
 type InsumoCadastro = {
   id: number;
   especificacao: string | null;
@@ -38,6 +32,16 @@ type InsumoCadastro = {
   categoria_compra: string | null;
   unidade: string | null;
   unidade_consumo: string | null;
+};
+
+type FilaHojeItem = {
+  key: string;
+  prioridade: "critica" | "alta" | "media";
+  tipo: string;
+  item: string;
+  problema: string;
+  proximaAcao: string;
+  href: string;
 };
 
 function asOne<T>(value: T | T[] | null | undefined): T | null {
@@ -56,7 +60,7 @@ function pendenciasInsumo(row: InsumoCadastro) {
   const fator = Number(row.fator_conversao);
   const quantidadeEmbalagem = Number(row.quantidade_embalagem);
 
-  if (!Number.isFinite(fator) || fator <= 0) pendencias.push("fator de conversao");
+  if (!Number.isFinite(fator) || fator <= 0) pendencias.push("fator de conversão");
   if (!Number.isFinite(quantidadeEmbalagem) || quantidadeEmbalagem <= 0) pendencias.push("quantidade da embalagem");
   if (!row.categoria_compra) pendencias.push("categoria de compra");
   if (!row.unidade) pendencias.push("unidade de estoque");
@@ -77,6 +81,14 @@ function adicionarDias(data: string, dias: number) {
   return base.toISOString().slice(0, 10);
 }
 
+function prioridadeTone(prioridade: FilaHojeItem["prioridade"]) {
+  return prioridade === "critica" ? "red" : prioridade === "alta" ? "amber" : "blue";
+}
+
+function prioridadeLabel(prioridade: FilaHojeItem["prioridade"]) {
+  return prioridade === "critica" ? "Crítica" : prioridade === "alta" ? "Alta" : "Média";
+}
+
 function StatusPill({ children, tone = "zinc" }: { children: React.ReactNode; tone?: "red" | "amber" | "blue" | "brand" | "zinc" }) {
   const cls = {
     red: "bg-danger-soft text-danger-strong",
@@ -87,6 +99,30 @@ function StatusPill({ children, tone = "zinc" }: { children: React.ReactNode; to
   }[tone];
 
   return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{children}</span>;
+}
+
+function KpiCard({
+  label,
+  value,
+  detail,
+  href,
+  tone,
+}: {
+  label: string;
+  value: number;
+  detail: string;
+  href: string;
+  tone: "red" | "amber" | "blue" | "brand";
+}) {
+  return (
+    <Link href={href} className="rounded-lg border border-border bg-card p-4 shadow-sm hover:border-brand-300">
+      <div className="flex items-center justify-between gap-3">
+        <StatusPill tone={tone}>{label}</StatusPill>
+        <span className="text-2xl font-semibold tabular-nums">{value}</span>
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">{detail}</p>
+    </Link>
+  );
 }
 
 function Section({
@@ -123,12 +159,12 @@ export default async function SuprimentosPage() {
   const supabase = await createClient();
   const supabaseUntyped = await createClientUntyped();
   const hoje = new Date().toISOString().slice(0, 10);
+  const podeGerarReposicao = await temPapel("coordenador");
 
   const [
     { data: previsao },
     { data: lotes },
     { data: compras },
-    { data: triagens },
     { data: insumos },
   ] = await Promise.all([
     supabase.from("v_previsao_suprimentos").select("*").order("qtd_sugerida_compra", { ascending: false }),
@@ -144,12 +180,6 @@ export default async function SuprimentosPage() {
       .in("status", ["solicitado", "aprovado", "enviado", "em_transito"])
       .order("data_prevista_entrega", { ascending: true, nullsFirst: false }),
     supabaseUntyped
-      .from("cadastros_triagem")
-      .select("id, codigo, tipo_sugerido, status, criado_em")
-      .in("status", ["pendente", "em_analise"])
-      .order("criado_em", { ascending: true })
-      .limit(12),
-    supabaseUntyped
       .from("insumos")
       .select("id, especificacao, fator_conversao, quantidade_embalagem, categoria_compra, unidade, unidade_consumo")
       .order("especificacao"),
@@ -157,23 +187,21 @@ export default async function SuprimentosPage() {
 
   const limiteVencimento = adicionarDias(hoje, 30);
   const previsoes = previsao ?? [];
-  const rupturas = previsoes
-    .filter((item) => Number(item.disponivel ?? 0) <= 0)
-    .slice(0, 8);
-  const abaixoReposicao = previsoes
-    .filter((item) => {
-      const disponivel = Number(item.disponivel ?? 0);
-      const ponto = Number(item.ponto_reposicao_configurado ?? item.ponto_reposicao_sugerido ?? 0);
-      return ponto > 0 && disponivel > 0 && disponivel <= ponto;
-    })
-    .slice(0, 8);
+  const rupturas = previsoes.filter((item) => Number(item.disponivel ?? 0) <= 0);
+  const abaixoReposicao = previsoes.filter((item) => {
+    const disponivel = Number(item.disponivel ?? 0);
+    const ponto = Number(item.ponto_reposicao_configurado ?? item.ponto_reposicao_sugerido ?? 0);
+    return ponto > 0 && disponivel > 0 && disponivel <= ponto;
+  });
   const comprasAbertas = ((compras ?? []) as CompraAberta[])
     .map((compra) => ({
       ...compra,
-      fornecedorNome: asOne(compra.fornecedores)?.nome ?? "Fornecedor nao informado",
+      fornecedorNome: asOne(compra.fornecedores)?.nome ?? "Fornecedor não informado",
       atrasada: prioridadeCompra(compra.status, compra.data_prevista_entrega) > 0,
     }))
     .sort((a, b) => Number(b.atrasada) - Number(a.atrasada));
+  const comprasAtrasadas = comprasAbertas.filter((compra) => compra.atrasada);
+  const comprasAguardandoRecebimento = comprasAbertas.filter((compra) => ["aprovado", "enviado", "em_transito"].includes(compra.status));
   const lotesOperacionais = (lotes ?? []) as LoteOperacional[];
   const lotesVencidos = lotesOperacionais.filter((lote) => {
     const validade = validadeEfetiva(lote);
@@ -184,53 +212,91 @@ export default async function SuprimentosPage() {
     return validade != null && validade >= hoje && validade <= limiteVencimento;
   });
   const lotesQuarentena = lotesOperacionais.filter((lote) => lote.status === "quarentena");
-  const triagensPendentes = (triagens ?? []) as TriagemPendente[];
-  const cadastrosPendentes = ((insumos ?? []) as InsumoCadastro[])
+  const cadastrosCriticosPendentes = ((insumos ?? []) as InsumoCadastro[])
     .map((insumo) => ({ ...insumo, pendencias: pendenciasInsumo(insumo) }))
-    .filter((insumo) => insumo.pendencias.length > 0)
-    .slice(0, 10);
+    .filter((insumo) => insumo.categoria_compra === "critico" && insumo.pendencias.length > 0);
 
-  const excecoesHoje = [
+  const filaHoje: FilaHojeItem[] = [
     ...rupturas.map((item) => ({
       key: `ruptura-${item.insumo_id}`,
-      title: item.especificacao ?? `Insumo #${item.insumo_id}`,
-      meta: `disponivel ${fmt(item.disponivel)} ${item.unidade ?? ""}`,
+      prioridade: "critica" as const,
+      tipo: "Ruptura",
+      item: item.especificacao ?? `Insumo #${item.insumo_id}`,
+      problema: `Saldo utilizável ${fmt(item.disponivel)} ${item.unidade ?? ""}`,
+      proximaAcao: Number(item.qtd_pedida_aberta ?? 0) > 0 ? "Acompanhar compra aberta" : "Abrir compra formal",
       href: "/compras",
-      tone: "red" as const,
-      label: "Ruptura",
     })),
-    ...comprasAbertas.filter((item) => item.atrasada).map((item) => ({
-      key: `compra-${item.id}`,
-      title: `Pedido #${item.id}`,
-      meta: `${item.fornecedorNome} · previsto ${formatDate(item.data_prevista_entrega)}`,
-      href: `/compras/${item.id}`,
-      tone: "amber" as const,
-      label: "Compra atrasada",
+    ...comprasAtrasadas.map((compra) => ({
+      key: `compra-atrasada-${compra.id}`,
+      prioridade: "alta" as const,
+      tipo: "Compra atrasada",
+      item: `Compra formal #${compra.id}`,
+      problema: `${compra.fornecedorNome} · previsão ${formatDate(compra.data_prevista_entrega)}`,
+      proximaAcao: "Acompanhar fornecedor",
+      href: `/compras/${compra.id}`,
     })),
-    ...lotesVencidos.slice(0, 6).map((lote) => ({
-      key: `vencido-${lote.id}`,
-      title: asOne(lote.insumos)?.especificacao ?? `Lote #${lote.id}`,
-      meta: `lote ${lote.codigo_lote ?? lote.id} · venceu ${formatDate(validadeEfetiva(lote))}`,
+    ...comprasAguardandoRecebimento.filter((compra) => !compra.atrasada).map((compra) => ({
+      key: `receber-${compra.id}`,
+      prioridade: "media" as const,
+      tipo: "Recebimento",
+      item: `Compra formal #${compra.id}`,
+      problema: `${compra.status} · ${compra.fornecedorNome}`,
+      proximaAcao: "Receber pela compra formal",
+      href: `/compras/${compra.id}`,
+    })),
+    ...lotesVencidos.map((lote) => ({
+      key: `lote-vencido-${lote.id}`,
+      prioridade: "critica" as const,
+      tipo: "Lote vencido",
+      item: asOne(lote.insumos)?.especificacao ?? `Lote #${lote.id}`,
+      problema: `Lote ${lote.codigo_lote ?? lote.id} · venceu ${formatDate(validadeEfetiva(lote))}`,
+      proximaAcao: "Revisar, bloquear ou descartar",
       href: `/estoque/lotes/${lote.id}`,
-      tone: "red" as const,
-      label: "Vencido",
     })),
-    ...triagensPendentes.slice(0, 4).map((triagem) => ({
-      key: `triagem-${triagem.id}`,
-      title: triagem.codigo ?? `Triagem #${triagem.id}`,
-      meta: `${triagem.tipo_sugerido ?? "tipo indefinido"} · ${formatDate(triagem.criado_em)}`,
-      href: "/scanner/triagem",
-      tone: "blue" as const,
-      label: "Triagem",
+    ...lotesQuarentena
+      .filter((lote) => !lotesVencidos.some((vencido) => vencido.id === lote.id))
+      .map((lote) => ({
+        key: `quarentena-${lote.id}`,
+        prioridade: "media" as const,
+        tipo: "Liberação",
+        item: asOne(lote.insumos)?.especificacao ?? `Lote #${lote.id}`,
+        problema: `Lote ${lote.codigo_lote ?? lote.id} aguardando conferência`,
+        proximaAcao: "Liberar lote para uso",
+        href: `/estoque/lotes/${lote.id}`,
+      })),
+    ...cadastrosCriticosPendentes.map((insumo) => ({
+      key: `cadastro-critico-${insumo.id}`,
+      prioridade: "alta" as const,
+      tipo: "Cadastro crítico",
+      item: insumo.especificacao ?? `Insumo #${insumo.id}`,
+      problema: insumo.pendencias.join(", "),
+      proximaAcao: "Completar cadastro",
+      href: "/cadastros/insumos",
     })),
-  ].slice(0, 12);
+    ...abaixoReposicao.slice(0, 6).map((item) => ({
+      key: `reposicao-${item.insumo_id}`,
+      prioridade: "media" as const,
+      tipo: "Reposição",
+      item: item.especificacao ?? `Insumo #${item.insumo_id}`,
+      problema: `Disponível ${fmt(item.disponivel)} · comprar ${fmt(item.qtd_sugerida_compra)}`,
+      proximaAcao: "Revisar compra formal",
+      href: "/compras",
+    })),
+    ...lotesVencendo.slice(0, 4).map((lote) => ({
+      key: `vencendo-${lote.id}`,
+      prioridade: "media" as const,
+      tipo: "Validade",
+      item: asOne(lote.insumos)?.especificacao ?? `Lote #${lote.id}`,
+      problema: `Vence ${formatDate(validadeEfetiva(lote))}`,
+      proximaAcao: "Revisar FEFO",
+      href: `/estoque/lotes/${lote.id}`,
+    })),
+  ].slice(0, 15);
 
-  const kpis = [
-    { label: "Hoje", value: excecoesHoje.length, detail: "excecoes prioritarias", tone: excecoesHoje.length > 0 ? "red" : "brand" },
-    { label: "Comprar", value: rupturas.length + abaixoReposicao.length, detail: "ruptura ou abaixo do ponto", tone: rupturas.length > 0 ? "red" : "amber" },
-    { label: "Receber", value: comprasAbertas.length, detail: "compras abertas", tone: comprasAbertas.some((c) => c.atrasada) ? "amber" : "blue" },
-    { label: "Pendencias", value: triagensPendentes.length + cadastrosPendentes.length, detail: "triagem ou cadastro", tone: "blue" },
-  ];
+  const critico = rupturas.length + comprasAtrasadas.length + lotesVencidos.length + cadastrosCriticosPendentes.length;
+  const comprar = rupturas.length + abaixoReposicao.length;
+  const receber = comprasAguardandoRecebimento.length;
+  const liberar = lotesQuarentena.length;
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
@@ -239,71 +305,49 @@ export default async function SuprimentosPage() {
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Suprimentos</h1>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Central de exceções: estoque, compras, inventário e cadastros pendentes em uma fila de decisão.
-              Esta tela só lê dados e aponta para os fluxos existentes.
+              Central compacta de exceções para decidir o que precisa de atenção hoje.
+              O detalhe operacional continua nas telas próprias de solicitação, compra, recebimento e estoque.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            {podeGerarReposicao && <GerarReposicaoButton />}
             <Link href="#hoje" className="rounded-md border border-border px-3 py-1.5 hover:bg-muted/50">Hoje</Link>
-            <Link href="#receber" className="rounded-md border border-border px-3 py-1.5 hover:bg-muted/50">Receber</Link>
-            <Link href="#comprar" className="rounded-md border border-border px-3 py-1.5 hover:bg-muted/50">Comprar</Link>
-            <Link href="#inventariar" className="rounded-md border border-border px-3 py-1.5 hover:bg-muted/50">Inventariar</Link>
-            <Link href="#pendencias" className="rounded-md border border-border px-3 py-1.5 hover:bg-muted/50">Pendencias</Link>
           </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {kpis.map((kpi) => (
-            <div key={kpi.label} className="rounded-lg border border-border bg-card p-4 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <StatusPill tone={kpi.tone as "red" | "amber" | "blue" | "brand"}>{kpi.label}</StatusPill>
-                <span className="text-2xl font-semibold tabular-nums">{kpi.value}</span>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">{kpi.detail}</p>
-            </div>
-          ))}
+          <KpiCard label="Crítico" value={critico} detail="ruptura, atraso, vencido ou cadastro crítico" href="#hoje" tone={critico > 0 ? "red" : "brand"} />
+          <KpiCard label="Comprar" value={comprar} detail="ruptura ou reposição recomendada" href="/compras" tone={rupturas.length > 0 ? "red" : comprar > 0 ? "amber" : "brand"} />
+          <KpiCard label="Receber" value={receber} detail="compras aguardando chegada" href="/recebimento" tone={receber > 0 ? "blue" : "brand"} />
+          <KpiCard label="Liberar" value={liberar} detail="lotes aguardando conferência" href="/estoque" tone={liberar > 0 ? "blue" : "brand"} />
         </div>
 
-        <Section id="hoje" title="Hoje" action={<Link href="/estoque" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">Abrir estoque</Link>}>
-          {excecoesHoje.length > 0 ? (
-            <div className="grid gap-2 md:grid-cols-2">
-              {excecoesHoje.map((item) => (
-                <Link key={item.key} href={item.href} className="rounded-lg border border-border bg-card px-4 py-3 text-sm shadow-sm hover:border-brand-300">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-medium">{item.title}</span>
-                    <StatusPill tone={item.tone}>{item.label}</StatusPill>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{item.meta}</p>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <EmptyState>Nenhuma exceção prioritária para hoje.</EmptyState>
-          )}
-        </Section>
-
-        <Section id="receber" title="Receber" action={<Link href="/compras" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">Abrir compras</Link>}>
-          {comprasAbertas.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-border bg-card">
+        <Section id="hoje" title="Hoje" action={<span className="text-sm text-muted-foreground">{filaHoje.length} ação(ões)</span>}>
+          {filaHoje.length > 0 ? (
+            <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
               <table className="w-full text-sm">
                 <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3 text-left">Pedido</th>
-                    <th className="px-4 py-3 text-left">Fornecedor</th>
-                    <th className="px-4 py-3 text-left">Status</th>
-                    <th className="px-4 py-3 text-left">Previsao</th>
-                    <th className="px-4 py-3 text-right">Ação</th>
+                    <th className="px-4 py-3 text-left">Prioridade</th>
+                    <th className="px-4 py-3 text-left">Tipo</th>
+                    <th className="px-4 py-3 text-left">Item/processo</th>
+                    <th className="px-4 py-3 text-left">Problema</th>
+                    <th className="px-4 py-3 text-right">Próxima ação</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/70">
-                  {comprasAbertas.slice(0, 10).map((compra) => (
-                    <tr key={compra.id}>
-                      <td className="px-4 py-3 font-medium">#{compra.id}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{compra.fornecedorNome}</td>
-                      <td className="px-4 py-3"><StatusPill tone={compra.atrasada ? "amber" : "blue"}>{compra.status}</StatusPill></td>
-                      <td className="px-4 py-3 text-muted-foreground">{formatDate(compra.data_prevista_entrega)}</td>
+                  {filaHoje.map((acao) => (
+                    <tr key={acao.key}>
+                      <td className="px-4 py-3">
+                        <StatusPill tone={prioridadeTone(acao.prioridade)}>{prioridadeLabel(acao.prioridade)}</StatusPill>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">{acao.tipo}</td>
+                      <td className="max-w-xs truncate px-4 py-3 font-medium" title={acao.item}>{acao.item}</td>
+                      <td className="max-w-sm truncate px-4 py-3 text-muted-foreground" title={acao.problema}>{acao.problema}</td>
                       <td className="px-4 py-3 text-right">
-                        <Link href={`/compras/${compra.id}`} className="font-medium text-brand-700 hover:underline dark:text-brand-300">Detalhe</Link>
+                        <Link href={acao.href} className="font-medium text-brand-700 hover:underline dark:text-brand-300">
+                          {acao.proximaAcao}
+                        </Link>
                       </td>
                     </tr>
                   ))}
@@ -311,96 +355,8 @@ export default async function SuprimentosPage() {
               </table>
             </div>
           ) : (
-            <EmptyState>Nenhuma compra aberta para receber ou acompanhar.</EmptyState>
+            <EmptyState>Nenhuma exceção operacional prioritária para hoje.</EmptyState>
           )}
-        </Section>
-
-        <Section id="comprar" title="Comprar" action={<Link href="/compras" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">Abrir fila de compras</Link>}>
-          <div className="grid gap-3 lg:grid-cols-2">
-            <div>
-              <h3 className="text-sm font-medium">Ruptura prevista</h3>
-              <div className="mt-2 space-y-2">
-                {rupturas.length > 0 ? rupturas.map((item) => (
-                  <Link key={item.insumo_id} href="/compras" className="block rounded-lg border border-danger-strong/30 bg-danger-soft px-4 py-3 text-sm hover:border-danger-strong/40">
-                    <div className="font-medium text-danger-strong">{item.especificacao}</div>
-                    <p className="mt-1 text-xs text-danger-strong/80">
-                      disponivel {fmt(item.disponivel)} {item.unidade ?? ""} · pedido aberto {fmt(item.qtd_pedida_aberta)}
-                    </p>
-                  </Link>
-                )) : <EmptyState>Nenhuma ruptura prevista.</EmptyState>}
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium">Abaixo do ponto de reposicao</h3>
-              <div className="mt-2 space-y-2">
-                {abaixoReposicao.length > 0 ? abaixoReposicao.map((item) => (
-                  <Link key={item.insumo_id} href="/compras" className="block rounded-lg border border-warning-strong/30 bg-warning-soft px-4 py-3 text-sm hover:border-warning-strong/30">
-                    <div className="font-medium text-warning-strong">{item.especificacao}</div>
-                    <p className="mt-1 text-xs text-warning-strong/80">
-                      disp. {fmt(item.disponivel)} · ponto {fmt(item.ponto_reposicao_configurado ?? item.ponto_reposicao_sugerido)} · sugerido {fmt(item.qtd_sugerida_compra)}
-                    </p>
-                  </Link>
-                )) : <EmptyState>Nenhum insumo abaixo do ponto.</EmptyState>}
-              </div>
-            </div>
-          </div>
-        </Section>
-
-        <Section id="inventariar" title="Inventariar" action={<Link href="/estoque/inventario" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">Abrir inventario</Link>}>
-          <div className="grid gap-3 lg:grid-cols-3">
-            {[
-              { title: "Lotes vencidos", rows: lotesVencidos, tone: "red" as const },
-              { title: "Lotes vencendo", rows: lotesVencendo, tone: "amber" as const },
-              { title: "Quarentena", rows: lotesQuarentena, tone: "blue" as const },
-            ].map((grupo) => (
-              <div key={grupo.title}>
-                <h3 className="text-sm font-medium">{grupo.title}</h3>
-                <div className="mt-2 space-y-2">
-                  {grupo.rows.length > 0 ? grupo.rows.slice(0, 6).map((lote) => {
-                    const insumo = asOne(lote.insumos);
-                    return (
-                      <Link key={lote.id} href={`/estoque/lotes/${lote.id}`} className="block rounded-lg border border-border bg-card px-4 py-3 text-sm hover:border-brand-300">
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="truncate font-medium">{insumo?.especificacao ?? `Lote #${lote.id}`}</span>
-                          <StatusPill tone={grupo.tone}>{lote.status}</StatusPill>
-                        </div>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {lote.codigo_lote ?? `#${lote.id}`} · validade {formatDate(validadeEfetiva(lote))} · saldo {fmt(lote.quantidade_atual)} {insumo?.unidade ?? ""}
-                        </p>
-                      </Link>
-                    );
-                  }) : <EmptyState>Nenhum item.</EmptyState>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Section>
-
-        <Section id="pendencias" title="Pendências" action={<Link href="/scanner/triagem" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">Abrir triagem</Link>}>
-          <div className="grid gap-3 lg:grid-cols-2">
-            <div>
-              <h3 className="text-sm font-medium">Triagens de código</h3>
-              <div className="mt-2 space-y-2">
-                {triagensPendentes.length > 0 ? triagensPendentes.map((triagem) => (
-                  <Link key={triagem.id} href="/scanner/triagem" className="block rounded-lg border border-border bg-card px-4 py-3 text-sm hover:border-brand-300">
-                    <div className="font-medium">{triagem.codigo ?? `Triagem #${triagem.id}`}</div>
-                    <p className="mt-1 text-xs text-muted-foreground">{triagem.tipo_sugerido ?? "tipo indefinido"} · {triagem.status ?? "pendente"} · {formatDate(triagem.criado_em)}</p>
-                  </Link>
-                )) : <EmptyState>Nenhuma triagem pendente.</EmptyState>}
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium">Cadastros de insumo incompletos</h3>
-              <div className="mt-2 space-y-2">
-                {cadastrosPendentes.length > 0 ? cadastrosPendentes.map((insumo) => (
-                  <Link key={insumo.id} href="/cadastros/insumos" className="block rounded-lg border border-border bg-card px-4 py-3 text-sm hover:border-brand-300">
-                    <div className="font-medium">{insumo.especificacao ?? `Insumo #${insumo.id}`}</div>
-                    <p className="mt-1 text-xs text-muted-foreground">{insumo.pendencias.join(", ")}</p>
-                  </Link>
-                )) : <EmptyState>Nenhum cadastro incompleto pela regra atual.</EmptyState>}
-              </div>
-            </div>
-          </div>
         </Section>
       </main>
     </div>

@@ -5,14 +5,25 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, mensagemErroAdminSupabase } from "@/lib/supabase/admin";
 import type { FormState } from "./cadastros";
 
+function mensagemErroLogin(error: { code?: string; message?: string } | null) {
+  const code = String(error?.code ?? "");
+  const message = String(error?.message ?? "").toLowerCase();
+
+  if (code === "invalid_credentials" || message.includes("invalid login credentials")) {
+    return "E-mail ou senha inválidos.";
+  }
+
+  return "Não foi possível conectar ao Supabase Auth. Verifique a conexão e os certificados locais.";
+}
+
 export async function entrar(_prev: FormState, formData: FormData): Promise<FormState> {
-  const email = String(formData.get("email") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const senha = String(formData.get("senha") ?? "");
   if (!email || !senha) return { ok: false, message: "Informe e-mail e senha." };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
-  if (error) return { ok: false, message: "E-mail ou senha inválidos." };
+  if (error) return { ok: false, message: mensagemErroLogin(error) };
   redirect("/");
 }
 
@@ -23,12 +34,12 @@ export async function sair() {
 }
 
 export async function solicitarRedefinicaoSenha(_prev: FormState, formData: FormData): Promise<FormState> {
-  const email = String(formData.get("email") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!email) return { ok: false, message: "Informe o e-mail para receber o link de redefinição." };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001"}/login`,
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/login`,
   });
 
   if (error) return { ok: false, message: "Não foi possível enviar a redefinição agora." };

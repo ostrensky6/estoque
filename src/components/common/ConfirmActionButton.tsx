@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 /**
  * Botão que abre um modal de confirmação antes de submeter uma Server Action.
@@ -20,7 +20,7 @@ export function ConfirmActionButton({
 }: {
   action: (formData: FormData) => void | Promise<void>;
   fields: Record<string, string | number>;
-  trigger: string;
+  trigger: ReactNode;
   titulo: string;
   mensagem: string;
   confirmLabel?: string;

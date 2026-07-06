@@ -64,12 +64,7 @@ function erroConsulta(tabela: string, error: { message?: string | null; code?: s
   };
 }
 
-export default async function AnalisesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ codigo?: string }>;
-}) {
-  const { codigo: codigoSelecionado } = await searchParams;
+export default async function AnalisesPage() {
   const supabase = await createClient();
   const [
     analisesResult,
@@ -86,7 +81,10 @@ export default async function AnalisesPage({
       supabase
         .from("insumo_analise")
         .select("codigo_analise, insumo_id, quantidade_por_amostra, especificacao_insumo"),
-      supabase.from("equipamento_analise").select("codigo_analise, equipamento_id"),
+      supabase
+        .from("equipamento_analise")
+        .select("codigo_analise, equipamento_id, peso_alocacao")
+        .gt("peso_alocacao", 0),
     ]);
 
   const consultaIssues = [
@@ -150,11 +148,6 @@ export default async function AnalisesPage({
   );
   const ativasNaoOfertaveis = diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "ativas_nao_ofertaveis");
   const inativas = diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "inativas");
-  const selecionada =
-    diagnosticos.find((item) => item.analise.codigo === codigoSelecionado) ??
-    diagnosticos.find((item) => item.analise.ativo && item.analise.ofertavel) ??
-    diagnosticos[0];
-
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
@@ -174,30 +167,6 @@ export default async function AnalisesPage({
           </div>
         )}
 
-        {diagnosticos.length > 0 ? (
-          <form action="/analises" className={`${card} mt-6 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]`}>
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Análise</span>
-              <select
-                name="codigo"
-                defaultValue={selecionada?.analise.codigo}
-                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground"
-              >
-                {diagnosticos.map((item) => (
-                  <option key={item.analise.codigo} value={item.analise.codigo}>
-                    {item.analise.codigo} · {rotuloPrincipal(item.analise)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button className="self-end rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
-              Abrir
-            </button>
-          </form>
-        ) : (
-          <EmptyAnalises />
-        )}
-
         <div className="mt-6 grid gap-3 sm:grid-cols-4">
           <Stat label="Ofertáveis totais" value={String(totalOfertaveis.length)} />
           <Stat label="Ofertáveis em revisão" value={String(ofertaveisEmRevisao.length)} />
@@ -205,7 +174,7 @@ export default async function AnalisesPage({
           <Stat label="Inativas" value={String(inativas.length)} />
         </div>
 
-        {selecionada ? <AnaliseSelecionada item={selecionada} /> : null}
+        {diagnosticos.length > 0 ? <AnalisesResumoTable rows={diagnosticos} /> : <EmptyAnalises />}
       </main>
     </div>
   );
@@ -242,71 +211,88 @@ function EmptyAnalises() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className={card}>
+    <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+      <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
     </div>
   );
 }
 
-function AnaliseSelecionada({ item }: { item: DiagnosticoAnalise }) {
-  const { analise } = item;
+function AnalisesResumoTable({ rows }: { rows: DiagnosticoAnalise[] }) {
   return (
-    <section className={`${card} mt-6`}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="font-mono text-xs font-medium text-muted-foreground">{analise.codigo}</p>
-          <h2 className="mt-1 text-xl font-semibold">{rotuloPrincipal(analise)}</h2>
-          {analise.descricao && <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{analise.descricao}</p>}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${badgeAtivo(analise.ativo)}`}>
-            {analise.ativo ? "Ativa" : "Inativa"}
-          </span>
-          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${analise.ofertavel ? "bg-brand-50 text-brand-700 ring-brand-200 dark:bg-brand-950/40 dark:text-brand-300 dark:ring-brand-900" : "bg-muted text-muted-foreground ring-border"}`}>
-            {analise.ofertavel ? "Ofertável" : "Não ofertável"}
-          </span>
-        </div>
+    <section className="mt-6 rounded-lg border border-border bg-card shadow-sm">
+      <div className="border-b border-border/70 px-3 py-2">
+        <h2 className="text-sm font-semibold">Catálogo de análises</h2>
       </div>
-
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <Mini label="Etapas" value={String(item.nEtapas)} />
-        <Mini label="Insumos" value={String(item.nInsumos)} />
-        <Mini label="Equipamentos" value={String(item.nEquipamentos)} />
-        <Mini label="Capacidade" value={item.amostrasDia > 0 ? `${formatNumber(item.amostrasDia)}/dia` : "-"} />
-        <Mini label="Preço" value={item.preco != null && item.preco > 0 ? formatCurrency(item.preco) : "-"} />
-      </div>
-
-      {item.avisos.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-1.5">
-          {item.avisos.map((aviso) => (
-            <span key={aviso} className="rounded-full bg-warning-soft px-2 py-1 text-xs text-warning-strong">
-              {aviso}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-5 flex flex-wrap gap-2">
-        <Link href={`/analises/${encodeURIComponent(analise.codigo)}`} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
-          Gerenciar ficha técnica
-        </Link>
-        <Link href={`/insumos?analise=${encodeURIComponent(analise.codigo)}`} className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-muted/50">
-          Insumos da análise
-        </Link>
-        <Link href="/custeio" className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-muted/50">
-          Ver custeio
-        </Link>
+      <div className="overflow-x-auto">
+        <table className="mx-auto table-auto border-collapse">
+          <thead>
+            <tr className="bg-muted/35">
+              <th className={tableHead}>Código</th>
+              <th className={tableHead}>Análise</th>
+              <th className={tableHead}>Status</th>
+              <th className={`${tableHead} text-right`}>Etapas</th>
+              <th className={`${tableHead} text-right`}>Insumos</th>
+              <th className={`${tableHead} text-right`}>Equip.</th>
+              <th className={`${tableHead} text-right`}>Capacidade</th>
+              <th className={`${tableHead} text-right`}>Preço</th>
+              <th className={tableHead}>Alertas</th>
+              <th className={`${tableHead} text-right`}>Ação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((item) => {
+              const { analise } = item;
+              return (
+                <tr key={analise.codigo} className="border-t border-border/70 hover:bg-muted/25">
+                  <td className="whitespace-nowrap px-3 py-2 align-middle font-mono text-xs text-muted-foreground">{analise.codigo}</td>
+                  <td className="min-w-64 px-3 py-2 align-middle">
+                    <p className="text-sm font-medium">{rotuloPrincipal(analise)}</p>
+                    {analise.descricao && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{analise.descricao}</p>}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 align-middle">
+                    <div className="flex flex-wrap gap-1">
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${badgeAtivo(analise.ativo)}`}>
+                        {analise.ativo ? "Ativa" : "Inativa"}
+                      </span>
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${analise.ofertavel ? "bg-brand-50 text-brand-700 ring-brand-200 dark:bg-brand-950/40 dark:text-brand-300 dark:ring-brand-900" : "bg-muted text-muted-foreground ring-border"}`}>
+                        {analise.ofertavel ? "Ofertável" : "Não ofertável"}
+                      </span>
+                    </div>
+                  </td>
+                  <td className={tableNumber}>{item.nEtapas}</td>
+                  <td className={tableNumber}>{item.nInsumos}</td>
+                  <td className={tableNumber}>{item.nEquipamentos}</td>
+                  <td className={tableNumber}>{item.amostrasDia > 0 ? `${formatNumber(item.amostrasDia)}/dia` : "-"}</td>
+                  <td className={tableNumber}>{item.preco != null && item.preco > 0 ? formatCurrency(item.preco) : "-"}</td>
+                  <td className="max-w-80 px-3 py-2 align-middle">
+                    {item.avisos.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {item.avisos.slice(0, 3).map((aviso) => (
+                          <span key={aviso} className="rounded-full bg-warning-soft px-2 py-0.5 text-[11px] text-warning-strong">
+                            {aviso}
+                          </span>
+                        ))}
+                        {item.avisos.length > 3 && <span className="text-[11px] text-muted-foreground">+{item.avisos.length - 3}</span>}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">-</span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 text-right align-middle">
+                    <Link href={`/analises/${encodeURIComponent(analise.codigo)}`} className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
+                      Gerenciar ficha
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </section>
   );
 }
 
-function Mini({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md bg-muted/50 px-3 py-2">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-0.5 font-medium tabular-nums">{value}</p>
-    </div>
-  );
-}
+const tableHead = "whitespace-nowrap px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-muted-foreground";
+const tableNumber = "whitespace-nowrap px-3 py-2 text-right align-middle text-xs tabular-nums";

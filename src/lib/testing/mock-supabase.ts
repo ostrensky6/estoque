@@ -292,6 +292,7 @@ const baseStore = (): Store => {
   equipamento_analise: HISTORICAL_ANALISE_CODES.map((codigo) => ({
     codigo_analise: codigo,
     equipamento_id: 1,
+    peso_alocacao: 1,
     tempo_horas: 1,
     equipamentos: { custo_hora: 30 },
   })),

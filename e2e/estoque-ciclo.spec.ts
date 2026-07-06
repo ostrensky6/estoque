@@ -19,6 +19,10 @@ test("ciclo de estoque: receber lote, aceitar, ajustar consumo e bloquear", asyn
   await expect(row.getByText("Quarentena")).toBeVisible();
 
   await row.getByRole("button", { name: "Aceitar" }).click();
+  await expect(page.getByRole("heading", { name: "Aceitar lote" })).toBeVisible();
+  await page.locator('input').last().fill("Coordenador E2E");
+  await page.locator("textarea").fill("Conferencia E2E");
+  await page.getByRole("button", { name: "Aceitar" }).last().click();
   await expect(row.getByText("Aceito")).toBeVisible();
 
   await row.getByRole("button", { name: "Baixa" }).click();

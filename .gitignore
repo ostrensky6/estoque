@@ -54,5 +54,8 @@ __pycache__/
 # Local Playwright MCP artifacts
 .playwright-mcp/
 
+# Local agent/dev artifacts (logs, generated CA chain)
+.agents/
+
 # Resultados do preflight de Orçamentos (podem conter dados reais — não versionar)
 artifacts/

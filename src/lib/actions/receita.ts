@@ -230,11 +230,29 @@ export async function adicionarEquipamento(formData: FormData) {
   const equipamento_id = Number(formData.get("equipamento_id"));
   if (!equipamento_id) throw new Error("Selecione um equipamento.");
   const supabase = await createClient();
-  const { error } = await supabase.from("equipamento_analise").insert({
-    codigo_analise: codigo,
-    equipamento_id,
-    peso_alocacao: numOrNull(formData, "peso_alocacao") ?? 1,
-  });
+  const { error } = await supabase
+    .from("equipamento_analise")
+    .upsert(
+      {
+        codigo_analise: codigo,
+        equipamento_id,
+        peso_alocacao: numOrNull(formData, "peso_alocacao") ?? 1,
+      },
+      { onConflict: "equipamento_id,codigo_analise" },
+    );
+  if (error) throw new Error(error.message);
+  revalidarReceita(codigo);
+}
+
+export async function atualizarEquipamentoAnalise(formData: FormData) {
+  const codigo = txtReq(formData, "codigo_analise");
+  const id = Number(formData.get("id"));
+  if (!id) return;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("equipamento_analise")
+    .update({ peso_alocacao: numOrNull(formData, "peso_alocacao") ?? 0 })
+    .eq("id", id);
   if (error) throw new Error(error.message);
   revalidarReceita(codigo);
 }

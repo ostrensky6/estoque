@@ -20,6 +20,7 @@ export function LoteAcoes({
   status,
   quantidadeAtual,
   unidade,
+  critico,
   podeAceitar,
   podeGerir,
 }: {
@@ -27,14 +28,16 @@ export function LoteAcoes({
   status: string;
   quantidadeAtual: number;
   unidade: string;
+  critico: boolean;
   podeAceitar: boolean;
   podeGerir: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [modal, setModal] = useState<null | "bloquear" | "descartar" | "baixa" | "ajuste">(null);
+  const [modal, setModal] = useState<null | "aceitar" | "bloquear" | "descartar" | "baixa" | "ajuste">(null);
   const [motivo, setMotivo] = useState("");
   const [quantidade, setQuantidade] = useState("");
+  const [responsavel, setResponsavel] = useState("");
   const [state, setState] = useState<FormState>({ ok: false });
 
   function fd(extra: Record<string, string> = {}) {
@@ -49,6 +52,7 @@ export function LoteAcoes({
       setModal(null);
       setMotivo("");
       setQuantidade("");
+      setResponsavel("");
       setState({ ok: false });
       router.refresh();
     });
@@ -61,6 +65,7 @@ export function LoteAcoes({
         setModal(null);
         setMotivo("");
         setQuantidade("");
+        setResponsavel("");
         router.refresh();
       }
     });
@@ -72,7 +77,7 @@ export function LoteAcoes({
   return (
     <span className="inline-flex flex-wrap gap-1">
       {status === "quarentena" && podeAceitar && (
-        <button disabled={pending} onClick={() => run(aceitarLote)} className={`${btn} text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/30`}>
+        <button disabled={pending} onClick={() => setModal("aceitar")} className={`${btn} text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/30`}>
           Aceitar
         </button>
       )}
@@ -110,7 +115,9 @@ export function LoteAcoes({
           <div className="absolute inset-0 bg-black/40" onClick={() => !pending && setModal(null)} />
           <div className="relative w-full max-w-sm rounded-xl bg-card p-5 shadow-xl">
             <h3 className="text-base font-semibold">
-              {modal === "bloquear"
+              {modal === "aceitar"
+                ? "Aceitar lote"
+                : modal === "bloquear"
                 ? "Bloquear lote"
                 : modal === "descartar"
                   ? "Descartar lote"
@@ -119,7 +126,11 @@ export function LoteAcoes({
                     : "Ajustar saldo"}
             </h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              {modal === "bloquear"
+              {modal === "aceitar"
+                ? critico
+                  ? "Material crítico precisa de responsável e critério de aceite antes de ficar disponível."
+                  : "Registre a liberação do lote para uso."
+                : modal === "bloquear"
                 ? "Informe o motivo do bloqueio (não conformidade, recall, investigação…)."
                 : modal === "descartar"
                   ? "Informe a justificativa do descarte. O saldo será zerado."
@@ -145,11 +156,29 @@ export function LoteAcoes({
                 {state.errors?.quantidade_nova && <p className="mt-1 text-xs text-danger-strong">{state.errors.quantidade_nova}</p>}
               </div>
             )}
+            {modal === "aceitar" && (
+              <div className="mt-3">
+                <label className="block text-xs font-medium text-muted-foreground">
+                  Responsável {critico && <span className="text-danger-strong">*</span>}
+                </label>
+                <input
+                  value={responsavel}
+                  onChange={(e) => setResponsavel(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm font-medium text-brand-700 dark:text-brand-300"
+                />
+              </div>
+            )}
             <textarea
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               rows={3}
-              placeholder={modal === "baixa" ? "Ex.: consumo extra, perda, quebra..." : "Motivo"}
+              placeholder={
+                modal === "aceitar"
+                  ? "Critério de aceite"
+                  : modal === "baixa"
+                    ? "Ex.: consumo extra, perda, quebra..."
+                    : "Motivo"
+              }
               className="mt-3 w-full rounded-md border border-input bg-card px-3 py-2 text-sm font-medium text-brand-700 dark:text-brand-300"
             />
             {state.errors?.motivo && <p className="mt-1 text-xs text-danger-strong">{state.errors.motivo}</p>}
@@ -165,6 +194,7 @@ export function LoteAcoes({
                   setState({ ok: false });
                   setMotivo("");
                   setQuantidade("");
+                  setResponsavel("");
                 }}
                 disabled={pending}
                 className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
@@ -172,8 +202,14 @@ export function LoteAcoes({
                 Cancelar
               </button>
               <button
-                disabled={pending || !motivo.trim() || ((modal === "baixa" || modal === "ajuste") && !quantidade)}
+                disabled={
+                  pending ||
+                  (modal !== "aceitar" && !motivo.trim()) ||
+                  (modal === "aceitar" && critico && (!motivo.trim() || !responsavel.trim())) ||
+                  ((modal === "baixa" || modal === "ajuste") && !quantidade)
+                }
                 onClick={() => {
+                  if (modal === "aceitar") run(aceitarLote, { criterio: motivo, responsavel });
                   if (modal === "bloquear") run(bloquearLote, { motivo });
                   if (modal === "descartar") run(descartarLote, { justificativa: motivo });
                   if (modal === "baixa") runState(baixarManualLote, { motivo, quantidade });
@@ -182,6 +218,8 @@ export function LoteAcoes({
                 className={`rounded-md px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50 ${
                   modal === "bloquear"
                     ? "bg-warning-strong hover:bg-warning-strong/90"
+                    : modal === "aceitar"
+                      ? "bg-brand-600 hover:bg-brand-500"
                     : modal === "ajuste"
                       ? "bg-primary hover:bg-primary/90"
                       : "bg-destructive hover:bg-destructive/90"
@@ -189,6 +227,8 @@ export function LoteAcoes({
               >
                 {pending
                   ? "…"
+                  : modal === "aceitar"
+                    ? "Aceitar"
                   : modal === "bloquear"
                     ? "Bloquear"
                     : modal === "descartar"

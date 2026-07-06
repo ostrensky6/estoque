@@ -21,6 +21,26 @@ export type SimuladorAnalise = {
   grupos: Array<{ nome: string; opcoes: string[] }>;
 };
 
+type EquipamentoAnaliseRow = {
+  codigo_analise: string;
+  equipamento_id: number;
+  peso_alocacao: number | null;
+};
+
+export function montarEquipamentosAlocados(
+  linhas: EquipamentoAnaliseRow[],
+  codigo: string,
+  custoDiaPorEquip: Map<number, number>,
+): EquipAlloc[] {
+  return linhas
+    .filter((ea) => ea.codigo_analise === codigo)
+    .map((ea) => ({
+      peso: Number(ea.peso_alocacao),
+      custoDia: custoDiaPorEquip.get(ea.equipamento_id) ?? 0,
+    }))
+    .filter((ea) => Number.isFinite(ea.peso) && ea.peso > 0);
+}
+
 /** Carrega tudo do banco e calcula o breakdown de todas as análises. */
 export async function calcularTodas(
   cenarioPorAnalise: Record<string, Cenario> = {},
@@ -90,12 +110,11 @@ export async function calcularTodas(
   const breakdowns: Breakdown[] = (analises ?? []).map((a) => {
     const codigo = a.codigo;
     const etapasA = (etapas ?? []).filter((e) => e.codigo_analise === codigo);
-    const equipA = (equipAnalise ?? [])
-      .filter((ea) => ea.codigo_analise === codigo)
-      .map((ea) => ({
-        peso: Number(ea.peso_alocacao),
-        custoDia: custoDiaPorEquip.get(ea.equipamento_id) ?? 0,
-      }));
+    const equipA = montarEquipamentosAlocados(
+      (equipAnalise ?? []) as EquipamentoAnaliseRow[],
+      codigo,
+      custoDiaPorEquip,
+    );
     const insumosA = (insumoAnalise ?? [])
       .filter((i) => i.codigo_analise === codigo)
       .map((i) => ({
@@ -190,12 +209,11 @@ export async function carregarSimuladorCusteio(): Promise<{
           etapas: ((etapas ?? []) as Etapa[]).filter(
             (e) => (e as unknown as { codigo_analise: string }).codigo_analise === b.codigo,
           ),
-          equip: (equipAnalise ?? [])
-            .filter((ea) => ea.codigo_analise === b.codigo)
-            .map((ea) => ({
-              peso: Number(ea.peso_alocacao),
-              custoDia: custoDiaPorEquip.get(ea.equipamento_id) ?? 0,
-            })),
+          equip: montarEquipamentosAlocados(
+            (equipAnalise ?? []) as EquipamentoAnaliseRow[],
+            b.codigo,
+            custoDiaPorEquip,
+          ),
           insumos: linhas,
           grupos,
         };

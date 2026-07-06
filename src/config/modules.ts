@@ -92,6 +92,7 @@ export const APP_MODULES: AppModule[] = [
         label: "Insumos por análise",
         desc: "reagentes, controles e perdas",
         icon: "TestTube2",
+        showInTopNav: false,
       },
       {
         href: "/custeio",
@@ -99,6 +100,7 @@ export const APP_MODULES: AppModule[] = [
         desc: "custo técnico, overhead e preço base",
         icon: "Calculator",
         shortcut: "C",
+        showInTopNav: false,
       },
     ],
   },
@@ -125,6 +127,13 @@ export const APP_MODULES: AppModule[] = [
         desc: "saldos, lotes, validade e rastreio",
         icon: "Boxes",
         shortcut: "E",
+      },
+      {
+        href: "/estoque/controle",
+        label: "Controle de Estoque",
+        desc: "saldos, validades, alertas e quarentena",
+        icon: "SlidersHorizontal",
+        shortcut: "C",
       },
       {
         href: "/planejamento",
@@ -156,13 +165,6 @@ export const APP_MODULES: AppModule[] = [
         label: "Notificações",
         desc: "alertas operacionais de estoque e suprimentos",
         icon: "Bell",
-      },
-      {
-        href: "/estoque/controle",
-        label: "Controle de Estoque",
-        desc: "saldos, validades, alertas e quarentena",
-        icon: "SlidersHorizontal",
-        showInTopNav: false,
       },
       {
         href: "/estoque/equipamentos",

@@ -47,4 +47,23 @@ describe("migrations operacionais de suprimentos", () => {
     expect(sql).toContain("where a.tipo = 'quarentena'");
     expect(sql).toContain("'quarentena:' || a.insumo_id");
   });
+
+  it("mantem recebimento formal sincronizado com item interno", () => {
+    const sql = migration("0078_corrigir_ciclo_suprimentos_operacional.sql");
+
+    expect(sql).toContain("pi.pedido_interno_item_id");
+    expect(sql).toContain("if v_item.pedido_interno_item_id is not null then");
+    expect(sql).toContain("update pedidos_internos_itens");
+    expect(sql).toContain("where id = v_item.pedido_interno_item_id");
+    expect(sql).toContain("if v_item.lote_id is not null then");
+  });
+
+  it("desconta pedidos abertos na previsao e exige liberacao documentada para lote critico", () => {
+    const sql = migration("0079_suprimentos_vinculo_previsao_liberacao.sql");
+
+    expect(sql).toContain("- qtd_pedida_aberta");
+    expect(sql).toContain("v_lote.categoria_compra = 'critico'");
+    expect(sql).toContain("v_responsavel is null or v_criterio is null");
+    expect(sql).toContain("Lote critico exige responsavel e criterio de aceitacao.");
+  });
 });

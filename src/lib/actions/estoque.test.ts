@@ -5,6 +5,9 @@ const single = vi.fn();
 const revalidatePath = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath }));
+vi.mock("@/lib/auth/roles", () => ({
+  usuarioAtual: vi.fn(async () => ({ nome: "Coordenador", email: "coord@example.com" })),
+}));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
     rpc,
@@ -106,6 +109,11 @@ describe("actions de estoque", () => {
       "desbloquear_lote",
       "descartar_lote",
     ]);
+    expect(rpc).toHaveBeenNthCalledWith(1, "aceitar_lote", {
+      p_lote_id: 9,
+      p_responsavel: "Coordenador",
+      p_criterio: null,
+    });
   });
 
   it("registra baixa manual e ajuste de saldo por RPCs transacionais", async () => {

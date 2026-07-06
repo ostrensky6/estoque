@@ -35,6 +35,7 @@ export type LoteRow = {
   status: string;
   statusLabel: string;
   vencido: boolean;
+  critico: boolean;
 };
 
 function SaldoStatusBadge({ status, label }: { status: SaldoRow["status"]; label: string }) {
@@ -204,6 +205,7 @@ const lotesColumns = (
         status={row.original.status}
         quantidadeAtual={row.original.quantidadeAtual}
         unidade={row.original.unidade}
+        critico={row.original.critico}
         podeAceitar={podeAceitar}
         podeGerir={podeGerir}
       />

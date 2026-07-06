@@ -2,28 +2,38 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { gargalo, horasBancadaPorAmostra, type Etapa } from "@/lib/costing/engine";
+import {
+  calcularCurvaCustoAmostras,
+  equipCustoDia,
+  gargalo,
+  horasBancadaPorAmostra,
+  type EquipAlloc,
+  type Etapa,
+  type InsumoLinha,
+} from "@/lib/costing/engine";
 import { calcularTodas } from "@/lib/costing/loader";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { CustoAnaliseChart } from "@/components/analises/CustoAnaliseChart";
 import {
-  adicionarEquipamento,
-  adicionarEtapa,
-  adicionarMaterial,
-  atualizarCatalogoAnalise,
-  atualizarEtapa,
-  atualizarMaterial,
-  inativarAnalise,
-  removerEquipamento,
-  removerEtapa,
-  removerMaterial,
-} from "@/lib/actions/receita";
+  EquipamentosEditTable,
+  type EquipamentoEditRowData,
+  type EquipamentoOption,
+} from "@/components/analises/EquipamentosEditTable";
+import { EtapasEditTable, type EtapaEditRowData } from "@/components/analises/EtapasEditTable";
+import {
+  MateriaisEditTable,
+  type InsumoOption,
+  type MaterialEditRowData,
+} from "@/components/analises/MateriaisEditTable";
+import { atualizarCatalogoAnalise, inativarAnalise } from "@/lib/actions/receita";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
 type EquipamentoVinculado = {
   id: number;
+  equipamento_id: number;
   peso_alocacao: number | null;
   equipamentos: {
     nome: string;
@@ -80,20 +90,35 @@ type EquipamentoOpcao = {
   nome: string;
 };
 
-const panel = "rounded-lg border border-border bg-card p-4 shadow-sm";
-const th = "px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80";
-const td = "px-3 py-2 align-top text-sm";
-const labelClass = "text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
-const inputClass = "mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-medium text-foreground";
-const primaryButtonClass = "rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90";
+const panel = "rounded-lg border border-border bg-card p-3 shadow-sm";
+const th = "whitespace-nowrap border border-foreground/60 bg-muted/45 px-2.5 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-foreground";
+const td = "border border-foreground/60 px-2.5 py-1.5 align-middle text-xs";
+const labelClass = "text-[9px] font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300";
+const inputClass = "mt-0.5 h-7 w-full rounded-md border border-blue-300 bg-blue-50/70 px-2 py-0.5 text-[11px] font-medium text-blue-950 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100";
+const primaryButtonClass = "rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm hover:bg-primary/90";
+const editablePanelClass = "rounded-md border border-blue-200 bg-blue-50/35 p-2 dark:border-blue-900 dark:bg-blue-950/15";
+const navItems = [
+  ["Resumo", "resumo"],
+  ["Ficha tecnica", "ficha-tecnica"],
+  ["Insumos", "materiais-insumos"],
+  ["Equipamentos", "equipamentos"],
+  ["Custo", "custeio"],
+  ["Estoque", "estoque"],
+  ["Historico", "historico-versoes"],
+] as const;
+type ViewId = (typeof navItems)[number][1];
 
 export default async function AnaliseDetalhe({
   params,
+  searchParams,
 }: {
   params: Promise<{ codigo: string }>;
+  searchParams: Promise<{ view?: string }>;
 }) {
   const { codigo: codigoRaw } = await params;
+  const { view } = await searchParams;
   const codigo = decodeURIComponent(codigoRaw);
+  const activeView = isViewId(view) ? view : "resumo";
   const supabase = await createClient();
 
   const { data: analise } = await supabase
@@ -118,9 +143,10 @@ export default async function AnaliseDetalhe({
     supabase
       .from("equipamento_analise")
       .select(
-        "id, peso_alocacao, equipamentos(nome, quantidade, custo_unitario, vida_util_anos, percentual_manutencao_anual, manutencao_anual_fixa, possui)",
+        "id, equipamento_id, peso_alocacao, equipamentos(nome, quantidade, custo_unitario, vida_util_anos, percentual_manutencao_anual, manutencao_anual_fixa, possui)",
       )
-      .eq("codigo_analise", codigo),
+      .eq("codigo_analise", codigo)
+      .gt("peso_alocacao", 0),
     supabase
       .from("insumo_analise")
       .select(
@@ -158,11 +184,12 @@ export default async function AnaliseDetalhe({
     ((saldoResult.data ?? []) as SaldoEstoque[]).map((saldo) => [saldo.insumo_id, saldo]),
   );
 
+  let custoData = null as Awaited<ReturnType<typeof calcularTodas>> | null;
   let custo = null as Awaited<ReturnType<typeof calcularTodas>>["breakdowns"][number] | null;
   let erroCusteio = false;
   try {
-    const { breakdowns } = await calcularTodas();
-    custo = breakdowns.find((b) => b.codigo === codigo) ?? null;
+    custoData = await calcularTodas();
+    custo = custoData.breakdowns.find((b) => b.codigo === codigo) ?? null;
   } catch {
     erroCusteio = true;
   }
@@ -173,6 +200,19 @@ export default async function AnaliseDetalhe({
   const prazoPosAnalise = Math.max(0, ...etapasPosAnalise.map((e) => Number((e as unknown as { dia_fim_max?: number | null }).dia_fim_max ?? 0)));
   const prazoTotal = Math.max(prazoLaboratorio, prazoPosAnalise);
   const posAnaliseSemParametros = etapasPosAnalise.some((e) => !e.tempo_maquina_h && !e.tempo_bancada_h);
+  const curvaCusto =
+    custoData && !erroCusteio
+      ? calcularCurvaCustoAmostras({
+          codigo,
+          etapas: etapasT,
+          equip: equipamentosT.map((linha) => toEquipAlloc(linha, custoData.params.dias_uteis_ano)),
+          insumos: materiaisT.map(toInsumoLinha),
+          valorHoraPessoal: custoData.valorHoraPessoal,
+          custoHoraOverhead: custoData.custoHoraOverhead,
+          params: custoData.params,
+          maxAmostras: maxAmostrasCurva(g.amostrasDia),
+        })
+      : [];
   const avisos = [
     etapasT.length === 0 ? "Sem etapas cadastradas." : null,
     materiaisT.length === 0 ? "Sem materiais/insumos vinculados." : null,
@@ -195,50 +235,58 @@ export default async function AnaliseDetalhe({
       <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Analises", href: "/analises" }, { label: codigo }]} />
 
-        <section className="mt-3 grid gap-4 lg:grid-cols-[1fr_280px]">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-semibold tracking-tight">{analise.codigo}</h1>
-              <Badge>{analise.ativo ? "Ativa" : "Inativa"}</Badge>
-              <Badge muted>{analise.ofertavel ? "Ofertavel" : "Nao ofertavel"}</Badge>
-              {analise.status && <Badge muted>{analise.status}</Badge>}
+        <section className="mt-3 rounded-lg border border-border bg-card shadow-sm">
+          <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-semibold tracking-tight">{analise.codigo}</h1>
+                <Badge>{analise.ativo ? "Ativa" : "Inativa"}</Badge>
+                <Badge muted>{analise.ofertavel ? "Ofertavel" : "Nao ofertavel"}</Badge>
+                {analise.status && <Badge muted>{analise.status}</Badge>}
+              </div>
+              <p className="mt-1 text-lg font-medium">{analise.nome_simplificado || analise.nome || "Sem nome"}</p>
+              {analise.descricao && <p className="mt-2 max-w-4xl text-sm leading-5 text-muted-foreground">{analise.descricao}</p>}
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                <MiniStat label="Etapas" value={String(etapasT.length)} />
+                <MiniStat label="Insumos" value={String(materiaisT.length)} />
+                <MiniStat label="Equip." value={String(equipamentosT.length)} />
+                <MiniStat label="Capacidade" value={g.amostrasDia > 0 ? `${formatNumber(g.amostrasDia)}/dia` : "-"} />
+                <MiniStat label="Preco" value={custo ? formatCurrency(custo.preco) : "-"} />
+              </div>
             </div>
-            <p className="mt-2 text-lg font-medium">{analise.nome_simplificado || analise.nome || "Sem nome"}</p>
-            {analise.descricao && <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{analise.descricao}</p>}
-          </div>
 
-          <div className={panel}>
-            <h2 className="text-sm font-semibold">Gerenciamento</h2>
-            <form action={atualizarCatalogoAnalise} className="mt-3 grid gap-2">
+            <form action={atualizarCatalogoAnalise} className={`grid content-start gap-2 ${editablePanelClass}`}>
               <input type="hidden" name="codigo" value={codigo} />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="block">
+                  <span className={labelClass}>Nome curto</span>
+                  <input name="nome_simplificado" defaultValue={analise.nome_simplificado ?? ""} className={inputClass} />
+                </label>
+                <label className="block">
+                  <span className={labelClass}>Status</span>
+                  <input name="status" defaultValue={analise.status ?? ""} className={inputClass} />
+                </label>
+              </div>
               <label className="block">
-                <span className={labelClass}>Nome curto</span>
-                <input name="nome_simplificado" defaultValue={analise.nome_simplificado ?? ""} className={inputClass} />
+                <span className={labelClass}>Descricao</span>
+                <textarea name="descricao" defaultValue={analise.descricao ?? ""} className={`${inputClass} h-16 min-h-16 resize-y`} />
               </label>
-              <label className="block">
-                <span className={labelClass}>Status</span>
-                <input name="status" defaultValue={analise.status ?? ""} className={inputClass} />
-              </label>
-              <label className="block">
-                <span className={labelClass}>Descrição</span>
-                <textarea name="descricao" defaultValue={analise.descricao ?? ""} className={`${inputClass} min-h-20`} />
-              </label>
-              <button className={primaryButtonClass}>Salvar cadastro</button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button className={primaryButtonClass}>Salvar cadastro</button>
+                {analise.ativo ? (
+                  <ConfirmActionButton
+                    action={inativarAnalise}
+                    fields={{ codigo }}
+                    trigger="Inativar"
+                    titulo="Inativar analise"
+                    mensagem={`Inativar "${analise.codigo}"? A receita e o historico permanecem preservados.`}
+                    confirmLabel="Inativar"
+                  />
+                ) : (
+                  <span className="text-xs text-muted-foreground">Analise ja inativa.</span>
+                )}
+              </div>
             </form>
-            <div className="mt-4">
-              {analise.ativo ? (
-                <ConfirmActionButton
-                  action={inativarAnalise}
-                  fields={{ codigo }}
-                  trigger="Inativar analise"
-                  titulo="Inativar analise"
-                  mensagem={`Inativar "${analise.codigo}"? A receita e o historico permanecem preservados.`}
-                  confirmLabel="Inativar"
-                />
-              ) : (
-                <span className="text-sm text-muted-foreground">Analise ja inativa.</span>
-              )}
-            </div>
           </div>
         </section>
 
@@ -253,140 +301,75 @@ export default async function AnaliseDetalhe({
           </div>
         )}
 
-        <nav className="mt-8 flex flex-wrap gap-2 text-sm">
-          {["Resumo", "Tempo", "Materiais/Insumos", "Equipamentos", "Custeio", "Estoque", "Historico/Versoes"].map(
-            (label) => (
-              <a key={label} href={`#${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`} className="rounded-md border border-border px-3 py-1.5 text-muted-foreground hover:bg-muted/50">
-                {label}
-              </a>
-            ),
-          )}
+        <nav className="sticky top-2 z-10 mt-5 flex flex-wrap gap-1.5 rounded-lg border border-border bg-background/95 p-1.5 text-xs shadow-sm backdrop-blur">
+          {navItems.map(([label, id]) => (
+            <Link
+              key={id}
+              href={`/analises/${encodeURIComponent(codigo)}?view=${id}`}
+              className={`rounded-md px-3 py-1.5 font-medium ${
+                activeView === id
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
         </nav>
 
-        <section id="resumo" className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <Stat label="Etapas" value={String(etapasT.length)} />
-          <Stat label="Materiais" value={String(materiaisT.length)} />
-          <Stat label="Equipamentos" value={String(equipamentosT.length)} />
-          <Stat label="Capacidade" value={g.amostrasDia > 0 ? `${formatNumber(g.amostrasDia)}/dia` : "-"} />
-          <Stat label="Preco atual" value={custo ? formatCurrency(custo.preco) : "-"} />
-        </section>
-
-        <Section id="tempo" title="Tempo">
-          <div className="grid gap-3 sm:grid-cols-4">
+        {activeView === "resumo" && (
+          <section className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             <Stat label="Execucoes/dia" value={g.execucoesDia > 0 ? formatNumber(g.execucoesDia) : "-"} compact />
-            <Stat label="Amostras/execucao" value={g.amostrasPorExecucao > 0 ? formatNumber(g.amostrasPorExecucao) : "-"} compact />
+            <Stat label="Amostras/exec." value={g.amostrasPorExecucao > 0 ? formatNumber(g.amostrasPorExecucao) : "-"} compact />
             <Stat label="Bancada/amostra" value={tempoBancada > 0 ? `${formatNumber(tempoBancada)} h` : "-"} compact />
             <Stat label="Prazo lab." value={prazoLaboratorio > 0 ? `${prazoLaboratorio} dias` : "-"} compact />
-          </div>
-          <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Laboratorio</h3>
-          <Table>
-            <thead>
-              <tr>
-                <th className={th}>Ordem</th>
-                <th className={th}>Etapa</th>
-                <th className={th}>Atividade</th>
-                <th className={th}>Exec/dia</th>
-                <th className={th}>Amostras/exec.</th>
-                <th className={th}>Maquina h</th>
-                <th className={th}>Bancada h</th>
-                <th className={th}>Limitacao</th>
-              </tr>
-            </thead>
-            <tbody>
-              {etapasLaboratorio.map((etapa) => <EtapaRow key={(etapa as unknown as { id: number }).id} etapa={etapa} />)}
-            </tbody>
-          </Table>
-          <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pos-analise / Bioinformatica</h3>
-          <Table>
-            <thead>
-              <tr>
-                <th className={th}>Ordem</th>
-                <th className={th}>Etapa</th>
-                <th className={th}>Atividade</th>
-                <th className={th}>Exec/dia</th>
-                <th className={th}>Amostras/exec.</th>
-                <th className={th}>Maquina h</th>
-                <th className={th}>Bancada h</th>
-                <th className={th}>Limitacao</th>
-              </tr>
-            </thead>
-            <tbody>
-              {etapasPosAnalise.map((etapa) => <EtapaRow key={(etapa as unknown as { id: number }).id} etapa={etapa} />)}
-            </tbody>
-          </Table>
-          {etapasPosAnalise.length === 0 && <p className="mt-3 text-sm text-muted-foreground">Nenhuma etapa pos-analise cadastrada.</p>}
-          <EditableEtapas codigo={codigo} etapas={etapasT} />
-        </Section>
+            <Stat label="Prazo total" value={prazoTotal > 0 ? `${prazoTotal} dias` : "-"} compact />
+            <Stat label="Materiais" value={String(materiaisT.length)} compact />
+            <Stat label="Equipamentos" value={String(equipamentosT.length)} compact />
+            <Stat label="Custo total" value={custo ? formatCurrency(custo.custoTotal) : "-"} compact />
+            <Stat label="Preco atual" value={custo ? formatCurrency(custo.preco) : "-"} compact />
+          </section>
+        )}
 
-        <Section id="materiais-insumos" title="Materiais/Insumos">
-          <Table>
-            <thead>
-              <tr>
-                <th className={th}>Etapa</th>
-                <th className={th}>Atividade</th>
-                <th className={th}>Material tecnico</th>
-                <th className={th}>Item de estoque</th>
-                <th className={th}>Qtd/amostra</th>
-                <th className={th}>Cobranca</th>
-                <th className={th}>Grupo</th>
-                <th className={th}>Custo unit.</th>
-              </tr>
-            </thead>
-            <tbody>
-              {materiaisT.map((material) => (
-                <tr key={material.id} className="border-t border-border/70">
-                  <td className={td}>{material.nome_etapa}</td>
-                  <td className={td}>{material.nome_atividade}</td>
-                  <td className={td}>{material.especificacao_insumo ?? "-"}</td>
-                  <td className={td}>{material.insumos?.especificacao ?? material.insumos?.nome_item ?? "Sem vinculo"}</td>
-                  <td className={td}>{fmt(material.quantidade_por_amostra)} {material.unidade ?? ""}</td>
-                  <td className={td}>{material.modo_cobranca ?? "-"}</td>
-                  <td className={td}>{material.grupo_escolha ?? "-"}</td>
-                  <td className={td}>{material.insumos?.custo_unitario != null ? formatCurrency(material.insumos.custo_unitario) : "-"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-          <EditableMateriais codigo={codigo} materiais={materiaisT} insumos={insumosOpcoes} />
+        {activeView === "ficha-tecnica" && (
+        <Section title="Ficha tecnica" description="Tempos, capacidade e etapas editaveis da analise selecionada.">
+          <EtapasEditTable
+            codigo={codigo}
+            titulo="Laboratorio"
+            etapas={etapasLaboratorio.map(toEtapaEditRowData)}
+            showAddForm
+          />
+          <EtapasEditTable
+            codigo={codigo}
+            titulo="Pos-analise / Bioinformatica"
+            etapas={etapasPosAnalise.map(toEtapaEditRowData)}
+            emptyText="Nenhuma etapa pos-analise cadastrada."
+          />
         </Section>
+        )}
 
-        <Section id="equipamentos" title="Equipamentos">
-          <Table>
-            <thead>
-              <tr>
-                <th className={th}>Equipamento</th>
-                <th className={th}>Peso</th>
-                <th className={th}>Quantidade</th>
-                <th className={th}>Custo unit.</th>
-                <th className={th}>Vida util</th>
-                <th className={th}>Manutencao</th>
-                <th className={th}>Disponivel</th>
-              </tr>
-            </thead>
-            <tbody>
-              {equipamentosT.map((linha) => (
-                <tr key={linha.id} className="border-t border-border/70">
-                  <td className={td}>{linha.equipamentos?.nome ?? "-"}</td>
-                  <td className={td}>{fmt(linha.peso_alocacao)}</td>
-                  <td className={td}>{fmt(linha.equipamentos?.quantidade)}</td>
-                  <td className={td}>{linha.equipamentos?.custo_unitario != null ? formatCurrency(linha.equipamentos.custo_unitario) : "-"}</td>
-                  <td className={td}>{linha.equipamentos?.vida_util_anos ? `${fmt(linha.equipamentos.vida_util_anos)} anos` : "-"}</td>
-                  <td className={td}>
-                    {linha.equipamentos?.manutencao_anual_fixa != null
-                      ? formatCurrency(linha.equipamentos.manutencao_anual_fixa)
-                      : linha.equipamentos?.percentual_manutencao_anual != null
-                        ? `${fmt(linha.equipamentos.percentual_manutencao_anual)}%`
-                        : "-"}
-                  </td>
-                  <td className={td}>{linha.equipamentos?.possui ? "Sim" : "Nao informado"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-          <EditableEquipamentos codigo={codigo} equipamentos={equipamentosT} opcoes={equipamentosOpcoes} />
+        {activeView === "materiais-insumos" && (
+        <Section title="Insumos" description="Materiais tecnicos, item de estoque, consumo por amostra e modo de cobranca.">
+          <MateriaisEditTable
+            codigo={codigo}
+            materiais={materiaisT.map(toMaterialEditRowData)}
+            insumos={insumosOpcoes.map(toInsumoOption)}
+          />
         </Section>
+        )}
 
-        <Section id="custeio" title="Custeio">
+        {activeView === "equipamentos" && (
+        <Section title="Equipamentos" description="Equipamentos vinculados a receita e parametros usados no custo.">
+          <EquipamentosEditTable
+            codigo={codigo}
+            equipamentos={equipamentosT.map(toEquipamentoEditRowData)}
+            opcoes={equipamentosOpcoes.map(toEquipamentoOption)}
+          />
+        </Section>
+        )}
+
+        {activeView === "custeio" && (
+        <Section title="Custo" description="Composicao calculada pela engine atual, sem alterar snapshots historicos.">
           {erroCusteio && <p className="text-sm text-warning-strong">Nao foi possivel carregar o custeio atual.</p>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Reagentes" value={custo ? formatCurrency(custo.reagentes) : "-"} compact />
@@ -406,12 +389,15 @@ export default async function AnaliseDetalhe({
               Bioinformatica classificada como pos-analise, mas ainda sem parametros de custo/prazo cadastrados.
             </p>
           )}
+          <CustoAnaliseChart data={curvaCusto} capacidade={curvaCusto[0]?.capacidadeOperacional ?? g.amostrasDia} />
           <p className="mt-3 text-xs text-muted-foreground">
             Valores exibidos pela engine atual, sem gravar snapshot e sem recalcular orcamentos antigos nesta etapa.
           </p>
         </Section>
+        )}
 
-        <Section id="estoque" title="Estoque">
+        {activeView === "estoque" && (
+        <Section title="Estoque" description="Sinalizacao de disponibilidade dos insumos vinculados.">
           <p className="mb-3 text-sm text-muted-foreground">
             Diagnostico apenas informativo. Esta ficha nao reserva, baixa nem abre compras automaticamente.
           </p>
@@ -447,8 +433,10 @@ export default async function AnaliseDetalhe({
             </tbody>
           </Table>
         </Section>
+        )}
 
-        <Section id="historico-versoes" title="Historico/Versoes">
+        {activeView === "historico-versoes" && (
+        <Section title="Historico/Versoes" description="Estado atual do versionamento tecnico desta ficha.">
           <div className="rounded-lg border border-warning-strong/30 bg-warning-soft p-4 text-sm text-warning-strong">
             <p className="font-medium">Ficha tecnica viva</p>
             <p className="mt-1">
@@ -465,6 +453,7 @@ export default async function AnaliseDetalhe({
             Voltar para analises
           </Link>
         </Section>
+        )}
       </main>
     </div>
   );
@@ -481,23 +470,99 @@ function isEtapaPosAnalise(etapa: Etapa) {
   );
 }
 
-function EtapaRow({ etapa }: { etapa: Etapa }) {
+function isViewId(view: string | undefined): view is ViewId {
+  return navItems.some(([, id]) => id === view);
+}
+
+function toEtapaEditRowData(etapa: Etapa): EtapaEditRowData {
   const e = etapa as Etapa & {
+    id: number;
     ordem?: number | null;
     tipo_limitacao?: string | null;
+    atividade_opcional?: boolean | null;
   };
-  return (
-    <tr className="border-t border-border/70">
-      <td className={td}>{e.ordem ?? "-"}</td>
-      <td className={td}>{e.nome_etapa}</td>
-      <td className={td}>{e.nome_atividade}</td>
-      <td className={td}>{fmt(e.execucoes_por_dia)}</td>
-      <td className={td}>{fmt(e.amostras_por_execucao)}</td>
-      <td className={td}>{fmt(e.tempo_maquina_h)}</td>
-      <td className={td}>{fmt(e.tempo_bancada_h)}</td>
-      <td className={td}>{e.tipo_limitacao ?? "-"}</td>
-    </tr>
-  );
+  return {
+    id: e.id,
+    ordem: e.ordem ?? null,
+    nome_etapa: e.nome_etapa ?? null,
+    nome_atividade: e.nome_atividade ?? null,
+    execucoes_por_dia: e.execucoes_por_dia ?? null,
+    amostras_por_execucao: e.amostras_por_execucao ?? null,
+    tempo_maquina_h: e.tempo_maquina_h ?? null,
+    tempo_bancada_h: e.tempo_bancada_h ?? null,
+    tipo_limitacao: e.tipo_limitacao ?? null,
+    atividade_opcional: e.atividade_opcional ?? null,
+  };
+}
+
+function toMaterialEditRowData(material: MaterialVinculado): MaterialEditRowData {
+  return {
+    id: material.id,
+    nome_etapa: material.nome_etapa,
+    nome_atividade: material.nome_atividade,
+    especificacao_insumo: material.especificacao_insumo,
+    grupo_escolha: material.grupo_escolha,
+    quantidade_por_amostra: material.quantidade_por_amostra,
+    unidade: material.unidade,
+    modo_cobranca: material.modo_cobranca,
+    preferencial: material.preferencial,
+    insumo_id: material.insumo_id,
+    insumo_rotulo: material.insumos?.especificacao ?? material.insumos?.nome_item ?? "Sem vinculo",
+    custo_unitario: material.insumos?.custo_unitario ?? null,
+  };
+}
+
+function toInsumoLinha(material: MaterialVinculado): InsumoLinha {
+  return {
+    nome_etapa: material.nome_etapa,
+    nome_atividade: material.nome_atividade,
+    especificacao_insumo: material.especificacao_insumo,
+    grupo_escolha: material.grupo_escolha,
+    quantidade_por_amostra: material.quantidade_por_amostra,
+    modo_cobranca: material.modo_cobranca,
+    custo_unitario: material.insumos?.custo_unitario ?? null,
+    insumo_id: material.insumo_id,
+  };
+}
+
+function toInsumoOption(insumo: InsumoOpcao): InsumoOption {
+  return {
+    id: insumo.id,
+    label: insumo.especificacao ?? insumo.nome_item ?? `Insumo ${insumo.id}`,
+  };
+}
+
+function toEquipAlloc(linha: EquipamentoVinculado, diasUteisAno: number): EquipAlloc {
+  return {
+    peso: Number(linha.peso_alocacao ?? 0),
+    custoDia: linha.equipamentos ? equipCustoDia(linha.equipamentos, diasUteisAno) : 0,
+  };
+}
+
+function maxAmostrasCurva(amostrasDia: number) {
+  const capacidade = Math.max(1, Math.floor(amostrasDia || 1));
+  return Math.min(Math.max(capacidade * 3, 24), 384);
+}
+
+function toEquipamentoEditRowData(linha: EquipamentoVinculado): EquipamentoEditRowData {
+  return {
+    id: linha.id,
+    nome: linha.equipamentos?.nome ?? "-",
+    peso_alocacao: linha.peso_alocacao,
+    quantidade: linha.equipamentos?.quantidade ?? null,
+    custo_unitario: linha.equipamentos?.custo_unitario ?? null,
+    vida_util_anos: linha.equipamentos?.vida_util_anos ?? null,
+    percentual_manutencao_anual: linha.equipamentos?.percentual_manutencao_anual ?? null,
+    manutencao_anual_fixa: linha.equipamentos?.manutencao_anual_fixa ?? null,
+    possui: linha.equipamentos?.possui ?? null,
+  };
+}
+
+function toEquipamentoOption(equipamento: EquipamentoOpcao): EquipamentoOption {
+  return {
+    id: equipamento.id,
+    label: equipamento.nome,
+  };
 }
 
 function Badge({ children, muted = false }: { children: ReactNode; muted?: boolean }) {
@@ -514,250 +579,47 @@ function Badge({ children, muted = false }: { children: ReactNode; muted?: boole
   );
 }
 
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
   return (
-    <section id={id} className="mt-8">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
-      <div className={`mt-3 ${panel}`}>{children}</div>
+    <section className="mt-6">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+          {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
+        </div>
+      </div>
+      <div className={`mt-2 ${panel}`}>{children}</div>
     </section>
   );
 }
 
 function Stat({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
   return (
-    <div className={compact ? "rounded-md bg-muted/50 p-3" : panel}>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
+    <div className={compact ? "rounded-md border border-border/60 bg-muted/35 px-3 py-2" : panel}>
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-base font-semibold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border/60 bg-background/60 px-2.5 py-2">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-sm font-semibold tabular-nums">{value}</p>
     </div>
   );
 }
 
 function Table({ children }: { children: ReactNode }) {
-  return <div className="mt-3 overflow-x-auto"><table className="min-w-full border-collapse">{children}</table></div>;
+  return <div className="mt-2 overflow-x-auto"><table className="mx-auto table-auto border-collapse border border-foreground/70">{children}</table></div>;
 }
 
-function EditableEtapas({ codigo, etapas }: { codigo: string; etapas: Etapa[] }) {
-  return (
-    <div className="mt-6 border-t border-border pt-5">
-      <h3 className="text-sm font-semibold">Editar etapas</h3>
-      <div className="mt-3 grid gap-3 lg:grid-cols-2">
-        {etapas.map((etapa) => {
-          const e = etapa as Etapa & { id: number; tipo_limitacao?: string | null };
-          return (
-            <form key={e.id} action={atualizarEtapa} className="rounded-md border border-border/70 bg-muted/30 p-3">
-              <input type="hidden" name="codigo_analise" value={codigo} />
-              <input type="hidden" name="id" value={e.id} />
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Field name="nome_etapa" label="Etapa" defaultValue={e.nome_etapa} />
-                <Field name="nome_atividade" label="Atividade" defaultValue={e.nome_atividade} />
-                <Field name="execucoes_por_dia" label="Exec/dia" type="number" step="0.0001" defaultValue={fmtInput(e.execucoes_por_dia)} />
-                <Field name="amostras_por_execucao" label="Amostras/exec." type="number" step="0.0001" defaultValue={fmtInput(e.amostras_por_execucao)} />
-                <Field name="tempo_maquina_h" label="Máquina h" type="number" step="0.0001" defaultValue={fmtInput(e.tempo_maquina_h)} />
-                <Field name="tempo_bancada_h" label="Bancada h" type="number" step="0.0001" defaultValue={fmtInput(e.tempo_bancada_h)} />
-                <Field name="tipo_limitacao" label="Limitação" defaultValue={e.tipo_limitacao ?? ""} />
-                <label className="mt-6 flex items-center gap-2 text-sm">
-                  <input type="checkbox" name="atividade_opcional" defaultChecked={(e as unknown as { atividade_opcional?: boolean }).atividade_opcional} />
-                  Opcional
-                </label>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <button className={primaryButtonClass}>Salvar etapa</button>
-                <ConfirmActionButton
-                  action={removerEtapa}
-                  fields={{ codigo_analise: codigo, id: e.id }}
-                  trigger="Remover"
-                  titulo="Remover etapa"
-                  mensagem={`Remover a etapa "${e.nome_etapa} / ${e.nome_atividade}" desta análise?`}
-                  confirmLabel="Remover"
-                />
-              </div>
-            </form>
-          );
-        })}
-      </div>
-
-      <form action={adicionarEtapa} className="mt-4 rounded-md border border-dashed border-input p-3">
-        <input type="hidden" name="codigo_analise" value={codigo} />
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <Field name="nome_etapa" label="Nova etapa" />
-          <Field name="nome_atividade" label="Atividade" />
-          <Field name="ordem" label="Ordem" type="number" step="1" />
-          <Field name="execucoes_por_dia" label="Exec/dia" type="number" step="0.0001" />
-          <Field name="amostras_por_execucao" label="Amostras/exec." type="number" step="0.0001" />
-          <Field name="tempo_maquina_h" label="Máquina h" type="number" step="0.0001" />
-          <Field name="tempo_bancada_h" label="Bancada h" type="number" step="0.0001" />
-          <Field name="tipo_limitacao" label="Limitação" />
-        </div>
-        <button className={`${primaryButtonClass} mt-3`}>Adicionar etapa</button>
-      </form>
-    </div>
-  );
-}
-
-function EditableMateriais({
-  codigo,
-  materiais,
-  insumos,
-}: {
-  codigo: string;
-  materiais: MaterialVinculado[];
-  insumos: InsumoOpcao[];
-}) {
-  return (
-    <div className="mt-6 border-t border-border pt-5">
-      <h3 className="text-sm font-semibold">Editar materiais</h3>
-      <div className="mt-3 grid gap-3">
-        {materiais.map((material) => (
-          <form key={material.id} action={atualizarMaterial} className="rounded-md border border-border/70 bg-muted/30 p-3">
-            <input type="hidden" name="codigo_analise" value={codigo} />
-            <input type="hidden" name="id" value={material.id} />
-            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
-              <Field name="especificacao_insumo" label="Material técnico" defaultValue={material.especificacao_insumo ?? ""} />
-              <InsumoSelect insumos={insumos} defaultValue={material.insumo_id} />
-              <Field name="quantidade_por_amostra" label="Qtd/amostra" type="number" step="0.000001" defaultValue={fmtInput(material.quantidade_por_amostra)} />
-              <Field name="unidade" label="Unidade" defaultValue={material.unidade ?? ""} />
-              <Field name="grupo_escolha" label="Grupo" defaultValue={material.grupo_escolha ?? ""} />
-              <ModoSelect defaultValue={material.modo_cobranca ?? ""} />
-              <label className="mt-6 flex items-center gap-2 text-sm">
-                <input type="checkbox" name="preferencial" defaultChecked={Boolean(material.preferencial)} />
-                Preferencial
-              </label>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <button className={primaryButtonClass}>Salvar material</button>
-              <ConfirmActionButton
-                action={removerMaterial}
-                fields={{ codigo_analise: codigo, id: material.id }}
-                trigger="Remover"
-                titulo="Remover material"
-                mensagem={`Remover "${material.especificacao_insumo ?? "material"}" desta análise?`}
-                confirmLabel="Remover"
-              />
-            </div>
-          </form>
-        ))}
-      </div>
-
-      <form action={adicionarMaterial} className="mt-4 rounded-md border border-dashed border-input p-3">
-        <input type="hidden" name="codigo_analise" value={codigo} />
-        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
-          <Field name="nome_etapa" label="Etapa" />
-          <Field name="nome_atividade" label="Atividade" />
-          <Field name="especificacao_insumo" label="Material técnico" />
-          <InsumoSelect insumos={insumos} />
-          <Field name="quantidade_por_amostra" label="Qtd/amostra" type="number" step="0.000001" />
-          <Field name="unidade" label="Unidade" />
-          <Field name="grupo_escolha" label="Grupo" />
-          <ModoSelect />
-        </div>
-        <button className={`${primaryButtonClass} mt-3`}>Adicionar material</button>
-      </form>
-    </div>
-  );
-}
-
-function EditableEquipamentos({
-  codigo,
-  equipamentos,
-  opcoes,
-}: {
-  codigo: string;
-  equipamentos: EquipamentoVinculado[];
-  opcoes: EquipamentoOpcao[];
-}) {
-  return (
-    <div className="mt-6 border-t border-border pt-5">
-      <h3 className="text-sm font-semibold">Gerenciar equipamentos vinculados</h3>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {equipamentos.map((linha) => (
-          <div key={linha.id} className="rounded-md border border-border/70 bg-muted/30 p-3">
-            <p className="text-sm font-medium">{linha.equipamentos?.nome ?? "Equipamento"}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Peso: {fmt(linha.peso_alocacao)}</p>
-            <div className="mt-3">
-              <ConfirmActionButton
-                action={removerEquipamento}
-                fields={{ codigo_analise: codigo, id: linha.id }}
-                trigger="Remover vínculo"
-                titulo="Remover equipamento"
-                mensagem={`Remover "${linha.equipamentos?.nome ?? "equipamento"}" desta análise?`}
-                confirmLabel="Remover"
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-      <form action={adicionarEquipamento} className="mt-4 rounded-md border border-dashed border-input p-3">
-        <input type="hidden" name="codigo_analise" value={codigo} />
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_160px_auto]">
-          <label className="block">
-            <span className={labelClass}>Equipamento</span>
-            <select name="equipamento_id" className={inputClass}>
-              <option value="">Selecione</option>
-              {opcoes.map((opcao) => (
-                <option key={opcao.id} value={opcao.id}>
-                  {opcao.nome}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Field name="peso_alocacao" label="Peso" type="number" step="0.0001" defaultValue="1" />
-          <button className={`${primaryButtonClass} self-end`}>Adicionar</button>
-        </div>
-      </form>
-    </div>
-  );
-}
-
-function Field({
-  name,
-  label,
-  type = "text",
-  step,
-  defaultValue,
-}: {
-  name: string;
-  label: string;
-  type?: string;
-  step?: string;
-  defaultValue?: string | number | null;
-}) {
-  return (
-    <label className="block">
-      <span className={labelClass}>{label}</span>
-      <input name={name} type={type} step={step} defaultValue={defaultValue ?? ""} className={inputClass} />
-    </label>
-  );
-}
-
-function InsumoSelect({ insumos, defaultValue }: { insumos: InsumoOpcao[]; defaultValue?: number | null }) {
-  return (
-    <label className="block">
-      <span className={labelClass}>Item de estoque</span>
-      <select name="insumo_id" defaultValue={defaultValue ?? ""} className={inputClass}>
-        <option value="">Sem vínculo</option>
-        {insumos.map((insumo) => (
-          <option key={insumo.id} value={insumo.id}>
-            {insumo.especificacao ?? insumo.nome_item ?? `Insumo ${insumo.id}`}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function ModoSelect({ defaultValue = "" }: { defaultValue?: string }) {
-  return (
-    <label className="block">
-      <span className={labelClass}>Cobrança</span>
-      <select name="modo_cobranca" defaultValue={defaultValue} className={inputClass}>
-        <option value="">por amostra (padrão)</option>
-        <option value="por_amostra">por amostra</option>
-        <option value="por_execucao">por execução</option>
-      </select>
-    </label>
-  );
-}
-
-function fmtInput(value: number | null | undefined) {
-  return value == null ? "" : String(value);
-}

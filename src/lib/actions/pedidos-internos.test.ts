@@ -8,6 +8,14 @@ const itemSingle = vi.fn();
 const insumoInsert = vi.fn();
 const insumoInsertSingle = vi.fn();
 const insumoCategorySingle = vi.fn();
+const pedidoFormalSingle = vi.fn();
+const itensFormalOrder = vi.fn();
+const compraFormalSingle = vi.fn();
+const itensCompraInsert = vi.fn();
+const pedidoStatusSingle = vi.fn();
+const pedidoUpdate = vi.fn();
+const pedidoUpdateEq = vi.fn();
+const aprovacaoInsert = vi.fn();
 const registrarEvento = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath }));
@@ -88,6 +96,53 @@ function configureSupabase() {
   });
 }
 
+function configureFormalizacaoSupabase() {
+  let pedidosInternosSelectCount = 0;
+  from.mockImplementation((table: string) => {
+    if (table === "pedidos_internos") {
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn(() => {
+            pedidosInternosSelectCount += 1;
+            return {
+              single: pedidosInternosSelectCount === 1 ? pedidoFormalSingle : pedidoStatusSingle,
+            };
+          }),
+        })),
+        update: pedidoUpdate,
+      };
+    }
+    if (table === "pedidos_internos_itens") {
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            order: itensFormalOrder,
+          })),
+        })),
+      };
+    }
+    if (table === "pedidos_compra") {
+      return {
+        insert: vi.fn(() => ({
+          select: vi.fn(() => ({
+            single: compraFormalSingle,
+          })),
+        })),
+      };
+    }
+    if (table === "pedidos_compra_itens") {
+      return { insert: itensCompraInsert };
+    }
+    if (table === "pedidos_internos_aprovacoes") {
+      return { insert: aprovacaoInsert };
+    }
+    return {};
+  });
+  pedidoUpdate.mockReturnValue({ eq: pedidoUpdateEq });
+  pedidoUpdateEq.mockResolvedValue({ error: null });
+  aprovacaoInsert.mockResolvedValue({ error: null });
+}
+
 describe("recebimento de pedido interno", () => {
   beforeEach(() => {
     revalidatePath.mockReset();
@@ -98,6 +153,14 @@ describe("recebimento de pedido interno", () => {
     insumoInsert.mockReset();
     insumoInsertSingle.mockReset();
     insumoCategorySingle.mockReset();
+    pedidoFormalSingle.mockReset();
+    itensFormalOrder.mockReset();
+    compraFormalSingle.mockReset();
+    itensCompraInsert.mockReset();
+    pedidoStatusSingle.mockReset();
+    pedidoUpdate.mockReset();
+    pedidoUpdateEq.mockReset();
+    aprovacaoInsert.mockReset();
     registrarEvento.mockReset();
 
     configureSupabase();
@@ -203,5 +266,76 @@ describe("recebimento de pedido interno", () => {
     expect(rpc).toHaveBeenCalledWith("receber_item_pedido_interno", expect.objectContaining({
       p_insumo_id: 88,
     }));
+  });
+
+  it("formaliza pedido interno mantendo vinculo entre item interno e item da compra formal", async () => {
+    configureFormalizacaoSupabase();
+    pedidoFormalSingle.mockResolvedValue({
+      data: {
+        id: 10,
+        titulo: "Reagentes do projeto",
+        status: "validado",
+        solicitante: "solicitante@example.com",
+        projeto_id: 3,
+        pedido_compra_id: null,
+      },
+      error: null,
+    });
+    itensFormalOrder.mockResolvedValue({
+      data: [
+        { id: 5, insumo_id: 88, quantidade: 2, orcamento_previo: 150, especificacao: "Kit extração", observacao: null },
+        { id: 6, insumo_id: null, quantidade: 1, orcamento_previo: 80, especificacao: "Serviço externo", observacao: null },
+      ],
+      error: null,
+    });
+    compraFormalSingle.mockResolvedValue({ data: { id: 20 }, error: null });
+    itensCompraInsert.mockResolvedValue({ error: null });
+    pedidoStatusSingle.mockResolvedValue({ data: { status: "validado" }, error: null });
+
+    const { formalizarPedidoInterno } = await import("./pedidos-internos");
+    const formData = new FormData();
+    formData.set("pedido_interno_id", "10");
+
+    const result = await formalizarPedidoInterno({ ok: false }, formData);
+
+    expect(result.ok).toBe(true);
+    expect(itensCompraInsert).toHaveBeenCalledWith([
+      expect.objectContaining({
+        pedido_id: 20,
+        insumo_id: 88,
+        pedido_interno_item_id: 5,
+        quantidade: 2,
+        custo_unitario_estimado: 150,
+      }),
+    ]);
+    expect(pedidoUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      pedido_compra_id: 20,
+      status: "formalizado",
+    }));
+    expect(revalidatePath).toHaveBeenCalledWith("/compras");
+  });
+
+  it("bloqueia recebimento interno quando o item tem compra formal pendente", async () => {
+    itemSingle.mockResolvedValue({
+      data: {
+        ...itemRecebimento(),
+        pedidos_internos: {
+          status: "aprovado_para_compra",
+          projetos: { nome: "Projeto A" },
+        },
+      },
+      error: null,
+    });
+    rpc.mockResolvedValue({
+      error: { message: "Item vinculado a compra formal deve ser recebido pelo pedido de compra." },
+    });
+    const { receberItemPedidoInterno } = await import("./pedidos-internos");
+
+    const result = await receberItemPedidoInterno({ ok: false }, formRecebimento());
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Item vinculado a compra formal deve ser recebido pelo pedido de compra.",
+    });
   });
 });

@@ -350,7 +350,7 @@ export async function formalizarPedidoInterno(_prev: FormState, formData: FormDa
       .single(),
     supabase
       .from("pedidos_internos_itens")
-      .select("insumo_id, quantidade, orcamento_previo, especificacao, observacao")
+      .select("id, insumo_id, quantidade, orcamento_previo, especificacao, observacao")
       .eq("pedido_interno_id", pedidoId)
       .order("id"),
   ]);
@@ -373,10 +373,14 @@ export async function formalizarPedidoInterno(_prev: FormState, formData: FormDa
 
   const itensComInsumo = (itens ?? []).filter((item) => item.insumo_id != null);
   if (itensComInsumo.length > 0) {
-    const { error: itensErr } = await supabase.from("pedidos_compra_itens").insert(
+    const pedidosCompraItens = supabase.from("pedidos_compra_itens") as unknown as {
+      insert: (values: Array<Record<string, unknown>>) => PromiseLike<{ error: { message: string } | null }>;
+    };
+    const { error: itensErr } = await pedidosCompraItens.insert(
       itensComInsumo.map((item) => ({
         pedido_id: compra.id,
         insumo_id: item.insumo_id as number,
+        pedido_interno_item_id: item.id,
         quantidade: item.quantidade,
         custo_unitario_estimado: item.orcamento_previo,
       })),

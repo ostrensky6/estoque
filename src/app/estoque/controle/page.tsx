@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
+import { GerarReposicaoButton } from "@/components/compras/GerarReposicaoButton";
 import { StockControlHub } from "./StockControlHub";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ type LoteDbRow = {
   validade_apos_abertura: string | null;
   quantidade_atual: number | null;
   status: string;
-  insumos: { especificacao: string | null; unidade: string | null } | null;
+  insumos: { especificacao: string | null; unidade: string | null; categoria_compra: string | null } | null;
 };
 
 const LOTE_STATUS: Record<string, string> = {
@@ -40,7 +41,7 @@ export default async function EstoqueControlePage() {
     supabase.from("v_alertas_estoque").select("*"),
     supabase
       .from("lotes_estoque")
-      .select("id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status, insumos(especificacao, unidade)")
+      .select("id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status, insumos(especificacao, unidade, categoria_compra)")
       .not("status", "in", "(consumido,descartado)")
       .order("validade", { nullsFirst: false }),
   ]);
@@ -74,6 +75,7 @@ export default async function EstoqueControlePage() {
       especificacao: l.insumos?.especificacao ?? "—",
       unidade: l.insumos?.unidade ?? "",
       vencido: validadeEfetiva != null && new Date(validadeEfetiva) < hoje,
+      critico: l.insumos?.categoria_compra === "critico",
     };
   });
 
@@ -93,6 +95,7 @@ export default async function EstoqueControlePage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {podeAceitar && <GerarReposicaoButton />}
             <span className="rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground shadow-sm">
               {saldo.length} insumos monitorados
             </span>

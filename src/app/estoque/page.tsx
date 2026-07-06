@@ -42,7 +42,7 @@ export default async function EstoquePage() {
     supabase.from("v_alertas_estoque").select("*"),
     supabase
       .from("lotes_estoque")
-      .select("id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status, insumos(especificacao, unidade)")
+      .select("id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status, insumos(especificacao, unidade, categoria_compra)")
       .not("status", "in", "(consumido,descartado)")
       .order("validade", { nullsFirst: false }),
     supabase.from("v_previsao_suprimentos").select("*"),
@@ -88,7 +88,7 @@ export default async function EstoquePage() {
   });
   const hoje = new Date();
   const loteRows: LoteRow[] = (lotes ?? []).map((l) => {
-    const ins = l.insumos as { especificacao: string | null; unidade: string | null } | null;
+    const ins = l.insumos as { especificacao: string | null; unidade: string | null; categoria_compra: string | null } | null;
     const validadeEfetiva =
       l.validade && l.validade_apos_abertura
         ? l.validade <= l.validade_apos_abertura
@@ -105,6 +105,7 @@ export default async function EstoquePage() {
       status: l.status,
       statusLabel: LOTE_STATUS[l.status] ?? l.status,
       vencido: validadeEfetiva != null && new Date(validadeEfetiva) < hoje,
+      critico: ins?.categoria_compra === "critico",
     };
   });
 
