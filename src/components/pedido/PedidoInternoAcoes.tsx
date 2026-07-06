@@ -30,6 +30,7 @@ function Botao({
   variant = "primary",
   observacao,
   comentarioPlaceholder,
+  children,
 }: {
   pedidoId: number;
   action: Action;
@@ -37,6 +38,7 @@ function Botao({
   variant?: "primary" | "outline" | "danger";
   observacao?: string;
   comentarioPlaceholder?: string;
+  children?: React.ReactNode;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, { ok: false });
@@ -63,6 +65,7 @@ function Botao({
             className="mb-2 h-9 w-64 rounded-md border border-input bg-card px-3 text-xs"
           />
         )}
+        {children}
         <button disabled={pending} className={cls}>
           {pending ? "..." : label}
         </button>
@@ -146,7 +149,26 @@ export function PedidoInternoAcoes({
       {status === "aprovado_para_compra" && podeGerir && (
         <>
           <Botao pedidoId={pedidoId} action={fecharComFornecedor} label="Fechar com fornecedor" />
-          <Botao pedidoId={pedidoId} action={encaminharInstituicao} label="Encaminhar à instituição" variant="outline" />
+          <Botao pedidoId={pedidoId} action={encaminharInstituicao} label="Encaminhar à instituição" variant="outline">
+            <div className="mb-2 grid w-72 gap-2">
+              <select name="modalidade_compra" defaultValue="fundacao" className="h-9 rounded-md border border-input bg-card px-3 text-xs">
+                <option value="fundacao">Fundação</option>
+                <option value="universidade">Universidade</option>
+                <option value="outra">Outra instituição</option>
+              </select>
+              <input
+                name="instituicao_destino"
+                required
+                placeholder="Instituição de destino"
+                className="h-9 rounded-md border border-input bg-card px-3 text-xs"
+              />
+              <input
+                name="protocolo_externo"
+                placeholder="Protocolo/referência externa"
+                className="h-9 rounded-md border border-input bg-card px-3 text-xs"
+              />
+            </div>
+          </Botao>
         </>
       )}
 

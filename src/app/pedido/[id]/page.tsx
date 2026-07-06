@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClientUntyped } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
 import {
   adicionarAnexoPedidoInterno,
@@ -65,6 +65,12 @@ type PedidoInternoAnexo = {
   tipo: string;
   titulo: string;
   url: string | null;
+  arquivo_nome?: string | null;
+  storage_bucket?: string | null;
+  storage_path?: string | null;
+  mime_type?: string | null;
+  tamanho_bytes?: number | null;
+  hash_sha256?: string | null;
   observacao: string | null;
   usuario: string | null;
   criado_em: string;
@@ -90,7 +96,7 @@ export default async function PedidoInternoDetalhe({
 }) {
   const { id } = await params;
   const pedidoId = Number(id);
-  const supabase = await createClient();
+  const supabase = await createClientUntyped();
 
   const { data: pedido } = await supabase
     .from("pedidos_internos")
@@ -115,7 +121,7 @@ export default async function PedidoInternoDetalhe({
       .eq("pedido_interno_id", pedidoId)
       .order("id"),
     supabase.from("insumos").select("id, especificacao, unidade").order("especificacao"),
-    supabase.from("projetos").select("id, nome").order("nome"),
+    supabase.from("projetos").select("id, nome, coordenador").order("nome"),
     supabase
       .from("pedidos_internos_aprovacoes")
       .select("id, etapa, decisao, responsavel, papel, comentario, status_origem, status_destino, criado_em")
@@ -137,12 +143,31 @@ export default async function PedidoInternoDetalhe({
 
   const pedidoStatus = pedido.status as PedidoInternoStatus;
   const statusMeta = pedidoInternoStatus(pedidoStatus);
-  const projeto = (pedido.projetos as { nome: string | null } | null)?.nome ?? "—";
+  const projetoRow = pedido.projetos as {
+    nome: string | null;
+    coordenador?: string | null;
+    coordenador_nome?: string | null;
+    coordenador_email?: string | null;
+  } | null;
+  const projeto = projetoRow?.nome ?? "—";
   const compraFormal = pedido.pedidos_compra as { id: number; status: string } | null;
-  const linhas = ((itens ?? []) as PedidoInternoItem[]) ?? [];
-  const aprovacaoRows = ((aprovacoes ?? []) as PedidoInternoAprovacao[]) ?? [];
-  const anexoRows = ((anexos ?? []) as PedidoInternoAnexo[]) ?? [];
-  const comunicacaoRows = ((comunicacoes ?? []) as PedidoInternoComunicacao[]) ?? [];
+  const coordenadorProjeto =
+    pedido.coordenador_projeto_nome ??
+    pedido.coordenador_projeto_email ??
+    projetoRow?.coordenador_nome ??
+    projetoRow?.coordenador ??
+    projetoRow?.coordenador_email ??
+    "—";
+  const modalidadeLabel: Record<string, string> = {
+    compra_direta: "Compra direta",
+    fundacao: "Fundação",
+    universidade: "Universidade",
+    outra: "Outra",
+  };
+  const linhas = ((itens ?? []) as unknown as PedidoInternoItem[]) ?? [];
+  const aprovacaoRows = ((aprovacoes ?? []) as unknown as PedidoInternoAprovacao[]) ?? [];
+  const anexoRows = ((anexos ?? []) as unknown as PedidoInternoAnexo[]) ?? [];
+  const comunicacaoRows = ((comunicacoes ?? []) as unknown as PedidoInternoComunicacao[]) ?? [];
   const total = linhas.reduce(
     (acc, item) => acc + Number(item.quantidade ?? 0) * Number(item.orcamento_previo ?? 0),
     0,
@@ -205,6 +230,11 @@ export default async function PedidoInternoDetalhe({
               {pedido.data_necessidade ? ` · Necessidade: ${formatDate(pedido.data_necessidade)}` : ""}
               {pedido.urgencia ? ` · Urgência: ${pedido.urgencia}` : ""}
             </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Tipo: {String(pedido.tipo_demanda ?? "laboratorio").replaceAll("_", "/")} · Coordenador: {coordenadorProjeto}
+              {pedido.aprovador_coordenador_diferente ? " · aprovado por substituto" : ""}
+              {pedido.modalidade_compra ? ` · Modalidade: ${modalidadeLabel[pedido.modalidade_compra] ?? pedido.modalidade_compra}` : ""}
+            </p>
             {pedido.justificativa && (
               <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{pedido.justificativa}</p>
             )}
@@ -221,6 +251,7 @@ export default async function PedidoInternoDetalhe({
               projetoId={pedido.projeto_id}
               dataNecessidade={pedido.data_necessidade}
               urgencia={pedido.urgencia}
+              tipoDemanda={pedido.tipo_demanda}
               fonteRecurso={pedido.fonte_recurso}
               justificativa={pedido.justificativa}
               projetos={projetos ?? []}
@@ -336,6 +367,11 @@ export default async function PedidoInternoDetalhe({
                         recebidoEm={item.recebido_em}
                         recebidoPor={item.recebido_por}
                       />
+                      {item.lote_id && (
+                        <Link href={`/estoque/lotes/${item.lote_id}`} className="mt-1 block text-xs text-primary hover:underline">
+                          Lote #{item.lote_id}
+                        </Link>
+                      )}
                     </td>
                     {podeEditarItens && (
                       <td className="px-4 py-2.5 text-right">
@@ -448,6 +484,18 @@ export default async function PedidoInternoDetalhe({
                           Abrir referência
                         </a>
                       )}
+                      {(anexo.arquivo_nome || anexo.storage_path) && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {anexo.arquivo_nome ?? "Arquivo preparado"}
+                          {anexo.mime_type ? ` · ${anexo.mime_type}` : ""}
+                          {anexo.tamanho_bytes ? ` · ${Math.round(anexo.tamanho_bytes / 1024)} KB` : ""}
+                        </p>
+                      )}
+                      {anexo.storage_path && (
+                        <p className="mt-1 break-all font-mono text-[11px] text-muted-foreground">
+                          {anexo.storage_bucket ? `${anexo.storage_bucket}/` : ""}{anexo.storage_path}
+                        </p>
+                      )}
                       {anexo.observacao && <p className="mt-1 text-xs text-muted-foreground">{anexo.observacao}</p>}
                     </div>
                     {editavel && (
@@ -487,6 +535,22 @@ export default async function PedidoInternoDetalhe({
               <div className="md:col-span-2">
                 <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Link ou referência interna</label>
                 <input name="url" placeholder="https://... ou código/local do documento" className={`${inputCls} mt-1 w-full`} />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Arquivo</label>
+                <input name="arquivo_nome" placeholder="nome do arquivo ou recibo de upload" className={`${inputCls} mt-1 w-full`} />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Storage path</label>
+                <input name="storage_path" placeholder="caminho preparado no storage" className={`${inputCls} mt-1 w-full`} />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">MIME type</label>
+                <input name="mime_type" placeholder="application/pdf" className={`${inputCls} mt-1 w-full`} />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Tamanho (bytes)</label>
+                <input name="tamanho_bytes" type="number" min="0" className={`${inputCls} mt-1 w-full`} />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Observação</label>
@@ -623,6 +687,20 @@ export default async function PedidoInternoDetalhe({
                     </Link>
                   ) : "—"}
                 </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Modalidade</dt>
+                <dd className="text-right">
+                  {pedido.modalidade_compra ? modalidadeLabel[pedido.modalidade_compra] ?? pedido.modalidade_compra : "—"}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Instituição</dt>
+                <dd className="text-right">{pedido.instituicao_destino ?? "—"}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Protocolo</dt>
+                <dd className="text-right">{pedido.protocolo_externo ?? "—"}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Fonte</dt>

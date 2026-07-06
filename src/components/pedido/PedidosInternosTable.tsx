@@ -24,7 +24,9 @@ export type PedidoInternoRow = {
   id: number;
   numero: string;
   titulo: string;
+  tipoDemanda: string;
   projeto: string;
+  coordenador: string;
   solicitante: string;
   necessidade: string;
   urgencia: string;
@@ -33,6 +35,13 @@ export type PedidoInternoRow = {
   total: string;
   status: string;
   statusLabel: string;
+  proximaAcao: string;
+  responsavelAtual: string;
+  documentos: string;
+  modalidade: string;
+  compraFormal: string;
+  recebimento: string;
+  pendencias: string;
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -105,6 +114,7 @@ function buildColumns(podeExcluir: boolean): ColumnDef<PedidoInternoRow, unknown
       ),
     },
     { accessorKey: "projeto", header: "Projeto" },
+    { accessorKey: "coordenador", header: "Coordenador" },
     { accessorKey: "solicitante", header: "Solicitante" },
     { accessorKey: "necessidade", header: "Necessidade" },
     { accessorKey: "urgencia", header: "Urgência" },
@@ -121,6 +131,10 @@ function buildColumns(podeExcluir: boolean): ColumnDef<PedidoInternoRow, unknown
       ),
     },
     { accessorKey: "total", header: "Prévio", meta: { align: "right" } },
+    { accessorKey: "documentos", header: "Docs", meta: { align: "center" } },
+    { accessorKey: "modalidade", header: "Modalidade" },
+    { accessorKey: "compraFormal", header: "Compra" },
+    { accessorKey: "recebimento", header: "Recebimento" },
     {
       accessorKey: "statusLabel",
       header: "Status",
@@ -128,6 +142,9 @@ function buildColumns(podeExcluir: boolean): ColumnDef<PedidoInternoRow, unknown
       cell: ({ row }) => <StatusBadge status={row.original.status} />,
       filterFn: "equalsString",
     },
+    { accessorKey: "proximaAcao", header: "Próxima ação" },
+    { accessorKey: "responsavelAtual", header: "Responsável" },
+    { accessorKey: "pendencias", header: "Pendências" },
   ];
   if (podeExcluir) {
     cols.push({
@@ -173,13 +190,21 @@ export function PedidosInternosTable({
             label: value,
           })),
         },
+        {
+          columnId: "modalidade",
+          label: "Modalidade",
+          options: [...new Set(rows.map((row) => row.modalidade).filter((value) => value !== "—"))].map((value) => ({
+            value,
+            label: value,
+          })),
+        },
       ]}
       getMobileTitle={(row) => (
         <Link href={`/pedido/${row.id}`} className="text-primary hover:underline">
           <span className="font-mono text-xs text-muted-foreground/80">{row.numero}</span> · {row.titulo}
         </Link>
       )}
-      getMobileDescription={(row) => `${row.projeto} · ${row.solicitante} · ${row.urgencia}`}
+      getMobileDescription={(row) => `${row.projeto} · ${row.coordenador} · ${row.proximaAcao}`}
       getMobileMeta={(row) => (
         <div className="flex flex-col items-end gap-1.5">
           <StatusBadge status={row.status} />

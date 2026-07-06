@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createClientUntyped } from "@/lib/supabase/server";
 import { temPapel, usuarioAtual } from "@/lib/auth/roles";
 import { registrarEvento } from "./eventos";
 import {
@@ -39,6 +39,101 @@ function comentarioObrigatorio(formData: FormData) {
   const observacao = texto(formData, "observacao");
   if (!observacao) return { ok: false as const, message: "Informe o motivo/comentário para esta decisão." };
   return { ok: true as const, observacao };
+}
+
+function hojeIso() {
+  return new Date().toISOString();
+}
+
+function hojeData() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function erroSchemaCache(error: { message?: string; code?: string } | null | undefined) {
+  return Boolean(
+    error &&
+      (error.code === "PGRST204" ||
+        error.message?.includes("schema cache") ||
+        error.message?.includes("Could not find the")),
+  );
+}
+
+function normalizarCoordenadorProjeto(projeto: {
+  coordenador?: string | null;
+  coordenador_nome?: string | null;
+  coordenador_email?: string | null;
+} | null | undefined) {
+  const email = projeto?.coordenador_email ?? (String(projeto?.coordenador ?? "").includes("@") ? projeto?.coordenador : null) ?? null;
+  return {
+    nome: projeto?.coordenador_nome ?? projeto?.coordenador ?? email ?? null,
+    email,
+  };
+}
+
+async function resolverCoordenadorProjeto(
+  supabase: Awaited<ReturnType<typeof createClientUntyped>>,
+  projetoId: number | null,
+) {
+  if (!projetoId) return { nome: null as string | null, email: null as string | null };
+
+  const { data, error } = await supabase
+    .from("projetos")
+    .select("coordenador, coordenador_nome, coordenador_email")
+    .eq("id", projetoId)
+    .single();
+  if (erroSchemaCache(error)) {
+    const { data: legado, error: legadoError } = await supabase
+      .from("projetos")
+      .select("coordenador")
+      .eq("id", projetoId)
+      .single();
+    if (legadoError) return { nome: null, email: null };
+    return normalizarCoordenadorProjeto(legado);
+  }
+
+  if (error) return { nome: null, email: null };
+  return normalizarCoordenadorProjeto(data);
+}
+
+async function coordenadorProjeto(pedidoId: number) {
+  const supabase = await createClientUntyped();
+  const { data, error } = await supabase
+    .from("pedidos_internos")
+    .select("projeto_id")
+    .eq("id", pedidoId)
+    .single();
+  if (error || !data?.projeto_id) {
+    return { projetoId: null, nome: null, email: null };
+  }
+  const coordenador = await resolverCoordenadorProjeto(supabase, Number(data.projeto_id));
+  return {
+    projetoId: data?.projeto_id as number | null | undefined,
+    nome: coordenador.nome,
+    email: coordenador.email,
+  };
+}
+
+async function podeAprovarComoCoordenadorProjeto(pedidoId: number) {
+  const u = await usuarioAtual();
+  if (!u) return { ok: false as const, message: "Usuário não autenticado." };
+  const coord = await coordenadorProjeto(pedidoId);
+  const usuarioEmail = u.email?.toLowerCase() ?? null;
+  const coordEmail = coord.email?.toLowerCase() ?? null;
+  const emailConfere = Boolean(coordEmail && usuarioEmail && coordEmail === usuarioEmail);
+  const coordenadorGlobal = await temPapel("coordenador");
+  const gestorOuAdmin = await temPapel("gestor");
+
+  if (!emailConfere && !coordenadorGlobal && !gestorOuAdmin) {
+    return { ok: false as const, message: "A aprovação exige o coordenador do projeto ou papel coordenador/superior." };
+  }
+
+  return {
+    ok: true as const,
+    usuario: u,
+    coordenadorNome: coord.nome,
+    coordenadorEmail: coord.email,
+    diferenteDoCoordenador: Boolean(coordEmail && !emailConfere),
+  };
 }
 
 function validarNovoInsumoRecebimento(formData: FormData, especificacao: string | null, unidade: string | null) {
@@ -108,10 +203,17 @@ async function mudarStatus({
     return { ok: false, message: "Esta etapa não permite a ação solicitada." };
   }
 
-  const { error } = await supabase
+  let { error } = await supabase
     .from("pedidos_internos")
     .update({ status: para, ...extras })
     .eq("id", pedidoId);
+  if (erroSchemaCache(error) && Object.keys(extras).length > 0) {
+    const retry = await supabase
+      .from("pedidos_internos")
+      .update({ status: para })
+      .eq("id", pedidoId);
+    error = retry.error;
+  }
   if (error) return { ok: false, message: error.message };
 
   await supabase.from("pedidos_internos_aprovacoes").insert({
@@ -138,11 +240,36 @@ export async function criarPedidoInterno(formData: FormData) {
   const justificativa = texto(formData, "justificativa");
   const urgencia = texto(formData, "urgencia") ?? "normal";
   const fonte_recurso = texto(formData, "fonte_recurso");
-  const supabase = await createClient();
+  const tipo_demanda = texto(formData, "tipo_demanda") ?? "laboratorio";
+  const supabase = await createClientUntyped();
+  let coordenador_projeto_nome: string | null = null;
+  let coordenador_projeto_email: string | null = null;
 
-  const { data, error } = await supabase
+  if (projeto_id) {
+    const coordenador = await resolverCoordenadorProjeto(supabase, projeto_id);
+    coordenador_projeto_nome = coordenador.nome;
+    coordenador_projeto_email = coordenador.email;
+  }
+
+  const payload = {
+    titulo,
+    projeto_id,
+    tipo_demanda,
+    coordenador_projeto_nome,
+    coordenador_projeto_email,
+    data_necessidade,
+    justificativa,
+    urgencia,
+    fonte_recurso,
+    solicitante: u?.email ?? null,
+  };
+  let { data, error } = await supabase
     .from("pedidos_internos")
-    .insert({
+    .insert(payload)
+    .select("id")
+    .single();
+  if (erroSchemaCache(error)) {
+    const legado = {
       titulo,
       projeto_id,
       data_necessidade,
@@ -150,10 +277,13 @@ export async function criarPedidoInterno(formData: FormData) {
       urgencia,
       fonte_recurso,
       solicitante: u?.email ?? null,
-    })
-    .select("id")
-    .single();
+    };
+    const retry = await supabase.from("pedidos_internos").insert(legado).select("id").single();
+    data = retry.data;
+    error = retry.error;
+  }
   if (error) throw new Error(error.message);
+  if (!data) throw new Error("Não foi possível criar o pedido interno.");
   await registrarEvento("pedido_interno", data.id, null, "rascunho", "Demanda inicial registrada.");
   redirect(`/pedido/${data.id}`);
 }
@@ -164,18 +294,42 @@ export async function atualizarPedidoInterno(formData: FormData) {
   const titulo = texto(formData, "titulo");
   if (!titulo) return;
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const supabase = await createClientUntyped();
+  const projeto_id = numero(formData, "projeto_id");
+  let coordenador_projeto_nome: string | null = null;
+  let coordenador_projeto_email: string | null = null;
+  if (projeto_id) {
+    const coordenador = await resolverCoordenadorProjeto(supabase, projeto_id);
+    coordenador_projeto_nome = coordenador.nome;
+    coordenador_projeto_email = coordenador.email;
+  }
+  const payload = {
+    titulo,
+    projeto_id,
+    tipo_demanda: texto(formData, "tipo_demanda") ?? "laboratorio",
+    coordenador_projeto_nome,
+    coordenador_projeto_email,
+    data_necessidade: texto(formData, "data_necessidade"),
+    urgencia: texto(formData, "urgencia") ?? "normal",
+    fonte_recurso: texto(formData, "fonte_recurso"),
+    justificativa: texto(formData, "justificativa"),
+  };
+  let { error } = await supabase
     .from("pedidos_internos")
-    .update({
+    .update(payload)
+    .eq("id", pedidoId);
+  if (erroSchemaCache(error)) {
+    const legado = {
       titulo,
-      projeto_id: numero(formData, "projeto_id"),
+      projeto_id,
       data_necessidade: texto(formData, "data_necessidade"),
       urgencia: texto(formData, "urgencia") ?? "normal",
       fonte_recurso: texto(formData, "fonte_recurso"),
       justificativa: texto(formData, "justificativa"),
-    })
-    .eq("id", pedidoId);
+    };
+    const retry = await supabase.from("pedidos_internos").update(legado).eq("id", pedidoId);
+    error = retry.error;
+  }
   if (error) throw new Error(error.message);
   revalidatePath(`/pedido/${pedidoId}`);
   revalidatePath("/pedido");
@@ -310,15 +464,24 @@ export async function enviarParaValidacao(_prev: FormState, formData: FormData):
 }
 
 export async function validarInformacoes(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  const pedidoId = Number(formData.get("pedido_interno_id"));
+  const permissao = await podeAprovarComoCoordenadorProjeto(pedidoId);
+  if (!permissao.ok) return permissao;
   return mudarStatus({
-    pedidoId: Number(formData.get("pedido_interno_id")),
+    pedidoId,
     para: "validado",
     permitidoDe: ["em_validacao"],
     observacao: texto(formData, "observacao") ?? "Informações de modelo, volume e quantidade confirmadas.",
     etapa: "Validação das especificações técnicas",
     decisao: "aprovado",
-    extras: { validado_em: new Date().toISOString() },
+    extras: {
+      validado_em: hojeIso(),
+      aprovado_coordenador_em: hojeIso(),
+      aprovador_coordenador: permissao.usuario.nome ?? permissao.usuario.email,
+      coordenador_projeto_nome: permissao.coordenadorNome,
+      coordenador_projeto_email: permissao.coordenadorEmail,
+      aprovador_coordenador_diferente: permissao.diferenteDoCoordenador,
+    },
   });
 }
 
@@ -538,6 +701,7 @@ export async function aprovarCompraFinal(_prev: FormState, formData: FormData): 
 
 export async function fecharComFornecedor(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  const u = await usuarioAtual();
   return mudarStatus({
     pedidoId: Number(formData.get("pedido_interno_id")),
     para: "compra_fechada",
@@ -545,12 +709,25 @@ export async function fecharComFornecedor(_prev: FormState, formData: FormData):
     observacao: texto(formData, "observacao") ?? "Compra fechada com fornecedor; documentos enviados por e-mail.",
     etapa: "Fechamento da compra",
     decisao: "aprovado",
-    extras: { fechado_em: new Date().toISOString() },
+    extras: {
+      fechado_em: hojeIso(),
+      modalidade_compra: "compra_direta",
+      modalidade_definida_em: hojeIso(),
+      modalidade_definida_por: u?.nome ?? u?.email ?? null,
+      observacao_administrativa: texto(formData, "observacao"),
+    },
   });
 }
 
 export async function encaminharInstituicao(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  const u = await usuarioAtual();
+  const modalidade = texto(formData, "modalidade_compra") ?? "fundacao";
+  const instituicao = texto(formData, "instituicao_destino");
+  if (!["fundacao", "universidade", "outra"].includes(modalidade)) {
+    return { ok: false, message: "Selecione Fundação, Universidade ou outra instituição." };
+  }
+  if (!instituicao) return { ok: false, message: "Informe a instituição de destino." };
   return mudarStatus({
     pedidoId: Number(formData.get("pedido_interno_id")),
     para: "encaminhado_instituicao",
@@ -560,7 +737,16 @@ export async function encaminharInstituicao(_prev: FormState, formData: FormData
       "Documentos, orçamentos e termos encaminhados para a instituição responsável pela compra.",
     etapa: "Envio de documentos para instituição compradora",
     decisao: "aprovado",
-    extras: { encaminhado_em: new Date().toISOString() },
+    extras: {
+      encaminhado_em: hojeIso(),
+      modalidade_compra: modalidade,
+      modalidade_definida_em: hojeIso(),
+      modalidade_definida_por: u?.nome ?? u?.email ?? null,
+      instituicao_destino: instituicao,
+      protocolo_externo: texto(formData, "protocolo_externo"),
+      data_envio_instituicao: hojeData(),
+      observacao_administrativa: texto(formData, "observacao"),
+    },
   });
 }
 
@@ -783,15 +969,33 @@ export async function adicionarAnexoPedidoInterno(formData: FormData) {
   const u = await usuarioAtual();
   const supabase = await createClient();
   const { data: pedido } = await supabase.from("pedidos_internos").select("status").eq("id", pedidoId).single();
-  const { error } = await supabase.from("pedidos_internos_anexos").insert({
+  let { error } = await supabase.from("pedidos_internos_anexos").insert({
     pedido_interno_id: pedidoId,
     etapa: pedido?.status ?? null,
     tipo: texto(formData, "tipo") ?? "outro",
     titulo,
     url: texto(formData, "url"),
+    arquivo_nome: texto(formData, "arquivo_nome"),
+    storage_bucket: texto(formData, "storage_bucket"),
+    storage_path: texto(formData, "storage_path"),
+    mime_type: texto(formData, "mime_type"),
+    tamanho_bytes: numero(formData, "tamanho_bytes"),
+    hash_sha256: texto(formData, "hash_sha256"),
     observacao: texto(formData, "observacao"),
     usuario: u?.email ?? null,
-  });
+  } as never);
+  if (erroSchemaCache(error)) {
+    const retry = await supabase.from("pedidos_internos_anexos").insert({
+      pedido_interno_id: pedidoId,
+      etapa: pedido?.status ?? null,
+      tipo: texto(formData, "tipo") ?? "outro",
+      titulo,
+      url: texto(formData, "url"),
+      observacao: texto(formData, "observacao"),
+      usuario: u?.email ?? null,
+    });
+    error = retry.error;
+  }
   if (error) throw new Error(error.message);
   revalidatePath(`/pedido/${pedidoId}`);
 }
@@ -830,11 +1034,23 @@ export async function cancelarPedidoInterno(_prev: FormState, formData: FormData
   if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
   const comentario = comentarioObrigatorio(formData);
   if (!comentario.ok) return comentario;
-  return mudarStatus({
-    pedidoId: Number(formData.get("pedido_interno_id")),
-    para: "cancelado",
-    observacao: comentario.observacao,
-    etapa: "Cancelamento",
-    decisao: "reprovado",
-  });
+  const pedidoId = Number(formData.get("pedido_interno_id"));
+  const u = await usuarioAtual();
+  const supabase = await createClient();
+  const { data: atual } = await supabase
+    .from("pedidos_internos")
+    .select("status")
+    .eq("id", pedidoId)
+    .single();
+  const { error } = await supabase.rpc("cancelar_pedido_interno_operacional" as never, {
+    p_pedido_id: pedidoId,
+    p_responsavel: u?.nome ?? u?.email ?? null,
+    p_observacao: comentario.observacao,
+  } as never);
+  if (error) return { ok: false, message: error.message };
+  await registrarEvento("pedido_interno", pedidoId, atual?.status ?? null, "cancelado", comentario.observacao);
+  revalidatePath("/pedido");
+  revalidatePath(`/pedido/${pedidoId}`);
+  revalidatePath("/compras");
+  return { ok: true, message: "Pedido cancelado com sincronização operacional." };
 }
