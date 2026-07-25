@@ -211,6 +211,28 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
   revalidatePath(pathLista);
 }
 
+export async function salvarJustificativaProjetoSemCusto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
+  const id = numero(formData, "orcamento_projeto_id");
+  if (!id) return;
+
+  const supabase = await createClient();
+  await assegurarProjetoEditavel(supabase, id);
+
+  const justificativa = texto(formData, "projeto_sem_custo_justificativa");
+
+  const { error } = await supabase
+    .from("orcamento_projetos")
+    .update({ projeto_sem_custo_justificativa: justificativa })
+    .eq("id", id);
+    
+  if (error) throw new Error(error.message);
+  
+  revalidatePath(`${pathLista}/${id}`);
+  revalidatePath(pathLista);
+  revalidatePath("/orcamento/demandas/[id]", "page");
+}
+
 export async function salvarParametrosEconomicosProjeto(formData: FormData) {
   await exigirPapelOrcamento("editar_parametros");
   const id = numero(formData, "orcamento_projeto_id");
