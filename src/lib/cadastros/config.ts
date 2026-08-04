@@ -38,6 +38,8 @@ export type Campo = {
   padraoLigado?: boolean;
   /** valor inicial ao criar um novo registro */
   valorPadrao?: string | number;
+  /** inclui o campo nas planilhas XLSX */
+  exportar?: boolean;
 };
 
 export type Coluna = {
@@ -59,6 +61,7 @@ export type CadastroConfig = {
   /** coluna usada como rótulo nas confirmações */
   rotulo: string;
   colunas: Coluna[];
+  colunasXlsx?: Coluna[];
   campos: Campo[];
 };
 
@@ -194,13 +197,21 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       "Catálogo completo de reagentes e consumíveis: marca, embalagem, fornecedor, compra, política de estoque e armazenamento. O custo unitário é derivado do valor e da quantidade da embalagem.",
     rotulo: "especificacao",
     colunas: [
-      { key: "tipo_insumo_nome", label: "Tipo técnico", largura: "md" },
       { key: "especificacao", label: "Item específico / SKU", largura: "lg" },
-      { key: "fabricante", label: "Marca", largura: "sm" },
-      { key: "unidade", label: "Un.", largura: "xs" },
+      { key: "fabricante", label: "Marca / fabricante", largura: "sm" },
+      { key: "unidade", label: "Unidade", largura: "xs" },
+      { key: "unidades_fechadas", label: "Unidades fechadas", tipo: "number", alinhar: "right", largura: "sm", calculada: true },
+      { key: "unidades_abertas", label: "Unidades abertas", tipo: "number", alinhar: "right", largura: "sm", calculada: true },
       { key: "custo_unitario", label: "Custo un.", tipo: "currency", alinhar: "right", largura: "sm", calculada: true },
       { key: "data_validade", label: "Validade", tipo: "date", largura: "sm" },
       { key: "ponto_reposicao", label: "Repos.", tipo: "number", alinhar: "right", largura: "xs" },
+    ],
+    colunasXlsx: [
+      { key: "especificacao", label: "Item específico / SKU" },
+      { key: "fabricante", label: "Marca / fabricante" },
+      { key: "unidade", label: "Unidade" },
+      { key: "unidades_fechadas", label: "Unidades fechadas", tipo: "number", calculada: true },
+      { key: "unidades_abertas", label: "Unidades abertas", tipo: "number", calculada: true },
     ],
     campos: [
       {
@@ -210,12 +221,13 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         opcoesDe: "tipo_insumos",
         grupo: "Identificação",
         ajuda: "Agrupa itens específicos equivalentes para cálculo, análise e relatórios.",
+        exportar: false,
       },
       { name: "nome_item", label: "Categoria curta", tipo: "text", placeholder: "Ladder, Beads, Kit Illumina…" },
       { name: "especificacao", label: "Item específico / SKU", tipo: "text", obrigatorio: true, colSpan: 2, ajuda: "Identificador operacional para compra, estoque, lote e rastreabilidade." },
       { name: "fabricante", label: "Marca / fabricante", tipo: "text", placeholder: "Qiagen, Illumina, KASVI…" },
       { name: "codigo_fabricante", label: "Código do fabricante", tipo: "text", placeholder: "Catálogo / part number" },
-      { name: "codigo_interno", label: "Código interno", tipo: "text" },
+      { name: "codigo_interno", label: "Código interno", tipo: "text", exportar: false },
 
       { name: "custo_total_embalagem", label: "Valor da embalagem (R$)", tipo: "currency", obrigatorio: true, min: 0, grupo: "Embalagem e custo" },
       { name: "quantidade_embalagem", label: "Quantidade na embalagem", tipo: "number", obrigatorio: true, min: 0 },

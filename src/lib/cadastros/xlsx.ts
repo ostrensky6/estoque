@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { CADASTROS, getCadastrosOrdenados, type CadastroConfig, type Campo } from "@/lib/cadastros/config";
+import { projetarTotaisInsumos, type LoteInsumo } from "@/lib/cadastros/insumos";
 import { createClientUntyped } from "@/lib/supabase/server";
 
 export type CadastroRow = Record<string, unknown>;
@@ -81,20 +82,29 @@ export function valueForCell(value: unknown, campo?: Campo, opcoes?: Map<string,
 }
 
 export function workbookColumns(cfg: CadastroConfig, rows: CadastroRow[]) {
+  const campos = cfg.campos.filter((campo) => campo.exportar !== false);
   const labels = new Map<string, string>([
     ["id", TECH_ID_HEADER],
-    ...cfg.campos.map((campo) => [campo.name, campo.label] as const),
+    ...campos.map((campo) => [campo.name, campo.label] as const),
+    ...(cfg.colunasXlsx ?? []).map((coluna) => [coluna.key, coluna.label] as const),
   ]);
+  const iniciais = cfg.colunasXlsx?.map((coluna) => coluna.key) ?? [];
   const keys = [
     "id",
-    ...cfg.campos.flatMap((campo) =>
-      campo.tipo === "select" && campo.opcoesDe ? [campo.name, `${campo.name}${TECH_SUFFIX}`] : [campo.name],
-    ),
+    ...iniciais,
+    ...campos
+      .flatMap((campo) =>
+        campo.tipo === "select" && campo.opcoesDe
+          ? [campo.name, `${campo.name}${TECH_SUFFIX}`]
+          : [campo.name],
+      )
+      .filter((key) => !iniciais.includes(key)),
     ...Object.keys(rows[0] ?? {}).filter(
       (key) =>
         key !== "id" &&
         !cfg.campos.some((campo) => campo.name === key) &&
-        !cfg.campos.some((campo) => `${campo.name}${TECH_SUFFIX}` === key),
+        !cfg.campos.some((campo) => `${campo.name}${TECH_SUFFIX}` === key) &&
+        !iniciais.includes(key),
     ),
   ];
 
@@ -176,7 +186,15 @@ export async function buildCadastrosWorkbook(slug?: string) {
   for (const cfg of cadastros) {
     const { data, error } = await supabase.from(cfg.tabela).select("*").order("id");
     if (error) throw new Error(error.message);
-    await addCadastroWorksheet(workbook, cfg, ((data ?? []) as CadastroRow[]).map((row) => ({ ...row })));
+    let rows = ((data ?? []) as CadastroRow[]).map((row) => ({ ...row }));
+    if (cfg.slug === "insumos") {
+      const { data: lotes, error: lotesError } = await supabase
+        .from("lotes_estoque")
+        .select("insumo_id, status, quantidade_atual, validade, validade_apos_abertura, data_abertura");
+      if (lotesError) throw new Error(lotesError.message);
+      rows = projetarTotaisInsumos(rows, (lotes ?? []) as LoteInsumo[]);
+    }
+    await addCadastroWorksheet(workbook, cfg, rows);
   }
 
   return workbook;

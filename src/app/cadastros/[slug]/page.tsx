@@ -7,6 +7,7 @@ import {
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { CrudShell } from "@/components/cadastros/CrudShell";
 import { equipCustoDia } from "@/lib/costing/engine";
+import { projetarTotaisInsumos, type LoteInsumo } from "@/lib/cadastros/insumos";
 
 export const dynamic = "force-dynamic";
 
@@ -132,6 +133,14 @@ export default async function CadastroPage({
   const diasUteisAno = Number(parametros?.[0]?.valor ?? 222);
 
   let linhas = await comColunasCalculadas(slug, rows ?? [], diasUteisAno);
+
+  if (slug === "insumos") {
+    const { data: lotes, error: lotesError } = await supabase
+      .from("lotes_estoque")
+      .select("insumo_id, status, quantidade_atual, validade, validade_apos_abertura, data_abertura");
+    if (lotesError) throw new Error(lotesError.message);
+    linhas = projetarTotaisInsumos(linhas, (lotes ?? []) as LoteInsumo[]);
+  }
 
   // injeta opções dinâmicas nos selects que referenciam outra tabela
   const fontes = [...new Set(cfg.campos.map((c) => c.opcoesDe).filter(Boolean))] as string[];
