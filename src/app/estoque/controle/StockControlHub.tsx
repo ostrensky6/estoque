@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useActionState, useCallback, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   Archive,
@@ -33,6 +33,8 @@ import {
 } from "recharts";
 import { formatNumber, formatDate } from "@/lib/formatters";
 import { arquivarNotificacao, marcarNotificacaoLida } from "@/lib/actions/notificacoes";
+import { gerarPedidoReposicaoInsumo } from "@/lib/actions/pedidos-internos";
+import type { FormState } from "@/lib/actions/cadastros";
 import { LoteAcoes } from "@/components/estoque/LoteAcoes";
 
 type Notificacao = {
@@ -83,6 +85,8 @@ type LoteDbRow = {
   critico: boolean;
 };
 
+type AlertTone = "red" | "amber" | "blue" | "emerald" | "slate";
+
 type StockControlHubProps = {
   initialNotifications: Notificacao[];
   saldo: EstoqueSaldo[];
@@ -124,7 +128,8 @@ export function StockControlHub({
 
       let status = "ok";
       let statusLabel = "Estoque OK";
-      let tone: "red" | "amber" | "blue" | "emerald" | "slate" = "slate";
+      let tone: AlertTone = "slate";
+      const badges: { label: string; tone: AlertTone }[] = [];
 
       const disponivel = s.disponivel ?? 0;
       const pontoReposicao = s.ponto_reposicao ?? 0;
@@ -134,17 +139,24 @@ export function StockControlHub({
       const temSemValidade = itemAlerts.some((a) => a.tipo === "sem_validade");
       const temVencendo = itemAlerts.some((a) => a.tipo === "vencimento");
 
-      if (disponivel <= 0) {
-        status = "sem_disponivel";
-        statusLabel = "Sem Estoque";
-        tone = "red";
-      } else if (temVencido) {
+      if (temVencido) badges.push({ label: "Lote vencido", tone: "red" });
+      if (temSemValidade) badges.push({ label: "Sem validade", tone: "red" });
+      if (disponivel <= 0) badges.push({ label: "Sem estoque", tone: "red" });
+      if (disponivel <= pontoReposicao && pontoReposicao > 0) badges.push({ label: "Reposição", tone: "amber" });
+      if (temVencendo) badges.push({ label: "Vence em breve", tone: "amber" });
+      if (emQuarentena > 0) badges.push({ label: "Quarentena", tone: "emerald" });
+
+      if (temVencido) {
         status = "vencido";
         statusLabel = "Lote Vencido";
         tone = "red";
       } else if (temSemValidade) {
         status = "sem_validade";
         statusLabel = "Sem Validade";
+        tone = "red";
+      } else if (disponivel <= 0) {
+        status = "sem_disponivel";
+        statusLabel = "Sem Estoque";
         tone = "red";
       } else if (disponivel <= pontoReposicao && pontoReposicao > 0) {
         status = "reposicao";
@@ -165,6 +177,7 @@ export function StockControlHub({
         status,
         statusLabel,
         tone,
+        badges: badges.length ? badges : [{ label: statusLabel, tone: "slate" }],
         alerts: itemAlerts,
         notifications: itemNotifications,
       };
@@ -245,7 +258,7 @@ export function StockControlHub({
     { name: "Estoque OK", value: countOk, color: "#3b82f6" },
   ].filter((d) => d.value > 0);
 
-  const TONE_CLASSES = {
+  const TONE_CLASSES: Record<AlertTone, string> = {
     red: "border-danger-strong/30 bg-danger-soft text-danger-strong",
     amber: "border-warning-strong/30 bg-warning-soft text-warning-strong",
     blue: "border-info-strong/30 bg-info-soft text-info-strong",
@@ -516,9 +529,11 @@ export function StockControlHub({
                           <span className="text-xs font-mono text-muted-foreground/80 bg-muted px-1.5 py-0.5 rounded">
                             #{item.insumo_id ?? "—"}
                           </span>
-                          <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${TONE_CLASSES[item.tone]}`}>
-                            {item.statusLabel}
-                          </span>
+                          {item.badges.slice(0, 3).map((badge) => (
+                            <span key={badge.label} className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${TONE_CLASSES[badge.tone as AlertTone]}`}>
+                              {badge.label}
+                            </span>
+                          ))}
                           {item.categoria_compra === "critico" && (
                             <span className="rounded-md border border-danger-strong/30 bg-danger-soft text-danger-strong px-2 py-0.5 text-[10px] font-bold">
                               Crítico
@@ -556,7 +571,7 @@ export function StockControlHub({
                         </div>
                         {ponto > 0 && disponivel <= ponto && (
                           <p className="mt-1.5 text-[11px] text-warning-strong font-medium flex items-center gap-1">
-                            <TrendingDown className="h-3 w-3" /> Falta comprar: {formatNumber(ponto - disponivel)} {item.unidade}
+                            <TrendingDown className="h-3 w-3" /> Reposição sugerida: {formatNumber(ponto - disponivel)} {item.unidade}
                           </p>
                         )}
                       </div>
@@ -625,18 +640,13 @@ export function StockControlHub({
 
                         <div className="flex flex-wrap items-center gap-2 justify-end mt-auto">
                           <Link
-                            href={`/cadastros`}
+                            href={`/cadastros/insumos?focus=${item.insumo_id ?? ""}`}
                             className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted/50"
                           >
                             <ExternalLink className="h-3.5 w-3.5" /> Ficha
                           </Link>
                           {disponivel <= ponto && (
-                            <Link
-                              href="/compras"
-                              className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-500"
-                            >
-                              <ShoppingCart className="h-3.5 w-3.5" /> Solicitar Compra
-                            </Link>
+                            <GerarPedidoInsumoButton insumoId={item.insumo_id} />
                           )}
                         </div>
                       </div>
@@ -760,7 +770,7 @@ export function StockControlHub({
                 <ul className="space-y-3 text-xs text-muted-foreground mt-4 leading-relaxed">
                   <li className="flex items-start gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-danger-strong mt-1.5 shrink-0" />
-                    <span><b>{countSemEstoque} insumos críticos estão totalmente sem saldo disponível</b> no estoque. A abertura imediata de pedidos de compra é recomendada.</span>
+                    <span><b>{countSemEstoque} insumos críticos estão totalmente sem saldo disponível</b> no estoque. A abertura imediata de pedidos internos de reposição é recomendada.</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-warning-strong mt-1.5 shrink-0" />
@@ -800,4 +810,41 @@ export function StockControlHub({
 function pontoPct(disponivel: number, ponto: number) {
   if (ponto <= 0) return disponivel > 0 ? 100 : 0;
   return (disponivel / ponto) * 100;
+}
+
+function GerarPedidoInsumoButton({ insumoId }: { insumoId: number | null }) {
+  const [state, action, pending] = useActionState<FormState & { pedidoId?: number }, FormData>(
+    gerarPedidoReposicaoInsumo,
+    { ok: false },
+  );
+
+  if (!insumoId) return null;
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <form action={action}>
+        <input type="hidden" name="insumo_id" value={insumoId} />
+        <button
+          disabled={pending}
+          className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-500 disabled:opacity-60"
+        >
+          <ShoppingCart className="h-3.5 w-3.5" />
+          {pending ? "Abrindo..." : "Abrir pedido"}
+        </button>
+      </form>
+      {state.message && (
+        <p className={`max-w-52 text-right text-[10px] ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-danger-strong"}`}>
+          {state.message}
+          {state.ok && state.pedidoId ? (
+            <>
+              {" "}
+              <Link href={`/pedido/${state.pedidoId}`} className="font-semibold underline">
+                Ver pedido
+              </Link>
+            </>
+          ) : null}
+        </p>
+      )}
+    </div>
+  );
 }

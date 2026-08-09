@@ -1,0 +1,79 @@
+"use client";
+
+import Link from "next/link";
+import { useActionState, useState } from "react";
+import { FilePlus2 } from "lucide-react";
+
+import { gerarPedidosReposicaoEstoque } from "@/lib/actions/pedidos-internos";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import type { FormState } from "@/lib/actions/cadastros";
+
+type PedidoReposicaoState = FormState & { pedidoId?: number };
+
+const initialState: PedidoReposicaoState = { ok: true, message: "" };
+
+export function GerarPedidoReposicaoButton() {
+  const [state, action, pending] = useActionState(gerarPedidosReposicaoEstoque, initialState);
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Dialog open={open} onOpenChange={(nextOpen) => !pending && setOpen(nextOpen)}>
+        <DialogTrigger asChild>
+          <Button type="button" size="sm" disabled={pending}>
+            <FilePlus2 className={pending ? "animate-pulse" : undefined} />
+            Gerar pedidos de reposição
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-md" showCloseButton={!pending}>
+          <DialogHeader>
+            <DialogTitle>Gerar pedido de reposição?</DialogTitle>
+            <DialogDescription>
+              Esta ação cria um pedido interno em rascunho com os insumos abaixo do ponto de reposição.
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            O pedido ainda precisará ser revisado, vinculado ao projeto/fonte de recurso e enviado para
+            validação antes de virar compra formal.
+          </p>
+          <form action={action} onSubmit={() => setOpen(false)}>
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={pending}>
+                <FilePlus2 className={pending ? "animate-pulse" : undefined} />
+                Gerar pedido
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {state.message && (
+        <span
+          aria-live="polite"
+          className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-danger-strong"}`}
+        >
+          {state.message}
+          {state.ok && state.pedidoId ? (
+            <>
+              {" "}
+              <Link href={`/pedido/${state.pedidoId}`} className="font-semibold underline">
+                Abrir pedido
+              </Link>
+            </>
+          ) : null}
+        </span>
+      )}
+    </div>
+  );
+}

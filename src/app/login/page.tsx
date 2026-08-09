@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useActionState } from "react";
 import { entrar, solicitarRedefinicaoSenha } from "@/lib/actions/auth";
+import { SENHA_PROVISORIA } from "@/lib/auth/senha-provisoria";
 import type { FormState } from "@/lib/actions/cadastros";
 
 export default function LoginPage() {
@@ -29,10 +30,24 @@ export default function LoginPage() {
           />
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          Entre para continuar. No primeiro acesso, use o link de redefinição para criar sua senha.
+          Entre com o e-mail cadastrado e sua senha.
         </p>
 
-        <form action={action} className="mt-6 space-y-4">
+        <div
+          id="senha-provisoria"
+          className="mt-5 rounded-xl bg-info-soft px-4 py-3 text-info-strong"
+        >
+          <p className="text-xs font-semibold">Primeiro acesso</p>
+          <p className="mt-1 text-sm leading-5">
+            Se o administrador cadastrou seu usuário, entre com a senha provisória{" "}
+            <code className="rounded bg-card px-1.5 py-0.5 font-mono font-semibold">
+              {SENHA_PROVISORIA}
+            </code>
+            . Ela deixa de valer depois que você define sua senha pessoal.
+          </p>
+        </div>
+
+        <form action={action} className="mt-5 space-y-4">
           <div>
             <label className="block text-xs font-medium text-muted-foreground">
               E-mail
@@ -41,6 +56,7 @@ export default function LoginPage() {
               name="email"
               type="email"
               autoComplete="username"
+              required
               className="mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm"
             />
           </div>
@@ -52,12 +68,17 @@ export default function LoginPage() {
               name="senha"
               type="password"
               autoComplete="current-password"
+              aria-describedby="senha-provisoria"
+              required
               className="mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm"
             />
           </div>
 
           {state.message && (
-            <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">
+            <p
+              role="alert"
+              className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong"
+            >
               {state.message}
             </p>
           )}

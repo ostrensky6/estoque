@@ -13,8 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { editarItemPedidoInterno } from "@/lib/actions/pedidos-internos";
-
-type Insumo = { id: number; especificacao: string | null };
+import { PedidoItemCamposAssistidos, type PedidoItemCatalogo } from "./PedidoItemCamposAssistidos";
 
 export type PedidoItemEdit = {
   id: number;
@@ -30,17 +29,16 @@ export type PedidoItemEdit = {
   insumo_id: number | null;
 };
 
-const inputCls =
-  "mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm";
-
 export function PedidoItemEditar({
   pedidoId,
   item,
-  insumos,
+  catalogo,
+  fornecedores = [],
 }: {
   pedidoId: number;
   item: PedidoItemEdit;
-  insumos: Insumo[];
+  catalogo: PedidoItemCatalogo[];
+  fornecedores?: string[];
 }) {
   return (
     <Dialog>
@@ -58,54 +56,24 @@ export function PedidoItemEditar({
         <form action={editarItemPedidoInterno} className="grid gap-3 sm:grid-cols-2">
           <input type="hidden" name="item_id" value={item.id} />
           <input type="hidden" name="pedido_interno_id" value={pedidoId} />
-          <div>
-            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Tipo</label>
-            <select name="tipo" defaultValue={item.tipo} className={inputCls}>
-              <option value="material">Material</option>
-              <option value="servico">Serviço</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Insumo existente</label>
-            <select name="insumo_id" defaultValue={item.insumo_id ?? ""} className={inputCls}>
-              <option value="">—</option>
-              {insumos.map((insumo) => (
-                <option key={insumo.id} value={insumo.id}>{insumo.especificacao}</option>
-              ))}
-            </select>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Especificação</label>
-            <input name="especificacao" required defaultValue={item.especificacao} className={inputCls} />
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Modelo</label>
-            <input name="modelo" defaultValue={item.modelo ?? ""} className={inputCls} />
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Volume</label>
-            <input name="volume" defaultValue={item.volume ?? ""} className={inputCls} />
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Qtd</label>
-            <input name="quantidade" type="number" min="0.0001" step="any" required defaultValue={item.quantidade} className={inputCls} />
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Unidade</label>
-            <input name="unidade" defaultValue={item.unidade ?? ""} className={inputCls} />
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Orçamento prévio un.</label>
-            <input name="orcamento_previo" type="number" min="0" step="0.01" defaultValue={item.orcamento_previo ?? ""} className={inputCls} />
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Fornecedor sugerido</label>
-            <input name="fornecedor_sugerido" defaultValue={item.fornecedor_sugerido ?? ""} className={inputCls} />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Observação</label>
-            <input name="observacao" defaultValue={item.observacao ?? ""} className={inputCls} />
-          </div>
+          <PedidoItemCamposAssistidos
+            catalogo={catalogo}
+            fornecedores={fornecedores}
+            layout="dialog"
+            idPrefix={`editar-item-${item.id}`}
+            defaults={{
+              tipo: item.tipo,
+              insumoId: item.insumo_id,
+              especificacao: item.especificacao,
+              modelo: item.modelo,
+              volume: item.volume,
+              quantidade: item.quantidade,
+              unidade: item.unidade,
+              orcamentoPrevio: item.orcamento_previo,
+              fornecedorSugerido: item.fornecedor_sugerido,
+              observacao: item.observacao,
+            }}
+          />
           <DialogFooter className="sm:col-span-2">
             <DialogClose asChild>
               <button type="button" className="rounded-md border border-input px-4 py-2 text-sm font-medium text-foreground hover:bg-muted">

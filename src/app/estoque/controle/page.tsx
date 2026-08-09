@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
-import { GerarReposicaoButton } from "@/components/compras/GerarReposicaoButton";
+import { GerarPedidoReposicaoButton } from "@/components/pedido/GerarPedidoReposicaoButton";
 import { StockControlHub } from "./StockControlHub";
 
 export const dynamic = "force-dynamic";
@@ -95,7 +95,7 @@ export default async function EstoqueControlePage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {podeAceitar && <GerarReposicaoButton />}
+            {podeAceitar && <GerarPedidoReposicaoButton />}
             <span className="rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground shadow-sm">
               {saldo.length} insumos monitorados
             </span>

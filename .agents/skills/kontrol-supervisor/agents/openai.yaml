@@ -1,0 +1,7 @@
+interface:
+  display_name: "Supervisor Kontrol"
+  short_description: "Governança e aceite técnico-operacional"
+  default_prompt: "Use $kontrol-supervisor para transformar este objetivo em uma diretriz verificável para o Kontrol."
+
+policy:
+  allow_implicit_invocation: false

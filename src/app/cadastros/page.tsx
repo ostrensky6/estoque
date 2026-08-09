@@ -16,9 +16,14 @@ export default function CadastrosIndex() {
           alimentam operação, suprimentos, comercial e custeio.
         </p>
 
+        <Link href="/cadastros/qualidade" className="mt-4 inline-flex rounded-md border border-input bg-card px-3 py-2 text-sm font-medium hover:bg-muted">
+          Revisar qualidade dos cadastros
+        </Link>
+
         <CadastrosWorkbookPanel />
         <CadastrosCards cadastros={cadastros} />
       </main>
     </div>
   );
 }
+import Link from "next/link";

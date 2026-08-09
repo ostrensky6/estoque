@@ -1,0 +1,7 @@
+interface:
+  display_name: "R4 — Atlas"
+  short_description: "Dados mestres e cadastros-base"
+  default_prompt: "Use $kontrol-atlas para governar exclusivamente dados mestres e cadastros-base do Kontrol, incluindo análises-base, sem absorver estoque, compras, ficha técnica, orçamento, UI, contratos compartilhados ou migrations."
+
+policy:
+  allow_implicit_invocation: false

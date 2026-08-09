@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -104,6 +105,7 @@ export default async function OrcamentoFinalPage({
 }) {
   const { id } = await params;
   const versaoId = Number(id);
+  const operacaoDuplicacaoId = randomUUID();
   const supabase = await createClient();
 
   const { data: versao } = await supabase
@@ -313,6 +315,7 @@ export default async function OrcamentoFinalPage({
             <div className="no-print flex flex-wrap gap-2">
               <form action={duplicarVersaoFinal}>
                 <input type="hidden" name="versao_id" value={versao.id} />
+                <input type="hidden" name="operacao_id" value={operacaoDuplicacaoId} />
                 <input type="hidden" name="validade_dias" value={versao.validade_dias ?? 30} />
                 <button className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
                   Duplicar versão

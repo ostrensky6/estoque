@@ -78,6 +78,12 @@ export function EmissaoFinalForm({
 }: EmissaoFinalFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [operacaoId, setOperacaoId] = useState("");
+
+  useEffect(() => {
+    setOperacaoId((atual) => atual || crypto.randomUUID());
+  }, []);
+
   const signers = useMemo(
     () => [
       ...signatarios
@@ -221,6 +227,7 @@ export function EmissaoFinalForm({
 
   const handleSalvarEmissao = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!operacaoId) return;
 
     if (pendenciasEmissao.length > 0) {
       const msg = `Existem os seguintes avisos/campos pendentes no orçamento:\n\n` +
@@ -330,6 +337,7 @@ export function EmissaoFinalForm({
         {/* Painel Esquerdo: Configurações */}
         <form onSubmit={handleSalvarEmissao} className="no-print lg:col-span-5 space-y-6">
           <input type="hidden" name="demanda_id" value={demanda.id} />
+          <input type="hidden" name="operacao_id" value={operacaoId} />
           <input type="hidden" name="assinante_assinatura_url" value={signerAssinaturaUrl} />
 
           {/* Cabeçalho de Ações de Retorno */}

@@ -138,7 +138,7 @@ export async function exportProjetoXlsx(
       .map((s) => [s.label, s.count, s.total, s.finalShare]),
     [],
     ["Subtotal (base)", calculo.subtotal],
-    ["Markup nominal (%)", calculo.markupRate],
+    ["Σ parâmetros (%)", calculo.markupRate],
     ["Fator gross-up", calculo.grossUpFactor],
     ["Parâmetros econômicos", calculo.grossTotal - calculo.subtotal],
     ["Total final", calculo.grossTotal],
@@ -223,7 +223,7 @@ export async function exportProjetoDocx(
             rows: [
               tableRow(["Indicador", "Valor"], true),
               tableRow(["Subtotal (base)", formatCurrency(calculo.subtotal)]),
-              tableRow(["Markup nominal", formatPercent(calculo.markupRate)]),
+              tableRow(["Σ parâmetros", formatPercent(calculo.markupRate)]),
               tableRow(["Parâmetros econômicos", formatCurrency(calculo.grossTotal - calculo.subtotal)]),
               tableRow(["Total final", formatCurrency(calculo.grossTotal)], true),
             ],

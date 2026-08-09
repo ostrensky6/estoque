@@ -164,6 +164,36 @@ describe("reagentesTotal", () => {
     ];
     expect(reagentesTotal(linhas, 25, 24).total).toBeCloseTo(342, 6);
   });
+
+  it("converte custo de estoque para a unidade de consumo antes de custear a ficha", () => {
+    const linha = (custoEstoque: number) => ({
+      ...ins({
+        custo_unitario: custoEstoque,
+        quantidade_por_amostra: 2,
+        modo_cobranca: "por_amostra",
+      }),
+      unidade_estoque: "frasco",
+      unidade_consumo: "reação",
+      fator_conversao: 100,
+      fonte_custo: custoEstoque === 5 ? "custo_padrao" : "custo_medio_ponderado",
+      custo_unitario_estoque: custoEstoque,
+      custo_unitario_consumo: custoEstoque / 100,
+    });
+    const consumoReacoes = 10 * 2;
+    const equivalenteFrascos = consumoReacoes / 100;
+
+    expect({
+      consumoReacoes,
+      equivalenteFrascos,
+      custoPadrao: reagentesTotal([linha(5)], 10, 10).total,
+      custoMedio: reagentesTotal([linha(500)], 10, 10).total,
+    }).toEqual({
+      consumoReacoes: 20,
+      equivalenteFrascos: 0.2,
+      custoPadrao: 1,
+      custoMedio: 100,
+    });
+  });
 });
 
 describe("calcularAnalise — cascata custo→preço", () => {

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
@@ -160,6 +161,7 @@ export default async function HistoricoOrcamentosPage({
   const aprovados = versoes.filter((item) => item.status === "aprovado").length;
   const cancelados = versoes.filter((item) => item.status === "cancelado").length;
   const totalHistorico = versoes.reduce((total, item) => total + Number(item.total_final ?? 0), 0);
+  const operacoesDuplicacao = new Map(versoes.map((item) => [item.id, randomUUID()]));
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
@@ -346,6 +348,7 @@ export default async function HistoricoOrcamentosPage({
                         <form action={duplicarVersaoFinal}>
                           <input type="hidden" name="versao_id" value={item.id} />
                           <input type="hidden" name="validade_dias" value={item.validade_dias || 30} />
+                          <input type="hidden" name="operacao_id" value={operacoesDuplicacao.get(item.id)} />
                           <button className="text-xs text-brand-700 hover:underline dark:text-brand-300">Duplicar</button>
                         </form>
                         {!["cancelado", "substituido"].includes(item.status) && (
@@ -438,7 +441,7 @@ function resumoParametros(snapshot: SnapshotFinal) {
   const params = snapshot.consolidado?.parametrosProjeto ?? [];
   if (params.length === 0 && markup === 0) return "sem parâmetros no snapshot";
   const nomes = params.slice(0, 3).map((item) => `${item.label ?? item.key}: ${Number(item.nominalRate ?? 0).toLocaleString("pt-BR")}%`);
-  return [`markup ${markup.toLocaleString("pt-BR")}%`, ...nomes].join(" · ");
+  return [`Σ parâmetros ${markup.toLocaleString("pt-BR")}%`, ...nomes].join(" · ");
 }
 
 function composicaoEconomica(item: VersaoFinal, snapshot: SnapshotFinal) {
@@ -549,7 +552,7 @@ function ComparacaoLadoALado({ atual, anterior }: { atual: VersaoComAnterior; an
           <Delta titulo="Laboratório" atual={atual.total_laboratorio_preco} anterior={anterior.total_laboratorio_preco} />
           <Delta titulo="Projeto" atual={atual.total_projeto_final} anterior={anterior.total_projeto_final} />
           <Delta titulo="Total" atual={atual.total_final} anterior={anterior.total_final} />
-          <Delta titulo="Markup" atual={Number(snapAtual.consolidado?.markupProjeto ?? 0)} anterior={Number(snapAnterior?.consolidado?.markupProjeto ?? 0)} percentual />
+          <Delta titulo="Σ parâmetros" atual={Number(snapAtual.consolidado?.markupProjeto ?? 0)} anterior={Number(snapAnterior?.consolidado?.markupProjeto ?? 0)} percentual />
         </div>
       )}
     </section>

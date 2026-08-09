@@ -21,6 +21,7 @@ export type ItemCompraRecebivel = {
   id: number;
   pedidoId: number;
   quantidade: number;
+  quantidadeRecebida: number;
   insumoId: number | null;
   insumoDescricao: string | null;
   unidade: string | null;
@@ -31,6 +32,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<ScannerCameraControls | null>(null);
   const [aberto, setAberto] = useState(false);
+  const [operacaoId, setOperacaoId] = useState("");
   const [recebimentoPending, startRecebimentoTransition] = useTransition();
   const [scanPending, startScanTransition] = useTransition();
   const [codigoScanner, setCodigoScanner] = useState("");
@@ -41,11 +43,17 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
   const [erroRecebimento, setErroRecebimento] = useState<string | null>(null);
   const [cameraStatus, setCameraStatus] = useState<StatusCamera>("parada");
   const [cameraMessage, setCameraMessage] = useState<string | null>(null);
+  const saldoPendente = Math.max(0, item.quantidade - item.quantidadeRecebida);
 
   function pararCamera(status: StatusCamera = "parada") {
     controlsRef.current?.stop();
     controlsRef.current = null;
     setCameraStatus(status);
+  }
+
+  function abrir() {
+    setOperacaoId((atual) => atual || crypto.randomUUID());
+    setAberto(true);
   }
 
   useEffect(() => {
@@ -126,6 +134,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
     startRecebimentoTransition(async () => {
       try {
         await receberItemPedido(formData);
+        setOperacaoId(crypto.randomUUID());
         pararCamera();
         setAberto(false);
         router.refresh();
@@ -144,7 +153,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
     <>
       <button
         type="button"
-        onClick={() => setAberto(true)}
+        onClick={abrir}
         className="inline-flex items-center gap-1.5 rounded bg-brand-600 px-2 py-1 text-xs font-medium text-white hover:bg-brand-500"
       >
         <ScanLine className="h-3.5 w-3.5" />
@@ -153,7 +162,12 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
 
       {aberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 text-left">
-          <div className="absolute inset-0 bg-black/40" onClick={fechar} />
+          <button
+            type="button"
+            aria-label="Fechar recebimento"
+            className="absolute inset-0 bg-black/40"
+            onClick={fechar}
+          />
           <div className="relative max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-card p-5 shadow-xl">
             <h3 className="text-base font-semibold">Receber item de compra</h3>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -262,14 +276,16 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
             <form action={action} className="mt-4 grid grid-cols-2 gap-3">
               <input type="hidden" name="item_id" value={item.id} />
               <input type="hidden" name="pedido_id" value={item.pedidoId} />
+              <input type="hidden" name="operacao_id" value={operacaoId} />
               <div className="col-span-1">
                 <label className="block text-xs font-medium text-muted-foreground">Quantidade</label>
                 <input
                   name="quantidade_recebida"
                   type="number"
                   step="any"
-                  min="0"
-                  defaultValue={item.quantidade}
+                  min="0.0000001"
+                  max={saldoPendente}
+                  defaultValue={saldoPendente}
                   className={inp}
                 />
               </div>

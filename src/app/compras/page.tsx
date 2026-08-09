@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { criarPedido } from "@/lib/actions/compras";
 import { ComprasTable, type CompraRow } from "@/components/compras/ComprasTable";
-import { GerarReposicaoButton } from "@/components/compras/GerarReposicaoButton";
+import { GerarPedidoReposicaoButton } from "@/components/pedido/GerarPedidoReposicaoButton";
 import { formatNumber as fmt } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -81,13 +81,13 @@ export default async function ComprasPage() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-warning-strong">
-                  Sugestões de compra ({Math.max(sugestoes.length, sugestoesHistoricas.length)})
+                  Sugestões de reposição ({Math.max(sugestoes.length, sugestoesHistoricas.length)})
                 </h2>
                 <p className="mt-1 text-xs text-warning-strong">
                   Combina ponto configurado com consumo histórico, lead time e estoque de segurança.
                 </p>
               </div>
-              <GerarReposicaoButton />
+              <GerarPedidoReposicaoButton />
             </div>
             <ul className="mt-2 space-y-1 text-xs text-warning-strong">
               {sugestoesRender.slice(0, 8).map((s, i) => (
@@ -97,7 +97,7 @@ export default async function ComprasPage() {
                     {s.especificacao}
                   </span>
                   <span className="shrink-0 tabular-nums">
-                    disp. {fmt(s.disponivel)} · comprar ~{fmt(s.sugerido)}
+                    disp. {fmt(s.disponivel)} · pedir ~{fmt(s.sugerido)}
                   </span>
                 </li>
               ))}
@@ -109,14 +109,14 @@ export default async function ComprasPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-info-strong">
-                Reposição automática
+                Reposição via pedido interno
               </h2>
               <p className="mt-1 max-w-2xl text-xs leading-5 text-info-strong">
-                A rotina diária roda pelo cron protegido /api/cron/reposicao-suprimentos às 07:15.
-                E-mail externo ainda depende das credenciais/configuração do Resend.
+                A reposição deve nascer como pedido interno estruturado. Depois de validado,
+                o pedido tramita para a compra formal e recebimento.
               </p>
             </div>
-            <GerarReposicaoButton />
+            <GerarPedidoReposicaoButton />
           </div>
         </div>
 

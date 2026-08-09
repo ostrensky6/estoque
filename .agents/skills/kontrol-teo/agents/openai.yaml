@@ -1,0 +1,7 @@
+interface:
+  display_name: "Téo — UX e Front-end"
+  short_description: "Interface profissional, acessível e responsiva"
+  default_prompt: "Use $kontrol-teo somente nesta tarefa canônica para executar uma ordem delimitada do 0 — Maestro sobre design, UX ou front-end do Kontrol."
+
+policy:
+  allow_implicit_invocation: false

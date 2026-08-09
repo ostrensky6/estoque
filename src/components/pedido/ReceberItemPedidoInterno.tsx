@@ -23,6 +23,8 @@ export type ItemRecebivel = {
   pedidoId: number;
   especificacao: string;
   quantidade: number;
+  quantidadeRecebida?: number | null;
+  compraFormalId?: number | null;
   unidade: string | null;
   insumoId: number | null;
   fornecedorSugerido: string | null;
@@ -38,11 +40,10 @@ export function ReceberItemPedidoInterno({
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
+  const [operacaoId, setOperacaoId] = useState("");
   const [state, setState] = useState<FormState>({ ok: false });
   const [recebimentoPending, startRecebimentoTransition] = useTransition();
   const [scanPending, startScanTransition] = useTransition();
-  // "" = escolher existente; "novo" = cadastrar pela especificação.
-  const [modo, setModo] = useState<"" | "novo">(item.insumoId ? "" : "");
   const [insumoId, setInsumoId] = useState(item.insumoId ? String(item.insumoId) : "");
   const [codigoLote, setCodigoLote] = useState("");
   const [validade, setValidade] = useState("");
@@ -59,6 +60,11 @@ export function ReceberItemPedidoInterno({
     setCameraStatus(status);
   }
 
+  function abrir() {
+    setOperacaoId((atual) => atual || crypto.randomUUID());
+    setAberto(true);
+  }
+
   useEffect(() => {
     return () => {
       controlsRef.current?.stop();
@@ -71,6 +77,7 @@ export function ReceberItemPedidoInterno({
       const res = await receberItemPedidoInterno({ ok: false }, formData);
       setState(res);
       if (res.ok) {
+        setOperacaoId(crypto.randomUUID());
         setAberto(false);
         pararCamera();
         router.refresh();
@@ -82,7 +89,6 @@ export function ReceberItemPedidoInterno({
     setResultadoScanner(resultado);
     if (!resultado.ok || !resultado.encontrado) return;
 
-    setModo("");
     setInsumoId(String(resultado.insumoId));
     if (resultado.loteCodigo) setCodigoLote(resultado.loteCodigo);
     if (resultado.validade) setValidade(resultado.validade);
@@ -129,11 +135,12 @@ export function ReceberItemPedidoInterno({
     "mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm focus:border-leaf-500 focus:outline-none focus:ring-1 focus:ring-leaf-500";
   const scanInput =
     "h-9 w-full rounded-md border border-input bg-card px-3 py-2 text-sm focus:border-leaf-500 focus:outline-none focus:ring-1 focus:ring-leaf-500";
+  const saldoPendente = Math.max(0, item.quantidade - Number(item.quantidadeRecebida ?? 0));
 
   return (
     <>
       <button
-        onClick={() => setAberto(true)}
+        onClick={abrir}
         className="inline-flex items-center gap-1.5 rounded-md bg-leaf-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-leaf-500"
       >
         <PackageCheck className="h-3.5 w-3.5" />
@@ -142,7 +149,9 @@ export function ReceberItemPedidoInterno({
 
       {aberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 text-left">
-          <div
+          <button
+            type="button"
+            aria-label="Fechar recebimento"
             className="absolute inset-0 bg-black/40"
             onClick={() => {
               if (!recebimentoPending && !scanPending) {
@@ -157,9 +166,14 @@ export function ReceberItemPedidoInterno({
               {item.especificacao}
               {item.unidade ? ` · ${item.unidade}` : ""}
             </p>
+            {Number(item.quantidadeRecebida ?? 0) > 0 && (
+              <p className="mt-1 text-xs font-medium text-warning-strong">
+                Parcial recebido: {item.quantidadeRecebida} de {item.quantidade} {item.unidade ?? ""}. Saldo: {saldoPendente} {item.unidade ?? ""}.
+              </p>
+            )}
             <p className="mt-2 rounded-md bg-leaf-50 px-3 py-2 text-xs text-leaf-800 dark:bg-leaf-950/30 dark:text-leaf-300">
-              Ao confirmar, a quantidade entra em estoque como um lote do insumo escolhido e o item sai
-              do módulo de recebimento. O lote entra no insumo escolhido.
+              Ao confirmar, a quantidade entra em estoque como um lote do insumo escolhido. Se o recebimento for
+              parcial, o item permanece pendente até completar a quantidade solicitada.
             </p>
 
             <section className="mt-4 rounded-lg border border-border p-3">
@@ -260,81 +274,27 @@ export function ReceberItemPedidoInterno({
             <form action={action} className="mt-4 grid grid-cols-2 gap-3">
               <input type="hidden" name="item_id" value={item.id} />
               <input type="hidden" name="pedido_interno_id" value={item.pedidoId} />
+              <input type="hidden" name="operacao_id" value={operacaoId} />
 
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-muted-foreground">
                   Insumo de estoque <span className="text-danger-strong">*</span>
                 </label>
-                <div className="mt-1 flex gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setModo("")}
-                    className={`rounded-md px-2 py-1 ${modo === "" ? "bg-leaf-600 text-white" : "bg-muted text-muted-foreground"}`}
-                  >
-                    Existente
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setModo("novo")}
-                    className={`rounded-md px-2 py-1 ${modo === "novo" ? "bg-leaf-600 text-white" : "bg-muted text-muted-foreground"}`}
-                  >
-                    Cadastrar novo
-                  </button>
-                </div>
-                {modo === "" ? (
-                  <select
-                    name="insumo_id"
-                    value={insumoId}
-                    onChange={(event) => setInsumoId(event.target.value)}
-                    className={inp}
-                  >
-                    <option value="">— selecione —</option>
-                    {insumos.map((insumo) => (
-                      <option key={insumo.id} value={insumo.id}>
-                        {insumo.especificacao}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    name="novo_insumo"
-                    defaultValue={item.especificacao}
-                    placeholder="Especificação do novo insumo"
-                    required
-                    className={inp}
-                  />
-                )}
+                <select
+                  name="insumo_id"
+                  value={insumoId}
+                  onChange={(event) => setInsumoId(event.target.value)}
+                  required
+                  className={inp}
+                >
+                  <option value="">— selecione —</option>
+                  {insumos.map((insumo) => (
+                    <option key={insumo.id} value={insumo.id}>
+                      {insumo.especificacao}
+                    </option>
+                  ))}
+                </select>
               </div>
-
-              {modo === "novo" && (
-                <>
-                  <div className="col-span-1">
-                    <label className="block text-xs font-medium text-muted-foreground">
-                      Categoria de compra <span className="text-danger-strong">*</span>
-                    </label>
-                    <select name="categoria_compra" defaultValue="" required className={inp}>
-                      <option value="">Selecione</option>
-                      <option value="critico">Crítico</option>
-                      <option value="operacional">Operacional</option>
-                      <option value="eventual">Eventual</option>
-                    </select>
-                  </div>
-                  <div className="col-span-1">
-                    <label className="block text-xs font-medium text-muted-foreground">
-                      Fator de conversão <span className="text-danger-strong">*</span>
-                    </label>
-                    <input
-                      name="fator_conversao"
-                      type="number"
-                      step="any"
-                      min="0.000001"
-                      defaultValue="1"
-                      required
-                      className={inp}
-                    />
-                  </div>
-                </>
-              )}
 
               <div className="col-span-1">
                 <label className="block text-xs font-medium text-muted-foreground">
@@ -344,16 +304,15 @@ export function ReceberItemPedidoInterno({
                   name="quantidade"
                   type="number"
                   step="any"
-                  min="0"
-                  defaultValue={item.quantidade}
+                  min="0.000001"
+                  max={saldoPendente || item.quantidade}
+                  defaultValue={saldoPendente || item.quantidade}
                   className={inp}
                 />
               </div>
               <div className="col-span-1">
-                <label className="block text-xs font-medium text-muted-foreground">
-                  Unidade {modo === "novo" && <span className="text-danger-strong">*</span>}
-                </label>
-                <input name="unidade" defaultValue={item.unidade ?? ""} required={modo === "novo"} className={inp} />
+                <label className="block text-xs font-medium text-muted-foreground">Unidade</label>
+                <input name="unidade" defaultValue={item.unidade ?? ""} className={inp} />
               </div>
               <div className="col-span-1">
                 <label className="block text-xs font-medium text-muted-foreground">Validade</label>
@@ -376,16 +335,13 @@ export function ReceberItemPedidoInterno({
                 />
               </div>
               <div className="col-span-1">
-                <label className="block text-xs font-medium text-muted-foreground">
-                  Custo unitário (R$) {modo === "novo" && <span className="text-danger-strong">*</span>}
-                </label>
+                <label className="block text-xs font-medium text-muted-foreground">Custo unitário (R$)</label>
                 <input
                   name="custo"
                   type="number"
                   step="0.0001"
-                  min={modo === "novo" ? "0.0001" : "0"}
+                  min="0"
                   defaultValue={item.orcamentoPrevio ?? ""}
-                  required={modo === "novo"}
                   className={inp}
                 />
               </div>

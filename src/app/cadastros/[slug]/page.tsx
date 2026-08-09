@@ -118,10 +118,13 @@ async function comColunasCalculadas(
 
 export default async function CadastroPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { slug } = await params;
+  const query = await searchParams;
   const cfg = CADASTROS[slug];
   if (!cfg) notFound();
 
@@ -209,6 +212,7 @@ export default async function CadastroPage({
             colunas={cfg.colunas}
             campos={campos}
             rows={linhas}
+            initialFocusId={typeof query.focus === "string" ? query.focus : undefined}
           />
         </div>
       </main>

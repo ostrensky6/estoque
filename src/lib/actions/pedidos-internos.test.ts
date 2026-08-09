@@ -8,14 +8,6 @@ const itemSingle = vi.fn();
 const insumoInsert = vi.fn();
 const insumoInsertSingle = vi.fn();
 const insumoCategorySingle = vi.fn();
-const pedidoFormalSingle = vi.fn();
-const itensFormalOrder = vi.fn();
-const compraFormalSingle = vi.fn();
-const itensCompraInsert = vi.fn();
-const pedidoStatusSingle = vi.fn();
-const pedidoUpdate = vi.fn();
-const pedidoUpdateEq = vi.fn();
-const aprovacaoInsert = vi.fn();
 const registrarEvento = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath }));
@@ -51,6 +43,7 @@ function formRecebimento(overrides: Record<string, string> = {}) {
   const base: Record<string, string> = {
     item_id: "5",
     pedido_interno_id: "10",
+    operacao_id: "22222222-2222-4222-8222-222222222222",
     quantidade: "2",
     unidade: "frasco",
     novo_insumo: "Kit extração DNA",
@@ -96,53 +89,6 @@ function configureSupabase() {
   });
 }
 
-function configureFormalizacaoSupabase() {
-  let pedidosInternosSelectCount = 0;
-  from.mockImplementation((table: string) => {
-    if (table === "pedidos_internos") {
-      return {
-        select: vi.fn(() => ({
-          eq: vi.fn(() => {
-            pedidosInternosSelectCount += 1;
-            return {
-              single: pedidosInternosSelectCount === 1 ? pedidoFormalSingle : pedidoStatusSingle,
-            };
-          }),
-        })),
-        update: pedidoUpdate,
-      };
-    }
-    if (table === "pedidos_internos_itens") {
-      return {
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            order: itensFormalOrder,
-          })),
-        })),
-      };
-    }
-    if (table === "pedidos_compra") {
-      return {
-        insert: vi.fn(() => ({
-          select: vi.fn(() => ({
-            single: compraFormalSingle,
-          })),
-        })),
-      };
-    }
-    if (table === "pedidos_compra_itens") {
-      return { insert: itensCompraInsert };
-    }
-    if (table === "pedidos_internos_aprovacoes") {
-      return { insert: aprovacaoInsert };
-    }
-    return {};
-  });
-  pedidoUpdate.mockReturnValue({ eq: pedidoUpdateEq });
-  pedidoUpdateEq.mockResolvedValue({ error: null });
-  aprovacaoInsert.mockResolvedValue({ error: null });
-}
-
 describe("recebimento de pedido interno", () => {
   beforeEach(() => {
     revalidatePath.mockReset();
@@ -153,14 +99,6 @@ describe("recebimento de pedido interno", () => {
     insumoInsert.mockReset();
     insumoInsertSingle.mockReset();
     insumoCategorySingle.mockReset();
-    pedidoFormalSingle.mockReset();
-    itensFormalOrder.mockReset();
-    compraFormalSingle.mockReset();
-    itensCompraInsert.mockReset();
-    pedidoStatusSingle.mockReset();
-    pedidoUpdate.mockReset();
-    pedidoUpdateEq.mockReset();
-    aprovacaoInsert.mockReset();
     registrarEvento.mockReset();
 
     configureSupabase();
@@ -170,84 +108,39 @@ describe("recebimento de pedido interno", () => {
     rpc.mockResolvedValue({ error: null });
   });
 
-  it("bloqueia novo insumo sem categoria", async () => {
+  it("rejeita recebimento sem insumo_id canonico", async () => {
     const { receberItemPedidoInterno } = await import("./pedidos-internos");
-    const formData = formRecebimento({ categoria_compra: "" });
+    const result = await receberItemPedidoInterno(
+      { ok: false },
+      formRecebimento({ novo_insumo: "", insumo_id: "" }),
+    );
 
-    const result = await receberItemPedidoInterno({ ok: false }, formData);
-
-    expect(result).toEqual({
-      ok: false,
-      message: "Categoria de compra é obrigatória para cadastrar novo insumo no recebimento.",
-    });
+    expect(result.ok).toBe(false);
     expect(insumoInsert).not.toHaveBeenCalled();
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("bloqueia novo insumo com fator_conversao invalido", async () => {
+  it("rejeita operacao_id ausente antes da RPC", async () => {
     const { receberItemPedidoInterno } = await import("./pedidos-internos");
     const result = await receberItemPedidoInterno(
       { ok: false },
-      formRecebimento({ fator_conversao: "0" }),
+      formRecebimento({ operacao_id: "" }),
     );
 
     expect(result).toEqual({
       ok: false,
-      message: "Fator de conversão deve ser maior que zero.",
+      message: "Identificador da operação de recebimento inválido.",
     });
-    expect(insumoInsert).not.toHaveBeenCalled();
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("bloqueia novo insumo sem custo", async () => {
-    const { receberItemPedidoInterno } = await import("./pedidos-internos");
-    const result = await receberItemPedidoInterno(
-      { ok: false },
-      formRecebimento({ custo: "" }),
-    );
-
-    expect(result).toEqual({
-      ok: false,
-      message: "Custo unitário é obrigatório para cadastrar novo insumo no recebimento.",
-    });
-    expect(insumoInsert).not.toHaveBeenCalled();
-    expect(rpc).not.toHaveBeenCalled();
-  });
-
-  it("bloqueia novo insumo critico sem validade", async () => {
-    const { receberItemPedidoInterno } = await import("./pedidos-internos");
-    const result = await receberItemPedidoInterno(
-      { ok: false },
-      formRecebimento({ categoria_compra: "critico" }),
-    );
-
-    expect(result).toEqual({
-      ok: false,
-      message: "Validade é obrigatória para receber insumo crítico.",
-    });
-    expect(insumoInsert).not.toHaveBeenCalled();
-    expect(rpc).not.toHaveBeenCalled();
-  });
-
-  it("permite novo insumo completo e chama a RPC de recebimento", async () => {
+  it("nao cria cadastro mestre quando o insumo_id e ambiguo", async () => {
     const { receberItemPedidoInterno } = await import("./pedidos-internos");
     const result = await receberItemPedidoInterno({ ok: false }, formRecebimento());
 
-    expect(result).toEqual({ ok: true, message: "Item recebido e lançado em estoque." });
-    expect(insumoInsert).toHaveBeenCalledWith({
-      especificacao: "Kit extração DNA",
-      unidade: "frasco",
-      categoria_compra: "operacional",
-      fator_conversao: 1,
-      custo_unitario: 150,
-    });
-    expect(rpc).toHaveBeenCalledWith("receber_item_pedido_interno", expect.objectContaining({
-      p_pedido_id: 10,
-      p_item_id: 5,
-      p_insumo_id: 77,
-      p_quantidade: 2,
-      p_custo: 150,
-    }));
+    expect.soft(result.ok).toBe(false);
+    expect.soft(insumoInsert).not.toHaveBeenCalled();
+    expect.soft(rpc).not.toHaveBeenCalled();
   });
 
   it("mantem fluxo com insumo existente operacional", async () => {
@@ -268,50 +161,134 @@ describe("recebimento de pedido interno", () => {
     }));
   });
 
-  it("formaliza pedido interno mantendo vinculo entre item interno e item da compra formal", async () => {
-    configureFormalizacaoSupabase();
-    pedidoFormalSingle.mockResolvedValue({
-      data: {
-        id: 10,
-        titulo: "Reagentes do projeto",
-        status: "validado",
-        solicitante: "solicitante@example.com",
-        projeto_id: 3,
-        pedido_compra_id: null,
-      },
-      error: null,
-    });
-    itensFormalOrder.mockResolvedValue({
-      data: [
-        { id: 5, insumo_id: 88, quantidade: 2, orcamento_previo: 150, especificacao: "Kit extração", observacao: null },
-        { id: 6, insumo_id: null, quantidade: 1, orcamento_previo: 80, especificacao: "Serviço externo", observacao: null },
-      ],
-      error: null,
-    });
-    compraFormalSingle.mockResolvedValue({ data: { id: 20 }, error: null });
-    itensCompraInsert.mockResolvedValue({ error: null });
-    pedidoStatusSingle.mockResolvedValue({ data: { status: "validado" }, error: null });
+  it("nao registra auditoria fora da RPC de recebimento", async () => {
+    itemSingle
+      .mockResolvedValueOnce({
+        data: { ...itemRecebimento(), insumo_id: 88 },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: { ...itemRecebimento(), insumo_id: 88, quantidade_recebida: 2 },
+        error: null,
+      });
+    const { receberItemPedidoInterno } = await import("./pedidos-internos");
 
+    await receberItemPedidoInterno(
+      { ok: false },
+      formRecebimento({ novo_insumo: "", insumo_id: "88" }),
+    );
+
+    expect(registrarEvento).not.toHaveBeenCalled();
+  });
+
+  it("encaminha operacao_id estavel para a RPC de recebimento interno", async () => {
+    const operacaoId = "22222222-2222-4222-8222-222222222222";
+    itemSingle.mockResolvedValue({
+      data: { ...itemRecebimento(), insumo_id: 88 },
+      error: null,
+    });
+    const { receberItemPedidoInterno } = await import("./pedidos-internos");
+
+    await receberItemPedidoInterno(
+      { ok: false },
+      formRecebimento({ novo_insumo: "", insumo_id: "88", operacao_id: operacaoId }),
+    );
+
+    expect(rpc).toHaveBeenCalledWith("receber_item_pedido_interno", expect.objectContaining({
+      p_operacao_id: operacaoId,
+    }));
+  });
+
+  it("reenvia retry com item atualizado usando o mesmo operacao_id", async () => {
+    const operacaoId = "22222222-2222-4222-8222-222222222222";
+    const itemAtualizado = {
+      ...itemRecebimento(),
+      insumo_id: 88,
+      quantidade_recebida: 2,
+      recebido_em: "2026-08-08T12:00:00.000Z",
+    };
+    itemSingle
+      .mockResolvedValueOnce({ data: itemAtualizado, error: null })
+      .mockResolvedValueOnce({ data: itemAtualizado, error: null });
+    const { receberItemPedidoInterno } = await import("./pedidos-internos");
+
+    const result = await receberItemPedidoInterno(
+      { ok: false },
+      formRecebimento({ novo_insumo: "", insumo_id: "88", operacao_id: operacaoId }),
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      message: "Item recebido integralmente e lançado em estoque.",
+    });
+    expect(rpc).toHaveBeenCalledWith("receber_item_pedido_interno", expect.objectContaining({
+      p_operacao_id: operacaoId,
+    }));
+  });
+
+  it("permite recebimento parcial mantendo saldo pendente", async () => {
+    itemSingle
+      .mockResolvedValueOnce({
+        data: { ...itemRecebimento(), quantidade_recebida: 0, insumo_id: 88 },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: { ...itemRecebimento(), quantidade_recebida: 1, insumo_id: 88 },
+        error: null,
+      });
+    const { receberItemPedidoInterno } = await import("./pedidos-internos");
+    const result = await receberItemPedidoInterno(
+      { ok: false },
+      formRecebimento({ novo_insumo: "", insumo_id: "88", quantidade: "1" }),
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      message: "Recebimento parcial registrado. Saldo pendente: 1 frasco.",
+    });
+    expect(rpc).toHaveBeenCalledWith("receber_item_pedido_interno", expect.objectContaining({
+      p_item_id: 5,
+      p_quantidade: 1,
+    }));
+  });
+
+  it("bloqueia recebimento acima do saldo pendente", async () => {
+    itemSingle.mockResolvedValue({
+      data: { ...itemRecebimento(), quantidade_recebida: 1.5, insumo_id: 88 },
+      error: null,
+    });
+    rpc.mockResolvedValue({
+      error: { message: "Quantidade recebida excede o saldo pendente (0.5 frasco)." },
+    });
+    const { receberItemPedidoInterno } = await import("./pedidos-internos");
+    const result = await receberItemPedidoInterno(
+      { ok: false },
+      formRecebimento({ novo_insumo: "", insumo_id: "88", quantidade: "1" }),
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Quantidade recebida excede o saldo pendente (0.5 frasco).",
+    });
+    expect(rpc).toHaveBeenCalledWith("receber_item_pedido_interno", expect.objectContaining({
+      p_quantidade: 1,
+    }));
+  });
+
+  it("formaliza pedido interno mantendo vinculo entre item interno e item da compra formal", async () => {
     const { formalizarPedidoInterno } = await import("./pedidos-internos");
     const formData = new FormData();
     formData.set("pedido_interno_id", "10");
 
     const result = await formalizarPedidoInterno({ ok: false }, formData);
 
-    expect(result.ok).toBe(true);
-    expect(itensCompraInsert).toHaveBeenCalledWith([
+    expect(result).toEqual({ ok: true, message: "Pedido formalizado e compra criada." });
+    expect(rpc).toHaveBeenCalledWith(
+      "formalizar_pedido_interno",
       expect.objectContaining({
-        pedido_id: 20,
-        insumo_id: 88,
-        pedido_interno_item_id: 5,
-        quantidade: 2,
-        custo_unitario_estimado: 150,
+        p_pedido_id: 10,
       }),
-    ]);
-    expect(pedidoUpdate).toHaveBeenCalledWith(expect.objectContaining({
-      pedido_compra_id: 20,
-      status: "formalizado",
-    }));
+    );
     expect(revalidatePath).toHaveBeenCalledWith("/compras");
   });
 
@@ -319,6 +296,7 @@ describe("recebimento de pedido interno", () => {
     itemSingle.mockResolvedValue({
       data: {
         ...itemRecebimento(),
+        insumo_id: 88,
         pedidos_internos: {
           status: "aprovado_para_compra",
           projetos: { nome: "Projeto A" },
@@ -331,11 +309,34 @@ describe("recebimento de pedido interno", () => {
     });
     const { receberItemPedidoInterno } = await import("./pedidos-internos");
 
-    const result = await receberItemPedidoInterno({ ok: false }, formRecebimento());
+    const result = await receberItemPedidoInterno(
+      { ok: false },
+      formRecebimento({ novo_insumo: "", insumo_id: "88" }),
+    );
 
     expect(result).toEqual({
       ok: false,
       message: "Item vinculado a compra formal deve ser recebido pelo pedido de compra.",
     });
+  });
+
+  it("estorna um lançamento pelo RPC transacional, sem mutar estoque diretamente", async () => {
+    const { estornarRecebimentoLancamento } = await import("./pedidos-internos");
+    const formData = new FormData();
+    formData.set("pedido_interno_id", "10");
+    formData.set("item_id", "5");
+    formData.set("recebimento_id", "15");
+
+    const result = await estornarRecebimentoLancamento({ ok: false }, formData);
+
+    expect(result).toEqual({ ok: true, message: "Lançamento de recebimento estornado." });
+    expect(rpc).toHaveBeenCalledWith(
+      "estornar_recebimento_item_pedido_interno",
+      expect.objectContaining({
+        p_pedido_id: 10,
+        p_item_id: 5,
+        p_recebimento_id: 15,
+      }),
+    );
   });
 });

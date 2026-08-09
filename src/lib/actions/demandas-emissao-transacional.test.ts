@@ -67,11 +67,39 @@ const demandaCompleta = {
   matriz_amostra: "Água",
   quantidade_amostras_estimada: 3,
 };
+const provenienciaDimensional = {
+  insumo_id: 9,
+  unidade_estoque: "frasco",
+  unidade_consumo: "reacao",
+  fator_conversao: 100,
+  quantidade_consumo: 20,
+  quantidade_estoque: 0.2,
+  fonte_custo: "custo_medio_ponderado",
+  custo_unitario_estoque: 500,
+  custo_unitario_consumo: 5,
+  referencia_custo: "lotes_estoque_liberados",
+};
 const orcamentoRevisado = {
   id: 5,
   status: "aprovado",
   status_operacional: "revisado",
-  orcamento_itens: [{ id: 1, n_amostras: 2, custo_unitario: 50, preco_unitario: 80 }],
+  fonte_custo_insumos: "custo_medio_ponderado",
+  custo_snapshot: {
+    fonte_custo_insumos: "custo_medio_ponderado",
+    linhas: [{
+      codigo_analise: "A1",
+      proveniencia_dimensional: [provenienciaDimensional],
+    }],
+  },
+  orcamento_itens: [{
+    id: 1,
+    n_amostras: 2,
+    custo_unitario: 50,
+    preco_unitario: 80,
+    valor_snapshot: {
+      proveniencia_dimensional: [provenienciaDimensional],
+    },
+  }],
 };
 
 beforeEach(() => {
@@ -85,10 +113,13 @@ beforeEach(() => {
   state.updates = [];
 });
 
-async function emitir() {
+async function emitir(
+  operacaoId = "22222222-2222-4222-8222-222222222222",
+) {
   const fd = new FormData();
   fd.set("demanda_id", "7");
   fd.set("validade_dias", "30");
+  fd.set("operacao_id", operacaoId);
   return demandasActions.emitirOrcamentoFinalDaDemanda(fd);
 }
 
@@ -112,6 +143,52 @@ describe("emissão transacional", () => {
     expect(typeof args.p_total_final).toBe("number");
     const params = args.p_parametros as { formula_snapshot: { formula: string } };
     expect(params.formula_snapshot.formula).toMatch(/custo_laboratorial_tecnico/);
+  });
+
+  it("conserva a proveniencia dimensional do item e do custo operacional na emissao", async () => {
+    await expect(emitir()).rejects.toThrow(/NEXT_REDIRECT/);
+    const args = rpcCall(0)[1] as Record<string, unknown>;
+    const snapshot = args.p_snapshot as {
+      orcamentos_analises: Array<{
+        custo_snapshot: { linhas: Array<{ proveniencia_dimensional: unknown[] }> };
+        orcamento_itens: Array<{ valor_snapshot: { proveniencia_dimensional: unknown[] } }>;
+      }>;
+    };
+
+    expect(snapshot.orcamentos_analises[0].custo_snapshot.linhas[0]
+      .proveniencia_dimensional).toEqual([provenienciaDimensional]);
+    expect(snapshot.orcamentos_analises[0].orcamento_itens[0].valor_snapshot
+      .proveniencia_dimensional).toEqual([provenienciaDimensional]);
+  });
+
+  it("recusa linha economica sem snapshot reconstruivel antes da RPC", async () => {
+    state.orcamentos = [{
+      ...orcamentoRevisado,
+      custo_snapshot: null,
+      orcamento_itens: [{
+        ...orcamentoRevisado.orcamento_itens[0],
+        valor_snapshot: null,
+      }],
+    }];
+
+    let falha: unknown;
+    try {
+      await emitir();
+    } catch (error) {
+      falha = error;
+    }
+
+    expect.soft(String(falha)).toMatch(/erro_emissao=/);
+    expect.soft(rpc).not.toHaveBeenCalled();
+  });
+
+  it("repassa a identidade de operacao fornecida antes da action", async () => {
+    const operacaoId = "33333333-3333-4333-8333-333333333333";
+    await expect(emitir(operacaoId)).rejects.toThrow(/NEXT_REDIRECT/);
+
+    expect(rpcCall(0)[1]).toEqual(expect.objectContaining({
+      p_operacao_id: operacaoId,
+    }));
   });
 
   it("cálculo vem da engine autoritativa (total 100 = lab técnico 2×50, sem parâmetros)", async () => {

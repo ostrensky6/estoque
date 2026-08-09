@@ -1,0 +1,7 @@
+interface:
+  display_name: "R7 — Ábaco"
+  short_description: "Núcleo econômico, fichas e orçamentos"
+  default_prompt: "Na tarefa externa canônica R7 — Ábaco Orçamentos, use $kontrol-abaco somente sob ordem delimitada do Maestro para governar ficha técnica, custeio, orçamento, proposta ou histórico."
+
+policy:
+  allow_implicit_invocation: false

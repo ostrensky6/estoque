@@ -11,6 +11,7 @@ const insert = vi.fn();
 const eq = vi.fn();
 const deleteRow = vi.fn();
 const from = vi.fn();
+const rpc = vi.fn();
 const createClient = vi.fn();
 const registrarEvento = vi.fn();
 const registrarVersaoParametrosEconomicos = vi.fn();
@@ -37,6 +38,7 @@ describe("actions de orcamento de projetos", () => {
     deleteRow.mockReset();
     from.mockReset();
     createClient.mockReset();
+    rpc.mockResolvedValue({ error: null });
     registrarEvento.mockReset();
     registrarVersaoParametrosEconomicos.mockReset();
     exigirPapelOrcamento.mockReset();
@@ -48,7 +50,7 @@ describe("actions de orcamento de projetos", () => {
     deleteRow.mockReturnValue({ eq });
     from.mockReturnValue({ select, update, delete: deleteRow, insert });
     eq.mockReturnValue({ single });
-    createClient.mockResolvedValue({ from });
+    createClient.mockResolvedValue({ from, rpc });
   });
 
   it("salva justificativa formal para projeto sem custo", async () => {
@@ -65,8 +67,11 @@ describe("actions de orcamento de projetos", () => {
     expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
     expect(update).toHaveBeenCalledWith(expect.objectContaining({
       titulo: "Projeto sem custo",
-      status: "enviado",
       projeto_sem_custo_justificativa: "Execução sem cobrança por contrapartida institucional.",
+    }));
+    expect(rpc).toHaveBeenCalledWith("transicionar_orcamento_projeto", expect.objectContaining({
+      p_orcamento_projeto_id: 77,
+      p_status_destino: "enviado",
     }));
     expect(eq).toHaveBeenCalledWith("id", 77);
   });
@@ -210,23 +215,41 @@ describe("actions de orcamento de projetos", () => {
     formData.set("orcamento_projeto_id", "77");
     formData.set("motivo", "Cancelamento solicitado");
     single.mockResolvedValue({ data: { status: "enviado" }, error: null });
-    eq.mockReturnValueOnce({ single }).mockResolvedValueOnce({ error: null });
-
     await expect(cancelarOrcamentoProjeto(formData)).rejects.toThrow(
       "NEXT_REDIRECT:/orcamento/projetos/77",
     );
 
     expect(exigirPapelOrcamento).toHaveBeenCalledWith("cancelar_documento");
-    expect(update).toHaveBeenCalledWith({ status: "cancelado" });
-    expect(registrarEvento).toHaveBeenCalledWith(
-      "orcamento_projeto",
-      77,
-      "enviado",
-      "cancelado",
-      "Cancelamento solicitado",
-    );
+    expect(rpc).toHaveBeenCalledWith("transicionar_orcamento_projeto", expect.objectContaining({
+      p_orcamento_projeto_id: 77,
+      p_status_destino: "cancelado",
+      p_observacao: "Cancelamento solicitado",
+    }));
     expect(revalidatePath).toHaveBeenCalledWith("/orcamento/projetos/77");
     expect(revalidatePath).toHaveBeenCalledWith("/orcamento/projetos");
+  });
+
+  it("usa a identidade de versão retornada pelo retry idempotente", async () => {
+    const { aprovarOrcamentoPublico } = await import("./orcamento-projetos");
+    const formData = new FormData();
+    formData.set("token", "token-da-versao-emitida");
+    formData.set("nome", "Cliente");
+    rpc.mockResolvedValueOnce({
+      data: {
+        aprovado: true,
+        repetido: true,
+        versao_id: 321,
+      },
+      error: null,
+    });
+
+    await expect(aprovarOrcamentoPublico(formData)).resolves.toBeUndefined();
+
+    expect(rpc).toHaveBeenCalledWith("aprovar_orcamento_publico", {
+      p_token: "token-da-versao-emitida",
+      p_nome: "Cliente",
+    });
+    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/final/321");
   });
 
   it("arquiva template sem apagar o registro", async () => {

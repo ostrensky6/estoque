@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -336,6 +337,7 @@ export default async function DemandaDetalhe({
     `rounded-md border border-input bg-card px-3 py-2 text-sm font-medium ${TOM_ENTRADA}`;
   const lbl = "block text-xs font-medium text-muted-foreground";
   const hydrationSafe = { suppressHydrationWarning: true } as const;
+  const operacaoEmissaoId = randomUUID();
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
@@ -672,6 +674,7 @@ export default async function DemandaDetalhe({
                 )}
                 <form action={emitirOrcamentoFinalDaDemanda} className="flex items-end gap-2">
                   <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
+                  <input {...hydrationSafe} type="hidden" name="operacao_id" value={operacaoEmissaoId} />
                   <div>
                     <label className="block text-[10px] uppercase tracking-wide text-muted-foreground">Validade (dias)</label>
                     <input {...hydrationSafe} name="validade_dias" type="number" min="1" step="1" defaultValue="30" className={`${inp} mt-1 w-24`} disabled={!podeEmitir} />

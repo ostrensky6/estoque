@@ -6,7 +6,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/common/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { pedidoInternoStatus } from "@/lib/pedido/status";
-import { ItemRecebimentoCell } from "./ItemRecebimentoCell";
+import { ItemRecebimentoCell, type RecebimentoLancamento } from "./ItemRecebimentoCell";
 
 type Insumo = { id: number; especificacao: string | null; unidade: string | null };
 
@@ -17,10 +17,13 @@ export type RecebimentoItemRow = {
   pedidoTitulo: string;
   especificacao: string;
   quantidade: number;
+  quantidadeRecebida?: number | null;
+  compraFormalId?: number | null;
   unidade: string | null;
   insumoId: number | null;
   fornecedorSugerido: string | null;
   orcamentoPrevio: number | null;
+  recebimentos?: RecebimentoLancamento[];
   projeto: string;
   status: string;
   statusLabel: string;
@@ -59,9 +62,14 @@ function colunas(insumos: Insumo[]): ColumnDef<RecebimentoItemRow, unknown>[] {
       header: "Qtd",
       meta: { align: "right" },
       cell: ({ row }) => (
-        <span className="tabular-nums">
-          {row.original.quantidade} {row.original.unidade ?? ""}
-        </span>
+        <div className="text-right tabular-nums">
+          <span>{row.original.quantidade} {row.original.unidade ?? ""}</span>
+          {Number(row.original.quantidadeRecebida ?? 0) > 0 && (
+            <p className="text-[11px] font-medium text-warning-strong">
+              recebido {row.original.quantidadeRecebida}
+            </p>
+          )}
+        </div>
       ),
     },
     {
@@ -88,6 +96,8 @@ function colunas(insumos: Insumo[]): ColumnDef<RecebimentoItemRow, unknown>[] {
             pedidoId: row.original.pedidoId,
             especificacao: row.original.especificacao,
             quantidade: row.original.quantidade,
+            quantidadeRecebida: row.original.quantidadeRecebida,
+            compraFormalId: row.original.compraFormalId,
             unidade: row.original.unidade,
             insumoId: row.original.insumoId,
             fornecedorSugerido: row.original.fornecedorSugerido,
@@ -95,6 +105,7 @@ function colunas(insumos: Insumo[]): ColumnDef<RecebimentoItemRow, unknown>[] {
           }}
           insumos={insumos}
           podeReceber={row.original.podeReceber}
+          recebimentos={row.original.recebimentos}
         />
       ),
     },
@@ -144,6 +155,8 @@ export function RecebimentoItensTable({
               pedidoId: row.pedidoId,
               especificacao: row.especificacao,
               quantidade: row.quantidade,
+              quantidadeRecebida: row.quantidadeRecebida,
+              compraFormalId: row.compraFormalId,
               unidade: row.unidade,
               insumoId: row.insumoId,
               fornecedorSugerido: row.fornecedorSugerido,
@@ -151,6 +164,7 @@ export function RecebimentoItensTable({
             }}
             insumos={insumos}
             podeReceber={row.podeReceber}
+            recebimentos={row.recebimentos}
           />
         </div>
       )}

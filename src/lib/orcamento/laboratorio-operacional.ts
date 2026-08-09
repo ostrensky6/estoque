@@ -70,6 +70,11 @@ export function montarSnapshotLaboratorio(
       lote: numberFrom(snap?.lote_padrao, null),
       numero_execucoes: numberFrom(snap?.numero_execucoes, null),
       composicao_unitaria: composicaoUnit,
+      proveniencia_dimensional: (
+        Array.isArray(snap?.proveniencia_dimensional)
+          ? snap.proveniencia_dimensional
+          : []
+      ) as Json[],
     };
   });
 

@@ -1,8 +1,8 @@
 import { createClientUntyped } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
-import { criarPedidoInterno } from "@/lib/actions/pedidos-internos";
 import { PedidosInternosTable, type PedidoInternoRow } from "@/components/pedido/PedidosInternosTable";
 import type { PedidoItemView } from "@/components/pedido/PedidoItensQuickView";
+import { NovoPedidoDialog } from "@/components/pedido/NovoPedidoDialog";
 import { pedidoInternoNumero, pedidoInternoStatus } from "@/lib/pedido/status";
 import { formatCurrency as brl, formatDate } from "@/lib/formatters";
 
@@ -87,6 +87,12 @@ function pendenciasPedido(row: PedidoInternoListRow) {
   return pendencias.length ? pendencias.join(", ") : "—";
 }
 
+function recebimentoPendente(valor: string) {
+  if (valor === "—") return false;
+  const [recebidos, total] = valor.split("/").map((parte) => Number(parte));
+  return Number.isFinite(recebidos) && Number.isFinite(total) && total > 0 && recebidos < total;
+}
+
 export default async function PedidoPage() {
   const supabase = await createClientUntyped();
   const [pedidosFull, projetosFull, podeExcluir] = await Promise.all([
@@ -153,7 +159,11 @@ export default async function PedidoPage() {
     };
   });
 
-  const inputCls = "mt-1 w-full rounded-md border border-input bg-card px-3 py-2 text-sm";
+  const abertos = rows.filter((row) => !["cancelado", "compra_concluida"].includes(row.status));
+  const aguardandoCoordenador = rows.filter((row) => row.status === "em_validacao");
+  const cotacao = rows.filter((row) => ["aprovado_compra", "orcamentos", "orcamentos_recebidos"].includes(row.status));
+  const recebimento = rows.filter((row) => recebimentoPendente(row.recebimento));
+  const pendentes = rows.filter((row) => row.pendencias !== "—");
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
@@ -165,80 +175,49 @@ export default async function PedidoPage() {
               Demandas internas do GATGF para materiais e serviços antes da compra formal.
             </p>
           </div>
-          <div className="grid min-w-56 grid-cols-2 gap-2 text-xs">
-            <div className="rounded-lg border border-border bg-card p-3">
-              <p className="text-muted-foreground">Abertos</p>
-              <p className="mt-1 text-xl font-semibold tabular-nums">
-                {rows.filter((row) => !["cancelado", "compra_concluida"].includes(row.status)).length}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-3">
-              <p className="text-muted-foreground">Em validação</p>
-              <p className="mt-1 text-xl font-semibold tabular-nums">
-                {rows.filter((row) => row.status === "em_validacao").length}
-              </p>
-            </div>
+          <div className="flex items-center gap-2">
+            <NovoPedidoDialog projetos={((projetos ?? []) as ProjetoOption[])} />
           </div>
         </div>
 
-        <form action={criarPedidoInterno} className="mt-6 grid gap-4 rounded-xl border border-border bg-card p-4 shadow-sm md:grid-cols-12">
-          <div className="md:col-span-5">
-            <label className="block text-xs font-medium text-muted-foreground">Demanda inicial</label>
-            <input name="titulo" required placeholder="Ex.: Reagentes para sequenciamento de junho" className={inputCls} />
-          </div>
-          <div className="md:col-span-3">
-            <label className="block text-xs font-medium text-muted-foreground">Projeto</label>
-            <select name="projeto_id" defaultValue="" className={inputCls}>
-              <option value="">—</option>
-              {((projetos ?? []) as ProjetoOption[]).map((projeto) => (
-                <option key={projeto.id} value={projeto.id}>
-                  {projeto.nome}{projeto.coordenador_nome || projeto.coordenador ? ` · ${projeto.coordenador_nome ?? projeto.coordenador}` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-muted-foreground">Tipo</label>
-            <select name="tipo_demanda" defaultValue="laboratorio" className={inputCls}>
-              <option value="laboratorio">Laboratório</option>
-              <option value="campo">Campo</option>
-              <option value="laboratorio_campo">Lab./campo</option>
-              <option value="administrativo">Administrativo</option>
-              <option value="outro">Outro</option>
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-muted-foreground">Necessidade</label>
-            <input name="data_necessidade" type="date" className={inputCls} />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-muted-foreground">Urgência</label>
-            <select name="urgencia" defaultValue="normal" className={inputCls}>
-              <option value="baixa">Baixa</option>
-              <option value="normal">Normal</option>
-              <option value="alta">Alta</option>
-              <option value="critica">Crítica</option>
-            </select>
-          </div>
-          <div className="md:col-span-4">
-            <label className="block text-xs font-medium text-muted-foreground">Fonte provável</label>
-            <input name="fonte_recurso" placeholder="Projeto, convênio, recurso interno..." className={inputCls} />
-          </div>
-          <div className="md:col-span-4">
-            <label className="block text-xs font-medium text-muted-foreground">Justificativa</label>
-            <input name="justificativa" placeholder="Experimentos, análises ou problema que originou a compra" className={inputCls} />
-          </div>
-          <div className="flex items-end md:col-span-2">
-            <button className="h-10 w-full rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-500">
-              Novo pedido
-            </button>
-          </div>
-        </form>
+        <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <Kpi label="Abertos" value={abertos.length} detail="em qualquer etapa ativa" tone={abertos.length ? "info" : "neutral"} />
+          <Kpi label="Aguardando coordenador" value={aguardandoCoordenador.length} detail="validação técnica" tone={aguardandoCoordenador.length ? "warning" : "neutral"} />
+          <Kpi label="Em cotação" value={cotacao.length} detail="orçamento e proposta" tone={cotacao.length ? "info" : "neutral"} />
+          <Kpi label="Com pendências" value={pendentes.length} detail="faltam dados/documentos" tone={pendentes.length ? "warning" : "neutral"} />
+          <Kpi label="Aguardando recebimento" value={recebimento.length} detail="itens ainda não recebidos" tone={recebimento.length ? "success" : "neutral"} />
+        </section>
 
         <div className="mt-6">
           <PedidosInternosTable rows={rows} podeExcluir={podeExcluir} />
         </div>
       </main>
+    </div>
+  );
+}
+
+function Kpi({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: number;
+  detail: string;
+  tone: "neutral" | "info" | "warning" | "success";
+}) {
+  const toneClass = {
+    neutral: "text-foreground",
+    info: "text-info-strong",
+    warning: "text-warning-strong",
+    success: "text-leaf-700 dark:text-leaf-300",
+  }[tone];
+  return (
+    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className={`mt-2 text-2xl font-semibold tabular-nums ${toneClass}`}>{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
     </div>
   );
 }

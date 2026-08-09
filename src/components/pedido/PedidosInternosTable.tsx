@@ -63,10 +63,10 @@ function ExcluirPedido({ row }: { row: PedidoInternoRow }) {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Excluir pedido {row.numero}?</DialogTitle>
+          <DialogTitle>Excluir rascunho {row.numero}?</DialogTitle>
           <DialogDescription>
-            Esta ação remove o pedido <b>{row.titulo}</b> e todos os seus itens, anexos e comunicações. Não pode
-            ser desfeita.
+            Esta ação remove apenas rascunhos que ainda não entraram no fluxo operacional. Pedidos em andamento devem
+            ser cancelados com motivo.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -84,7 +84,7 @@ function ExcluirPedido({ row }: { row: PedidoInternoRow }) {
               type="submit"
               className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-white hover:bg-destructive/90"
             >
-              Excluir definitivamente
+              Excluir rascunho
             </button>
           </form>
         </DialogFooter>
@@ -152,7 +152,7 @@ function buildColumns(podeExcluir: boolean): ColumnDef<PedidoInternoRow, unknown
       header: "Ações",
       meta: { align: "right" },
       enableSorting: false,
-      cell: ({ row }) => <ExcluirPedido row={row.original} />,
+      cell: ({ row }) => (row.original.status === "rascunho" ? <ExcluirPedido row={row.original} /> : null),
     });
   }
   return cols;

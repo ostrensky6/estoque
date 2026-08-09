@@ -6,3 +6,8 @@
  * O Supabase Auth exige no mínimo 6 caracteres.
  */
 export const SENHA_PROVISORIA = "GIA2026";
+
+export const APP_METADATA_SENHA_PROVISORIA = {
+  cadastrado_pelo_admin: true,
+  senha_provisoria: true,
+} as const;

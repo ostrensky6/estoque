@@ -1,10 +1,12 @@
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { calcularTodas } from "@/lib/costing/loader";
+import { calcularTodas, type FonteCustoInsumos } from "@/lib/costing/loader";
 import { PrintButton } from "@/components/orcamento/PrintButton";
 import { FluxoProposta } from "@/components/orcamento/FluxoProposta";
+import { RecalcularOrcamentoForm } from "@/components/orcamento/RecalcularOrcamentoForm";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import {
@@ -12,7 +14,6 @@ import {
   revisarOrcamentoLaboratorio,
   alternarAnaliseOrcamento,
   removerItemOrcamento,
-  recalcularOrcamento,
   cancelarOrcamento,
   excluirOrcamento,
 } from "@/lib/actions/orcamentos";
@@ -85,7 +86,7 @@ export default async function OrcamentoDetalhe({
         .eq("orcamento_id", orcId)
         .order("id"),
       supabase.from("analises").select("codigo, nome").eq("ativo", true).eq("ofertavel", true).order("codigo"),
-      calcularTodas(),
+      calcularTodas({}, (orc.fonte_custo_insumos === "custo_medio_ponderado" ? "custo_medio_ponderado" : "custo_padrao") as FonteCustoInsumos),
       supabase.from("clientes").select("id, nome").eq("ativo", true).order("nome"),
       supabase.from("projetos").select("id, nome").order("nome"),
     ]);
@@ -194,6 +195,7 @@ export default async function OrcamentoDetalhe({
   const inp =
     "rounded-md border border-input bg-card px-3 py-2 text-sm font-medium text-brand-700 dark:text-brand-300"; // §8.2: entrada em azul
   const lbl = "block text-xs font-medium text-muted-foreground";
+  const operacaoRecalculoId = randomUUID();
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
@@ -210,12 +212,11 @@ export default async function OrcamentoDetalhe({
                 </button>
               </form>
             )}
-            <form action={recalcularOrcamento}>
-              <input type="hidden" name="orcamento_id" value={orcId} />
-              <button className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-muted">
-                Recalcular preços
-              </button>
-            </form>
+            <RecalcularOrcamentoForm
+              orcamentoId={orcId}
+              fonteAtual={orc.fonte_custo_insumos ?? "custo_padrao"}
+              operacaoId={operacaoRecalculoId}
+            />
           </div>
         </div>
 
@@ -287,6 +288,10 @@ export default async function OrcamentoDetalhe({
               <dd>{formatDateTime(snapshotGeradoEm)}</dd>
             </div>
             <div className="flex gap-2">
+              <dt className="text-muted-foreground">Fonte dos insumos:</dt>
+              <dd>{orc.fonte_custo_insumos === "custo_medio_ponderado" ? "Média ponderada dos lotes liberados" : "Custo padrão aprovado"}</dd>
+            </div>
+            <div className="flex gap-2">
               <dt className="text-muted-foreground">Projeto:</dt>
               <dd>{projetoNome ?? "—"}</dd>
             </div>
@@ -295,7 +300,11 @@ export default async function OrcamentoDetalhe({
           <nav className="no-print sticky top-0 z-10 mt-6 overflow-x-auto border-y border-border bg-card/95 py-2 shadow-sm backdrop-blur">
             <div className="flex min-w-max gap-2">
               {tabs.map((tab) => (
-                <a key={tab.href} href={tab.href} className="rounded-md border border-input px-3 py-2 text-left text-xs text-foreground transition hover:bg-muted">
+                <a
+                  key={tab.href}
+                  href={tab.href}
+                  className="app-nav-level-3 rounded-md border border-primary/20 px-3 py-2 text-left text-xs text-brand-800 shadow-xs transition hover:border-primary/40 hover:text-brand-900 dark:text-brand-300"
+                >
                   <span className="block font-semibold">{tab.label}</span>
                   <span className="mt-0.5 block text-[10px] uppercase tracking-wide text-muted-foreground">{tab.meta}</span>
                 </a>
@@ -437,7 +446,7 @@ export default async function OrcamentoDetalhe({
               colunas={["Bloco", "Origem", "Regra", "Subtotal"]}
               vazio="Sem composição técnica calculada."
               linhas={[
-                ["Reagentes", "insumo_analise + custo_unitario do insumo", "Quantidade por amostra multiplicada pelas amostras; itens por execução são rateados pelo lote.", brl(Number(totaisOperacionais.reagentes ?? 0))],
+                ["Reagentes", orc.fonte_custo_insumos === "custo_medio_ponderado" ? "média ponderada dos lotes liberados" : "insumo_analise + custo_unitario padrão", "Quantidade por amostra multiplicada pelas amostras; itens por execução são rateados pelo lote.", brl(Number(totaisOperacionais.reagentes ?? 0))],
                 ["Materiais", "mesma base de insumos selecionados", "Material de consumo entra no custo técnico junto aos reagentes.", brl(Number(totaisOperacionais.materiais ?? 0))],
                 ["Equipamentos", "equipamento_analise + depreciação/manutenção", "Custo diário do equipamento alocado por peso e capacidade diária da análise.", brl(Number(totaisOperacionais.equipamentos ?? 0))],
                 ["Mão de obra", "tecnicos + etapas", "Horas de bancada por amostra multiplicadas pelo valor-hora dedicado.", brl(Number(totaisOperacionais.mao_obra ?? 0))],
@@ -503,7 +512,10 @@ export default async function OrcamentoDetalhe({
                   Cliente, documento e contato são lidos da demanda. A versão emitida preserva snapshot próprio.
                 </p>
               </div>
-              <Link href={`/orcamento/demandas/${demanda.id}#demanda`} className="rounded-md border border-input px-3 py-2 text-xs font-medium hover:bg-muted">
+              <Link
+                href={`/orcamento/demandas/${demanda.id}#demanda`}
+                className="app-nav-level-3 rounded-md border border-primary/20 px-3 py-2 text-xs font-medium text-brand-800 shadow-xs transition hover:border-primary/40 hover:text-brand-900 dark:text-brand-300"
+              >
                 Editar dados da demanda
               </Link>
             </div>

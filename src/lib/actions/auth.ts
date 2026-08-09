@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, mensagemErroAdminSupabase } from "@/lib/supabase/admin";
+import { SENHA_PROVISORIA } from "@/lib/auth/senha-provisoria";
 import type { FormState } from "./cadastros";
 
 function mensagemErroLogin(error: { code?: string; message?: string } | null) {
@@ -22,8 +23,23 @@ export async function entrar(_prev: FormState, formData: FormData): Promise<Form
   if (!email || !senha) return { ok: false, message: "Informe e-mail e senha." };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
   if (error) return { ok: false, message: mensagemErroLogin(error) };
+
+  if (
+    senha === SENHA_PROVISORIA &&
+    (
+      data.user.app_metadata?.cadastrado_pelo_admin !== true ||
+      data.user.app_metadata?.senha_provisoria !== true
+    )
+  ) {
+    await supabase.auth.signOut();
+    return {
+      ok: false,
+      message: "A senha provisória só pode ser usada por usuários cadastrados pelo administrador.",
+    };
+  }
+
   redirect("/");
 }
 
@@ -60,6 +76,9 @@ export async function definirSenhaDefinitiva(_prev: FormState, formData: FormDat
     const senha = String(formData.get("senha") ?? "");
     const confirmar = String(formData.get("confirmar") ?? "");
     if (senha.length < 8) return { ok: false, message: "A senha deve ter ao menos 8 caracteres." };
+    if (senha === SENHA_PROVISORIA) {
+      return { ok: false, message: "Escolha uma senha diferente da senha provisória." };
+    }
     if (senha !== confirmar) return { ok: false, message: "As senhas não conferem." };
 
     const supabase = await createClient();
@@ -74,7 +93,17 @@ export async function definirSenhaDefinitiva(_prev: FormState, formData: FormDat
     });
     if (error) return { ok: false, message: error.message };
 
-    await createAdminClient().from("perfis").update({ senha_provisoria: false }).eq("id", user.id);
+    const admin = createAdminClient();
+    const { error: metadataError } = await admin.auth.admin.updateUserById(user.id, {
+      app_metadata: {
+        ...user.app_metadata,
+        cadastrado_pelo_admin: true,
+        senha_provisoria: false,
+      },
+    });
+    if (metadataError) return { ok: false, message: mensagemErroAdminSupabase(metadataError) };
+
+    await admin.from("perfis").update({ senha_provisoria: false }).eq("id", user.id);
   } catch (error) {
     if (error instanceof Error) return { ok: false, message: mensagemErroAdminSupabase(error) };
     return { ok: false, message: "Não foi possível concluir a troca de senha." };

@@ -22,6 +22,7 @@ const PAGINAS: { nome: string; url: string }[] = [
   { nome: "Parâmetros (custeio)", url: "/parametros" },
   { nome: "Parâmetros (econômicos)", url: "/orcamento/parametros" },
   { nome: "Cadastros", url: "/cadastros" },
+  { nome: "Qualidade dos cadastros", url: "/cadastros/qualidade" },
 ];
 
 async function scan(page: Page) {

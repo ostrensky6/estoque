@@ -1,0 +1,7 @@
+interface:
+  display_name: "R2 — Nexus"
+  short_description: "Contratos, integrações e rastreabilidade lógica"
+  default_prompt: "Use $kontrol-nexus para arquitetura de domínio compartilhada, contratos, integrações e rastreabilidade lógica no Kontrol."
+
+policy:
+  allow_implicit_invocation: false

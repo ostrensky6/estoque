@@ -1,0 +1,7 @@
+interface:
+  display_name: "R5 — Sentinela"
+  short_description: "Estoque físico, lotes e inventário"
+  default_prompt: "Use $kontrol-sentinela exclusivamente na tarefa externa canônica do R5 e sob ordem delimitada do 0 — Maestro; governe apenas o estoque físico e devolva evento acionável ao Maestro."
+
+policy:
+  allow_implicit_invocation: false

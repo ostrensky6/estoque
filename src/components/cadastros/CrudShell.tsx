@@ -143,6 +143,7 @@ export function CrudShell({
   colunas,
   campos,
   rows,
+  initialFocusId,
 }: {
   slug: string;
   singular: string;
@@ -150,12 +151,14 @@ export function CrudShell({
   colunas: Coluna[];
   campos: Campo[];
   rows: Registro[];
+  initialFocusId?: string;
 }) {
   const [aberto, setAberto] = useState(false);
   const [editando, setEditando] = useState<Registro | null>(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [focusApplied, setFocusApplied] = useState(false);
 
   const novo = useCallback(() => {
     setEditando(null);
@@ -165,6 +168,16 @@ export function CrudShell({
     setEditando(r);
     setAberto(true);
   }, []);
+
+  useEffect(() => {
+    if (focusApplied || !initialFocusId) return;
+    const registro = rows.find((row) => String(row.id) === initialFocusId);
+    if (!registro) return;
+    setGlobalFilter(initialFocusId);
+    setEditando(registro);
+    setAberto(true);
+    setFocusApplied(true);
+  }, [focusApplied, initialFocusId, rows]);
 
   const tipoPorKey = useMemo(
     () =>

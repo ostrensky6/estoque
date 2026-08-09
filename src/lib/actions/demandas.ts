@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
 import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
@@ -360,6 +361,10 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
   const id = Number(formData.get("demanda_id"));
   if (!id) return;
   await exigirPapelOrcamento("emitir_final");
+  const operacaoId = String(formData.get("operacao_id") ?? "").trim();
+  if (!z.string().uuid().safeParse(operacaoId).success) {
+    redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent("Identidade da operação de emissão inválida.")}`);
+  }
 
   const validadeDias = Number(formData.get("validade_dias")) || 30;
   const supabase = await createClient();
@@ -379,7 +384,7 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
   const [{ data: orcamentos }, { data: orcProjetos }] = await Promise.all([
     supabase
       .from("orcamentos")
-      .select("id, status, status_operacional, orcamento_itens(id, n_amostras, custo_unitario, preco_unitario)")
+      .select("id, status, status_operacional, fonte_custo_insumos, custo_snapshot, orcamento_itens(id, n_amostras, custo_unitario, preco_unitario, valor_snapshot)")
       .eq("demanda_id", id)
       .order("id"),
     supabase
@@ -397,6 +402,20 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
   if (labAtivos.length > 1 || projAtivos.length > 1) {
     redirect(
       `${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent("Duplicidade ativa de módulos na demanda; saneamento necessário antes de emitir.")}`,
+    );
+  }
+
+  const linhaSemSnapshot = (orcamentos ?? []).some((orcamento) => {
+    const custoSnapshot = registro(orcamento.custo_snapshot);
+    if (!Array.isArray(custoSnapshot?.linhas)) return true;
+    return (orcamento.orcamento_itens ?? []).some((item) => {
+      const valorSnapshot = registro(item.valor_snapshot);
+      return !Array.isArray(valorSnapshot?.proveniencia_dimensional);
+    });
+  });
+  if (linhaSemSnapshot) {
+    redirect(
+      `${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent("A emissão exige snapshot econômico reconstruível em todas as linhas laboratoriais.")}`,
     );
   }
 
@@ -481,11 +500,18 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user?.id || !user.email) {
+    throw new Error("Sessão autenticada obrigatória para emitir o orçamento final.");
+  }
   const economia = consolidado.economia;
 
   const snapshot = {
     demanda,
-    orcamentos_analises: orcamentos ?? [],
+    orcamentos_analises: (orcamentos ?? []).map((orcamento) => ({
+      ...orcamento,
+      fonte_custo_insumos: orcamento.fonte_custo_insumos,
+      custo_snapshot: orcamento.custo_snapshot,
+    })),
     orcamentos_projeto: orcProjetos ?? [],
     consolidado,
   } satisfies Json;
@@ -526,8 +552,9 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
     p_total_final: consolidado.totalFinal,
     p_snapshot: snapshot,
     p_parametros: parametrosPayload,
-    p_criado_por: user?.id ?? null,
-    p_usuario_email: user?.email ?? null,
+    p_criado_por: user.id,
+    p_usuario_email: user.email,
+    p_operacao_id: operacaoId,
   });
   if (error) {
     redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent(`Falha ao emitir: ${error.message}`)}`);
@@ -538,6 +565,12 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
   revalidatePath(`${listaPath}/${id}`);
   revalidatePath("/orcamento");
   redirect(`${listaPath}/${id}?etapa=final`);
+}
+
+function registro(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
 }
 
 export async function salvarParametrosEconomicosDaDemanda(formData: FormData) {

@@ -9,9 +9,30 @@ export type DemandaLinha = {
   demanda: number;
   disponivel: number;
   falta: number;
+  custoUnitario: number | null;
+  custoEstimado: number;
+  quantidadeMinimaCompra: number | null;
+  quantidadeEmbalagem: number | null;
+  quantidadeCompra: number;
+  valorCompraEstimado: number;
 };
 
 const num = (v: unknown) => (typeof v === "number" ? v : Number(v) || 0);
+const numOrNull = (v: unknown) => {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+function arredondarQuantidadeCompra(
+  falta: number,
+  quantidadeMinimaCompra: number | null,
+  quantidadeEmbalagem: number | null,
+) {
+  if (!(falta > 0)) return 0;
+  const multiplo = quantidadeMinimaCompra ?? quantidadeEmbalagem;
+  if (!(multiplo && multiplo > 0)) return falta;
+  return Math.ceil(falta / multiplo) * multiplo;
+}
 
 /**
  * Demanda de insumos de um plano: nº de amostras × consumo/amostra, somando
@@ -98,14 +119,17 @@ export async function computarDemandaPlano(
   const ids = [...agg.keys()];
   if (ids.length === 0) return [];
 
-  const [{ data: saldo }, { data: convs }, { data: reservasPlano }] = await Promise.all([
+  const [{ data: saldo }, { data: insumos }, { data: reservasPlano }] = await Promise.all([
     supabase.from("v_estoque_saldo").select("insumo_id, unidade, disponivel").in("insumo_id", ids),
-    supabase.from("insumos").select("id, fator_conversao").in("id", ids),
+    supabase
+      .from("insumos")
+      .select("id, fator_conversao, custo_unitario, quantidade_minima_compra, quantidade_embalagem")
+      .in("id", ids),
     supabase
       .from("reservas_estoque")
-      .select("insumo_id, quantidade")
+      .select("insumo_id, quantidade, quantidade_consumida, lote_id")
       .eq("planejamento_id", planId)
-      .eq("status", "reservado")
+      .in("status", ["reservado", "parcial"])
       .in("insumo_id", ids),
   ]);
   const sMap = new Map(
@@ -113,28 +137,56 @@ export async function computarDemandaPlano(
   );
   const rMap = new Map<number, number>();
   for (const reserva of reservasPlano ?? []) {
+    if (reserva.lote_id == null) continue;
     const id = reserva.insumo_id as number;
-    rMap.set(id, (rMap.get(id) ?? 0) + num(reserva.quantidade));
+    rMap.set(
+      id,
+      (rMap.get(id) ?? 0) + num(reserva.quantidade) - num(reserva.quantidade_consumida),
+    );
   }
   // 2.5 — ponte de unidades: a demanda é calculada em unidades de CONSUMO; o
   // estoque está em unidades de ESTOQUE. Converte antes de comparar/reservar.
-  const fMap = new Map((convs ?? []).map((c) => [c.id as number, num(c.fator_conversao) || 1]));
+  const infoMap = new Map(
+    (insumos ?? []).map((c) => [
+      c.id as number,
+      {
+        fatorConversao: num(c.fator_conversao) || 1,
+        custoUnitario: numOrNull(c.custo_unitario),
+        quantidadeMinimaCompra: numOrNull(c.quantidade_minima_compra),
+        quantidadeEmbalagem: numOrNull(c.quantidade_embalagem),
+      },
+    ]),
+  );
 
   return ids
     .map((id) => {
       const d = agg.get(id)!;
       const s = sMap.get(id);
-      const fator = fMap.get(id) || 1;
+      const info = infoMap.get(id);
+      const fator = info?.fatorConversao || 1;
       const demanda = fator > 0 ? d.demanda / fator : d.demanda;
       const disponivel = Math.max(0, num(s?.disponivel));
       const reservadoPlano = rMap.get(id) ?? 0;
+      const falta = Math.max(0, demanda - reservadoPlano - disponivel);
+      const quantidadeCompra = arredondarQuantidadeCompra(
+        falta,
+        info?.quantidadeMinimaCompra ?? null,
+        info?.quantidadeEmbalagem ?? null,
+      );
+      const custoUnitario = info?.custoUnitario ?? null;
       return {
         insumo_id: id,
         especificacao: d.especificacao,
         unidade: s?.unidade ?? null,
         demanda,
         disponivel,
-        falta: Math.max(0, demanda - reservadoPlano - disponivel),
+        falta,
+        custoUnitario,
+        custoEstimado: custoUnitario == null ? 0 : demanda * custoUnitario,
+        quantidadeMinimaCompra: info?.quantidadeMinimaCompra ?? null,
+        quantidadeEmbalagem: info?.quantidadeEmbalagem ?? null,
+        quantidadeCompra,
+        valorCompraEstimado: custoUnitario == null ? 0 : quantidadeCompra * custoUnitario,
       };
     })
     .sort((a, b) => b.falta - a.falta || a.especificacao.localeCompare(b.especificacao));

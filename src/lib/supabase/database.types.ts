@@ -64,6 +64,48 @@ export type Database = {
         }
         Relationships: []
       }
+      analises_matrizes_amostras: {
+        Row: {
+          ativo: boolean
+          codigo_analise: string
+          criado_em: string
+          id: number
+          matriz_codigo: string
+          observacao: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          codigo_analise: string
+          criado_em?: string
+          id?: number
+          matriz_codigo: string
+          observacao?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          codigo_analise?: string
+          criado_em?: string
+          id?: number
+          matriz_codigo?: string
+          observacao?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analises_matrizes_amostras_codigo_analise_fkey"
+            columns: ["codigo_analise"]
+            isOneToOne: false
+            referencedRelation: "analises"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "analises_matrizes_amostras_matriz_codigo_fkey"
+            columns: ["matriz_codigo"]
+            isOneToOne: false
+            referencedRelation: "matrizes_amostras"
+            referencedColumns: ["codigo"]
+          },
+        ]
+      }
       auditoria: {
         Row: {
           acao: string
@@ -97,6 +139,51 @@ export type Database = {
           usuario?: string | null
           valor_anterior?: Json | null
           valor_novo?: Json | null
+        }
+        Relationships: []
+      }
+      cadastros_triagem: {
+        Row: {
+          codigo: string
+          codigo_normalizado: string
+          criado_em: string
+          criado_por: string | null
+          dados_extraidos: Json
+          entidade_id: number | null
+          entidade_tipo: string | null
+          formato: string | null
+          id: number
+          resolvido_em: string | null
+          status: string
+          tipo_sugerido: string | null
+        }
+        Insert: {
+          codigo: string
+          codigo_normalizado: string
+          criado_em?: string
+          criado_por?: string | null
+          dados_extraidos?: Json
+          entidade_id?: number | null
+          entidade_tipo?: string | null
+          formato?: string | null
+          id?: never
+          resolvido_em?: string | null
+          status?: string
+          tipo_sugerido?: string | null
+        }
+        Update: {
+          codigo?: string
+          codigo_normalizado?: string
+          criado_em?: string
+          criado_por?: string | null
+          dados_extraidos?: Json
+          entidade_id?: number | null
+          entidade_tipo?: string | null
+          formato?: string | null
+          id?: never
+          resolvido_em?: string | null
+          status?: string
+          tipo_sugerido?: string | null
         }
         Relationships: []
       }
@@ -138,6 +225,121 @@ export type Database = {
           telefone?: string | null
         }
         Relationships: []
+      }
+      demanda_analises: {
+        Row: {
+          codigo_analise: string
+          created_at: string
+          demanda_id: number
+          grupo_amostra_id: number | null
+          id: number
+          observacao: string | null
+          origem_quantidade: string
+          quantidade_amostras: number
+          status_custeio: string
+          updated_at: string
+        }
+        Insert: {
+          codigo_analise: string
+          created_at?: string
+          demanda_id: number
+          grupo_amostra_id?: number | null
+          id?: never
+          observacao?: string | null
+          origem_quantidade?: string
+          quantidade_amostras?: number
+          status_custeio?: string
+          updated_at?: string
+        }
+        Update: {
+          codigo_analise?: string
+          created_at?: string
+          demanda_id?: number
+          grupo_amostra_id?: number | null
+          id?: never
+          observacao?: string | null
+          origem_quantidade?: string
+          quantidade_amostras?: number
+          status_custeio?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demanda_analises_codigo_analise_fkey"
+            columns: ["codigo_analise"]
+            isOneToOne: false
+            referencedRelation: "analises"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "demanda_analises_demanda_id_fkey"
+            columns: ["demanda_id"]
+            isOneToOne: false
+            referencedRelation: "demandas_propostas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demanda_analises_grupo_amostra_id_fkey"
+            columns: ["grupo_amostra_id"]
+            isOneToOne: false
+            referencedRelation: "demanda_grupos_amostras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demanda_grupos_amostras: {
+        Row: {
+          created_at: string
+          demanda_id: number
+          id: number
+          identificacao: string
+          observacao: string | null
+          ordem: number
+          quantidade_amostras: number
+          tipo_matriz: string | null
+          unidade: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          demanda_id: number
+          id?: number
+          identificacao: string
+          observacao?: string | null
+          ordem?: number
+          quantidade_amostras?: number
+          tipo_matriz?: string | null
+          unidade?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          demanda_id?: number
+          id?: number
+          identificacao?: string
+          observacao?: string | null
+          ordem?: number
+          quantidade_amostras?: number
+          tipo_matriz?: string | null
+          unidade?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demanda_grupos_amostras_demanda_id_fkey"
+            columns: ["demanda_id"]
+            isOneToOne: false
+            referencedRelation: "demandas_propostas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demanda_grupos_amostras_tipo_matriz_fkey"
+            columns: ["tipo_matriz"]
+            isOneToOne: false
+            referencedRelation: "matrizes_amostras"
+            referencedColumns: ["codigo"]
+          },
+        ]
       }
       demandas_propostas: {
         Row: {
@@ -273,89 +475,339 @@ export type Database = {
       }
       equipamento_manutencoes: {
         Row: {
+          bloqueia_operacao: boolean
+          created_by: string | null
           criado_em: string
-          custo: number | null
-          data: string | null
+          custo: number
+          data_conclusao: string | null
+          data_inicio: string | null
+          data_programada: string
           descricao: string | null
-          equipamento_id: number
+          documento_laudo_url: string | null
+          equipamento_unidade_id: number
+          fornecedor_id: number | null
           id: number
-          responsavel: string | null
+          numero_documento: string | null
+          ordem_servico: string | null
+          proxima_data: string | null
+          resultado: string | null
+          status: string
+          tecnico_responsavel: string | null
+          tipo: string
+          updated_at: string
         }
         Insert: {
+          bloqueia_operacao?: boolean
+          created_by?: string | null
           criado_em?: string
-          custo?: number | null
-          data?: string | null
+          custo?: number
+          data_conclusao?: string | null
+          data_inicio?: string | null
+          data_programada: string
           descricao?: string | null
-          equipamento_id: number
+          documento_laudo_url?: string | null
+          equipamento_unidade_id: number
+          fornecedor_id?: number | null
           id?: never
-          responsavel?: string | null
+          numero_documento?: string | null
+          ordem_servico?: string | null
+          proxima_data?: string | null
+          resultado?: string | null
+          status?: string
+          tecnico_responsavel?: string | null
+          tipo: string
+          updated_at?: string
         }
         Update: {
+          bloqueia_operacao?: boolean
+          created_by?: string | null
           criado_em?: string
-          custo?: number | null
-          data?: string | null
+          custo?: number
+          data_conclusao?: string | null
+          data_inicio?: string | null
+          data_programada?: string
           descricao?: string | null
-          equipamento_id?: number
+          documento_laudo_url?: string | null
+          equipamento_unidade_id?: number
+          fornecedor_id?: number | null
           id?: never
-          responsavel?: string | null
+          numero_documento?: string | null
+          ordem_servico?: string | null
+          proxima_data?: string | null
+          resultado?: string | null
+          status?: string
+          tecnico_responsavel?: string | null
+          tipo?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "equipamento_manutencoes_equipamento_id_fkey"
+            foreignKeyName: "equipamento_manutencoes_equipamento_unidade_id_fkey"
+            columns: ["equipamento_unidade_id"]
+            isOneToOne: false
+            referencedRelation: "equipamento_unidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipamento_manutencoes_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipamento_planos_manutencao: {
+        Row: {
+          ativo: boolean
+          criado_em: string
+          descricao: string | null
+          equipamento_id: number | null
+          equipamento_unidade_id: number | null
+          id: number
+          obrigatorio: boolean
+          periodicidade_dias: number
+          tipo: string
+          tolerancia_dias: number
+        }
+        Insert: {
+          ativo?: boolean
+          criado_em?: string
+          descricao?: string | null
+          equipamento_id?: number | null
+          equipamento_unidade_id?: number | null
+          id?: never
+          obrigatorio?: boolean
+          periodicidade_dias: number
+          tipo: string
+          tolerancia_dias?: number
+        }
+        Update: {
+          ativo?: boolean
+          criado_em?: string
+          descricao?: string | null
+          equipamento_id?: number | null
+          equipamento_unidade_id?: number | null
+          id?: never
+          obrigatorio?: boolean
+          periodicidade_dias?: number
+          tipo?: string
+          tolerancia_dias?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipamento_planos_manutencao_equipamento_id_fkey"
             columns: ["equipamento_id"]
             isOneToOne: false
             referencedRelation: "equipamentos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "equipamento_planos_manutencao_equipamento_unidade_id_fkey"
+            columns: ["equipamento_unidade_id"]
+            isOneToOne: false
+            referencedRelation: "equipamento_unidades"
+            referencedColumns: ["id"]
+          },
         ]
       }
-      demanda_analises: {
+      equipamento_reservas: {
         Row: {
-          codigo_analise: string
-          created_at: string
-          demanda_id: number
+          criado_em: string
+          criado_por: string | null
+          data_fim: string
+          data_inicio: string
+          equipamento_unidade_id: number
           id: number
+          liberado_em: string | null
+          local_id: number | null
           observacao: string | null
-          origem_quantidade: string
-          quantidade_amostras: number
-          status_custeio: string
-          updated_at: string
+          planejamento_id: number | null
+          projeto_id: number | null
+          responsavel: string | null
+          status: string
         }
         Insert: {
-          codigo_analise: string
-          created_at?: string
-          demanda_id: number
+          criado_em?: string
+          criado_por?: string | null
+          data_fim: string
+          data_inicio: string
+          equipamento_unidade_id: number
           id?: never
+          liberado_em?: string | null
+          local_id?: number | null
           observacao?: string | null
-          origem_quantidade?: string
-          quantidade_amostras: number
-          status_custeio?: string
-          updated_at?: string
+          planejamento_id?: number | null
+          projeto_id?: number | null
+          responsavel?: string | null
+          status?: string
         }
         Update: {
-          codigo_analise?: string
-          created_at?: string
-          demanda_id?: number
+          criado_em?: string
+          criado_por?: string | null
+          data_fim?: string
+          data_inicio?: string
+          equipamento_unidade_id?: number
           id?: never
+          liberado_em?: string | null
+          local_id?: number | null
           observacao?: string | null
-          origem_quantidade?: string
-          quantidade_amostras?: number
-          status_custeio?: string
-          updated_at?: string
+          planejamento_id?: number | null
+          projeto_id?: number | null
+          responsavel?: string | null
+          status?: string
         }
         Relationships: [
           {
-            foreignKeyName: "demanda_analises_codigo_analise_fkey"
-            columns: ["codigo_analise"]
+            foreignKeyName: "equipamento_reservas_equipamento_unidade_id_fkey"
+            columns: ["equipamento_unidade_id"]
             isOneToOne: false
-            referencedRelation: "analises"
-            referencedColumns: ["codigo"]
+            referencedRelation: "equipamento_unidades"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "demanda_analises_demanda_id_fkey"
-            columns: ["demanda_id"]
+            foreignKeyName: "equipamento_reservas_local_id_fkey"
+            columns: ["local_id"]
             isOneToOne: false
-            referencedRelation: "demandas_propostas"
+            referencedRelation: "locais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipamento_reservas_planejamento_id_fkey"
+            columns: ["planejamento_id"]
+            isOneToOne: false
+            referencedRelation: "planejamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipamento_reservas_planejamento_id_fkey"
+            columns: ["planejamento_id"]
+            isOneToOne: false
+            referencedRelation: "v_margem_real_planejamento"
+            referencedColumns: ["planejamento_id"]
+          },
+          {
+            foreignKeyName: "equipamento_reservas_planejamento_id_fkey"
+            columns: ["planejamento_id"]
+            isOneToOne: false
+            referencedRelation: "v_planejamento_compromissos_estoque"
+            referencedColumns: ["planejamento_id"]
+          },
+          {
+            foreignKeyName: "equipamento_reservas_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipamento_status_log: {
+        Row: {
+          criado_em: string
+          equipamento_unidade_id: number
+          id: number
+          motivo: string | null
+          status_anterior: string | null
+          status_novo: string
+          usuario_id: string | null
+        }
+        Insert: {
+          criado_em?: string
+          equipamento_unidade_id: number
+          id?: never
+          motivo?: string | null
+          status_anterior?: string | null
+          status_novo: string
+          usuario_id?: string | null
+        }
+        Update: {
+          criado_em?: string
+          equipamento_unidade_id?: number
+          id?: never
+          motivo?: string | null
+          status_anterior?: string | null
+          status_novo?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipamento_status_log_equipamento_unidade_id_fkey"
+            columns: ["equipamento_unidade_id"]
+            isOneToOne: false
+            referencedRelation: "equipamento_unidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipamento_unidades: {
+        Row: {
+          ativo: boolean
+          codigo_patrimonio: string | null
+          criado_em: string
+          custo_aquisicao: number | null
+          data_aquisicao: string | null
+          data_prevista_substituicao: string | null
+          equipamento_id: number
+          fabricante: string | null
+          id: number
+          local_id: number | null
+          modelo: string | null
+          numero_serie: string | null
+          observacoes: string | null
+          status_operacional: string
+          updated_at: string
+          vida_util_anos: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          codigo_patrimonio?: string | null
+          criado_em?: string
+          custo_aquisicao?: number | null
+          data_aquisicao?: string | null
+          data_prevista_substituicao?: string | null
+          equipamento_id: number
+          fabricante?: string | null
+          id?: never
+          local_id?: number | null
+          modelo?: string | null
+          numero_serie?: string | null
+          observacoes?: string | null
+          status_operacional?: string
+          updated_at?: string
+          vida_util_anos?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          codigo_patrimonio?: string | null
+          criado_em?: string
+          custo_aquisicao?: number | null
+          data_aquisicao?: string | null
+          data_prevista_substituicao?: string | null
+          equipamento_id?: number
+          fabricante?: string | null
+          id?: never
+          local_id?: number | null
+          modelo?: string | null
+          numero_serie?: string | null
+          observacoes?: string | null
+          status_operacional?: string
+          updated_at?: string
+          vida_util_anos?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipamento_unidades_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipamento_unidades_local_id_fkey"
+            columns: ["local_id"]
+            isOneToOne: false
+            referencedRelation: "locais"
             referencedColumns: ["id"]
           },
         ]
@@ -364,66 +816,40 @@ export type Database = {
         Row: {
           custo_unitario: number
           data_aquisicao: string | null
-          data_baixa: string | null
           data_validade: string | null
           id: number
           manutencao_anual_fixa: number | null
           nome: string
-          numero_patrimonio: string | null
-          numero_serie: string | null
           percentual_manutencao_anual: number
           possui: boolean
-          professor_id: number | null
-          proprietario: string
           quantidade: number
-          situacao: string
           vida_util_anos: number | null
         }
         Insert: {
           custo_unitario?: number
           data_aquisicao?: string | null
-          data_baixa?: string | null
           data_validade?: string | null
           id?: never
           manutencao_anual_fixa?: number | null
           nome: string
-          numero_patrimonio?: string | null
-          numero_serie?: string | null
           percentual_manutencao_anual?: number
           possui?: boolean
-          professor_id?: number | null
-          proprietario?: string
           quantidade?: number
-          situacao?: string
           vida_util_anos?: number | null
         }
         Update: {
           custo_unitario?: number
           data_aquisicao?: string | null
-          data_baixa?: string | null
           data_validade?: string | null
           id?: never
           manutencao_anual_fixa?: number | null
           nome?: string
-          numero_patrimonio?: string | null
-          numero_serie?: string | null
           percentual_manutencao_anual?: number
           possui?: boolean
-          professor_id?: number | null
-          proprietario?: string
           quantidade?: number
-          situacao?: string
           vida_util_anos?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "equipamentos_professor_id_fkey"
-            columns: ["professor_id"]
-            isOneToOne: false
-            referencedRelation: "professores"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       estoque_movimentacoes: {
         Row: {
@@ -469,6 +895,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "insumos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_movimentacoes_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_custo_estoque_vigente"
+            referencedColumns: ["insumo_id"]
           },
           {
             foreignKeyName: "estoque_movimentacoes_insumo_id_fkey"
@@ -560,6 +993,8 @@ export type Database = {
           entidade_id: number
           id: number
           observacao: string | null
+          operacao_id: string | null
+          operacao_payload: Json | null
           para_status: string
           usuario: string | null
         }
@@ -570,6 +1005,8 @@ export type Database = {
           entidade_id: number
           id?: never
           observacao?: string | null
+          operacao_id?: string | null
+          operacao_payload?: Json | null
           para_status: string
           usuario?: string | null
         }
@@ -580,6 +1017,8 @@ export type Database = {
           entidade_id?: number
           id?: never
           observacao?: string | null
+          operacao_id?: string | null
+          operacao_payload?: Json | null
           para_status?: string
           usuario?: string | null
         }
@@ -630,6 +1069,60 @@ export type Database = {
           prazo_medio_dias?: number | null
           site?: string | null
           telefone?: string | null
+        }
+        Relationships: []
+      }
+      identificadores: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          codigo: string
+          codigo_normalizado: string
+          criado_em: string
+          criado_por: string | null
+          entidade_id: number
+          entidade_tipo: string
+          formato: string | null
+          id: number
+          metadata: Json
+          origem: string
+          principal: boolean
+          tipo: string
+          valor: string
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          codigo: string
+          codigo_normalizado: string
+          criado_em?: string
+          criado_por?: string | null
+          entidade_id: number
+          entidade_tipo: string
+          formato?: string | null
+          id?: number
+          metadata?: Json
+          origem?: string
+          principal?: boolean
+          tipo: string
+          valor: string
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          codigo?: string
+          codigo_normalizado?: string
+          criado_em?: string
+          criado_por?: string | null
+          entidade_id?: number
+          entidade_tipo?: string
+          formato?: string | null
+          id?: number
+          metadata?: Json
+          origem?: string
+          principal?: boolean
+          tipo?: string
+          valor?: string
         }
         Relationships: []
       }
@@ -705,6 +1198,13 @@ export type Database = {
             foreignKeyName: "insumo_analise_insumo_id_fkey"
             columns: ["insumo_id"]
             isOneToOne: false
+            referencedRelation: "v_custo_estoque_vigente"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "insumo_analise_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
             referencedRelation: "v_estoque_saldo"
             referencedColumns: ["insumo_id"]
           },
@@ -744,8 +1244,9 @@ export type Database = {
           sds_url: string | null
           tipo_insumo_id: number | null
           unidade: string | null
-          validade_dias: number | null
+          unidade_consumo: string | null
           validade_apos_abertura_dias: number | null
+          validade_dias: number | null
         }
         Insert: {
           categoria_compra?: string | null
@@ -773,8 +1274,9 @@ export type Database = {
           sds_url?: string | null
           tipo_insumo_id?: number | null
           unidade?: string | null
-          validade_dias?: number | null
+          unidade_consumo?: string | null
           validade_apos_abertura_dias?: number | null
+          validade_dias?: number | null
         }
         Update: {
           categoria_compra?: string | null
@@ -802,8 +1304,9 @@ export type Database = {
           sds_url?: string | null
           tipo_insumo_id?: number | null
           unidade?: string | null
-          validade_dias?: number | null
+          unidade_consumo?: string | null
           validade_apos_abertura_dias?: number | null
+          validade_dias?: number | null
         }
         Relationships: [
           {
@@ -825,6 +1328,114 @@ export type Database = {
             columns: ["tipo_insumo_id"]
             isOneToOne: false
             referencedRelation: "tipo_insumos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventario_ciclos: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          fechado_em: string | null
+          id: number
+          local_id: number | null
+          nome: string | null
+          status: string
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          fechado_em?: string | null
+          id?: never
+          local_id?: number | null
+          nome?: string | null
+          status?: string
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          fechado_em?: string | null
+          id?: never
+          local_id?: number | null
+          nome?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventario_ciclos_local_id_fkey"
+            columns: ["local_id"]
+            isOneToOne: false
+            referencedRelation: "locais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventario_contagens: {
+        Row: {
+          ajustado_em: string | null
+          ajustado_por: string | null
+          ajuste_aplicado: boolean
+          ciclo_id: number
+          contado_em: string
+          contado_por: string | null
+          divergencia: number
+          id: number
+          justificativa: string | null
+          local_id: number | null
+          lote_id: number
+          quantidade_contada: number
+          quantidade_sistema: number
+        }
+        Insert: {
+          ajustado_em?: string | null
+          ajustado_por?: string | null
+          ajuste_aplicado?: boolean
+          ciclo_id: number
+          contado_em?: string
+          contado_por?: string | null
+          divergencia?: number
+          id?: never
+          justificativa?: string | null
+          local_id?: number | null
+          lote_id: number
+          quantidade_contada: number
+          quantidade_sistema: number
+        }
+        Update: {
+          ajustado_em?: string | null
+          ajustado_por?: string | null
+          ajuste_aplicado?: boolean
+          ciclo_id?: number
+          contado_em?: string
+          contado_por?: string | null
+          divergencia?: number
+          id?: never
+          justificativa?: string | null
+          local_id?: number | null
+          lote_id?: number
+          quantidade_contada?: number
+          quantidade_sistema?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventario_contagens_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "inventario_ciclos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventario_contagens_local_id_fkey"
+            columns: ["local_id"]
+            isOneToOne: false
+            referencedRelation: "locais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventario_contagens_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "lotes_estoque"
             referencedColumns: ["id"]
           },
         ]
@@ -946,6 +1557,13 @@ export type Database = {
             foreignKeyName: "lotes_estoque_insumo_id_fkey"
             columns: ["insumo_id"]
             isOneToOne: false
+            referencedRelation: "v_custo_estoque_vigente"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "lotes_estoque_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
             referencedRelation: "v_estoque_saldo"
             referencedColumns: ["insumo_id"]
           },
@@ -965,12 +1583,42 @@ export type Database = {
           },
         ]
       }
+      matrizes_amostras: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          criado_em: string
+          descricao: string | null
+          id: number
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          criado_em?: string
+          descricao?: string | null
+          id?: number
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          criado_em?: string
+          descricao?: string | null
+          id?: number
+          nome?: string
+        }
+        Relationships: []
+      }
       notificacoes: {
         Row: {
           canal: string
           corpo: string | null
           criado_em: string
           dedupe_key: string | null
+          email_enviado_em: string | null
+          email_erro: string | null
+          email_tentativas: number
           entidade_id: number | null
           entidade_tipo: string | null
           id: number
@@ -986,6 +1634,9 @@ export type Database = {
           corpo?: string | null
           criado_em?: string
           dedupe_key?: string | null
+          email_enviado_em?: string | null
+          email_erro?: string | null
+          email_tentativas?: number
           entidade_id?: number | null
           entidade_tipo?: string | null
           id?: never
@@ -1001,6 +1652,9 @@ export type Database = {
           corpo?: string | null
           criado_em?: string
           dedupe_key?: string | null
+          email_enviado_em?: string | null
+          email_erro?: string | null
+          email_tentativas?: number
           entidade_id?: number | null
           entidade_tipo?: string | null
           id?: never
@@ -1012,6 +1666,155 @@ export type Database = {
           usuario_destino?: string | null
         }
         Relationships: []
+      }
+      orcamento_final_versoes: {
+        Row: {
+          cancelado_em: string | null
+          cancelado_motivo: string | null
+          classificacao_motivo: string | null
+          classificado_em: string | null
+          classificado_por: string | null
+          criado_em: string
+          criado_por: string | null
+          demanda_id: number
+          duplicada_de_id: number | null
+          id: number
+          numero: string
+          operacao_id: string | null
+          operacao_payload: Json | null
+          snapshot: Json
+          status: string
+          total_final: number
+          total_laboratorio_custo: number
+          total_laboratorio_preco: number
+          total_projeto_custo: number
+          total_projeto_final: number
+          validade_dias: number
+          valido_ate: string | null
+          versao: number
+        }
+        Insert: {
+          cancelado_em?: string | null
+          cancelado_motivo?: string | null
+          classificacao_motivo?: string | null
+          classificado_em?: string | null
+          classificado_por?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          demanda_id: number
+          duplicada_de_id?: number | null
+          id?: never
+          numero: string
+          operacao_id?: string | null
+          operacao_payload?: Json | null
+          snapshot?: Json
+          status?: string
+          total_final?: number
+          total_laboratorio_custo?: number
+          total_laboratorio_preco?: number
+          total_projeto_custo?: number
+          total_projeto_final?: number
+          validade_dias?: number
+          valido_ate?: string | null
+          versao: number
+        }
+        Update: {
+          cancelado_em?: string | null
+          cancelado_motivo?: string | null
+          classificacao_motivo?: string | null
+          classificado_em?: string | null
+          classificado_por?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          demanda_id?: number
+          duplicada_de_id?: number | null
+          id?: never
+          numero?: string
+          operacao_id?: string | null
+          operacao_payload?: Json | null
+          snapshot?: Json
+          status?: string
+          total_final?: number
+          total_laboratorio_custo?: number
+          total_laboratorio_preco?: number
+          total_projeto_custo?: number
+          total_projeto_final?: number
+          validade_dias?: number
+          valido_ate?: string | null
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_final_versoes_demanda_id_fkey"
+            columns: ["demanda_id"]
+            isOneToOne: false
+            referencedRelation: "demandas_propostas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_final_versoes_duplicada_de_id_fkey"
+            columns: ["duplicada_de_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_final_versoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orcamento_fundos_acompanhamento: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          id: number
+          impostos_pagos: number
+          incubacao_paga: number
+          investimento_gasto: number
+          investimento_saldo_ajustado: number | null
+          observacao: string | null
+          orcamento_final_versao_id: number
+          reserva_gasta: number
+          reserva_saldo_ajustado: number | null
+          saldo_ajustado_motivo: string | null
+          valor_recebido: number
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          id?: never
+          impostos_pagos?: number
+          incubacao_paga?: number
+          investimento_gasto?: number
+          investimento_saldo_ajustado?: number | null
+          observacao?: string | null
+          orcamento_final_versao_id: number
+          reserva_gasta?: number
+          reserva_saldo_ajustado?: number | null
+          saldo_ajustado_motivo?: string | null
+          valor_recebido?: number
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          id?: never
+          impostos_pagos?: number
+          incubacao_paga?: number
+          investimento_gasto?: number
+          investimento_saldo_ajustado?: number | null
+          observacao?: string | null
+          orcamento_final_versao_id?: number
+          reserva_gasta?: number
+          reserva_saldo_ajustado?: number | null
+          saldo_ajustado_motivo?: string | null
+          valor_recebido?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_fundos_acompanhamento_orcamento_final_versao_id_fkey"
+            columns: ["orcamento_final_versao_id"]
+            isOneToOne: true
+            referencedRelation: "orcamento_final_versoes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       orcamento_itens: {
         Row: {
@@ -1054,6 +1857,101 @@ export type Database = {
             columns: ["orcamento_id"]
             isOneToOne: false
             referencedRelation: "orcamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orcamento_parametros_aplicados: {
+        Row: {
+          alertas_snapshot: Json
+          criado_em: string
+          criado_por: string | null
+          demanda_id: number | null
+          formula_snapshot: Json
+          id: number
+          laboratorio_modo: string
+          metodo_calculo: string
+          orcamento_final_versao_id: number | null
+          orcamento_laboratorial_id: number | null
+          orcamento_projeto_id: number | null
+          origem: string
+          parametros_snapshot: Json
+          subtotal_custos: number
+          subtotal_laboratorio: number
+          subtotal_projeto: number
+          total_final: number
+          total_parametros: number
+          versao: number
+        }
+        Insert: {
+          alertas_snapshot?: Json
+          criado_em?: string
+          criado_por?: string | null
+          demanda_id?: number | null
+          formula_snapshot?: Json
+          id?: never
+          laboratorio_modo?: string
+          metodo_calculo: string
+          orcamento_final_versao_id?: number | null
+          orcamento_laboratorial_id?: number | null
+          orcamento_projeto_id?: number | null
+          origem?: string
+          parametros_snapshot?: Json
+          subtotal_custos?: number
+          subtotal_laboratorio?: number
+          subtotal_projeto?: number
+          total_final?: number
+          total_parametros?: number
+          versao?: number
+        }
+        Update: {
+          alertas_snapshot?: Json
+          criado_em?: string
+          criado_por?: string | null
+          demanda_id?: number | null
+          formula_snapshot?: Json
+          id?: never
+          laboratorio_modo?: string
+          metodo_calculo?: string
+          orcamento_final_versao_id?: number | null
+          orcamento_laboratorial_id?: number | null
+          orcamento_projeto_id?: number | null
+          origem?: string
+          parametros_snapshot?: Json
+          subtotal_custos?: number
+          subtotal_laboratorio?: number
+          subtotal_projeto?: number
+          total_final?: number
+          total_parametros?: number
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_parametros_aplicados_demanda_id_fkey"
+            columns: ["demanda_id"]
+            isOneToOne: false
+            referencedRelation: "demandas_propostas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_parametros_aplicados_orcamento_final_versao_id_fkey"
+            columns: ["orcamento_final_versao_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_final_versoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_parametros_aplicados_orcamento_laboratorial_id_fkey"
+            columns: ["orcamento_laboratorial_id"]
+            isOneToOne: false
+            referencedRelation: "orcamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_parametros_aplicados_orcamento_projeto_id_fkey"
+            columns: ["orcamento_projeto_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_projetos"
             referencedColumns: ["id"]
           },
         ]
@@ -1188,8 +2086,8 @@ export type Database = {
       }
       orcamento_projeto_custos: {
         Row: {
-          catalogo_item_id: string | null
           atividade: string | null
+          catalogo_item_id: string | null
           categoria: string
           categoria_institucional: string | null
           custo_unitario: number
@@ -1208,8 +2106,8 @@ export type Database = {
           valor_snapshot: Json
         }
         Insert: {
-          catalogo_item_id?: string | null
           atividade?: string | null
+          catalogo_item_id?: string | null
           categoria: string
           categoria_institucional?: string | null
           custo_unitario?: number
@@ -1228,8 +2126,8 @@ export type Database = {
           valor_snapshot?: Json
         }
         Update: {
-          catalogo_item_id?: string | null
           atividade?: string | null
+          catalogo_item_id?: string | null
           categoria?: string
           categoria_institucional?: string | null
           custo_unitario?: number
@@ -1272,6 +2170,7 @@ export type Database = {
           criado_por: string | null
           expira_em: string | null
           id: number
+          orcamento_final_versao_id: number | null
           orcamento_projeto_id: number
           revogado: boolean
           token_hash: string
@@ -1283,6 +2182,7 @@ export type Database = {
           criado_por?: string | null
           expira_em?: string | null
           id?: never
+          orcamento_final_versao_id?: number | null
           orcamento_projeto_id: number
           revogado?: boolean
           token_hash: string
@@ -1294,11 +2194,19 @@ export type Database = {
           criado_por?: string | null
           expira_em?: string | null
           id?: never
+          orcamento_final_versao_id?: number | null
           orcamento_projeto_id?: number
           revogado?: boolean
           token_hash?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orcamento_projeto_links_orcamento_final_versao_id_fkey"
+            columns: ["orcamento_final_versao_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_final_versoes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orcamento_projeto_links_orcamento_projeto_id_fkey"
             columns: ["orcamento_projeto_id"]
@@ -1364,8 +2272,8 @@ export type Database = {
           numero: string | null
           observacoes: string | null
           project_months: number
-          projeto_sem_custo_justificativa: string | null
           projeto_id: number | null
+          projeto_sem_custo_justificativa: string | null
           proprietario: string | null
           reserva: number
           responsavel: string | null
@@ -1399,8 +2307,8 @@ export type Database = {
           numero?: string | null
           observacoes?: string | null
           project_months?: number
-          projeto_sem_custo_justificativa?: string | null
           projeto_id?: number | null
+          projeto_sem_custo_justificativa?: string | null
           proprietario?: string | null
           reserva?: number
           responsavel?: string | null
@@ -1434,8 +2342,8 @@ export type Database = {
           numero?: string | null
           observacoes?: string | null
           project_months?: number
-          projeto_sem_custo_justificativa?: string | null
           projeto_id?: number | null
+          projeto_sem_custo_justificativa?: string | null
           proprietario?: string | null
           reserva?: number
           responsavel?: string | null
@@ -1468,179 +2376,6 @@ export type Database = {
           },
         ]
       }
-      orcamento_final_versoes: {
-        Row: {
-          criado_em: string
-          criado_por: string | null
-          cancelado_em: string | null
-          cancelado_motivo: string | null
-          demanda_id: number
-          duplicada_de_id: number | null
-          id: number
-          numero: string
-          snapshot: Json
-          status: string
-          total_final: number
-          total_laboratorio_custo: number
-          total_laboratorio_preco: number
-          total_projeto_custo: number
-          total_projeto_final: number
-          validade_dias: number
-          valido_ate: string | null
-          versao: number
-        }
-        Insert: {
-          criado_em?: string
-          criado_por?: string | null
-          cancelado_em?: string | null
-          cancelado_motivo?: string | null
-          demanda_id: number
-          duplicada_de_id?: number | null
-          id?: never
-          numero: string
-          snapshot?: Json
-          status?: string
-          total_final?: number
-          total_laboratorio_custo?: number
-          total_laboratorio_preco?: number
-          total_projeto_custo?: number
-          total_projeto_final?: number
-          validade_dias?: number
-          valido_ate?: string | null
-          versao: number
-        }
-        Update: {
-          criado_em?: string
-          criado_por?: string | null
-          cancelado_em?: string | null
-          cancelado_motivo?: string | null
-          demanda_id?: number
-          duplicada_de_id?: number | null
-          id?: never
-          numero?: string
-          snapshot?: Json
-          status?: string
-          total_final?: number
-          total_laboratorio_custo?: number
-          total_laboratorio_preco?: number
-          total_projeto_custo?: number
-          total_projeto_final?: number
-          validade_dias?: number
-          valido_ate?: string | null
-          versao?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orcamento_final_versoes_criado_por_fkey"
-            columns: ["criado_por"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orcamento_final_versoes_demanda_id_fkey"
-            columns: ["demanda_id"]
-            isOneToOne: false
-            referencedRelation: "demandas_propostas"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      orcamento_parametros_aplicados: {
-        Row: {
-          alertas_snapshot: Json
-          criado_em: string
-          criado_por: string | null
-          demanda_id: number | null
-          formula_snapshot: Json
-          id: number
-          laboratorio_modo: string
-          metodo_calculo: string
-          orcamento_final_versao_id: number | null
-          orcamento_laboratorial_id: number | null
-          orcamento_projeto_id: number | null
-          origem: string
-          parametros_snapshot: Json
-          subtotal_custos: number
-          subtotal_laboratorio: number
-          subtotal_projeto: number
-          total_final: number
-          total_parametros: number
-          versao: number
-        }
-        Insert: {
-          alertas_snapshot?: Json
-          criado_em?: string
-          criado_por?: string | null
-          demanda_id?: number | null
-          formula_snapshot?: Json
-          id?: never
-          laboratorio_modo?: string
-          metodo_calculo: string
-          orcamento_final_versao_id?: number | null
-          orcamento_laboratorial_id?: number | null
-          orcamento_projeto_id?: number | null
-          origem?: string
-          parametros_snapshot?: Json
-          subtotal_custos?: number
-          subtotal_laboratorio?: number
-          subtotal_projeto?: number
-          total_final?: number
-          total_parametros?: number
-          versao?: number
-        }
-        Update: {
-          alertas_snapshot?: Json
-          criado_em?: string
-          criado_por?: string | null
-          demanda_id?: number | null
-          formula_snapshot?: Json
-          id?: never
-          laboratorio_modo?: string
-          metodo_calculo?: string
-          orcamento_final_versao_id?: number | null
-          orcamento_laboratorial_id?: number | null
-          orcamento_projeto_id?: number | null
-          origem?: string
-          parametros_snapshot?: Json
-          subtotal_custos?: number
-          subtotal_laboratorio?: number
-          subtotal_projeto?: number
-          total_final?: number
-          total_parametros?: number
-          versao?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orcamento_parametros_aplicados_demanda_id_fkey"
-            columns: ["demanda_id"]
-            isOneToOne: false
-            referencedRelation: "demandas_propostas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orcamento_parametros_aplicados_orcamento_final_versao_id_fkey"
-            columns: ["orcamento_final_versao_id"]
-            isOneToOne: false
-            referencedRelation: "orcamento_final_versoes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orcamento_parametros_aplicados_orcamento_laboratorial_id_fkey"
-            columns: ["orcamento_laboratorial_id"]
-            isOneToOne: false
-            referencedRelation: "orcamentos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orcamento_parametros_aplicados_orcamento_projeto_id_fkey"
-            columns: ["orcamento_projeto_id"]
-            isOneToOne: false
-            referencedRelation: "orcamento_projetos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       orcamentos: {
         Row: {
           cliente_cnpj: string | null
@@ -1649,8 +2384,14 @@ export type Database = {
           cliente_id: number | null
           cliente_nome: string
           criado_em: string
+          custo_recalculado_em: string | null
+          custo_recalculado_por: string | null
+          custo_recalculo_motivo: string | null
+          custo_revisao: number
+          custo_snapshot: Json
           data_orcamento: string
           demanda_id: number | null
+          fonte_custo_insumos: string
           id: number
           observacoes: string | null
           projeto_id: number | null
@@ -1658,7 +2399,6 @@ export type Database = {
           status: string
           status_operacional: string
           status_operacional_atualizado_em: string | null
-          custo_snapshot: Json
           tipo: string
           validade_dias: number
         }
@@ -1669,8 +2409,14 @@ export type Database = {
           cliente_id?: number | null
           cliente_nome: string
           criado_em?: string
+          custo_recalculado_em?: string | null
+          custo_recalculado_por?: string | null
+          custo_recalculo_motivo?: string | null
+          custo_revisao?: number
+          custo_snapshot?: Json
           data_orcamento?: string
           demanda_id?: number | null
+          fonte_custo_insumos?: string
           id?: never
           observacoes?: string | null
           projeto_id?: number | null
@@ -1678,7 +2424,6 @@ export type Database = {
           status?: string
           status_operacional?: string
           status_operacional_atualizado_em?: string | null
-          custo_snapshot?: Json
           tipo?: string
           validade_dias?: number
         }
@@ -1689,8 +2434,14 @@ export type Database = {
           cliente_id?: number | null
           cliente_nome?: string
           criado_em?: string
+          custo_recalculado_em?: string | null
+          custo_recalculado_por?: string | null
+          custo_recalculo_motivo?: string | null
+          custo_revisao?: number
+          custo_snapshot?: Json
           data_orcamento?: string
           demanda_id?: number | null
+          fonte_custo_insumos?: string
           id?: never
           observacoes?: string | null
           projeto_id?: number | null
@@ -1698,7 +2449,6 @@ export type Database = {
           status?: string
           status_operacional?: string
           status_operacional_atualizado_em?: string | null
-          custo_snapshot?: Json
           tipo?: string
           validade_dias?: number
         }
@@ -1807,13 +2557,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "parametros_economicos_versoes_criado_por_fkey"
-            columns: ["criado_por"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "parametros_economicos_versoes_orcamento_projeto_id_fkey"
             columns: ["orcamento_projeto_id"]
             isOneToOne: false
@@ -1882,6 +2625,114 @@ export type Database = {
           },
         ]
       }
+      pedidos_compra_item_recebimentos: {
+        Row: {
+          codigo_lote: string | null
+          custo_unitario: number | null
+          fornecedor: string | null
+          id: number
+          insumo_id: number
+          lote_id: number
+          observacao: string | null
+          pedido_compra_id: number
+          pedido_compra_item_id: number
+          pedido_interno_item_id: number | null
+          quantidade: number
+          recebido_em: string
+          responsavel: string | null
+          validade: string | null
+        }
+        Insert: {
+          codigo_lote?: string | null
+          custo_unitario?: number | null
+          fornecedor?: string | null
+          id?: never
+          insumo_id: number
+          lote_id: number
+          observacao?: string | null
+          pedido_compra_id: number
+          pedido_compra_item_id: number
+          pedido_interno_item_id?: number | null
+          quantidade: number
+          recebido_em?: string
+          responsavel?: string | null
+          validade?: string | null
+        }
+        Update: {
+          codigo_lote?: string | null
+          custo_unitario?: number | null
+          fornecedor?: string | null
+          id?: never
+          insumo_id?: number
+          lote_id?: number
+          observacao?: string | null
+          pedido_compra_id?: number
+          pedido_compra_item_id?: number
+          pedido_interno_item_id?: number | null
+          quantidade?: number
+          recebido_em?: string
+          responsavel?: string | null
+          validade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_compra_item_recebimentos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_compra_item_recebimentos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_custo_estoque_vigente"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "pedidos_compra_item_recebimentos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_estoque_saldo"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "pedidos_compra_item_recebimentos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_previsao_suprimentos"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "pedidos_compra_item_recebimentos_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: true
+            referencedRelation: "lotes_estoque"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_compra_item_recebimentos_pedido_compra_id_fkey"
+            columns: ["pedido_compra_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_compra"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_compra_item_recebimentos_pedido_compra_item_id_fkey"
+            columns: ["pedido_compra_item_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_compra_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_compra_item_recebimentos_pedido_interno_item_id_fkey"
+            columns: ["pedido_interno_item_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_internos_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedidos_compra_itens: {
         Row: {
           custo_unitario_estimado: number | null
@@ -1890,6 +2741,7 @@ export type Database = {
           insumo_id: number
           lote_id: number | null
           pedido_id: number
+          pedido_interno_item_id: number | null
           quantidade: number
           quantidade_recebida: number | null
         }
@@ -1900,6 +2752,7 @@ export type Database = {
           insumo_id: number
           lote_id?: number | null
           pedido_id: number
+          pedido_interno_item_id?: number | null
           quantidade: number
           quantidade_recebida?: number | null
         }
@@ -1910,6 +2763,7 @@ export type Database = {
           insumo_id?: number
           lote_id?: number | null
           pedido_id?: number
+          pedido_interno_item_id?: number | null
           quantidade?: number
           quantidade_recebida?: number | null
         }
@@ -1920,6 +2774,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "insumos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_compra_itens_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_custo_estoque_vigente"
+            referencedColumns: ["insumo_id"]
           },
           {
             foreignKeyName: "pedidos_compra_itens_insumo_id_fkey"
@@ -1949,37 +2810,59 @@ export type Database = {
             referencedRelation: "pedidos_compra"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pedidos_compra_itens_pedido_interno_item_id_fkey"
+            columns: ["pedido_interno_item_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_internos_itens"
+            referencedColumns: ["id"]
+          },
         ]
       }
       pedidos_internos: {
         Row: {
           analisado_em: string | null
           aprovacao_final_em: string | null
+          aprovado_coordenador_em: string | null
+          aprovador_coordenador: string | null
+          aprovador_coordenador_diferente: boolean
           atualizado_em: string
           comprador_responsavel: string | null
           concluido_em: string | null
           conformidade_admin: string | null
+          coordenador_projeto_email: string | null
+          coordenador_projeto_nome: string | null
           criado_em: string
+          data_envio_instituicao: string | null
           data_necessidade: string | null
+          data_retorno_instituicao: string | null
           encaminhado_em: string | null
           enviado_validacao_em: string | null
           fechado_em: string | null
           fonte_recurso: string | null
           formalizado_em: string | null
           id: number
+          instituicao_destino: string | null
           justificativa: string | null
+          modalidade_compra: string | null
+          modalidade_definida_em: string | null
+          modalidade_definida_por: string | null
+          observacao_administrativa: string | null
           observacao_compras: string | null
+          origem: string
           orcamento_previo_total: number | null
           orcamentos_em: string | null
           pagamento_nf_em: string | null
           pedido_compra_id: number | null
           planejamento_id: number | null
           projeto_id: number | null
+          protocolo_externo: string | null
           recebido_em: string | null
           recebido_por: string | null
           rubrica: string | null
           solicitante: string | null
           status: string
+          tipo_demanda: string
           titulo: string
           urgencia: string
           validado_em: string | null
@@ -1987,31 +2870,46 @@ export type Database = {
         Insert: {
           analisado_em?: string | null
           aprovacao_final_em?: string | null
+          aprovado_coordenador_em?: string | null
+          aprovador_coordenador?: string | null
+          aprovador_coordenador_diferente?: boolean
           atualizado_em?: string
           comprador_responsavel?: string | null
           concluido_em?: string | null
           conformidade_admin?: string | null
+          coordenador_projeto_email?: string | null
+          coordenador_projeto_nome?: string | null
           criado_em?: string
+          data_envio_instituicao?: string | null
           data_necessidade?: string | null
+          data_retorno_instituicao?: string | null
           encaminhado_em?: string | null
           enviado_validacao_em?: string | null
           fechado_em?: string | null
           fonte_recurso?: string | null
           formalizado_em?: string | null
           id?: never
+          instituicao_destino?: string | null
           justificativa?: string | null
+          modalidade_compra?: string | null
+          modalidade_definida_em?: string | null
+          modalidade_definida_por?: string | null
+          observacao_administrativa?: string | null
           observacao_compras?: string | null
+          origem?: string
           orcamento_previo_total?: number | null
           orcamentos_em?: string | null
           pagamento_nf_em?: string | null
           pedido_compra_id?: number | null
           planejamento_id?: number | null
           projeto_id?: number | null
+          protocolo_externo?: string | null
           recebido_em?: string | null
           recebido_por?: string | null
           rubrica?: string | null
           solicitante?: string | null
           status?: string
+          tipo_demanda?: string
           titulo: string
           urgencia?: string
           validado_em?: string | null
@@ -2019,31 +2917,46 @@ export type Database = {
         Update: {
           analisado_em?: string | null
           aprovacao_final_em?: string | null
+          aprovado_coordenador_em?: string | null
+          aprovador_coordenador?: string | null
+          aprovador_coordenador_diferente?: boolean
           atualizado_em?: string
           comprador_responsavel?: string | null
           concluido_em?: string | null
           conformidade_admin?: string | null
+          coordenador_projeto_email?: string | null
+          coordenador_projeto_nome?: string | null
           criado_em?: string
+          data_envio_instituicao?: string | null
           data_necessidade?: string | null
+          data_retorno_instituicao?: string | null
           encaminhado_em?: string | null
           enviado_validacao_em?: string | null
           fechado_em?: string | null
           fonte_recurso?: string | null
           formalizado_em?: string | null
           id?: never
+          instituicao_destino?: string | null
           justificativa?: string | null
+          modalidade_compra?: string | null
+          modalidade_definida_em?: string | null
+          modalidade_definida_por?: string | null
+          observacao_administrativa?: string | null
           observacao_compras?: string | null
+          origem?: string
           orcamento_previo_total?: number | null
           orcamentos_em?: string | null
           pagamento_nf_em?: string | null
           pedido_compra_id?: number | null
           planejamento_id?: number | null
           projeto_id?: number | null
+          protocolo_externo?: string | null
           recebido_em?: string | null
           recebido_por?: string | null
           rubrica?: string | null
           solicitante?: string | null
           status?: string
+          tipo_demanda?: string
           titulo?: string
           urgencia?: string
           validado_em?: string | null
@@ -2064,6 +2977,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pedidos_internos_planejamento_id_fkey"
+            columns: ["planejamento_id"]
+            isOneToOne: false
+            referencedRelation: "v_margem_real_planejamento"
+            referencedColumns: ["planejamento_id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_planejamento_id_fkey"
+            columns: ["planejamento_id"]
+            isOneToOne: false
+            referencedRelation: "v_planejamento_compromissos_estoque"
+            referencedColumns: ["planejamento_id"]
+          },
+          {
             foreignKeyName: "pedidos_internos_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
@@ -2074,33 +3001,51 @@ export type Database = {
       }
       pedidos_internos_anexos: {
         Row: {
+          arquivo_nome: string | null
           criado_em: string
           etapa: string | null
+          hash_sha256: string | null
           id: number
+          mime_type: string | null
           observacao: string | null
           pedido_interno_id: number
+          storage_bucket: string | null
+          storage_path: string | null
+          tamanho_bytes: number | null
           tipo: string
           titulo: string
           url: string | null
           usuario: string | null
         }
         Insert: {
+          arquivo_nome?: string | null
           criado_em?: string
           etapa?: string | null
+          hash_sha256?: string | null
           id?: never
+          mime_type?: string | null
           observacao?: string | null
           pedido_interno_id: number
+          storage_bucket?: string | null
+          storage_path?: string | null
+          tamanho_bytes?: number | null
           tipo?: string
           titulo: string
           url?: string | null
           usuario?: string | null
         }
         Update: {
+          arquivo_nome?: string | null
           criado_em?: string
           etapa?: string | null
+          hash_sha256?: string | null
           id?: never
+          mime_type?: string | null
           observacao?: string | null
           pedido_interno_id?: number
+          storage_bucket?: string | null
+          storage_path?: string | null
+          tamanho_bytes?: number | null
           tipo?: string
           titulo?: string
           url?: string | null
@@ -2213,6 +3158,114 @@ export type Database = {
           },
         ]
       }
+      pedidos_internos_item_recebimentos: {
+        Row: {
+          codigo_lote: string | null
+          custo_unitario: number | null
+          fornecedor: string | null
+          id: number
+          insumo_id: number
+          lote_id: number
+          observacao: string | null
+          pedido_compra_item_id: number | null
+          pedido_interno_id: number
+          pedido_interno_item_id: number
+          quantidade: number
+          recebido_em: string
+          responsavel: string | null
+          validade: string | null
+        }
+        Insert: {
+          codigo_lote?: string | null
+          custo_unitario?: number | null
+          fornecedor?: string | null
+          id?: never
+          insumo_id: number
+          lote_id: number
+          observacao?: string | null
+          pedido_compra_item_id?: number | null
+          pedido_interno_id: number
+          pedido_interno_item_id: number
+          quantidade: number
+          recebido_em?: string
+          responsavel?: string | null
+          validade?: string | null
+        }
+        Update: {
+          codigo_lote?: string | null
+          custo_unitario?: number | null
+          fornecedor?: string | null
+          id?: never
+          insumo_id?: number
+          lote_id?: number
+          observacao?: string | null
+          pedido_compra_item_id?: number | null
+          pedido_interno_id?: number
+          pedido_interno_item_id?: number
+          quantidade?: number
+          recebido_em?: string
+          responsavel?: string | null
+          validade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_internos_item_recebimentos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_item_recebimentos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_custo_estoque_vigente"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_item_recebimentos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_estoque_saldo"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_item_recebimentos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_previsao_suprimentos"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_item_recebimentos_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "lotes_estoque"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_item_recebimentos_pedido_compra_item_id_fkey"
+            columns: ["pedido_compra_item_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_compra_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_item_recebimentos_pedido_interno_id_fkey"
+            columns: ["pedido_interno_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_internos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_item_recebimentos_pedido_interno_item_id_fkey"
+            columns: ["pedido_interno_item_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_internos_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedidos_internos_itens: {
         Row: {
           criado_em: string
@@ -2286,6 +3339,13 @@ export type Database = {
             foreignKeyName: "pedidos_internos_itens_insumo_id_fkey"
             columns: ["insumo_id"]
             isOneToOne: false
+            referencedRelation: "v_custo_estoque_vigente"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_itens_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
             referencedRelation: "v_estoque_saldo"
             referencedColumns: ["insumo_id"]
           },
@@ -2295,6 +3355,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_previsao_suprimentos"
             referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "pedidos_internos_itens_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "lotes_estoque"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "pedidos_internos_itens_pedido_interno_id_fkey"
@@ -2362,80 +3429,94 @@ export type Database = {
         }
         Relationships: []
       }
-      usuarios_pre_aprovados: {
-        Row: {
-          criado_em: string
-          email: string
-          id: number
-          nome: string
-          observacao: string | null
-          papel: string
-          permissoes: Json
-        }
-        Insert: {
-          criado_em?: string
-          email: string
-          id?: number
-          nome: string
-          observacao?: string | null
-          papel?: string
-          permissoes?: Json
-        }
-        Update: {
-          criado_em?: string
-          email?: string
-          id?: number
-          nome?: string
-          observacao?: string | null
-          papel?: string
-          permissoes?: Json
-        }
-        Relationships: []
-      }
       planejamento: {
         Row: {
           concluido_em: string | null
           criado_em: string
           data_alvo: string | null
+          data_fim_prevista: string | null
+          data_inicio_prevista: string | null
           id: number
           iniciado_em: string | null
           nome: string | null
           observacao: string | null
+          orcamento_id: number | null
+          orcamento_projeto_id: number | null
+          origem_planejamento: string
+          planejado_por: string | null
+          prioridade: string
           projeto: string | null
           projeto_id: number | null
           reservado_em: string | null
+          reservado_por: string | null
           responsavel: string | null
           status_operacional: string
+          validado_em: string | null
+          validado_por: string | null
         }
         Insert: {
           concluido_em?: string | null
           criado_em?: string
           data_alvo?: string | null
+          data_fim_prevista?: string | null
+          data_inicio_prevista?: string | null
           id?: never
           iniciado_em?: string | null
           nome?: string | null
           observacao?: string | null
+          orcamento_id?: number | null
+          orcamento_projeto_id?: number | null
+          origem_planejamento?: string
+          planejado_por?: string | null
+          prioridade?: string
           projeto?: string | null
           projeto_id?: number | null
           reservado_em?: string | null
+          reservado_por?: string | null
           responsavel?: string | null
           status_operacional?: string
+          validado_em?: string | null
+          validado_por?: string | null
         }
         Update: {
           concluido_em?: string | null
           criado_em?: string
           data_alvo?: string | null
+          data_fim_prevista?: string | null
+          data_inicio_prevista?: string | null
           id?: never
           iniciado_em?: string | null
           nome?: string | null
           observacao?: string | null
+          orcamento_id?: number | null
+          orcamento_projeto_id?: number | null
+          origem_planejamento?: string
+          planejado_por?: string | null
+          prioridade?: string
           projeto?: string | null
           projeto_id?: number | null
           reservado_em?: string | null
+          reservado_por?: string | null
           responsavel?: string | null
           status_operacional?: string
+          validado_em?: string | null
+          validado_por?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "planejamento_orcamento_id_fkey"
+            columns: ["orcamento_id"]
+            isOneToOne: false
+            referencedRelation: "orcamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planejamento_orcamento_projeto_id_fkey"
+            columns: ["orcamento_projeto_id"]
+            isOneToOne: false
+            referencedRelation: "orcamento_projetos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "planejamento_projeto_id_fkey"
             columns: ["projeto_id"]
@@ -2488,76 +3569,159 @@ export type Database = {
             referencedRelation: "planejamento"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "planejamento_itens_planejamento_id_fkey"
+            columns: ["planejamento_id"]
+            isOneToOne: false
+            referencedRelation: "v_margem_real_planejamento"
+            referencedColumns: ["planejamento_id"]
+          },
+          {
+            foreignKeyName: "planejamento_itens_planejamento_id_fkey"
+            columns: ["planejamento_id"]
+            isOneToOne: false
+            referencedRelation: "v_planejamento_compromissos_estoque"
+            referencedColumns: ["planejamento_id"]
+          },
         ]
       }
-      professores: {
+      planejamento_lote_conferencias: {
         Row: {
-          ativo: boolean
-          criado_em: string
-          departamento: string | null
-          email: string | null
+          conferido_em: string
+          conferido_por: string | null
           id: number
-          nome: string
-          observacoes: string | null
-          siape: string | null
-          telefone: string | null
+          insumo_id: number
+          justificativa: string | null
+          lote_id: number
+          planejamento_id: number
+          quantidade_conferida: number
+          quantidade_prevista: number
+          status: string
         }
         Insert: {
-          ativo?: boolean
-          criado_em?: string
-          departamento?: string | null
-          email?: string | null
+          conferido_em?: string
+          conferido_por?: string | null
           id?: never
-          nome: string
-          observacoes?: string | null
-          siape?: string | null
-          telefone?: string | null
+          insumo_id: number
+          justificativa?: string | null
+          lote_id: number
+          planejamento_id: number
+          quantidade_conferida: number
+          quantidade_prevista: number
+          status?: string
         }
         Update: {
-          ativo?: boolean
-          criado_em?: string
-          departamento?: string | null
-          email?: string | null
+          conferido_em?: string
+          conferido_por?: string | null
           id?: never
-          nome?: string
-          observacoes?: string | null
-          siape?: string | null
-          telefone?: string | null
+          insumo_id?: number
+          justificativa?: string | null
+          lote_id?: number
+          planejamento_id?: number
+          quantidade_conferida?: number
+          quantidade_prevista?: number
+          status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "planejamento_lote_conferencias_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planejamento_lote_conferencias_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_custo_estoque_vigente"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "planejamento_lote_conferencias_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_estoque_saldo"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "planejamento_lote_conferencias_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_previsao_suprimentos"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "planejamento_lote_conferencias_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "lotes_estoque"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planejamento_lote_conferencias_planejamento_id_fkey"
+            columns: ["planejamento_id"]
+            isOneToOne: false
+            referencedRelation: "planejamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planejamento_lote_conferencias_planejamento_id_fkey"
+            columns: ["planejamento_id"]
+            isOneToOne: false
+            referencedRelation: "v_margem_real_planejamento"
+            referencedColumns: ["planejamento_id"]
+          },
+          {
+            foreignKeyName: "planejamento_lote_conferencias_planejamento_id_fkey"
+            columns: ["planejamento_id"]
+            isOneToOne: false
+            referencedRelation: "v_planejamento_compromissos_estoque"
+            referencedColumns: ["planejamento_id"]
+          },
+        ]
       }
       projetos: {
         Row: {
           cliente_id: number | null
           coordenador: string | null
+          coordenador_email: string | null
+          coordenador_nome: string | null
           criado_em: string
           data_fim: string | null
           data_inicio: string | null
           descricao: string | null
           id: number
           nome: string
+          responsavel: string | null
           status: string
         }
         Insert: {
           cliente_id?: number | null
           coordenador?: string | null
+          coordenador_email?: string | null
+          coordenador_nome?: string | null
           criado_em?: string
           data_fim?: string | null
           data_inicio?: string | null
           descricao?: string | null
           id?: never
           nome: string
+          responsavel?: string | null
           status?: string
         }
         Update: {
           cliente_id?: number | null
           coordenador?: string | null
+          coordenador_email?: string | null
+          coordenador_nome?: string | null
           criado_em?: string
           data_fim?: string | null
           data_inicio?: string | null
           descricao?: string | null
           id?: never
           nome?: string
+          responsavel?: string | null
           status?: string
         }
         Relationships: [
@@ -2572,27 +3736,48 @@ export type Database = {
       }
       reservas_estoque: {
         Row: {
+          consumido_em: string | null
           criado_em: string
+          criado_por: string | null
           id: number
           insumo_id: number
+          liberado_em: string | null
+          lote_id: number | null
+          observacao: string | null
+          origem: string
           planejamento_id: number | null
           quantidade: number
+          quantidade_consumida: number
           status: string
         }
         Insert: {
+          consumido_em?: string | null
           criado_em?: string
+          criado_por?: string | null
           id?: never
           insumo_id: number
+          liberado_em?: string | null
+          lote_id?: number | null
+          observacao?: string | null
+          origem?: string
           planejamento_id?: number | null
           quantidade: number
+          quantidade_consumida?: number
           status?: string
         }
         Update: {
+          consumido_em?: string | null
           criado_em?: string
+          criado_por?: string | null
           id?: never
           insumo_id?: number
+          liberado_em?: string | null
+          lote_id?: number | null
+          observacao?: string | null
+          origem?: string
           planejamento_id?: number | null
           quantidade?: number
+          quantidade_consumida?: number
           status?: string
         }
         Relationships: [
@@ -2602,6 +3787,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "insumos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservas_estoque_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_custo_estoque_vigente"
+            referencedColumns: ["insumo_id"]
           },
           {
             foreignKeyName: "reservas_estoque_insumo_id_fkey"
@@ -2618,13 +3810,123 @@ export type Database = {
             referencedColumns: ["insumo_id"]
           },
           {
+            foreignKeyName: "reservas_estoque_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "lotes_estoque"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "reservas_estoque_planejamento_id_fkey"
             columns: ["planejamento_id"]
             isOneToOne: false
             referencedRelation: "planejamento"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "reservas_estoque_planejamento_id_fkey"
+            columns: ["planejamento_id"]
+            isOneToOne: false
+            referencedRelation: "v_margem_real_planejamento"
+            referencedColumns: ["planejamento_id"]
+          },
+          {
+            foreignKeyName: "reservas_estoque_planejamento_id_fkey"
+            columns: ["planejamento_id"]
+            isOneToOne: false
+            referencedRelation: "v_planejamento_compromissos_estoque"
+            referencedColumns: ["planejamento_id"]
+          },
         ]
+      }
+      scan_eventos: {
+        Row: {
+          acao: string
+          codigo: string
+          contexto: Json
+          criado_em: string
+          entidade_id: number | null
+          entidade_tipo: string | null
+          formato: string | null
+          id: number
+          identificador_id: number | null
+          origem: string
+          resultado: string
+          usuario: string | null
+          usuario_id: string | null
+          valor_lido: string
+        }
+        Insert: {
+          acao?: string
+          codigo: string
+          contexto?: Json
+          criado_em?: string
+          entidade_id?: number | null
+          entidade_tipo?: string | null
+          formato?: string | null
+          id?: number
+          identificador_id?: number | null
+          origem?: string
+          resultado?: string
+          usuario?: string | null
+          usuario_id?: string | null
+          valor_lido: string
+        }
+        Update: {
+          acao?: string
+          codigo?: string
+          contexto?: Json
+          criado_em?: string
+          entidade_id?: number | null
+          entidade_tipo?: string | null
+          formato?: string | null
+          id?: number
+          identificador_id?: number | null
+          origem?: string
+          resultado?: string
+          usuario?: string | null
+          usuario_id?: string | null
+          valor_lido?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_eventos_identificador_id_fkey"
+            columns: ["identificador_id"]
+            isOneToOne: false
+            referencedRelation: "identificadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      system_heartbeat: {
+        Row: {
+          app: string
+          deployment_url: string | null
+          details: Json
+          environment: string | null
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          app: string
+          deployment_url?: string | null
+          details?: Json
+          environment?: string | null
+          id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          app?: string
+          deployment_url?: string | null
+          details?: Json
+          environment?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       tecnicos: {
         Row: {
@@ -2686,6 +3988,36 @@ export type Database = {
         }
         Relationships: []
       }
+      usuarios_pre_aprovados: {
+        Row: {
+          criado_em: string
+          email: string
+          id: number
+          nome: string
+          observacao: string | null
+          papel: string
+          permissoes: Json
+        }
+        Insert: {
+          criado_em?: string
+          email: string
+          id?: never
+          nome: string
+          observacao?: string | null
+          papel?: string
+          permissoes?: Json
+        }
+        Update: {
+          criado_em?: string
+          email?: string
+          id?: never
+          nome?: string
+          observacao?: string | null
+          papel?: string
+          permissoes?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       v_alertas_estoque: {
@@ -2698,6 +4030,80 @@ export type Database = {
           valor: number | null
         }
         Relationships: []
+      }
+      v_custo_estoque_vigente: {
+        Row: {
+          custo_normalizado: number | null
+          custo_origem: number | null
+          custo_medio_ponderado: number | null
+          custo_padrao: number | null
+          divergencia_absoluta: number | null
+          divergencia_percentual: number | null
+          especificacao: string | null
+          fator_conversao: number | null
+          fonte_custo: string | null
+          insumo_id: number | null
+          quantidade_liberada: number | null
+          referencia_custo: string | null
+          situacao: string | null
+          unidade: string | null
+          unidade_consumo: string | null
+          unidade_estoque: string | null
+          valor_liberado: number | null
+        }
+        Relationships: []
+      }
+      v_custo_real_consumo: {
+        Row: {
+          custo_real_total: number | null
+          custo_real_unitario: number | null
+          data: string | null
+          especificacao: string | null
+          insumo_id: number | null
+          lote_id: number | null
+          motivo: string | null
+          movimentacao_id: number | null
+          quantidade: number | null
+          referencia: string | null
+          unidade: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estoque_movimentacoes_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_movimentacoes_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_custo_estoque_vigente"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "estoque_movimentacoes_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_estoque_saldo"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "estoque_movimentacoes_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_previsao_suprimentos"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "estoque_movimentacoes_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "lotes_estoque"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_dashboard_executivo: {
         Row: {
@@ -2718,6 +4124,7 @@ export type Database = {
         Row: {
           bloqueado: number | null
           categoria_compra: string | null
+          classe_tipo_insumo: string | null
           disponivel: number | null
           em_maos: number | null
           em_quarentena: number | null
@@ -2728,13 +4135,20 @@ export type Database = {
           nome_item: string | null
           ponto_reposicao: number | null
           reservado: number | null
-          classe_tipo_insumo: string | null
           tipo_insumo: string | null
           tipo_insumo_id: number | null
           unidade: string | null
           vencido: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "insumos_tipo_insumo_id_fkey"
+            columns: ["tipo_insumo_id"]
+            isOneToOne: false
+            referencedRelation: "tipo_insumos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_estoque_saldo_tipo: {
         Row: {
@@ -2751,7 +4165,175 @@ export type Database = {
           unidade: string | null
           vencido: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "insumos_tipo_insumo_id_fkey"
+            columns: ["tipo_insumo_id"]
+            isOneToOne: false
+            referencedRelation: "tipo_insumos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_insumo_analise_pendencias: {
+        Row: {
+          codigo_analise: string | null
+          especificacao_insumo: string | null
+          etapa_id: number | null
+          id: number | null
+          insumo_id: number | null
+          nome_atividade: string | null
+          nome_etapa: string | null
+          status_vinculo: string | null
+        }
+        Insert: {
+          codigo_analise?: string | null
+          especificacao_insumo?: string | null
+          etapa_id?: number | null
+          id?: number | null
+          insumo_id?: number | null
+          nome_atividade?: string | null
+          nome_etapa?: string | null
+          status_vinculo?: never
+        }
+        Update: {
+          codigo_analise?: string | null
+          especificacao_insumo?: string | null
+          etapa_id?: number | null
+          id?: number | null
+          insumo_id?: number | null
+          nome_atividade?: string | null
+          nome_etapa?: string | null
+          status_vinculo?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insumo_analise_codigo_analise_fkey"
+            columns: ["codigo_analise"]
+            isOneToOne: false
+            referencedRelation: "analises"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "insumo_analise_etapa_id_fkey"
+            columns: ["etapa_id"]
+            isOneToOne: false
+            referencedRelation: "etapas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insumo_analise_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insumo_analise_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_custo_estoque_vigente"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "insumo_analise_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_estoque_saldo"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "insumo_analise_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_previsao_suprimentos"
+            referencedColumns: ["insumo_id"]
+          },
+        ]
+      }
+      v_margem_real_planejamento: {
+        Row: {
+          custo_orcado: number | null
+          custo_real_insumos: number | null
+          margem_prevista: number | null
+          margem_real_parcial: number | null
+          margem_real_parcial_percentual: number | null
+          orcamento_id: number | null
+          planejamento_id: number | null
+          quantidade_movimentacoes: number | null
+          receita_orcada: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planejamento_orcamento_id_fkey"
+            columns: ["orcamento_id"]
+            isOneToOne: false
+            referencedRelation: "orcamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_planejamento_compromissos_estoque: {
+        Row: {
+          data_alvo: string | null
+          data_fim_prevista: string | null
+          data_inicio_prevista: string | null
+          especificacao: string | null
+          insumo_id: number | null
+          lote_id: number | null
+          planejamento_id: number | null
+          planejamento_nome: string | null
+          prioridade: string | null
+          projeto_id: number | null
+          projeto_nome: string | null
+          quantidade_comprometida: number | null
+          status_operacional: string | null
+          unidade: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planejamento_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservas_estoque_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservas_estoque_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_custo_estoque_vigente"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "reservas_estoque_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_estoque_saldo"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "reservas_estoque_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "v_previsao_suprimentos"
+            referencedColumns: ["insumo_id"]
+          },
+          {
+            foreignKeyName: "reservas_estoque_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "lotes_estoque"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_previsao_suprimentos: {
         Row: {
@@ -2792,36 +4374,83 @@ export type Database = {
         Args: { p_criterio?: string; p_lote_id: number; p_responsavel?: string }
         Returns: undefined
       }
+      ajustar_saldo_lote: {
+        Args: { p_lote_id: number; p_motivo: string; p_quantidade_nova: number }
+        Returns: undefined
+      }
+      aplicar_ajuste_inventario_contagem: {
+        Args: { p_contagem_id: number }
+        Returns: Json
+      }
       aprovar_orcamento_publico: {
         Args: { p_nome: string; p_token: string }
-        Returns: boolean
+        Returns: Json
+      }
+      baixa_manual_lote: {
+        Args: { p_lote_id: number; p_motivo: string; p_quantidade: number }
+        Returns: undefined
       }
       bloquear_lote: {
         Args: { p_lote_id: number; p_motivo: string }
         Returns: undefined
       }
-      emitir_orcamento_final_transacional: {
+      cancelar_pedido_interno_operacional: {
         Args: {
-          p_demanda_id: number
-          p_validade_dias: number
-          p_total_laboratorio_custo: number
-          p_total_laboratorio_preco: number
-          p_total_projeto_custo: number
-          p_total_projeto_final: number
-          p_total_final: number
-          p_snapshot: Json
-          p_parametros: Json
-          p_criado_por: string | null
-          p_usuario_email: string | null
+          p_observacao?: string
+          p_pedido_id: number
+          p_responsavel?: string
+        }
+        Returns: Json
+      }
+      cancelar_planejamento_operacional: {
+        Args: { p_planejamento_id: number }
+        Returns: undefined
+      }
+      concluir_planejamento: {
+        Args: { p_planejamento_id: number }
+        Returns: undefined
+      }
+      criar_pedido_reposicao_estoque: {
+        Args: {
+          p_data_necessidade: string
+          p_itens: Json
+          p_justificativa: string
+          p_titulo: string
+          p_urgencia: string
         }
         Returns: Json
       }
       current_papel: { Args: never; Returns: string }
       dar_baixa_plano: { Args: { p_planejamento_id: number }; Returns: Json }
+      duplicar_orcamento_final_transacional: {
+        Args: {
+          p_operacao_id: string
+          p_validade_dias: number
+          p_versao_id: number
+        }
+        Returns: Json
+      }
       desbloquear_lote: { Args: { p_lote_id: number }; Returns: undefined }
       descartar_lote: {
         Args: { p_justificativa: string; p_lote_id: number }
         Returns: undefined
+      }
+      emitir_orcamento_final_transacional: {
+        Args: {
+          p_criado_por: string
+          p_demanda_id: number
+          p_operacao_id: string
+          p_parametros: Json
+          p_snapshot: Json
+          p_total_final: number
+          p_total_laboratorio_custo: number
+          p_total_laboratorio_preco: number
+          p_total_projeto_custo: number
+          p_total_projeto_final: number
+          p_usuario_email: string
+          p_validade_dias: number
+        }
+        Returns: Json
       }
       entrada_inventario: {
         Args: {
@@ -2835,11 +4464,89 @@ export type Database = {
         }
         Returns: number
       }
+      estornar_recebimento_item_pedido_interno: {
+        Args: {
+          p_item_id: number
+          p_motivo?: string
+          p_pedido_id: number
+          p_recebimento_id?: number
+        }
+        Returns: undefined
+      }
+      estornar_recebimento_lote: {
+        Args: { p_lote_id: number; p_motivo?: string }
+        Returns: undefined
+      }
       fn_exige_papel: { Args: { p_min: string }; Returns: undefined }
+      formalizar_pedido_interno: {
+        Args: { p_pedido_id: number }
+        Returns: Json
+      }
       gerar_reposicao_automatica: { Args: never; Returns: Json }
       ler_orcamento_publico: { Args: { p_token: string }; Returns: Json }
       liberar_plano: { Args: { p_planejamento_id: number }; Returns: undefined }
+      marcar_planejamento_em_execucao: {
+        Args: { p_planejamento_id: number }
+        Returns: undefined
+      }
+      marcar_planejamento_reservado: {
+        Args: { p_planejamento_id: number }
+        Returns: undefined
+      }
+      menor_validade: {
+        Args: { p_abertura: string; p_fabricante: string }
+        Returns: string
+      }
       papel_minimo: { Args: { p_min: string }; Returns: boolean }
+      recalcular_orcamento_transacional: {
+        Args: {
+          p_fonte_custo_insumos: string
+          p_itens: Json
+          p_motivo: string
+          p_operacao_id: string
+          p_orcamento_id: number
+          p_revisao_esperada: number
+          p_snapshot: Json
+        }
+        Returns: Json
+      }
+      receber_item_pedido_compra:
+        | {
+            Args: {
+              p_codigo?: string
+              p_item_id: number
+              p_pedido_id: number
+              p_quantidade?: number
+              p_validade?: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_codigo?: string
+              p_item_id: number
+              p_pedido_id: number
+              p_quantidade?: number
+              p_responsavel?: string
+              p_validade?: string
+            }
+            Returns: number
+          }
+      receber_item_pedido_interno: {
+        Args: {
+          p_codigo?: string
+          p_custo?: number
+          p_fornecedor?: string
+          p_insumo_id: number
+          p_item_id: number
+          p_pedido_id: number
+          p_projeto?: string
+          p_quantidade: number
+          p_responsavel?: string
+          p_validade?: string
+        }
+        Returns: number
+      }
       receber_lote: {
         Args: {
           p_codigo?: string
@@ -2854,16 +4561,94 @@ export type Database = {
         }
         Returns: number
       }
-      sincronizar_demanda_analises: {
+      registrar_modalidade_pedido_interno: {
         Args: {
-          p_demanda_id: number
-          p_exige_laboratorio?: boolean
-          p_itens: Json
+          p_instituicao_destino?: string
+          p_modalidade: string
+          p_observacao?: string
+          p_pedido_id: number
+          p_protocolo_externo?: string
+          p_responsavel?: string
         }
-        Returns: Json
+        Returns: undefined
+      }
+      reservar_equipamento_planejamento: {
+        Args: {
+          p_data_fim: string
+          p_data_inicio: string
+          p_equipamento_unidade_id: number
+          p_observacao?: string
+          p_planejamento_id: number
+          p_responsavel?: string
+        }
+        Returns: number
       }
       reservar_plano: {
         Args: { p_itens: Json; p_planejamento_id: number }
+        Returns: Json
+      }
+      resolver_triagem_criando_insumo: {
+        Args: {
+          p_criado_por?: string
+          p_custo_total_embalagem?: number
+          p_especificacao: string
+          p_fator_conversao: number
+          p_quantidade_embalagem: number
+          p_triagem_id: number
+          p_unidade: string
+          p_unidade_consumo: string
+        }
+        Returns: {
+          identificador_id: number
+          insumo_id: number
+          triagem_id: number
+        }[]
+      }
+      transicionar_orcamento: {
+        Args: {
+          p_observacao?: string
+          p_orcamento_id: number
+          p_status_destino: string
+        }
+        Returns: Json
+      }
+      transicionar_orcamento_final: {
+        Args: {
+          p_motivo?: string | null
+          p_status_destino: string
+          p_versao_id: number
+        }
+        Returns: Json
+      }
+      transicionar_orcamento_projeto: {
+        Args: {
+          p_observacao?: string
+          p_orcamento_projeto_id: number
+          p_status_destino: string
+        }
+        Returns: Json
+      }
+      transicionar_pedido_compra: {
+        Args: {
+          p_data_prevista_entrega?: string
+          p_observacao?: string
+          p_pedido_id: number
+          p_status_destino: string
+        }
+        Returns: Json
+      }
+      transicionar_pedido_interno: {
+        Args: {
+          p_decisao: string
+          p_etapa: string
+          p_observacao?: string
+          p_pedido_id: number
+          p_status_destino: string
+        }
+        Returns: Json
+      }
+      validar_planejamento_executivo: {
+        Args: { p_planejamento_id: number }
         Returns: undefined
       }
     }

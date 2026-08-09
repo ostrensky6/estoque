@@ -22,6 +22,7 @@ vi.mock("./eventos", () => ({ registrarEvento }));
 vi.mock("@/lib/costing/demanda", () => ({ computarDemandaPlano: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({ from, rpc })),
+  createClientUntyped: vi.fn(async () => ({ from, rpc })),
 }));
 
 function formRecebimento(overrides: Record<string, string> = {}) {
@@ -29,6 +30,7 @@ function formRecebimento(overrides: Record<string, string> = {}) {
   const base: Record<string, string> = {
     pedido_id: "20",
     item_id: "8",
+    operacao_id: "11111111-1111-4111-8111-111111111111",
     quantidade_recebida: "3",
     codigo: "L-001",
   };
@@ -115,6 +117,16 @@ describe("recebimento de pedido formal de compra", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
+  it("rejeita operacao_id ausente antes da RPC", async () => {
+    const { receberItemPedido } = await import("./compras");
+
+    await expect(receberItemPedido(formRecebimento({ operacao_id: "" }))).rejects.toThrow(
+      "Identificador da operação de recebimento inválido.",
+    );
+
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it("mantem recebimento formal operacional", async () => {
     const { receberItemPedido } = await import("./compras");
 
@@ -132,6 +144,30 @@ describe("recebimento de pedido formal de compra", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/estoque");
   });
 
+  it("encaminha operacao_id estavel para a RPC de recebimento formal", async () => {
+    const operacaoId = "11111111-1111-4111-8111-111111111111";
+    const { receberItemPedido } = await import("./compras");
+
+    await receberItemPedido(formRecebimento({
+      validade: "2026-12-31",
+      operacao_id: operacaoId,
+    }));
+
+    expect(rpc).toHaveBeenCalledWith("receber_item_pedido_compra", expect.objectContaining({
+      p_operacao_id: operacaoId,
+    }));
+  });
+
+  it("permite encaminhar uma quantidade parcial para a RPC formal", async () => {
+    const { receberItemPedido } = await import("./compras");
+
+    await receberItemPedido(formRecebimento({ quantidade_recebida: "1", validade: "2026-12-31" }));
+
+    expect(rpc).toHaveBeenCalledWith("receber_item_pedido_compra", expect.objectContaining({
+      p_quantidade: 1,
+    }));
+  });
+
   it("aprovarPedido usa lead time do insumo quando presente", async () => {
     pedidoSingle.mockResolvedValue({ data: { fornecedores: { prazo_medio_dias: 20 } }, error: null });
     itensPedidoEq.mockResolvedValue({
@@ -145,8 +181,9 @@ describe("recebimento de pedido formal de compra", () => {
     const result = await aprovarPedido({ ok: false }, formData);
 
     expect(result.ok).toBe(true);
-    expect(updatePedido).toHaveBeenCalledWith(expect.objectContaining({
-      data_prevista_entrega: "2026-07-06",
+    expect(rpc).toHaveBeenCalledWith("transicionar_pedido_compra", expect.objectContaining({
+      p_status_destino: "aprovado",
+      p_data_prevista_entrega: "2026-07-06",
     }));
   });
 
@@ -162,8 +199,8 @@ describe("recebimento de pedido formal de compra", () => {
 
     await aprovarPedido({ ok: false }, formData);
 
-    expect(updatePedido).toHaveBeenCalledWith(expect.objectContaining({
-      data_prevista_entrega: "2026-07-11",
+    expect(rpc).toHaveBeenCalledWith("transicionar_pedido_compra", expect.objectContaining({
+      p_data_prevista_entrega: "2026-07-11",
     }));
   });
 
@@ -183,8 +220,8 @@ describe("recebimento de pedido formal de compra", () => {
 
     await aprovarPedido({ ok: false }, formData);
 
-    expect(updatePedido).toHaveBeenCalledWith(expect.objectContaining({
-      data_prevista_entrega: "2026-07-14",
+    expect(rpc).toHaveBeenCalledWith("transicionar_pedido_compra", expect.objectContaining({
+      p_data_prevista_entrega: "2026-07-14",
     }));
   });
 
@@ -197,8 +234,90 @@ describe("recebimento de pedido formal de compra", () => {
 
     await aprovarPedido({ ok: false }, formData);
 
-    expect(updatePedido).toHaveBeenCalledWith(expect.objectContaining({
-      data_prevista_entrega: "2026-07-05",
+    expect(rpc).toHaveBeenCalledWith("transicionar_pedido_compra", expect.objectContaining({
+      p_data_prevista_entrega: "2026-07-05",
     }));
+  });
+
+  it("comprarFaltasDoPlano ajusta quantidade pela compra minima", async () => {
+    const { computarDemandaPlano } = await import("@/lib/costing/demanda");
+    vi.mocked(computarDemandaPlano).mockResolvedValue([
+      {
+        insumo_id: 10,
+        especificacao: "Solvente",
+        unidade: "L",
+        demanda: 0.2,
+        disponivel: 0,
+        falta: 0.2,
+        custoUnitario: 50,
+        custoEstimado: 10,
+        quantidadeMinimaCompra: 1,
+        quantidadeEmbalagem: null,
+        quantidadeCompra: 1,
+        valorCompraEstimado: 50,
+      },
+    ]);
+    const pedidoSingleCriado = vi.fn().mockResolvedValue({ data: { id: 77 }, error: null });
+    const inserirItens = vi.fn().mockResolvedValue({ error: null });
+    from.mockImplementation((table: string) => {
+      if (table === "planejamento") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn().mockResolvedValue({
+                data: {
+                  id: 5,
+                  nome: "Execucao julho",
+                  projeto_id: 9,
+                  projetos: { coordenador: "coord@example.com" },
+                },
+                error: null,
+              }),
+            })),
+          })),
+        };
+      }
+      if (table === "insumos") {
+        return {
+          select: vi.fn(() => ({
+            in: vi.fn().mockResolvedValue({
+              data: [{ id: 10, custo_unitario: 55, fornecedores: { nome: "Fornecedor A" } }],
+              error: null,
+            }),
+          })),
+        };
+      }
+      if (table === "pedidos_internos") {
+        return {
+          insert: vi.fn(() => ({
+            select: vi.fn(() => ({
+              single: pedidoSingleCriado,
+            })),
+          })),
+        };
+      }
+      if (table === "pedidos_internos_itens") {
+        return { insert: inserirItens };
+      }
+      return {};
+    });
+    const { comprarFaltasDoPlano } = await import("./compras");
+    const formData = new FormData();
+    formData.set("planejamento_id", "5");
+
+    await comprarFaltasDoPlano(formData);
+
+    expect(inserirItens).toHaveBeenCalledWith([
+      expect.objectContaining({
+        pedido_interno_id: 77,
+        insumo_id: 10,
+        quantidade: 1,
+        unidade: "L",
+        orcamento_previo: 50,
+        fornecedor_sugerido: "Fornecedor A",
+        observacao: expect.stringContaining("compra de 1 L"),
+      }),
+    ]);
+    expect(redirect).toHaveBeenCalledWith("/pedido/77");
   });
 });

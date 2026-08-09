@@ -174,6 +174,7 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
     .eq("id", id)
     .single();
 
+  const novoStatus = texto(formData, "status") || "rascunho";
   const patch = {
     projeto_id: projetoId,
     cliente_id: clienteId,
@@ -184,7 +185,6 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
     data_orcamento: texto(formData, "data_orcamento") ?? undefined,
     validade_dias: numero(formData, "validade_dias", 30),
     responsavel: texto(formData, "responsavel"),
-    status: texto(formData, "status") || "rascunho",
     escopo: texto(formData, "escopo"),
     cronograma: texto(formData, "cronograma"),
     observacoes: texto(formData, "observacoes"),
@@ -198,14 +198,19 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
     projeto_sem_custo_justificativa: texto(formData, "projeto_sem_custo_justificativa"),
   };
 
-  if (anterior && anterior.status !== patch.status && ["enviado", "aprovado", "cancelado"].includes(patch.status)) {
+  if (anterior && anterior.status !== novoStatus && ["enviado", "aprovado", "cancelado"].includes(novoStatus)) {
     await exigirPapelOrcamento("revisar_modulo");
   }
 
   const { error } = await supabase.from("orcamento_projetos").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
-  if (anterior && anterior.status !== patch.status) {
-    await registrarEvento("orcamento_projeto", id, anterior.status, patch.status, "Status do orçamento de projeto alterado.");
+  if (anterior && anterior.status !== novoStatus) {
+    const { error: transicaoError } = await supabase.rpc("transicionar_orcamento_projeto", {
+      p_orcamento_projeto_id: id,
+      p_status_destino: novoStatus,
+      p_observacao: "Status alterado durante a atualização do orçamento de projeto.",
+    });
+    if (transicaoError) throw new Error(transicaoError.message);
   }
   revalidatePath(`${pathLista}/${id}`);
   revalidatePath(pathLista);
@@ -433,9 +438,29 @@ export async function criarLinkPublico(formData: FormData) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const { data: projeto, error: projetoError } = await supabase
+    .from("orcamento_projetos")
+    .select("demanda_id")
+    .eq("id", id)
+    .single();
+  if (projetoError || !projeto?.demanda_id) {
+    throw new Error("Não foi possível identificar a demanda deste orçamento.");
+  }
+  const { data: versaoFinal, error: versaoError } = await supabase
+    .from("orcamento_final_versoes")
+    .select("id")
+    .eq("demanda_id", projeto.demanda_id)
+    .in("status", ["emitido", "enviado", "alterado_reenviado", "aprovado"])
+    .order("versao", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (versaoError || !versaoFinal?.id) {
+    throw new Error("Emita uma versão final antes de criar o link público.");
+  }
 
   const { error } = await supabase.from("orcamento_projeto_links").insert({
     orcamento_projeto_id: id,
+    orcamento_final_versao_id: versaoFinal.id,
     token_hash: hashToken(token),
     criado_por: user?.id ?? null,
   });
@@ -465,9 +490,16 @@ export async function aprovarOrcamentoPublico(formData: FormData) {
     p_token: token,
     p_nome: nome ?? "",
   });
-  if (error) throw new Error(error.message);
-  if (data === false) throw new Error("Link inválido, expirado ou já aprovado.");
+  const resultado = data as {
+    aprovado?: boolean;
+    repetido?: boolean;
+    versao_id?: number;
+  } | null;
+  if (error || !resultado?.aprovado || !resultado.versao_id) {
+    redirect(`/aprovar/${token}?erro=link_indisponivel`);
+  }
   revalidatePath(`/aprovar/${token}`);
+  revalidatePath(`/orcamento/final/${resultado.versao_id}`);
 }
 
 type CustoTemplate = {
@@ -779,9 +811,12 @@ export async function cancelarOrcamentoProjeto(formData: FormData) {
     .single();
   if (!atual || atual.status === "cancelado") return;
 
-  const { error } = await supabase.from("orcamento_projetos").update({ status: "cancelado" }).eq("id", id);
+  const { error } = await supabase.rpc("transicionar_orcamento_projeto", {
+    p_orcamento_projeto_id: id,
+    p_status_destino: "cancelado",
+    p_observacao: motivo,
+  });
   if (error) throw new Error(error.message);
-  await registrarEvento("orcamento_projeto", id, atual.status, "cancelado", motivo);
   revalidatePath(`${pathLista}/${id}`);
   revalidatePath(pathLista);
   redirect(`${pathLista}/${id}`);

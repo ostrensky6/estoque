@@ -157,12 +157,12 @@ export function PlanejamentoConferenciaLotes({
             Separar material
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Escaneie o lote físico para registrar a conferência antes de iniciar. Esta etapa não baixa estoque
-            e não escolhe o lote da baixa definitiva.
+            Escaneie o lote físico separado para conferir contra a reserva operacional antes de iniciar.
+            Esta etapa não baixa estoque.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            A baixa real continua seguindo a rotina atual do banco; a conferência abaixo é rastreabilidade
-            operacional do material separado.
+            A baixa real consome os lotes reservados no planejamento; divergências precisam ser justificadas
+            e tratadas antes da execução.
           </p>
         </div>
         <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
@@ -197,7 +197,7 @@ export function PlanejamentoConferenciaLotes({
                   {item.quantidadePrevista} {item.unidade ?? ""}
                 </span>
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  Sugestão FEFO atual: {item.loteSugeridoLabel ?? "sem lote disponivel"}
+                  Referência para conferência: {item.loteSugeridoLabel ?? "sem lote reservado/disponível"}
                 </span>
                 {conferencia && (
                   <span className="mt-1 inline-flex rounded-full bg-brand-100 px-2 py-0.5 text-[11px] text-brand-800 dark:bg-brand-950/50 dark:text-brand-300">
@@ -322,7 +322,7 @@ export function PlanejamentoConferenciaLotes({
                 Justificativa {precisaJustificativa && <span className="text-danger-strong">*</span>}
               </label>
               <p className="mt-1 text-xs text-muted-foreground">
-                Use apenas para documentar divergência física/FEFO. A baixa definitiva continua na rotina atual.
+                Use apenas para documentar divergência física/FEFO. Para trocar lote, ajuste a reserva antes da baixa.
               </p>
               <textarea
                 name="justificativa"

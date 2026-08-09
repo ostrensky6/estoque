@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   aceitarLote,
@@ -34,6 +34,7 @@ export function LoteAcoes({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const executando = useRef(false);
   const [modal, setModal] = useState<null | "aceitar" | "bloquear" | "descartar" | "baixa" | "ajuste">(null);
   const [motivo, setMotivo] = useState("");
   const [quantidade, setQuantidade] = useState("");
@@ -47,26 +48,51 @@ export function LoteAcoes({
     return f;
   }
   function run(action: Acao, extra: Record<string, string> = {}) {
+    if (executando.current) return;
+    executando.current = true;
     start(async () => {
-      await action(fd(extra));
-      setModal(null);
-      setMotivo("");
-      setQuantidade("");
-      setResponsavel("");
-      setState({ ok: false });
-      router.refresh();
+      try {
+        const res = await action(fd(extra));
+        setState(res);
+        if (res.ok) {
+          setModal(null);
+          setMotivo("");
+          setQuantidade("");
+          setResponsavel("");
+          setState({ ok: false });
+          router.refresh();
+        }
+      } catch (error) {
+        setState({
+          ok: false,
+          message: error instanceof Error ? error.message : "Não foi possível concluir a ação.",
+        });
+      } finally {
+        executando.current = false;
+      }
     });
   }
   function runState(action: ActionState, extra: Record<string, string>) {
+    if (executando.current) return;
+    executando.current = true;
     start(async () => {
-      const res = await action({ ok: false }, fd(extra));
-      setState(res);
-      if (res.ok) {
-        setModal(null);
-        setMotivo("");
-        setQuantidade("");
-        setResponsavel("");
-        router.refresh();
+      try {
+        const res = await action({ ok: false }, fd(extra));
+        setState(res);
+        if (res.ok) {
+          setModal(null);
+          setMotivo("");
+          setQuantidade("");
+          setResponsavel("");
+          router.refresh();
+        }
+      } catch (error) {
+        setState({
+          ok: false,
+          message: error instanceof Error ? error.message : "Não foi possível concluir a ação.",
+        });
+      } finally {
+        executando.current = false;
       }
     });
   }
@@ -97,8 +123,8 @@ export function LoteAcoes({
         </button>
       )}
       {status === "bloqueado" && podeGerir && (
-        <button disabled={pending} onClick={() => run(desbloquearLote)} className={`${btn} text-info-strong hover:bg-info-soft`}>
-          Desbloquear
+        <button aria-busy={pending} disabled={pending} onClick={() => run(desbloquearLote)} className={`${btn} text-info-strong hover:bg-info-soft`}>
+          {pending ? "Desbloqueando…" : "Desbloquear"}
         </button>
       )}
       {status !== "consumido" && status !== "descartado" && podeGerir && (
@@ -108,6 +134,11 @@ export function LoteAcoes({
       )}
       {!podeAceitar && !podeGerir && status === "quarentena" && (
         <span className="text-xs text-muted-foreground/80">aguardando aceitação</span>
+      )}
+      {state.message && !state.ok && !modal && (
+        <span role="alert" className="basis-full rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">
+          {state.message}
+        </span>
       )}
 
       {modal && (
@@ -183,7 +214,7 @@ export function LoteAcoes({
             />
             {state.errors?.motivo && <p className="mt-1 text-xs text-danger-strong">{state.errors.motivo}</p>}
             {state.message && !state.ok && (
-              <p className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">
+              <p role="alert" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">
                 {state.message}
               </p>
             )}
@@ -202,6 +233,7 @@ export function LoteAcoes({
                 Cancelar
               </button>
               <button
+                aria-busy={pending}
                 disabled={
                   pending ||
                   (modal !== "aceitar" && !motivo.trim()) ||
@@ -226,7 +258,7 @@ export function LoteAcoes({
                 }`}
               >
                 {pending
-                  ? "…"
+                  ? "Processando…"
                   : modal === "aceitar"
                     ? "Aceitar"
                   : modal === "bloquear"

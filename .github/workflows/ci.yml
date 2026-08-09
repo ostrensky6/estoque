@@ -6,6 +6,20 @@ on:
   pull_request:
 
 jobs:
+  schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.75.0
+
+      - name: Reconstruir o banco local a partir das migrations
+        run: |
+          supabase start
+          supabase db reset --no-seed
+
   check:
     runs-on: ubuntu-latest
     steps:
@@ -19,20 +33,11 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Typecheck
-        run: npx tsc -p tsconfig.json --noEmit
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Test
-        run: npm test
-
       - name: Install Playwright browser
         run: npx playwright install --with-deps chrome
 
-      - name: E2E
-        run: npm run test:e2e
+      - name: Validar tipo, lint, testes, build e E2E
+        run: npm run verify
         env:
           # o webServer do Playwright sobe `npm run dev` com mock do Supabase;
           # estes valores são fictícios e nunca tocam o banco real.

@@ -11,7 +11,7 @@ import { ScannerRecebimentoCompra } from "@/components/compras/ScannerRecebiment
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { listarEventos } from "@/lib/actions/eventos";
 import { Timeline } from "@/components/common/Timeline";
-import { formatNumber as fmt, formatCurrency as brl } from "@/lib/formatters";
+import { formatDate, formatDateTime, formatNumber as fmt, formatCurrency as brl } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,7 @@ const STATUS: Record<string, string> = {
   solicitado: "Solicitado",
   aprovado: "Aprovado",
   enviado: "Enviado",
+  em_transito: "Em trânsito",
   recebido: "Recebido",
   cancelado: "Cancelado",
 };
@@ -34,6 +35,17 @@ type PedidoCompraItemRow = {
   insumo_id: number | null;
   insumos: { especificacao: string | null; unidade: string | null } | null;
   pedidos_internos_itens?: { pedido_interno_id: number | null } | null;
+  pedidos_compra_item_recebimentos?: CompraItemRecebimento[] | null;
+};
+
+type CompraItemRecebimento = {
+  id: number;
+  lote_id: number;
+  quantidade: number;
+  codigo_lote: string | null;
+  validade: string | null;
+  responsavel: string | null;
+  recebido_em: string;
 };
 
 type PedidoCompraItensQuery = {
@@ -58,7 +70,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
 
   const [{ data: itens }, { data: insumos }, podeGerir] = await Promise.all([
     (supabase.from("pedidos_compra_itens") as unknown as PedidoCompraItensQuery)
-      .select("id, quantidade, quantidade_recebida, divergencia_recebimento, custo_unitario_estimado, lote_id, pedido_interno_item_id, insumo_id, insumos(especificacao, unidade), pedidos_internos_itens(pedido_interno_id)")
+      .select("id, quantidade, quantidade_recebida, divergencia_recebimento, custo_unitario_estimado, lote_id, pedido_interno_item_id, insumo_id, insumos(especificacao, unidade), pedidos_internos_itens(pedido_interno_id), pedidos_compra_item_recebimentos(id, lote_id, quantidade, codigo_lote, validade, responsavel, recebido_em)")
       .eq("pedido_id", pedidoId)
       .order("id"),
     supabase.from("insumos").select("id, especificacao").order("especificacao"),
@@ -67,7 +79,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
 
   const eventos = await listarEventos("pedido_compra", pedidoId);
   const editavel = pedido.status === "solicitado";
-  const recebivel = (pedido.status === "aprovado" || pedido.status === "enviado") && podeGerir;
+  const recebivel = ["aprovado", "enviado", "em_transito"].includes(pedido.status) && podeGerir;
   const forn = (pedido.fornecedores as { nome: string | null } | null)?.nome;
   const total = (itens ?? []).reduce(
     (a, it) => a + Number(it.quantidade) * Number(it.custo_unitario_estimado ?? 0),
@@ -80,10 +92,15 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
       <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Compras", href: "/compras" }, { label: `Pedido #${pedido.id}` }]} />
         <div className="mt-2 flex items-center justify-between">
-          <h1 className="text-xl font-semibold tracking-tight">Pedido #{pedido.id}</h1>
-          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
-            {STATUS[pedido.status] ?? pedido.status}
-          </span>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold tracking-tight">Pedido #{pedido.id}</h1>
+            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
+              {STATUS[pedido.status] ?? pedido.status}
+            </span>
+          </div>
+          <Link href={`/compras/${pedidoId}/imprimir`} className="rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-muted">
+            Imprimir / PDF
+          </Link>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
           {forn ? `Fornecedor: ${forn} · ` : ""}
@@ -111,6 +128,9 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
               <tbody className="divide-y divide-border/70">
                 {(itens ?? []).map((it) => {
                   const ins = it.insumos as { especificacao: string | null; unidade: string | null } | null;
+                  const recebimentos = (it.pedidos_compra_item_recebimentos ?? [])
+                    .slice()
+                    .sort((a, b) => Date.parse(b.recebido_em) - Date.parse(a.recebido_em));
                   return (
                     <tr key={it.id}>
                       <td className="px-4 py-2.5 max-w-xs truncate" title={ins?.especificacao ?? ""}>{ins?.especificacao}</td>
@@ -124,12 +144,28 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                       <td className="px-4 py-2.5 text-right tabular-nums">{fmt(it.quantidade)} {ins?.unidade ?? ""}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums">{brl(it.custo_unitario_estimado)}</td>
                       <td className="px-4 py-2.5 text-center">
-                        {it.lote_id ? (
+                        {Number(it.quantidade_recebida ?? 0) > 0 ? (
                           <span className="inline-flex flex-col items-center gap-0.5">
-                            <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs text-brand-800 dark:bg-brand-950/50 dark:text-brand-300">✓ lote {it.lote_id}</span>
+                            <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs text-brand-800 dark:bg-brand-950/50 dark:text-brand-300">
+                              {Number(it.quantidade_recebida) >= Number(it.quantidade)
+                                ? `✓ recebido (${fmt(it.quantidade_recebida)})`
+                                : `parcial: ${fmt(it.quantidade_recebida)} de ${fmt(it.quantidade)}`}
+                            </span>
                             {it.divergencia_recebimento && (
                               <span className="text-[10px] text-warning-strong">
                                 {it.divergencia_recebimento}
+                              </span>
+                            )}
+                            {recebimentos.length > 0 && (
+                              <span className="mt-1 w-full space-y-0.5 text-left text-[10px] text-muted-foreground">
+                                {recebimentos.map((recebimento) => (
+                                  <span key={recebimento.id} className="block">
+                                    Lote {recebimento.codigo_lote ?? `#${recebimento.lote_id}`} · {fmt(recebimento.quantidade)} {ins?.unidade ?? ""}
+                                    {recebimento.validade ? ` · val. ${formatDate(recebimento.validade)}` : ""}
+                                    {recebimento.responsavel ? ` · ${recebimento.responsavel}` : ""}
+                                    {` · ${formatDateTime(recebimento.recebido_em)}`}
+                                  </span>
+                                ))}
                               </span>
                             )}
                           </span>
@@ -146,12 +182,13 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                               <button className="text-xs text-danger-strong hover:underline">Remover</button>
                             </form>
                           )}
-                          {recebivel && !it.lote_id && (
+                          {recebivel && Number(it.quantidade_recebida ?? 0) < Number(it.quantidade) && (
                             <ScannerRecebimentoCompra
                               item={{
                                 id: it.id,
                                 pedidoId,
                                 quantidade: Number(it.quantidade),
+                                quantidadeRecebida: Number(it.quantidade_recebida ?? 0),
                                 insumoId: it.insumo_id,
                                 insumoDescricao: ins?.especificacao ?? null,
                                 unidade: ins?.unidade ?? null,

@@ -188,7 +188,11 @@ begin
    where id = p_pedido_id;
 end $$;
 
-create or replace function reservar_plano(p_planejamento_id bigint, p_itens jsonb)
+-- A versão anterior retornava void. PostgreSQL não permite alterar o
+-- retorno com CREATE OR REPLACE, então a assinatura é recriada em seguida.
+drop function if exists reservar_plano(bigint, jsonb);
+
+create function reservar_plano(p_planejamento_id bigint, p_itens jsonb)
 returns jsonb
 language plpgsql
 security definer

@@ -36,6 +36,7 @@ export function PedidoInternoCabecalhoAcoes({
   fonteRecurso,
   justificativa,
   projetos,
+  status,
   podeExcluir,
 }: {
   pedidoId: number;
@@ -48,6 +49,7 @@ export function PedidoInternoCabecalhoAcoes({
   fonteRecurso: string | null;
   justificativa: string | null;
   projetos: Opcao[];
+  status: string;
   podeExcluir: boolean;
 }) {
   return (
@@ -133,7 +135,7 @@ export function PedidoInternoCabecalhoAcoes({
       </Dialog>
 
       {/* Excluir */}
-      {podeExcluir && (
+      {podeExcluir && status === "rascunho" && (
         <Dialog>
           <DialogTrigger asChild>
             <button className="inline-flex items-center gap-1 rounded-md border border-danger-strong/30 px-3 py-1.5 text-xs font-medium text-danger-strong hover:bg-danger-soft">
@@ -143,9 +145,10 @@ export function PedidoInternoCabecalhoAcoes({
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Excluir pedido {numero}?</DialogTitle>
+              <DialogTitle>Excluir rascunho {numero}?</DialogTitle>
               <DialogDescription>
-                Esta ação remove o pedido <b>{titulo}</b> e todos os seus itens, anexos e comunicações. Não pode ser desfeita.
+                Esta ação remove o pedido <b>{titulo}</b> antes de ele entrar no fluxo operacional. Pedidos em
+                andamento devem ser cancelados com motivo.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -157,7 +160,7 @@ export function PedidoInternoCabecalhoAcoes({
               <form action={excluirPedidoInterno}>
                 <input type="hidden" name="pedido_interno_id" value={pedidoId} />
                 <button type="submit" className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-white hover:bg-destructive/90">
-                  Excluir definitivamente
+                  Excluir rascunho
                 </button>
               </form>
             </DialogFooter>

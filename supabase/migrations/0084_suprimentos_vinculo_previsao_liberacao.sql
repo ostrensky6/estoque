@@ -17,9 +17,12 @@ consumo as (
 abertos as (
   select
     pi.insumo_id,
-    sum(pi.quantidade) filter (
+    sum(greatest(
+      pi.quantidade
+        - coalesce(pi.quantidade_recebida, case when pi.lote_id is not null then pi.quantidade else 0 end),
+      0
+    )) filter (
       where p.status in ('solicitado','aprovado','enviado','em_transito')
-        and pi.lote_id is null
     ) as qtd_pedida_aberta
   from pedidos_compra_itens pi
   join pedidos_compra p on p.id = pi.pedido_id
@@ -130,5 +133,8 @@ begin
    where id = p_lote_id;
 end $$;
 
-grant select on v_previsao_suprimentos to anon, authenticated, service_role;
+alter view v_previsao_suprimentos set (security_invoker = true);
+revoke all on v_previsao_suprimentos from public, anon;
+grant select on v_previsao_suprimentos to authenticated, service_role;
+revoke execute on function aceitar_lote(bigint,text,text) from public, anon;
 grant execute on function aceitar_lote(bigint,text,text) to authenticated, service_role;

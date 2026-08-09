@@ -21,11 +21,87 @@ export type SimuladorAnalise = {
   grupos: Array<{ nome: string; opcoes: string[] }>;
 };
 
+export type FonteCustoInsumos = "custo_padrao" | "custo_medio_ponderado";
+
 type EquipamentoAnaliseRow = {
   codigo_analise: string;
   equipamento_id: number;
   peso_alocacao: number | null;
 };
+
+type CustoEstoqueRow = {
+  insumo_id: number;
+  custo_padrao: number | null;
+  custo_medio_ponderado: number | null;
+  unidade_estoque: string | null;
+  unidade_consumo: string | null;
+  fator_conversao: number | null;
+  custo_origem: number | null;
+  custo_normalizado: number | null;
+  fonte_custo: string | null;
+  referencia_custo: string | null;
+};
+
+type InsumoAnaliseRow = {
+  codigo_analise: string;
+  nome_etapa: string;
+  nome_atividade: string;
+  especificacao_insumo: string | null;
+  grupo_escolha: string | null;
+  quantidade_por_amostra: number | null;
+  modo_cobranca: string | null;
+  insumo_id: number | null;
+  insumos: { custo_unitario: number | null } | null;
+};
+
+const numeroOuNull = (valor: unknown) => {
+  if (valor == null) return null;
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero : null;
+};
+
+function montarInsumoComCusto(
+  linha: InsumoAnaliseRow,
+  custo: CustoEstoqueRow | undefined,
+  fonteSolicitada: FonteCustoInsumos,
+): InsumoLinha {
+  const custoPadrao =
+    numeroOuNull(custo?.custo_padrao) ?? numeroOuNull(linha.insumos?.custo_unitario);
+  const custoMedio = numeroOuNull(custo?.custo_medio_ponderado);
+  const custoUnitarioEstoque =
+    fonteSolicitada === "custo_medio_ponderado" && custoMedio != null
+      ? custoMedio
+      : custoPadrao;
+  const fatorConversao = numeroOuNull(custo?.fator_conversao);
+  const custoUnitarioConsumo =
+    custoUnitarioEstoque == null || fatorConversao == null || fatorConversao <= 0
+      ? null
+      : custoUnitarioEstoque / fatorConversao;
+  const fonteCusto =
+    fonteSolicitada === "custo_medio_ponderado" && custoMedio != null
+      ? "custo_medio_ponderado"
+      : fonteSolicitada === "custo_medio_ponderado"
+        ? "custo_padrao_fallback"
+        : "custo_padrao";
+
+  return {
+    nome_etapa: linha.nome_etapa,
+    nome_atividade: linha.nome_atividade,
+    especificacao_insumo: linha.especificacao_insumo,
+    grupo_escolha: linha.grupo_escolha,
+    quantidade_por_amostra: linha.quantidade_por_amostra,
+    modo_cobranca: linha.modo_cobranca,
+    insumo_id: linha.insumo_id,
+    custo_unitario: custoUnitarioConsumo ?? custoUnitarioEstoque,
+    unidade_estoque: custo?.unidade_estoque ?? null,
+    unidade_consumo: custo?.unidade_consumo ?? null,
+    fator_conversao: fatorConversao,
+    fonte_custo: fonteCusto,
+    referencia_custo: custo?.referencia_custo ?? null,
+    custo_unitario_estoque: custoUnitarioEstoque,
+    custo_unitario_consumo: custoUnitarioConsumo,
+  };
+}
 
 export function montarEquipamentosAlocados(
   linhas: EquipamentoAnaliseRow[],
@@ -44,6 +120,7 @@ export function montarEquipamentosAlocados(
 /** Carrega tudo do banco e calcula o breakdown de todas as análises. */
 export async function calcularTodas(
   cenarioPorAnalise: Record<string, Cenario> = {},
+  fonteCustoInsumos: FonteCustoInsumos = "custo_padrao",
 ): Promise<{ breakdowns: Breakdown[]; params: Parametros; valorHoraPessoal: number; custoHoraOverhead: number }> {
   const supabase = await createClient();
 
@@ -56,6 +133,7 @@ export async function calcularTodas(
     { data: overhead },
     { data: insumoAnalise },
     { data: parametros },
+    { data: custosEstoque },
   ] = await Promise.all([
     supabase.from("analises").select("codigo").order("codigo"),
     supabase.from("etapas").select("*"),
@@ -66,10 +144,21 @@ export async function calcularTodas(
     supabase
       .from("insumo_analise")
       .select(
-        "codigo_analise, nome_etapa, nome_atividade, especificacao_insumo, grupo_escolha, quantidade_por_amostra, modo_cobranca, insumos(custo_unitario)",
+        "codigo_analise, nome_etapa, nome_atividade, especificacao_insumo, grupo_escolha, quantidade_por_amostra, modo_cobranca, insumo_id, insumos(custo_unitario)",
       ),
     supabase.from("parametros").select("chave, valor"),
+    supabase
+      .from("v_custo_estoque_vigente")
+      .select(
+        "insumo_id, custo_padrao, custo_medio_ponderado, unidade_estoque, unidade_consumo, fator_conversao, custo_origem, custo_normalizado, fonte_custo, referencia_custo",
+      ),
   ]);
+
+  const custoPorInsumo = new Map(
+    ((custosEstoque ?? []) as CustoEstoqueRow[]).map(
+      (custo) => [custo.insumo_id, custo] as const,
+    ),
+  );
 
   const par = Object.fromEntries(
     (parametros ?? []).map((p) => [p.chave, Number(p.valor)]),
@@ -115,19 +204,15 @@ export async function calcularTodas(
       codigo,
       custoDiaPorEquip,
     );
-    const insumosA = (insumoAnalise ?? [])
+    const insumosA = ((insumoAnalise ?? []) as InsumoAnaliseRow[])
       .filter((i) => i.codigo_analise === codigo)
-      .map((i) => ({
-        nome_etapa: i.nome_etapa,
-        nome_atividade: i.nome_atividade,
-        especificacao_insumo: i.especificacao_insumo,
-        grupo_escolha: i.grupo_escolha,
-        quantidade_por_amostra: i.quantidade_por_amostra,
-        modo_cobranca: i.modo_cobranca,
-        custo_unitario:
-          (i.insumos as { custo_unitario: number | null } | null)
-            ?.custo_unitario ?? null,
-      }));
+      .map((i) =>
+        montarInsumoComCusto(
+          i,
+          i.insumo_id == null ? undefined : custoPorInsumo.get(i.insumo_id),
+          fonteCustoInsumos,
+        ),
+      );
 
     return calcularAnalise({
       codigo,
@@ -144,7 +229,9 @@ export async function calcularTodas(
   return { breakdowns, params, valorHoraPessoal, custoHoraOverhead };
 }
 
-export async function carregarSimuladorCusteio(): Promise<{
+export async function carregarSimuladorCusteio(
+  fonteCustoInsumos: FonteCustoInsumos = "custo_padrao",
+): Promise<{
   analises: SimuladorAnalise[];
   params: Parametros;
   valorHoraPessoal: number;
@@ -157,6 +244,7 @@ export async function carregarSimuladorCusteio(): Promise<{
     { data: equipamentos },
     { data: equipAnalise },
     { data: insumoAnalise },
+    { data: custosEstoque },
   ] = await Promise.all([
     supabase.from("analises").select("codigo").eq("ativo", true).eq("ofertavel", true).order("codigo"),
     supabase.from("etapas").select("*"),
@@ -167,9 +255,19 @@ export async function carregarSimuladorCusteio(): Promise<{
       .select(
         "codigo_analise, nome_etapa, nome_atividade, especificacao_insumo, grupo_escolha, quantidade_por_amostra, modo_cobranca, insumo_id, insumos(custo_unitario)",
       ),
+    supabase
+      .from("v_custo_estoque_vigente")
+      .select(
+        "insumo_id, custo_padrao, custo_medio_ponderado, unidade_estoque, unidade_consumo, fator_conversao, custo_origem, custo_normalizado, fonte_custo, referencia_custo",
+      ),
   ]);
   const codigosAtivos = new Set((analises ?? []).map((analise) => analise.codigo));
-  const { breakdowns, params, valorHoraPessoal, custoHoraOverhead } = await calcularTodas();
+  const { breakdowns, params, valorHoraPessoal, custoHoraOverhead } = await calcularTodas({}, fonteCustoInsumos);
+  const custoPorInsumo = new Map(
+    ((custosEstoque ?? []) as CustoEstoqueRow[]).map(
+      (custo) => [custo.insumo_id, custo] as const,
+    ),
+  );
 
   const custoDiaPorEquip = new Map<number, number>();
   for (const e of equipamentos ?? []) {
@@ -183,19 +281,15 @@ export async function carregarSimuladorCusteio(): Promise<{
     analises: breakdowns
       .filter((b) => codigosAtivos.has(b.codigo))
       .map((b) => {
-        const linhas = (insumoAnalise ?? [])
+        const linhas = ((insumoAnalise ?? []) as InsumoAnaliseRow[])
           .filter((i) => i.codigo_analise === b.codigo)
-          .map((i) => ({
-            nome_etapa: i.nome_etapa,
-            nome_atividade: i.nome_atividade,
-            especificacao_insumo: i.especificacao_insumo,
-            grupo_escolha: i.grupo_escolha,
-            quantidade_por_amostra: i.quantidade_por_amostra,
-            modo_cobranca: i.modo_cobranca,
-            custo_unitario:
-              (i.insumos as { custo_unitario: number | null } | null)?.custo_unitario ?? null,
-            insumo_id: i.insumo_id,
-          }));
+          .map((i) =>
+            montarInsumoComCusto(
+              i,
+              i.insumo_id == null ? undefined : custoPorInsumo.get(i.insumo_id),
+              fonteCustoInsumos,
+            ),
+          );
         const grupos = [...new Set(linhas.map((l) => l.grupo_escolha).filter(Boolean) as string[])].map((grupo) => ({
           nome: grupo,
           opcoes: linhas
@@ -225,8 +319,9 @@ export async function calcularItemAnaliseOrcamento(
   codigo: string,
   numeroAmostras: number,
   cenario?: Cenario,
+  fonteCustoInsumos: FonteCustoInsumos = "custo_padrao",
 ): Promise<BreakdownOrcamento | null> {
-  const dados = await carregarSimuladorCusteio();
+  const dados = await carregarSimuladorCusteio(fonteCustoInsumos);
   const analise = dados.analises.find((item) => item.codigo === codigo);
   if (!analise) return null;
 

@@ -37,10 +37,13 @@ export function ModuleTopNavClient({
               key={child.href}
               asChild
               size="sm"
-              variant={ativo ? "default" : "secondary"}
-              className={cn("shrink-0 gap-2", !ativo && "bg-muted/70")}
+              variant={ativo ? "default" : "outline"}
+              className={cn(
+                "shrink-0 gap-2",
+                !ativo && "app-nav-level-2 dark:bg-card dark:hover:bg-primary/10",
+              )}
             >
-              <Link href={child.href} aria-current={ativo ? "page" : undefined}>
+              <Link href={child.href} aria-current={ativo ? "page" : undefined} title={child.desc}>
                 {Icon && <Icon className="h-3.5 w-3.5" />}
                 <span>{child.label}</span>
               </Link>

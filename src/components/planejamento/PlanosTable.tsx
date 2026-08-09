@@ -11,6 +11,9 @@ export type PlanoRow = {
   nome: string;
   projeto: string;
   dataAlvo: string;
+  periodo: string;
+  prioridade: string;
+  responsavel: string;
   itens: number;
   status: string;
   statusLabel: string;
@@ -27,7 +30,14 @@ const columns: ColumnDef<PlanoRow, unknown>[] = [
     ),
   },
   { accessorKey: "projeto", header: "Projeto" },
-  { accessorKey: "dataAlvo", header: "Data alvo" },
+  { accessorKey: "periodo", header: "Período previsto" },
+  { accessorKey: "responsavel", header: "Responsável" },
+  {
+    accessorKey: "prioridade",
+    header: "Prioridade",
+    cell: ({ row }) => <PrioridadeBadge prioridade={row.original.prioridade} />,
+    filterFn: "equalsString",
+  },
   {
     accessorKey: "itens",
     header: "Análises",
@@ -57,6 +67,25 @@ function StatusBadge({ status, label }: { status: string; label: string }) {
   return <Badge className={variantClass}>{label}</Badge>;
 }
 
+function PrioridadeBadge({ prioridade }: { prioridade: string }) {
+  const label = {
+    baixa: "Baixa",
+    normal: "Normal",
+    alta: "Alta",
+    urgente: "Urgente",
+  }[prioridade] ?? prioridade;
+  const cls =
+    prioridade === "urgente"
+      ? "bg-danger-soft text-danger-strong"
+      : prioridade === "alta"
+        ? "bg-warning-soft text-warning-strong"
+        : prioridade === "baixa"
+          ? "bg-secondary text-secondary-foreground"
+          : "bg-info-soft text-info-strong";
+
+  return <Badge className={cls}>{label}</Badge>;
+}
+
 export function PlanosTable({ rows }: { rows: PlanoRow[] }) {
   return (
     <DataTable
@@ -79,6 +108,16 @@ export function PlanosTable({ rows }: { rows: PlanoRow[] }) {
           ],
         },
         {
+          columnId: "prioridade",
+          label: "Prioridade",
+          options: [
+            { value: "urgente", label: "Urgente" },
+            { value: "alta", label: "Alta" },
+            { value: "normal", label: "Normal" },
+            { value: "baixa", label: "Baixa" },
+          ],
+        },
+        {
           columnId: "projeto",
           label: "Projeto",
           options: [...new Set(rows.map((row) => row.projeto).filter((value) => value !== "—"))].map((value) => ({
@@ -92,7 +131,7 @@ export function PlanosTable({ rows }: { rows: PlanoRow[] }) {
           {row.nome}
         </Link>
       )}
-      getMobileDescription={(row) => `${row.projeto} · ${row.dataAlvo} · ${row.itens} análise(s)`}
+      getMobileDescription={(row) => `${row.projeto} · ${row.periodo} · ${row.itens} análise(s)`}
       getMobileMeta={(row) => <StatusBadge status={row.status} label={row.statusLabel} />}
     />
   );

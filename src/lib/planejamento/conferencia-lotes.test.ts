@@ -20,7 +20,7 @@ describe("conferencia de lotes do planejamento", () => {
     expect(loteSugeridoFefo([
       lote({ id: 2, validade: "2026-09-01" }),
       lote({ id: 1, validade: "2026-08-01" }),
-    ])?.id).toBe(1);
+    ], "2026-06-29")?.id).toBe(1);
   });
 
   it("ignora lote vencido, bloqueado ou sem saldo na sugestao FEFO", () => {

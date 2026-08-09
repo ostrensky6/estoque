@@ -17,8 +17,8 @@ export function CadastrosSubnav({ cadastros, activeSlug }: Props) {
       <Button
         asChild
         size="sm"
-        variant={activeSlug ? "secondary" : "default"}
-        className="shrink-0"
+        variant={activeSlug ? "outline" : "default"}
+        className={activeSlug ? "app-nav-level-2 shrink-0" : "shrink-0"}
       >
         <Link href="/cadastros">Todos os cadastros</Link>
       </Button>
@@ -27,8 +27,8 @@ export function CadastrosSubnav({ cadastros, activeSlug }: Props) {
           key={cadastro.slug}
           asChild
           size="sm"
-          variant={cadastro.slug === activeSlug ? "default" : "secondary"}
-          className="shrink-0"
+          variant={cadastro.slug === activeSlug ? "default" : "outline"}
+          className={cadastro.slug === activeSlug ? "shrink-0" : "app-nav-level-2 shrink-0"}
         >
           <Link href={`/cadastros/${cadastro.slug}`}>{cadastro.titulo}</Link>
         </Button>

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
+import { formatCurrency, formatPercent } from "@/lib/formatters";
 import {
   LotesTable,
   SaldoTable,
@@ -27,6 +28,16 @@ type Alerta = {
   referencia: number | null;
 };
 
+type CustoEstoque = {
+  insumo_id: number;
+  especificacao: string | null;
+  unidade: string | null;
+  custo_padrao: number | null;
+  custo_medio_ponderado: number | null;
+  divergencia_percentual: number | null;
+  situacao: string;
+};
+
 const ALERTA_META: Record<string, { label: string; cls: string }> = {
   reposicao: { label: "Repor", cls: "bg-warning-soft text-warning-strong" },
   vencimento: { label: "Vence em breve", cls: "bg-warning-soft text-warning-strong" },
@@ -37,7 +48,7 @@ const ALERTA_META: Record<string, { label: string; cls: string }> = {
 
 export default async function EstoquePage() {
   const supabase = await createClient();
-  const [{ data: saldo }, { data: alertas }, { data: lotes }, { data: previsao }] = await Promise.all([
+  const [{ data: saldo }, { data: alertas }, { data: lotes }, { data: previsao }, { data: custos }] = await Promise.all([
     supabase.from("v_estoque_saldo").select("*").order("especificacao"),
     supabase.from("v_alertas_estoque").select("*"),
     supabase
@@ -46,6 +57,7 @@ export default async function EstoquePage() {
       .not("status", "in", "(consumido,descartado)")
       .order("validade", { nullsFirst: false }),
     supabase.from("v_previsao_suprimentos").select("*"),
+    supabase.from("v_custo_estoque_vigente").select("*").order("especificacao"),
   ]);
   const [podeAceitar, podeGerir] = await Promise.all([
     temPapel("coordenador"),
@@ -61,6 +73,9 @@ export default async function EstoquePage() {
     quarentena: al.filter((a) => a.tipo === "quarentena"),
   };
   const previsaoMap = new Map((previsao ?? []).map((p) => [p.insumo_id, p]));
+  const custosDivergentes = ((custos ?? []) as CustoEstoque[])
+    .filter((custo) => custo.situacao === "divergente" || custo.situacao === "sem_custo_padrao")
+    .sort((a, b) => Math.abs(Number(b.divergencia_percentual ?? 0)) - Math.abs(Number(a.divergencia_percentual ?? 0)));
   const saldoRows: SaldoRow[] = (saldo ?? []).map((s) => {
     const prev = previsaoMap.get(s.insumo_id);
     const pontoReposicao = Number(s.ponto_reposicao ?? 0);
@@ -143,6 +158,45 @@ export default async function EstoquePage() {
             </div>
           ))}
         </div>
+
+        <section className="mt-8 rounded-xl border border-border bg-card p-4 shadow-sm">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Custo de estoque vigente</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Padrão para simulação; médio ponderado dos lotes liberados para previsão; custo real preservado por lote no consumo.
+              </p>
+            </div>
+            <span className="text-sm tabular-nums text-warning-strong">{custosDivergentes.length} divergência(s)</span>
+          </div>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-2 py-2 text-left">Insumo</th>
+                  <th className="px-2 py-2 text-right">Padrão</th>
+                  <th className="px-2 py-2 text-right">Médio vigente</th>
+                  <th className="px-2 py-2 text-right">Variação</th>
+                  <th className="px-2 py-2 text-left">Situação</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/70">
+                {custosDivergentes.slice(0, 10).map((custo) => (
+                  <tr key={custo.insumo_id}>
+                    <td className="px-2 py-2 font-medium">{custo.especificacao ?? "—"} <span className="text-xs text-muted-foreground">{custo.unidade ?? ""}</span></td>
+                    <td className="px-2 py-2 text-right tabular-nums">{formatCurrency(custo.custo_padrao)}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{formatCurrency(custo.custo_medio_ponderado)}</td>
+                    <td className="px-2 py-2 text-right tabular-nums text-warning-strong">{custo.divergencia_percentual == null ? "—" : formatPercent(custo.divergencia_percentual)}</td>
+                    <td className="px-2 py-2 text-xs text-warning-strong">{custo.situacao === "sem_custo_padrao" ? "Sem custo padrão" : "Divergente"}</td>
+                  </tr>
+                ))}
+                {custosDivergentes.length === 0 && (
+                  <tr><td colSpan={5} className="px-2 py-5 text-center text-muted-foreground">Custos vigentes alinhados ou sem lotes liberados.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <div className="mt-8">
           <SaldoTable rows={saldoRows} />

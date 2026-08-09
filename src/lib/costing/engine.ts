@@ -28,6 +28,26 @@ export type InsumoLinha = {
   modo_cobranca: string | null; // 'por_execucao' | 'por_amostra' | null
   custo_unitario: number | null; // do insumo ligado (null se não cadastrado)
   insumo_id?: number | null; // usado p/ demanda de estoque
+  unidade_estoque?: string | null;
+  unidade_consumo?: string | null;
+  fator_conversao?: number | null;
+  fonte_custo?: string | null;
+  referencia_custo?: string | null;
+  custo_unitario_estoque?: number | null;
+  custo_unitario_consumo?: number | null;
+};
+
+export type ProvenienciaDimensional = {
+  insumo_id: number | null;
+  unidade_estoque: string | null;
+  unidade_consumo: string | null;
+  fator_conversao: number | null;
+  fonte_custo: string | null;
+  referencia_custo: string | null;
+  custo_unitario_estoque: number | null;
+  custo_unitario_consumo: number | null;
+  quantidade_consumo: number;
+  quantidade_estoque: number | null;
 };
 
 export type Parametros = {
@@ -48,6 +68,8 @@ export type Cenario = {
 };
 
 const n = (v: number | null | undefined) => (typeof v === "number" ? v : 0);
+const custoUnitarioNormalizado = (linha: InsumoLinha) =>
+  n(linha.custo_unitario_consumo ?? linha.custo_unitario);
 const isPosAnalise = (e: Etapa) =>
   e.escopo_operacional === "pos_analise" ||
   /bioinform/i.test(`${e.nome_etapa ?? ""} ${e.nome_atividade ?? ""}`);
@@ -140,8 +162,8 @@ export function insumosSelecionados(
       // default: a opção mais barata por amostra
       const ord = [...opcoes].sort(
         (a, b) =>
-          n(a.custo_unitario) * n(a.quantidade_por_amostra) -
-          n(b.custo_unitario) * n(b.quantidade_por_amostra),
+          custoUnitarioNormalizado(a) * n(a.quantidade_por_amostra) -
+          custoUnitarioNormalizado(b) * n(b.quantidade_por_amostra),
       );
       if (ord[0]) escolhidas.push(ord[0]);
     }
@@ -161,7 +183,7 @@ export function reagentesPorAmostra(
 ): { total: number; detalhe: { nome: string; porAmostra: boolean; valor: number }[] } {
   const lote = loteAmostras > 0 ? loteAmostras : 1;
   const detalhe = linhas.map((l) => {
-    const base = n(l.custo_unitario) * n(l.quantidade_por_amostra);
+    const base = custoUnitarioNormalizado(l) * n(l.quantidade_por_amostra);
     const porExec = l.modo_cobranca === "por_execucao";
     const valor = porExec ? base / lote : base;
     return {
@@ -182,7 +204,7 @@ export function reagentesTotal(
   const amostras = Math.max(0, numeroAmostras);
   const loteFallback = loteAmostras > 0 ? loteAmostras : 1;
   const detalhe = linhas.map((l) => {
-    const base = n(l.custo_unitario) * n(l.quantidade_por_amostra);
+    const base = custoUnitarioNormalizado(l) * n(l.quantidade_por_amostra);
     const porExec = l.modo_cobranca === "por_execucao";
     const loteLinha = n(lotePorLinha?.(l)) > 0 ? n(lotePorLinha?.(l)) : loteFallback;
     const execucoes = amostras > 0 ? Math.ceil(amostras / loteLinha) : 0;
@@ -232,6 +254,7 @@ export type Breakdown = {
   custoTotal: number;
   fatores: number; // soma % aplicada
   preco: number;
+  provenienciaDimensional?: ProvenienciaDimensional[];
 };
 
 export type BreakdownOrcamento = Breakdown & {
@@ -306,6 +329,25 @@ export function calcularAnalise(args: {
       n(p.fundo_investimento)) /
     100;
   const preco = custoTotal * (1 + fatores);
+  const provenienciaDimensional = selic.map((linha) => {
+    const quantidadeConsumo = n(linha.quantidade_por_amostra);
+    const fatorConversao = n(linha.fator_conversao);
+
+    return {
+      insumo_id: linha.insumo_id ?? null,
+      unidade_estoque: linha.unidade_estoque ?? null,
+      unidade_consumo: linha.unidade_consumo ?? null,
+      fator_conversao: fatorConversao > 0 ? fatorConversao : null,
+      fonte_custo: linha.fonte_custo ?? null,
+      referencia_custo: linha.referencia_custo ?? null,
+      custo_unitario_estoque: linha.custo_unitario_estoque ?? null,
+      custo_unitario_consumo:
+        linha.custo_unitario_consumo ?? linha.custo_unitario ?? null,
+      quantidade_consumo: quantidadeConsumo,
+      quantidade_estoque:
+        fatorConversao > 0 ? quantidadeConsumo / fatorConversao : null,
+    } satisfies ProvenienciaDimensional;
+  });
 
   return {
     codigo: args.codigo,
@@ -318,6 +360,7 @@ export function calcularAnalise(args: {
     custoTotal,
     fatores,
     preco,
+    provenienciaDimensional,
   };
 }
 

@@ -1,0 +1,7 @@
+interface:
+  display_name: "R1 — Guardião"
+  short_description: "Plataforma, segurança e operação física"
+  default_prompt: "Use $kontrol-guardiao somente quando houver impacto real em runtime e configuração, infraestrutura ou materialização física de banco, Auth/RLS, segurança, continuidade, release ou operação do Kontrol."
+
+policy:
+  allow_implicit_invocation: false

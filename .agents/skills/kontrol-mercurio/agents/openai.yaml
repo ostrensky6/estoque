@@ -1,0 +1,7 @@
+interface:
+  display_name: "R6 — Mercúrio"
+  short_description: "Ciclo comercial de compras e recebimentos"
+  default_prompt: "Use $kontrol-mercurio para governar solicitações, cotações, aprovações, pedidos e recebimentos comerciais do Kontrol."
+
+policy:
+  allow_implicit_invocation: false

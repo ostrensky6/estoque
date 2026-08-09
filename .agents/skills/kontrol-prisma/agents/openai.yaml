@@ -1,0 +1,7 @@
+interface:
+  display_name: "R3 — Prisma"
+  short_description: "Gate independente, mínimo e proporcional"
+  default_prompt: "Use $kontrol-prisma somente quando o regime ou risco exigir gate independente; aplique o menor conjunto capaz de provar ou refutar o aceite e emita PASS, PASS_COM_RESSALVA ou FAIL sem reautoria."
+
+policy:
+  allow_implicit_invocation: false

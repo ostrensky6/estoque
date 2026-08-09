@@ -417,10 +417,11 @@ export default async function Home() {
         title="Base de controle"
         description="Cadastros, permissões e auditoria sustentam os dois fluxos: sem isso, custo, estoque e compra perdem rastreabilidade."
         actions={<Badge variant="muted">governança</Badge>}
-        contentClassName="grid gap-3 sm:grid-cols-3"
+        contentClassName="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
       >
         {[
           ["Cadastros", "/cadastros", "Insumos, equipamentos, técnicos, fornecedores, locais e parâmetros."],
+          ["Qualidade", "/cadastros/qualidade", "Pendências de receita, custo, unidade, lote, fornecedor e oferta antes da operação."],
           ["Auditoria", "/auditoria", "Trilha de alterações para saldo, lote, compra, orçamento e cadastros."],
           ["Usuários", "/usuarios", "Papéis de técnico, coordenador, gestor e administrador."],
         ].map(([titulo, href, desc]) => (

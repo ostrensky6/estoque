@@ -13,6 +13,7 @@ const SEM_PERMISSAO: FormState = {
   message: "Sem permissão — requer papel coordenador ou superior.",
 };
 const MSG_VALIDADE_CRITICO = "Validade é obrigatória para receber insumo crítico.";
+const UUID_RECEBIMENTO = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 function erroSchemaCache(error: { message?: string; code?: string } | null | undefined) {
   return Boolean(
@@ -103,7 +104,7 @@ export async function comprarFaltasDoPlano(formData: FormData) {
 
   const projeto = Array.isArray(plano?.projetos) ? plano?.projetos[0] : plano?.projetos;
   const payload = {
-    titulo: `Faltas do planejamento #${planId}${plano?.nome ? ` · ${plano.nome}` : ""}`,
+    titulo: `Pedido interno do planejamento #${planId}${plano?.nome ? ` · ${plano.nome}` : ""}`,
     status: "rascunho",
     solicitante: u?.email ?? null,
     projeto_id: plano?.projeto_id ?? null,
@@ -111,7 +112,7 @@ export async function comprarFaltasDoPlano(formData: FormData) {
     tipo_demanda: "laboratorio",
     urgencia: "alta",
     fonte_recurso: "A definir pelo projeto",
-    justificativa: `Pedido gerado porque o planejamento #${planId} não tinha saldo suficiente para iniciar.`,
+    justificativa: `Pedido interno gerado porque o planejamento #${planId} não tinha saldo suficiente para iniciar. A compra formal deve seguir o fluxo de validação e compras.`,
     coordenador_projeto_nome: projeto?.coordenador ?? null,
     coordenador_projeto_email: String(projeto?.coordenador ?? "").includes("@") ? projeto?.coordenador ?? null : null,
   };
@@ -150,22 +151,28 @@ export async function comprarFaltasDoPlano(formData: FormData) {
       const fornecedor = Array.isArray(info?.fornecedores)
         ? info?.fornecedores[0]?.nome
         : info?.fornecedores?.nome;
+      const quantidadePedido = f.quantidadeCompra > 0 ? f.quantidadeCompra : f.falta;
+      const minimoCompra = f.quantidadeMinimaCompra ?? f.quantidadeEmbalagem;
+      const unidade = f.unidade ?? "";
+      const regraCompra = minimoCompra
+        ? ` Pedido ajustado para ${quantidadePedido} ${unidade} pela quantidade mínima/múltiplo de compra de ${minimoCompra} ${unidade}.`
+        : "";
       return {
         pedido_interno_id: pedido.id,
         tipo: "material",
         insumo_id: f.insumo_id,
         especificacao: f.especificacao,
-        quantidade: f.falta,
+        quantidade: quantidadePedido,
         unidade: f.unidade,
-        orcamento_previo: info?.custo_unitario ?? null,
+        orcamento_previo: f.custoUnitario ?? info?.custo_unitario ?? null,
         fornecedor_sugerido: fornecedor ?? null,
-        observacao: `Falta gerada pelo planejamento #${planId}`,
+        observacao: `Falta operacional gerada pelo planejamento #${planId}: falta de ${f.falta} ${unidade}.${regraCompra}`,
       };
     }),
   );
   if (itensErr) throw new Error(itensErr.message);
 
-  await registrarEvento("pedido_interno", pedido.id, null, "rascunho", `Gerado pelas faltas do planejamento #${planId}.`);
+  await registrarEvento("pedido_interno", pedido.id, null, "rascunho", `Pedido interno gerado pelas faltas do planejamento #${planId}.`);
   revalidatePath("/pedido");
   revalidatePath(`/planejamento/${planId}`);
   revalidatePath("/suprimentos");
@@ -200,7 +207,6 @@ export async function removerItemPedido(formData: FormData) {
 
 export async function aprovarPedido(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
-  const u = await usuarioAtual();
   const pedido_id = Number(formData.get("pedido_id"));
   const supabase = await createClient();
 
@@ -236,18 +242,13 @@ export async function aprovarPedido(_prev: FormState, formData: FormData): Promi
     : leadTimeEfetivo(null, prazoFornecedorPedido);
   const prevista = dataPrevistaPorPrazo(maiorPrazo);
 
-  const { error } = await supabase
-    .from("pedidos_compra")
-    .update({
-      status: "aprovado",
-      aprovador: u?.email ?? null,
-      data_aprovacao: new Date().toISOString().slice(0, 10),
-      data_prevista_entrega: prevista,
-    })
-    .eq("id", pedido_id)
-    .eq("status", "solicitado");
+  const { error } = await supabase.rpc("transicionar_pedido_compra", {
+    p_pedido_id: pedido_id,
+    p_status_destino: "aprovado",
+    p_observacao: "Aprovação administrativa da compra.",
+    p_data_prevista_entrega: prevista ?? undefined,
+  });
   if (error) return { ok: false, message: error.message };
-  await registrarEvento("pedido_compra", pedido_id, "solicitado", "aprovado");
   revalidatePath(`/compras/${pedido_id}`);
   return { ok: true, message: "Pedido aprovado." };
 }
@@ -256,13 +257,12 @@ export async function marcarEnviado(_prev: FormState, formData: FormData): Promi
   if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("pedidos_compra")
-    .update({ status: "enviado" })
-    .eq("id", pedido_id)
-    .in("status", ["aprovado"]);
+  const { error } = await supabase.rpc("transicionar_pedido_compra", {
+    p_pedido_id: pedido_id,
+    p_status_destino: "enviado",
+    p_observacao: "Pedido enviado ao fornecedor.",
+  });
   if (error) return { ok: false, message: error.message };
-  await registrarEvento("pedido_compra", pedido_id, "aprovado", "enviado");
   revalidatePath(`/compras/${pedido_id}`);
   return { ok: true, message: "Pedido marcado como enviado." };
 }
@@ -271,12 +271,12 @@ export async function cancelarPedido(_prev: FormState, formData: FormData): Prom
   if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("pedidos_compra")
-    .update({ status: "cancelado" })
-    .eq("id", pedido_id);
+  const { error } = await supabase.rpc("transicionar_pedido_compra", {
+    p_pedido_id: pedido_id,
+    p_status_destino: "cancelado",
+    p_observacao: "Cancelamento administrativo da compra.",
+  });
   if (error) return { ok: false, message: error.message };
-  await registrarEvento("pedido_compra", pedido_id, null, "cancelado");
   revalidatePath(`/compras/${pedido_id}`);
   return { ok: true, message: "Pedido cancelado." };
 }
@@ -286,6 +286,10 @@ export async function receberItemPedido(formData: FormData) {
   if (!(await temPapel("coordenador"))) return;
   const pedido_id = Number(formData.get("pedido_id"));
   const item_id = Number(formData.get("item_id"));
+  const operacaoId = String(formData.get("operacao_id") ?? "").trim();
+  if (!UUID_RECEBIMENTO.test(operacaoId)) {
+    throw new Error("Identificador da operação de recebimento inválido.");
+  }
   const validade = (formData.get("validade") as string) || null;
   const codigo = (formData.get("codigo") as string) || null;
   const quantidadeRecebida = formData.get("quantidade_recebida")
@@ -309,21 +313,13 @@ export async function receberItemPedido(formData: FormData) {
   const { error } = await supabase.rpc("receber_item_pedido_compra" as never, {
     p_pedido_id: pedido_id,
     p_item_id: item_id,
+    p_operacao_id: operacaoId,
     p_quantidade: quantidadeRecebida ?? undefined,
     p_validade: validade ?? undefined,
     p_codigo: codigo ?? undefined,
     p_responsavel: responsavel ?? undefined,
   } as never);
   if (error) throw new Error(error.message);
-
-  const { data: pedido } = await supabase
-    .from("pedidos_compra")
-    .select("status")
-    .eq("id", pedido_id)
-    .single();
-  if (pedido?.status === "recebido") {
-    await registrarEvento("pedido_compra", pedido_id, null, "recebido", "Todos os itens recebidos");
-  }
 
   revalidatePath(`/compras/${pedido_id}`);
   revalidatePath("/estoque");

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Maestro Kontrol"
+  short_description: "Coordenação e integração dos especialistas"
+  default_prompt: "Use $kontrol-maestro para decompor esta diretriz e coordenar os especialistas do Kontrol."
+
+policy:
+  allow_implicit_invocation: false

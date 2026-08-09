@@ -65,4 +65,40 @@ describe("montarSnapshotLaboratorio", () => {
 
     vi.useRealTimers();
   });
+
+  it("preserva proveniência suficiente para reconstrução sem cadastro vivo", () => {
+    const proveniencia = {
+      insumo_id: 91,
+      unidade_estoque: "frasco",
+      unidade_consumo: "reação",
+      fator_conversao: 100,
+      quantidade_consumo: 20,
+      quantidade_estoque: 0.2,
+      fonte_custo: "custo_medio_ponderado",
+      custo_unitario_estoque: 500,
+      custo_unitario_consumo: 5,
+    };
+    const snapshot = montarSnapshotLaboratorio(
+      [{
+        codigo_analise: "PCR",
+        n_amostras: 10,
+        custo_unitario: 10,
+        preco_unitario: 10,
+        valor_snapshot: { proveniencia_dimensional: [proveniencia] },
+      }],
+      [{
+        codigo: "PCR",
+        reagentes: 10,
+        equipamento: 0,
+        pessoal: 0,
+        overhead: 0,
+        custoTotal: 10,
+        preco: 10,
+      }],
+    ) as { linhas: Array<Record<string, unknown>> };
+
+    expect(snapshot.linhas[0]).toMatchObject({
+      proveniencia_dimensional: [proveniencia],
+    });
+  });
 });

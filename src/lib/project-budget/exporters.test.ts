@@ -81,6 +81,11 @@ describe("exportProjetoXlsx", () => {
     expect(itemSheet?.getCell("H2").value).toBe(300);
     expect(itemSheet?.getCell("F3").value).toBe("1, 2, 3");
     expect(itemSheet?.getCell("H3").value).toBe(3000);
+
+    const demonstrativo = wb.getWorksheet("Demonstrativo");
+    const rotulos = demonstrativo?.getColumn(1).values;
+    expect(rotulos).toContain("Σ parâmetros (%)");
+    expect(rotulos).not.toContain("Markup nominal (%)");
   });
 });
 

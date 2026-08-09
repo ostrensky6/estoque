@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClientUntyped } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
-import { GerarReposicaoButton } from "@/components/compras/GerarReposicaoButton";
+import { GerarPedidoReposicaoButton } from "@/components/pedido/GerarPedidoReposicaoButton";
 import { formatDate, formatNumber as fmt } from "@/lib/formatters";
 import { pedidoInternoNumero, pedidoInternoStatus } from "@/lib/pedido/status";
 
@@ -340,7 +340,7 @@ export default async function SuprimentosPage() {
 
   const equipamentosIndisponiveis = equipamentos.filter((e) => !e.ativo || ["em_manutencao", "calibracao_vencida", "inativo", "descartado"].includes(e.status_operacional));
   const equipamentosReservados = equipamentos.filter((e) => e.status_operacional === "reservado" || (e.equipamento_reservas ?? []).some((r) => ["reservado", "em_uso"].includes(r.status)));
-  const comprarAgora = previsao.filter((p) => Number(p.qtd_sugerida_compra ?? 0) > 0);
+  const reposicaoAgora = previsao.filter((p) => Number(p.qtd_sugerida_compra ?? 0) > 0);
 
   const pedidosPrioritarios = [
     ...aguardandoCoordenador,
@@ -377,16 +377,20 @@ export default async function SuprimentosPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {podeGerarReposicao && <GerarReposicaoButton />}
+            {podeGerarReposicao && <GerarPedidoReposicaoButton />}
             <Link href="/pedido" className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
               Novo pedido
             </Link>
           </div>
         </div>
 
-        <nav className="mt-5 flex flex-wrap gap-2 text-sm" aria-label="Seções de suprimentos">
+        <nav className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-2 text-sm" aria-label="Seções de suprimentos">
           {nav.map(([label, href]) => (
-            <Link key={href} href={href} className="rounded-md border border-border px-3 py-1.5 text-muted-foreground hover:bg-muted/50 hover:text-foreground">
+            <Link
+              key={href}
+              href={href}
+              className="app-nav-level-3 rounded-md border border-primary/20 px-3 py-1.5 text-xs font-semibold text-brand-800 shadow-xs transition hover:border-primary/40 hover:text-brand-900 dark:text-brand-300 dark:hover:bg-primary/10"
+            >
               {label}
             </Link>
           ))}
@@ -533,13 +537,13 @@ export default async function SuprimentosPage() {
             <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
               <h3 className="text-sm font-semibold">Sugestões de reposição</h3>
               <div className="mt-3 space-y-2 text-sm">
-                {comprarAgora.slice(0, 8).map((item) => (
+                {reposicaoAgora.slice(0, 8).map((item) => (
                   <div key={item.insumo_id} className="flex justify-between gap-3 border-b border-border/60 pb-2 last:border-b-0">
                     <span className="truncate">{item.especificacao ?? `Insumo #${item.insumo_id}`}</span>
-                    <span className="shrink-0 tabular-nums">comprar {fmt(item.qtd_sugerida_compra)} {item.unidade ?? ""}</span>
+                    <span className="shrink-0 tabular-nums">pedir {fmt(item.qtd_sugerida_compra)} {item.unidade ?? ""}</span>
                   </div>
                 ))}
-                {!comprarAgora.length && <p className="text-muted-foreground">Sem reposição sugerida agora.</p>}
+                {!reposicaoAgora.length && <p className="text-muted-foreground">Sem reposição sugerida agora.</p>}
               </div>
             </div>
           </div>

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, mensagemErroAdminSupabase } from "@/lib/supabase/admin";
 import { temPapel, usuarioAtual } from "@/lib/auth/roles";
-import { SENHA_PROVISORIA } from "@/lib/auth/senha-provisoria";
+import { APP_METADATA_SENHA_PROVISORIA, SENHA_PROVISORIA } from "@/lib/auth/senha-provisoria";
 import { PAPEIS, normalizePermissions, selectedPermissionsFromForm, type PapelUsuario } from "@/lib/auth/permissions";
 import type { FormState } from "./cadastros";
 
@@ -62,6 +62,7 @@ export async function criarUsuario(_prev: FormState, formData: FormData): Promis
       password: SENHA_PROVISORIA,
       email_confirm: true,
       user_metadata: { nome, senha_provisoria: true },
+      app_metadata: APP_METADATA_SENHA_PROVISORIA,
     });
 
     if (error || !data.user) {
@@ -166,8 +167,22 @@ export async function alterarSenhaUsuario(_prev: FormState, formData: FormData):
         : await admin.auth.admin.updateUserById(id, {
             password: senha,
             user_metadata: { senha_provisoria: exigirTroca },
+            app_metadata: {
+              cadastrado_pelo_admin: true,
+              senha_provisoria: exigirTroca,
+            },
           });
     if (error) return { ok: false, message: mensagemErroAdminSupabase(error) };
+
+    if (usuarioLogado?.id === id) {
+      const { error: metadataError } = await admin.auth.admin.updateUserById(id, {
+        app_metadata: {
+          cadastrado_pelo_admin: true,
+          senha_provisoria: exigirTroca,
+        },
+      });
+      if (metadataError) return { ok: false, message: mensagemErroAdminSupabase(metadataError) };
+    }
 
     const { error: updateError } = await admin
       .from("perfis")
@@ -237,6 +252,7 @@ export async function criarUsuarioPreAprovado(_prev: FormState, formData: FormDa
       password: SENHA_PROVISORIA,
       email_confirm: true,
       user_metadata: { nome, senha_provisoria: true },
+      app_metadata: APP_METADATA_SENHA_PROVISORIA,
     });
 
     if (error || !data.user) {
@@ -309,6 +325,7 @@ export async function resetarSenha(_prev: FormState, formData: FormData): Promis
     const { error } = await createAdminClient().auth.admin.updateUserById(id, {
       password: SENHA_PROVISORIA,
       user_metadata: { senha_provisoria: true },
+      app_metadata: APP_METADATA_SENHA_PROVISORIA,
     });
     if (error) return { ok: false, message: mensagemErroAdminSupabase(error) };
 
