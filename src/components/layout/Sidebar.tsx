@@ -52,10 +52,10 @@ function SidebarContent({
         className="flex items-center justify-center border-b border-border/70 px-4 py-4"
       >
         <Image
-          src="/logos/kontrol-app.png"
+          src="/logos/kontrol-app.svg"
           alt="Kontrol App"
-          width={1448}
-          height={1086}
+          width={1735}
+          height={339}
           className="h-auto w-40 max-w-full object-contain"
           priority
           unoptimized
@@ -164,15 +164,17 @@ function CollapsedSidebar({
         title="Inicio"
         aria-label="Inicio"
       >
-        <Image
-          src="/logos/kontrol-app.png"
-          alt="Kontrol App"
-          width={1448}
-          height={1086}
-          className="h-9 w-9 object-contain"
-          priority
-          unoptimized
-        />
+        <span className="h-9 w-9 overflow-hidden">
+          <Image
+            src="/logos/kontrol-app.svg"
+            alt="Kontrol App"
+            width={1735}
+            height={339}
+            className="h-9 w-auto max-w-none object-contain object-left"
+            priority
+            unoptimized
+          />
+        </span>
       </Link>
 
       <div className="flex w-full flex-col items-center gap-1 border-b border-border/70 px-2 py-2">
@@ -269,10 +271,10 @@ export function Sidebar({
           className="flex items-center gap-2 font-bold tracking-tight text-foreground"
         >
           <Image
-            src="/logos/kontrol-app.png"
+            src="/logos/kontrol-app.svg"
             alt="Kontrol App"
-            width={1448}
-            height={1086}
+            width={1735}
+            height={339}
             className="h-9 w-auto max-w-32 object-contain"
             priority
             unoptimized

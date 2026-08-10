@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="339" height="339" viewBox="0 0 339 339" role="img" aria-label="Kontrol">
+  <defs>
+    <linearGradient id="blue-k" x1="103" y1="169" x2="274" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#063B7A"/>
+      <stop offset="1" stop-color="#0965C6"/>
+    </linearGradient>
+  </defs>
+  <path d="M40 169.5V298H103l.5-121.831L227.5 297.93 308.31 298 176.418 168.5 307 41h-78.759L103.5 166.27 102.985 41H40Z" fill="#0B1A2E"/>
+  <path fill="url(#blue-k)" d="M103 169 228 40h80L175 169Z"/>
+</svg>

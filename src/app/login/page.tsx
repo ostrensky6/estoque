@@ -20,10 +20,10 @@ export default function LoginPage() {
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-lg ring-1 ring-foreground/5">
         <div className="flex justify-center">
           <Image
-            src="/logos/kontrol-app.png"
+            src="/logos/kontrol-app.svg"
             alt="Kontrol App"
-            width={1448}
-            height={1086}
+            width={1735}
+            height={339}
             className="h-auto w-52 object-contain"
             priority
             unoptimized
