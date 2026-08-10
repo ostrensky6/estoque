@@ -230,6 +230,26 @@ const MOCK_PERMISSOES_CATEGORIAS = [
 ];
 
 const baseStore = (): Store => {
+  const insumos = HISTORICAL_ANALISE_CODES.map((codigo, index) => ({
+    id: index + 1,
+    especificacao: `Insumo mock ${codigo}`,
+    custo_unitario: 20 + index,
+    unidade: "un",
+    unidade_consumo: "un",
+    fator_conversao: 1,
+  }));
+  const custosEstoque = insumos.map((insumo) => ({
+    insumo_id: insumo.id,
+    custo_padrao: insumo.custo_unitario,
+    custo_medio_ponderado: null,
+    unidade_estoque: insumo.unidade,
+    unidade_consumo: insumo.unidade_consumo,
+    fator_conversao: insumo.fator_conversao,
+    custo_origem: insumo.custo_unitario,
+    custo_normalizado: insumo.custo_unitario / insumo.fator_conversao,
+    fonte_custo: "custo_padrao",
+    referencia_custo: `insumos:${insumo.id}`,
+  }));
   const seed: Store = {
   orcamentos: [
     {
@@ -268,6 +288,7 @@ const baseStore = (): Store => {
   projetos: [{ id: 1, nome: "Projeto E2E" }],
   clientes: [{ id: 1, nome: "Cliente Cadastrado", ativo: true }],
   analises: HISTORICAL_ANALISES,
+  insumos,
   etapas: HISTORICAL_ANALISE_CODES.map((codigo) => ({
     codigo_analise: codigo,
     nome_etapa: "Preparo",
@@ -307,8 +328,10 @@ const baseStore = (): Store => {
     grupo_escolha: null,
     quantidade_por_amostra: 1,
     modo_cobranca: "por_amostra",
-    insumos: { custo_unitario: 20 + index },
+    insumo_id: insumos[index].id,
+    insumos: { custo_unitario: insumos[index].custo_unitario },
   })),
+  v_custo_estoque_vigente: custosEstoque,
   parametros: [
     { chave: "dias_uteis_ano", valor: 222 },
     { chave: "margem_lucro", valor: 100 },
@@ -401,6 +424,27 @@ const baseStore = (): Store => {
         criado_em: "2026-06-21T10:00:00.000Z",
       },
     ];
+    const provenienciaDimensional = (codigo: string) => {
+      const ficha = seed.insumo_analise.find((item) => item.codigo_analise === codigo);
+      const custo = custosEstoque.find((item) => item.insumo_id === ficha?.insumo_id);
+      if (!ficha || !custo) throw new Error(`Fixture dimensional ausente para ${codigo}.`);
+      const fator = Number(custo.fator_conversao);
+      const quantidade = Number(ficha.quantidade_por_amostra);
+      return [{
+        insumo_id: Number(ficha.insumo_id),
+        unidade_estoque: custo.unidade_estoque,
+        unidade_consumo: custo.unidade_consumo,
+        fator_conversao: fator,
+        fonte_custo: custo.fonte_custo,
+        referencia_custo: custo.referencia_custo,
+        custo_unitario_estoque: custo.custo_padrao,
+        custo_unitario_consumo: Number(custo.custo_padrao) / fator,
+        quantidade_consumo: quantidade,
+        quantidade_estoque: quantidade / fator,
+      }];
+    };
+    const provenienciaIllumina = provenienciaDimensional("Illumina_16S_AC");
+    const provenienciaQpcr = provenienciaDimensional("qPCR_F");
     seed.orcamentos.push({
       id: 2,
       demanda_id: 1,
@@ -408,6 +452,15 @@ const baseStore = (): Store => {
       cliente_nome: "Cliente Demo",
       status: "enviado",
       status_operacional: "revisado",
+      fonte_custo_insumos: "custo_padrao",
+      custo_snapshot: {
+        fonte_custo_insumos: "custo_padrao",
+        totais: { custo: 740, preco: 1480, amostras: 17 },
+        linhas: [
+          { codigo_analise: "Illumina_16S_AC", quantidade: 12, custo: 540, preco: 1080, proveniencia_dimensional: provenienciaIllumina },
+          { codigo_analise: "qPCR_F", quantidade: 5, custo: 200, preco: 400, proveniencia_dimensional: provenienciaQpcr },
+        ],
+      },
       responsavel_tecnico: "Responsavel E2E",
       data_orcamento: "2026-06-21",
       criado_em: "2026-06-21T10:00:00.000Z",
@@ -419,6 +472,7 @@ const baseStore = (): Store => {
       n_amostras: 12,
       custo_unitario: 45,
       preco_unitario: 90,
+      valor_snapshot: { fonte_custo_insumos: "custo_padrao", proveniencia_dimensional: provenienciaIllumina },
     });
     seed.orcamento_itens.push({
       id: 3,
@@ -427,6 +481,7 @@ const baseStore = (): Store => {
       n_amostras: 5,
       custo_unitario: 40,
       preco_unitario: 80,
+      valor_snapshot: { fonte_custo_insumos: "custo_padrao", proveniencia_dimensional: provenienciaQpcr },
     });
     seed.demanda_analises = [
       {
