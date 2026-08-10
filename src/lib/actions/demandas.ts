@@ -407,10 +407,22 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
 
   const linhaSemSnapshot = (orcamentos ?? []).some((orcamento) => {
     const custoSnapshot = registro(orcamento.custo_snapshot);
-    if (!Array.isArray(custoSnapshot?.linhas)) return true;
+    if (!Array.isArray(custoSnapshot?.linhas) || custoSnapshot.linhas.some((linha) => {
+      const registroLinha = registro(linha);
+      if (!registroLinha) return true;
+      const exigeProveniencia = Number(registroLinha.reagentes ?? registroLinha.materiais ?? 0) > 0;
+      return !provenienciasDimensionaisValidas(
+        registroLinha.proveniencia_dimensional,
+        exigeProveniencia,
+      );
+    })) return true;
     return (orcamento.orcamento_itens ?? []).some((item) => {
       const valorSnapshot = registro(item.valor_snapshot);
-      return !Array.isArray(valorSnapshot?.proveniencia_dimensional);
+      const composicao = registro(valorSnapshot?.composicao);
+      return !provenienciasDimensionaisValidas(
+        valorSnapshot?.proveniencia_dimensional,
+        Number(composicao?.reagentes ?? 0) > 0,
+      );
     });
   });
   if (linhaSemSnapshot) {
@@ -571,6 +583,46 @@ function registro(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null;
+}
+
+function provenienciasDimensionaisValidas(value: unknown, exigida: boolean) {
+  return Array.isArray(value)
+    && (!exigida || value.length > 0)
+    && value.every(provenienciaDimensionalValida);
+}
+
+function provenienciaDimensionalValida(value: unknown) {
+  const proveniencia = registro(value);
+  if (!proveniencia) return false;
+  const textos = [
+    proveniencia.unidade_estoque,
+    proveniencia.unidade_consumo,
+    proveniencia.fonte_custo,
+    proveniencia.referencia_custo,
+  ];
+  const valores = [
+    proveniencia.fator_conversao,
+    proveniencia.custo_unitario_estoque,
+    proveniencia.custo_unitario_consumo,
+    proveniencia.quantidade_consumo,
+    proveniencia.quantidade_estoque,
+  ];
+  if (textos.some((item) => typeof item !== "string" || !item.trim())
+    || valores.some((item) => item == null || item === "")) return false;
+
+  const insumoId = Number(proveniencia.insumo_id);
+  const [fator, custoEstoque, custoConsumo, quantidadeConsumo, quantidadeEstoque] = valores.map(Number);
+  const aproximadamenteIgual = (atual: number, esperado: number) => (
+    Math.abs(atual - esperado) <= 1e-9 * Math.max(1, Math.abs(atual), Math.abs(esperado))
+  );
+  return Number.isInteger(insumoId) && insumoId > 0
+    && Number.isFinite(fator) && fator > 0
+    && Number.isFinite(custoEstoque) && custoEstoque >= 0
+    && Number.isFinite(custoConsumo) && custoConsumo >= 0
+    && Number.isFinite(quantidadeConsumo) && quantidadeConsumo > 0
+    && Number.isFinite(quantidadeEstoque) && quantidadeEstoque > 0
+    && aproximadamenteIgual(custoConsumo, custoEstoque / fator)
+    && aproximadamenteIgual(quantidadeEstoque, quantidadeConsumo / fator);
 }
 
 export async function salvarParametrosEconomicosDaDemanda(formData: FormData) {

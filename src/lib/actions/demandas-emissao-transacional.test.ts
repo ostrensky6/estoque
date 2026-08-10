@@ -124,7 +124,7 @@ async function emitir(
 }
 
 describe("emissão transacional", () => {
-  it("persiste via UMA chamada RPC e NÃO grava versão/parâmetros/status fora dela", async () => {
+  it("aceita proveniência completa e persiste via UMA chamada RPC", async () => {
     await expect(emitir()).rejects.toThrow("NEXT_REDIRECT:/orcamento/demandas/7?etapa=final");
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(rpcCall(0)[0]).toBe("emitir_orcamento_final_transacional");
@@ -180,6 +180,41 @@ describe("emissão transacional", () => {
 
     expect.soft(String(falha)).toMatch(/erro_emissao=/);
     expect.soft(rpc).not.toHaveBeenCalled();
+  });
+
+  it("recusa linha com insumo e proveniência vazia antes da RPC", async () => {
+    state.orcamentos = [{
+      ...orcamentoRevisado,
+      custo_snapshot: {
+        ...orcamentoRevisado.custo_snapshot,
+        linhas: [{ codigo_analise: "A1", reagentes: 10, proveniencia_dimensional: [] }],
+      },
+      orcamento_itens: [{
+        ...orcamentoRevisado.orcamento_itens[0],
+        valor_snapshot: { composicao: { reagentes: 10 }, proveniencia_dimensional: [] },
+      }],
+    }];
+
+    await expect(emitir()).rejects.toThrow(/erro_emissao=/);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("recusa proveniência dimensional incompleta antes da RPC", async () => {
+    const incompleta = { ...provenienciaDimensional, referencia_custo: "" };
+    state.orcamentos = [{
+      ...orcamentoRevisado,
+      custo_snapshot: {
+        ...orcamentoRevisado.custo_snapshot,
+        linhas: [{ codigo_analise: "A1", proveniencia_dimensional: [incompleta] }],
+      },
+      orcamento_itens: [{
+        ...orcamentoRevisado.orcamento_itens[0],
+        valor_snapshot: { proveniencia_dimensional: [incompleta] },
+      }],
+    }];
+
+    await expect(emitir()).rejects.toThrow(/erro_emissao=/);
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it("repassa a identidade de operacao fornecida antes da action", async () => {
