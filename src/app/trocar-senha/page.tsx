@@ -19,7 +19,7 @@ export default function TrocarSenhaPage() {
             alt="Kontrol App"
             width={1735}
             height={339}
-            className="h-auto w-52 object-contain"
+            className="h-auto w-52 object-contain dark:brightness-0 dark:invert"
             priority
             unoptimized
           />

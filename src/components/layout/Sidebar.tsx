@@ -56,7 +56,7 @@ function SidebarContent({
           alt="Kontrol App"
           width={1735}
           height={339}
-          className="h-auto w-40 max-w-full object-contain"
+          className="h-auto w-40 max-w-full object-contain dark:brightness-0 dark:invert"
           priority
           unoptimized
         />
@@ -121,13 +121,13 @@ function SidebarContent({
           alt="Kontrol"
           width={1735}
           height={339}
-          className="mx-auto h-auto w-28 max-w-full object-contain"
+          className="mx-auto h-auto w-28 max-w-full object-contain dark:brightness-0 dark:invert"
           unoptimized
         />
         <p className="mt-2 text-center text-[10px] leading-tight text-muted-foreground">
           Uma parceria GIA &amp; ATGC
         </p>
-        <div className="mx-auto mt-2 flex w-full max-w-36 items-center justify-between gap-6">
+        <div className="mx-auto mt-2 flex w-full max-w-36 items-center justify-center gap-3">
           <Image
             src="/logos/gia.svg"
             alt="GIA"
@@ -174,7 +174,7 @@ function CollapsedSidebar({
             alt="Kontrol App"
             width={1735}
             height={339}
-            className="h-9 w-auto max-w-none object-contain object-left"
+            className="h-9 w-auto max-w-none object-contain object-left dark:brightness-0 dark:invert"
             priority
             unoptimized
           />
@@ -279,7 +279,7 @@ export function Sidebar({
             alt="Kontrol App"
             width={1735}
             height={339}
-            className="h-9 w-auto max-w-32 object-contain"
+            className="h-9 w-auto max-w-32 object-contain dark:brightness-0 dark:invert"
             priority
             unoptimized
           />
