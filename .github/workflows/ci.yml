@@ -24,6 +24,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Definir base do versionamento
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            base="$PR_BASE_SHA"
+          else
+            base="$PUSH_BEFORE_SHA"
+          fi
+          if [ -z "$base" ] || [[ "$base" =~ ^0+$ ]]; then
+            echo "::error::SHA base ausente ou all-zero; versionamento nao pode ser comprovado."
+            exit 1
+          fi
+          echo "APP_VERSION_BASE_REF=$base" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v4
         with:
@@ -32,6 +51,11 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - name: Validar incremento da versao
+        run: |
+          npm run version:test
+          npm run version:check -- "$APP_VERSION_BASE_REF"
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chrome

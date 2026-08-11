@@ -1,41 +1,13 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import {
+  formatVersion,
+  nextVersion,
+  parseVersion,
+} from "./app-version.mjs";
 
 const appConfigPath = "src/config/app.ts";
 const baseRef = process.argv[2] ?? process.env.APP_VERSION_BASE_REF ?? "origin/main";
-const versionPattern = /export const APP_VERSION = "(\d+)\.(\d+)\.(\d+)";/;
-
-function parseVersion(source, label, { required = true } = {}) {
-  const match = source.match(versionPattern);
-  if (!match) {
-    if (!required) {
-      return null;
-    }
-
-    throw new Error(`APP_VERSION nao encontrado em ${label}.`);
-  }
-
-  const version = match.slice(1).map(Number);
-  if (!version.every(Number.isInteger)) {
-    throw new Error(`APP_VERSION invalido em ${label}: ${match[0]}`);
-  }
-
-  return version;
-}
-
-function formatVersion([major, minor, patch]) {
-  return `${major}.${minor}.${patch}`;
-}
-
-function compareVersions(current, base) {
-  for (let index = 0; index < current.length; index += 1) {
-    if (current[index] !== base[index]) {
-      return current[index] - base[index];
-    }
-  }
-
-  return 0;
-}
 
 let baseSource;
 try {
@@ -51,27 +23,45 @@ try {
 
 const currentSource = readFileSync(appConfigPath, "utf8");
 const currentVersion = parseVersion(currentSource, appConfigPath);
-const baseVersion = parseVersion(baseSource, `${baseRef}:${appConfigPath}`, {
-  required: false,
-});
-
-if (!baseVersion) {
-  console.log(
-    `APP_VERSION OK: ${formatVersion(currentVersion)} introduzido em ${appConfigPath}; a base ${baseRef} ainda nao possui APP_VERSION.`,
+let baseVersion;
+try {
+  baseVersion = parseVersion(baseSource, `${baseRef}:${appConfigPath}`);
+} catch (error) {
+  throw new Error(
+    `A base ${baseRef} nao possui APP_VERSION canonico; incremento exato nao pode ser comprovado.`,
+    { cause: error },
   );
-  process.exit(0);
 }
 
-const comparison = compareVersions(currentVersion, baseVersion);
-
-if (comparison <= 0) {
+const expectedVersion = formatVersion(nextVersion(baseVersion));
+const actualVersion = formatVersion(currentVersion);
+if (actualVersion !== expectedVersion) {
   throw new Error(
-    `APP_VERSION precisa ser incrementado para PRs de producao. Base: ${formatVersion(
-      baseVersion,
-    )}; atual: ${formatVersion(currentVersion)}.`,
+    `APP_VERSION deve avancar exatamente uma unidade. Base: ${formatVersion(baseVersion)}; esperado: ${expectedVersion}; atual: ${actualVersion}.`,
+  );
+}
+
+let changedPaths;
+try {
+  changedPaths = execFileSync(
+    "git",
+    ["diff", "--name-only", baseRef, "HEAD", "--"],
+    { encoding: "utf8" },
+  )
+    .split(/\r?\n/)
+    .filter(Boolean);
+} catch (error) {
+  throw new Error(`Nao foi possivel comparar os arquivos alterados com ${baseRef}.`, {
+    cause: error,
+  });
+}
+
+if (!changedPaths.some((path) => path !== appConfigPath)) {
+  throw new Error(
+    `APP_VERSION foi alterado sem nenhuma mudanca funcional alem de ${appConfigPath}.`,
   );
 }
 
 console.log(
-  `APP_VERSION OK: ${formatVersion(baseVersion)} -> ${formatVersion(currentVersion)}`,
+  `APP_VERSION OK: ${formatVersion(baseVersion)} -> ${actualVersion}`,
 );
