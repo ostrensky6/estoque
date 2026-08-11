@@ -14,7 +14,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { APP_NAME, APP_VERSION, APP_YEAR } from "@/config/app";
+import { APP_VERSION, APP_YEAR } from "@/config/app";
 
 const PAPEL_LABEL: Record<string, string> = {
   tecnico: "Técnico",
@@ -56,7 +56,7 @@ function SidebarContent({
           alt="Kontrol App"
           width={1735}
           height={339}
-          className="h-auto w-40 max-w-full object-contain"
+          className="h-auto w-40 max-w-full object-contain dark:brightness-0 dark:invert"
           priority
           unoptimized
         />
@@ -116,7 +116,18 @@ function SidebarContent({
       </div>
 
       <footer className="border-t border-border/70 px-4 py-3">
-        <div className="flex items-center justify-center gap-4">
+        <Image
+          src="/logos/kontrol-app.svg"
+          alt="Kontrol"
+          width={1735}
+          height={339}
+          className="mx-auto h-auto w-28 max-w-full object-contain dark:brightness-0 dark:invert"
+          unoptimized
+        />
+        <p className="mt-2 text-center text-[10px] leading-tight text-muted-foreground">
+          Uma parceria GIA &amp; ATGC
+        </p>
+        <div className="mx-auto mt-2 flex w-full max-w-36 items-center justify-center gap-3">
           <Image
             src="/logos/gia.svg"
             alt="GIA"
@@ -125,7 +136,6 @@ function SidebarContent({
             className="h-8 w-auto object-contain opacity-80 dark:opacity-100"
             unoptimized
           />
-          <span className="h-8 w-px bg-border" aria-hidden="true" />
           <Image
             src="/logos/atgc.svg"
             alt="ATGC"
@@ -135,13 +145,7 @@ function SidebarContent({
             unoptimized
           />
         </div>
-        <p className="mt-2 text-center text-[11px] font-medium leading-tight text-muted-foreground">
-          {APP_NAME}
-        </p>
-        <p className="text-center text-[10px] leading-tight text-muted-foreground">
-          Uma parceria GIA &amp; ATGC
-        </p>
-        <p className="mt-0.5 text-center text-[10px] leading-tight text-muted-foreground">
+        <p className="mt-2 text-center text-[10px] leading-tight text-muted-foreground">
           Versão {APP_VERSION} · {APP_YEAR}
         </p>
       </footer>
@@ -170,7 +174,7 @@ function CollapsedSidebar({
             alt="Kontrol App"
             width={1735}
             height={339}
-            className="h-9 w-auto max-w-none object-contain object-left"
+            className="h-9 w-auto max-w-none object-contain object-left dark:brightness-0 dark:invert"
             priority
             unoptimized
           />
@@ -275,7 +279,7 @@ export function Sidebar({
             alt="Kontrol App"
             width={1735}
             height={339}
-            className="h-9 w-auto max-w-32 object-contain"
+            className="h-9 w-auto max-w-32 object-contain dark:brightness-0 dark:invert"
             priority
             unoptimized
           />
