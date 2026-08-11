@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { KontrolLogo } from "@/components/brand/KontrolLogo";
@@ -15,7 +14,6 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { APP_VERSION, APP_YEAR } from "@/config/app";
 
 const PAPEL_LABEL: Record<string, string> = {
   tecnico: "Técnico",
@@ -31,7 +29,7 @@ function abrirPaletaComandos() {
   window.dispatchEvent(new Event("kontrol:open-command-palette"));
 }
 
-/** Conteúdo da barra (logo + navegação + rodapé), reutilizado no rail e no drawer. */
+/** Conteúdo da barra (logo + navegação + sessão), reutilizado no rail e no drawer. */
 function SidebarContent({
   groups,
   perfil,
@@ -110,37 +108,6 @@ function SidebarContent({
           </div>
         </div>
       </div>
-
-      <footer className="border-t border-border/70 px-4 py-3">
-        <KontrolLogo
-          alt="Kontrol"
-          className="mx-auto h-auto w-28 max-w-full object-contain"
-        />
-        <p className="mt-2 text-center text-[10px] leading-tight text-muted-foreground">
-          Uma parceria GIA &amp; ATGC
-        </p>
-        <div className="mx-auto mt-2 flex w-full max-w-36 items-center justify-center gap-3">
-          <Image
-            src="/logos/gia.svg"
-            alt="GIA"
-            width={1767}
-            height={1434}
-            className="h-8 w-auto object-contain opacity-80 dark:opacity-100"
-            unoptimized
-          />
-          <Image
-            src="/logos/atgc.svg"
-            alt="ATGC"
-            width={250}
-            height={250}
-            className="h-8 w-auto object-contain opacity-90"
-            unoptimized
-          />
-        </div>
-        <p className="mt-2 text-center text-[10px] leading-tight text-muted-foreground">
-          Versão {APP_VERSION} · {APP_YEAR}
-        </p>
-      </footer>
     </>
   );
 }
