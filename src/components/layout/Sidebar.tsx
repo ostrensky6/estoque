@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { KontrolLogo } from "@/components/brand/KontrolLogo";
 import { SideNav, type NavGroup } from "@/components/layout/SideNav";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { sair } from "@/lib/actions/auth";
@@ -51,14 +52,9 @@ function SidebarContent({
         onClick={onNavigate}
         className="flex items-center justify-center border-b border-border/70 px-4 py-4"
       >
-        <Image
-          src="/logos/kontrol-app.svg"
-          alt="Kontrol App"
-          width={1735}
-          height={339}
-          className="h-auto w-40 max-w-full object-contain dark:brightness-0 dark:invert"
-          priority
-          unoptimized
+        <KontrolLogo
+          className="h-auto w-40 max-w-full object-contain"
+          fetchPriority="high"
         />
       </Link>
 
@@ -116,13 +112,9 @@ function SidebarContent({
       </div>
 
       <footer className="border-t border-border/70 px-4 py-3">
-        <Image
-          src="/logos/kontrol-app.svg"
+        <KontrolLogo
           alt="Kontrol"
-          width={1735}
-          height={339}
-          className="mx-auto h-auto w-28 max-w-full object-contain dark:brightness-0 dark:invert"
-          unoptimized
+          className="mx-auto h-auto w-28 max-w-full object-contain"
         />
         <p className="mt-2 text-center text-[10px] leading-tight text-muted-foreground">
           Uma parceria GIA &amp; ATGC
@@ -169,14 +161,9 @@ function CollapsedSidebar({
         aria-label="Inicio"
       >
         <span className="h-9 w-9 overflow-hidden">
-          <Image
-            src="/logos/kontrol-app.svg"
-            alt="Kontrol App"
-            width={1735}
-            height={339}
-            className="h-9 w-auto max-w-none object-contain object-left dark:brightness-0 dark:invert"
-            priority
-            unoptimized
+          <KontrolLogo
+            className="h-9 w-auto max-w-none object-contain object-left"
+            fetchPriority="high"
           />
         </span>
       </Link>
@@ -274,14 +261,9 @@ export function Sidebar({
           href="/"
           className="flex items-center gap-2 font-bold tracking-tight text-foreground"
         >
-          <Image
-            src="/logos/kontrol-app.svg"
-            alt="Kontrol App"
-            width={1735}
-            height={339}
-            className="h-9 w-auto max-w-32 object-contain dark:brightness-0 dark:invert"
-            priority
-            unoptimized
+          <KontrolLogo
+            className="h-9 w-auto max-w-32 object-contain"
+            fetchPriority="high"
           />
         </Link>
         <Button

@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useActionState } from "react";
+import { KontrolLogo } from "@/components/brand/KontrolLogo";
 import { definirSenhaDefinitiva, sair } from "@/lib/actions/auth";
 import type { FormState } from "@/lib/actions/cadastros";
 
@@ -14,14 +14,9 @@ export default function TrocarSenhaPage() {
     <div className="app-canvas flex min-h-dvh items-center justify-center px-6 font-sans">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-lg ring-1 ring-foreground/5">
         <div className="flex justify-center">
-          <Image
-            src="/logos/kontrol-app.svg"
-            alt="Kontrol App"
-            width={1735}
-            height={339}
-            className="h-auto w-52 object-contain dark:brightness-0 dark:invert"
-            priority
-            unoptimized
+          <KontrolLogo
+            className="h-auto w-52 object-contain"
+            fetchPriority="high"
           />
         </div>
         <h1 className="mt-4 text-lg font-semibold text-foreground">Defina sua senha</h1>

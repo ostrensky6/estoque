@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useActionState } from "react";
+import { KontrolLogo } from "@/components/brand/KontrolLogo";
 import { entrar, solicitarRedefinicaoSenha } from "@/lib/actions/auth";
 import { SENHA_PROVISORIA } from "@/lib/auth/senha-provisoria";
 import type { FormState } from "@/lib/actions/cadastros";
@@ -27,23 +27,9 @@ export default function LoginPage() {
           className="rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl shadow-slate-950/10 dark:shadow-black/30"
         >
           <div className="flex justify-center">
-            <Image
-              src="/logos/kontrol-app.svg"
-              alt="Kontrol App"
-              width={1735}
-              height={339}
-              className="h-auto w-52 max-w-full object-contain dark:hidden"
+            <KontrolLogo
+              className="h-auto w-52 max-w-full object-contain"
               fetchPriority="high"
-              unoptimized
-            />
-            <Image
-              src="/logos/kontrol-app-dark.svg"
-              alt="Kontrol App"
-              width={1735}
-              height={339}
-              className="hidden h-auto w-52 max-w-full object-contain dark:block"
-              fetchPriority="high"
-              unoptimized
             />
           </div>
           <h1
