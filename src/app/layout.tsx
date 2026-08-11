@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { AppFooter } from "@/components/layout/AppFooter";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { ContextHelp } from "@/components/layout/ContextHelp";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
@@ -67,10 +68,17 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           {user ? (
-            <div className="md:flex md:min-h-dvh">
+            <div className="flex min-h-dvh flex-col md:flex-row">
               <Sidebar groups={sidebarGroups} perfil={perfil} userEmail={user.email ?? null} />
-              <div id="conteudo-principal" tabIndex={-1} className="min-w-0 flex-1 outline-none">
-                {children}
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div
+                  id="conteudo-principal"
+                  tabIndex={-1}
+                  className="min-w-0 flex-1 outline-none"
+                >
+                  {children}
+                </div>
+                <AppFooter />
               </div>
               <CommandPalette groups={commandGroups} />
               <ContextHelp />
