@@ -398,7 +398,12 @@ export function normalizePermissions(papel: string, permissoes: unknown): Record
 
 export function selectedPermissionsFromForm(formData: FormData, papel: string) {
   const submitted = formData.getAll("permissoes").map(String);
-  const selected = new Set(submitted.length > 0 ? submitted : defaultPermissionsForRole(papel));
+  const explicitamentePresentes = formData.get("permissoes_presentes") === "1";
+  const selected = new Set(
+    submitted.length > 0 || explicitamentePresentes
+      ? submitted
+      : defaultPermissionsForRole(papel),
+  );
   return Object.fromEntries(
     PERMISSOES.map((permissao) => [
       permissao.key,
