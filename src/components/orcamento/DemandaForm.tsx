@@ -351,6 +351,9 @@ export function DemandaForm({
             return (
             <div key={grupo.key} id={`grupo-card-${grupo.key}`} className="grid gap-2 rounded-md bg-muted/50 p-3 sm:grid-cols-5">
               <input type="hidden" name="grupo_key" value={grupo.key} />
+              {/* id do grupo existente: permite atualizar em vez de recriar,
+                  preservando o vínculo de demanda_analises.grupo_amostra_id */}
+              <input type="hidden" name="grupo_id" value={grupo.id ?? ""} />
               <div><label className={lbl}>Grupo</label><input name="grupo_identificacao" value={grupo.identificacao} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, identificacao: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
               <div className="sm:col-span-2"><label className={lbl}>Tipo/matriz</label><input name="grupo_tipo_matriz" value={grupo.tipo_matriz ?? ""} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, tipo_matriz: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
               <div><label className={lbl}>Quantidade</label><input name="grupo_quantidade" type="number" min="1" step="1" value={grupo.quantidade_amostras} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, quantidade_amostras: Number(event.target.value) || 1 } : item))} className={`${operationalInp} mt-1 w-full`} /></div>

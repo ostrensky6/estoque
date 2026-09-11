@@ -11,6 +11,13 @@ import { modalidadeExigeLaboratorio, modalidadeExigeProjeto } from "@/lib/orcame
 import { detectarCustosZero } from "@/lib/orcamento/proposta-final";
 import { planejarModulosProposta, type PlanoModulos } from "@/lib/orcamento/garantir-modulos";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
+import {
+  lerAnalisesSelecionadas,
+  lerGruposAmostras,
+  matrizesConcatenadas,
+  payloadSincronizacao,
+  totalAmostras,
+} from "@/lib/orcamento/grupos-amostras";
 import type { Json } from "@/lib/supabase/database.types";
 
 const listaPath = "/orcamento/demandas";
@@ -93,6 +100,9 @@ async function clienteSnapshot(clienteId: number | null) {
 export async function criarDemanda(formData: FormData) {
   await exigirPapelOrcamento("criar_demanda");
   const supabase = await createClient();
+  // Validação dos grupos e das análises antes de qualquer escrita.
+  const grupos = lerGruposAmostras(formData);
+  const analises = lerAnalisesSelecionadas(formData);
   const clienteId = numeroOuNull(formData, "cliente_id");
   const cliente = await clienteSnapshot(clienteId);
   const demanda = {
@@ -107,26 +117,37 @@ export async function criarDemanda(formData: FormData) {
     prioridade: texto(formData, "prioridade") || "normal",
     descricao: texto(formData, "descricao"),
     escopo_preliminar: texto(formData, "escopo_preliminar"),
-    matriz_amostra: texto(formData, "matriz_amostra"),
-    quantidade_amostras_estimada: numeroOuNull(formData, "quantidade_amostras_estimada"),
+    matriz_amostra:
+      grupos !== null && grupos.length > 0 ? matrizesConcatenadas(grupos) || null : texto(formData, "matriz_amostra"),
+    quantidade_amostras_estimada:
+      grupos !== null && grupos.length > 0
+        ? totalAmostras(grupos)
+        : numeroOuNull(formData, "quantidade_amostras_estimada"),
     prazo_tecnico_dias: numeroOuNull(formData, "prazo_tecnico_dias"),
     observacoes: texto(formData, "observacoes"),
   };
   const completude = snapshotCompletude(demanda);
 
-  const { data, error } = await supabase
-    .from("demandas_propostas")
-    .insert({
+  // Demanda, grupos e associações análise↔grupo numa única transação
+  // (`salvar_demanda_com_grupos`, migration 0105). Antes eram duas
+  // chamadas, e uma falha na segunda deixava a demanda sem grupos.
+  const { data, error } = await supabase.rpc("salvar_demanda_com_grupos" as never, {
+    p_demanda_id: null,
+    p_demanda: {
       ...demanda,
       completude_snapshot: completude,
       completude_atualizada_em: completude.atualizado_em,
-    })
-    .select("id")
-    .single();
+    },
+    p_grupos: payloadSincronizacao(grupos),
+    p_analises: analises,
+  } as never);
 
   if (error) throw new Error(error.message);
+  const demandaId = (data as { demanda_id?: number } | null)?.demanda_id;
+  if (!demandaId) throw new Error("A criação da demanda não foi confirmada pelo banco.");
+
   revalidatePath(listaPath);
-  redirect(`${listaPath}/${data.id}`);
+  redirect(`${listaPath}/${demandaId}`);
 }
 
 export async function criarDemandaCompleta(
@@ -156,6 +177,20 @@ export async function salvarDemanda(
   const clienteId = numeroOuNull(formData, "cliente_id");
   const cliente = await clienteSnapshot(clienteId);
 
+  // Os grupos são lidos e validados ANTES de qualquer escrita: se o
+  // formulário vier inconsistente, nada é gravado. Antes desta correção os
+  // campos de grupo eram simplesmente ignorados pelo servidor.
+  let grupos;
+  let analises;
+  try {
+    grupos = lerGruposAmostras(formData);
+    analises = lerAnalisesSelecionadas(formData);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Grupos de amostras inválidos.";
+    if (retornaEstado) return { ok: false, message };
+    throw new Error(message);
+  }
+
   const patch = {
     cliente_id: clienteId,
     projeto_id: numeroOuNull(formData, "projeto_id"),
@@ -173,25 +208,43 @@ export async function salvarDemanda(
     prioridade: texto(formData, "prioridade") || "normal",
     descricao: texto(formData, "descricao"),
     escopo_preliminar: texto(formData, "escopo_preliminar"),
-    matriz_amostra: texto(formData, "matriz_amostra"),
-    quantidade_amostras_estimada: numeroOuNull(formData, "quantidade_amostras_estimada"),
+    // Com grupos preenchidos, os dois campos legados passam a ser derivados
+    // no servidor, não recebidos prontos do formulário.
+    matriz_amostra:
+      grupos !== null && grupos.length > 0 ? matrizesConcatenadas(grupos) || null : texto(formData, "matriz_amostra"),
+    quantidade_amostras_estimada:
+      grupos !== null && grupos.length > 0
+        ? totalAmostras(grupos)
+        : numeroOuNull(formData, "quantidade_amostras_estimada"),
     prazo_tecnico_dias: numeroOuNull(formData, "prazo_tecnico_dias"),
     observacoes: texto(formData, "observacoes"),
   };
   const completude = snapshotCompletude(patch);
 
-  const { error } = await supabase
-    .from("demandas_propostas")
-    .update({
+  // Uma transação só: demanda, grupos e associações análise↔grupo.
+  const { data, error } = await supabase.rpc("salvar_demanda_com_grupos" as never, {
+    p_demanda_id: id,
+    p_demanda: {
       ...patch,
       completude_snapshot: completude,
       completude_atualizada_em: completude.atualizado_em,
-    })
-    .eq("id", id);
+    },
+    p_grupos: payloadSincronizacao(grupos),
+    p_analises: analises,
+  } as never);
+
   if (error) {
     if (retornaEstado) return { ok: false, message: error.message };
     throw new Error(error.message);
   }
+  // A RPC é SECURITY INVOKER: sob RLS negada, o UPDATE interno não acha a
+  // linha e a função levanta P0002. Ainda assim, retorno vazio não é sucesso.
+  if (!(data as { demanda_id?: number } | null)?.demanda_id) {
+    const message = "O banco não confirmou a gravação da demanda. Nada foi salvo.";
+    if (retornaEstado) return { ok: false, message };
+    throw new Error(message);
+  }
+
   revalidatePath(listaPath);
   revalidatePath(`${listaPath}/${id}`);
   if (retornaEstado) {

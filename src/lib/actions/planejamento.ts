@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, createClientUntyped } from "@/lib/supabase/server";
+import { garantirEscrita } from "@/lib/supabase/escrita";
 import { usuarioAtual } from "@/lib/auth/roles";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
 import type { FormState } from "./cadastros";
@@ -410,14 +411,20 @@ export async function adicionarItem(formData: FormData) {
   const repeticoes = Number(formData.get("repeticoes")) || 1;
   const perda = Number(formData.get("perda_percentual")) || 0;
   const supabase = await createClient();
-  await supabase.from("planejamento_itens").insert({
-    planejamento_id: planId,
-    codigo_analise: codigo,
-    n_amostras: n,
-    n_controles: controles,
-    repeticoes,
-    perda_percentual: perda,
-  });
+  // `.select()` é obrigatório: sob RLS uma escrita negada pode voltar sem
+  // `error` e sem nenhuma linha afetada. Só a linha retornada comprova.
+  const { data, error } = await supabase
+    .from("planejamento_itens")
+    .insert({
+      planejamento_id: planId,
+      codigo_analise: codigo,
+      n_amostras: n,
+      n_controles: controles,
+      repeticoes,
+      perda_percentual: perda,
+    })
+    .select("id");
+  garantirEscrita(error, data, "Não foi possível adicionar o item ao planejamento.");
   revalidatePath(`/planejamento/${planId}`);
 }
 
@@ -425,7 +432,12 @@ export async function removerItem(formData: FormData) {
   const id = Number(formData.get("item_id"));
   const planId = Number(formData.get("planejamento_id"));
   const supabase = await createClient();
-  await supabase.from("planejamento_itens").delete().eq("id", id);
+  const { data, error } = await supabase
+    .from("planejamento_itens")
+    .delete()
+    .eq("id", id)
+    .select("id");
+  garantirEscrita(error, data, "Não foi possível remover o item do planejamento.");
   revalidatePath(`/planejamento/${planId}`);
 }
 
@@ -558,10 +570,35 @@ export async function concluirPlano(
   return { ok: true, message: "Planejamento concluído." };
 }
 
-export async function excluirPlano(formData: FormData) {
+/**
+ * Exclusão física de planejamento.
+ *
+ * Passa pela RPC `excluir_planejamento_rascunho` (0104), que exige
+ * coordenador e recusa planos com reserva de insumo, reserva de
+ * equipamento, conferência de lote ou pedido interno vinculado — o DELETE
+ * direto apagava tudo isso por cascade, em nível técnico. Planos com
+ * vínculo devem ser cancelados, não excluídos.
+ *
+ * O redirect só acontece depois da confirmação; antes, a tela redirecionava
+ * mesmo quando a exclusão não tinha ocorrido.
+ */
+export async function excluirPlano(formData: FormData): Promise<void> {
   const id = Number(formData.get("planejamento_id"));
+  if (!id) throw new Error("Planejamento inválido.");
+
   const supabase = await createClient();
-  await supabase.from("planejamento").delete().eq("id", id);
+  const { data, error } = await supabase.rpc("excluir_planejamento_rascunho" as never, {
+    p_planejamento_id: id,
+  } as never);
+
+  if (error) throw new Error(error.message);
+  if (!data) {
+    throw new Error(
+      "A exclusão não foi confirmada pelo banco. O planejamento foi preservado.",
+    );
+  }
+
   revalidatePath("/planejamento");
+  revalidatePath(`/planejamento/${id}`);
   redirect("/planejamento");
 }

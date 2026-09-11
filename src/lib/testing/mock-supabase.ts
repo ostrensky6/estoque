@@ -285,6 +285,7 @@ const baseStore = (): Store => {
   orcamento_projeto_analises: [],
   orcamento_projeto_custos: [],
   demanda_analises: [],
+  demanda_grupos_amostras: [],
   projetos: [{ id: 1, nome: "Projeto E2E" }],
   clientes: [{ id: 1, nome: "Cliente Cadastrado", ativo: true }],
   analises: HISTORICAL_ANALISES,
@@ -793,6 +794,221 @@ function ajustarSaldoLote(args: Row) {
   if (Number(lote.quantidade_atual) <= 0) lote.status = "consumido";
 }
 
+/**
+ * Espelha `sincronizar_demanda_grupos` (migration 0104): substitui o
+ * conjunto de grupos da demanda de uma vez, com rollback em caso de falha.
+ */
+function sincronizarDemandaGrupos(args: Row) {
+  const demandaId = Number(args.p_demanda_id);
+  const grupos = Array.isArray(args.p_grupos) ? (args.p_grupos as Row[]) : [];
+  const backup = {
+    demanda_grupos_amostras: [...(store.demanda_grupos_amostras ?? [])],
+    demanda_analises: [...(store.demanda_analises ?? [])],
+  };
+
+  try {
+    const demanda = store.demandas_propostas?.find((row) => Number(row.id) === demandaId);
+    if (!demanda) throw new Error(`Demanda ${demandaId} nao encontrada`);
+
+    store.demanda_grupos_amostras = store.demanda_grupos_amostras ?? [];
+
+    // p_grupos null preserva (migration 0106); só [] remove todos.
+    if (args.p_grupos == null) {
+      const existentes = store.demanda_grupos_amostras.filter(
+        (row) => Number(row.demanda_id) === demandaId,
+      );
+      return {
+        demanda_id: demandaId,
+        grupos: existentes.length,
+        chaves: Object.fromEntries(existentes.map((r) => [String(r.identificacao), Number(r.id)])),
+        preservado: true,
+      };
+    }
+
+    const preservados: number[] = [];
+    const chaves: Record<string, number> = {};
+
+    grupos.forEach((grupo, indice) => {
+      const identificacao = String(grupo.identificacao ?? "").trim();
+      if (!identificacao) throw new Error(`Grupo na posicao ${indice + 1} sem identificacao`);
+      const quantidade = Number(grupo.quantidade_amostras);
+      if (!(quantidade > 0)) throw new Error(`Grupo "${identificacao}" com quantidade invalida`);
+
+      const payload = {
+        demanda_id: demandaId,
+        identificacao,
+        tipo_matriz: grupo.tipo_matriz ?? null,
+        quantidade_amostras: quantidade,
+        unidade: grupo.unidade ?? "amostras",
+        observacao: grupo.observacao ?? null,
+        ordem: indice + 1,
+      };
+
+      const idExistente = grupo.id == null ? null : Number(grupo.id);
+      let id: number;
+      if (idExistente != null) {
+        const atual = store.demanda_grupos_amostras.find(
+          (row) => Number(row.id) === idExistente && Number(row.demanda_id) === demandaId,
+        );
+        if (!atual) throw new Error(`Grupo ${idExistente} nao pertence a demanda ${demandaId}`);
+        Object.assign(atual, payload);
+        id = idExistente;
+      } else {
+        id = nextId("demanda_grupos_amostras");
+        store.demanda_grupos_amostras.push({ id, ...payload });
+      }
+      preservados.push(id);
+      if (grupo.chave) chaves[String(grupo.chave)] = id;
+    });
+
+    const removidos = store.demanda_grupos_amostras
+      .filter((row) => Number(row.demanda_id) === demandaId && !preservados.includes(Number(row.id)))
+      .map((row) => Number(row.id));
+
+    store.demanda_grupos_amostras = store.demanda_grupos_amostras.filter(
+      (row) => Number(row.demanda_id) !== demandaId || preservados.includes(Number(row.id)),
+    );
+
+    // espelha o "on delete set null" de demanda_analises.grupo_amostra_id
+    for (const linha of store.demanda_analises ?? []) {
+      if (removidos.includes(Number(linha.grupo_amostra_id))) linha.grupo_amostra_id = null;
+    }
+
+    return { demanda_id: demandaId, grupos: preservados.length, chaves };
+  } catch (error) {
+    store.demanda_grupos_amostras = backup.demanda_grupos_amostras;
+    store.demanda_analises = backup.demanda_analises;
+    throw error;
+  }
+}
+
+/**
+ * Espelha `salvar_demanda_com_grupos` (migration 0105): demanda, grupos e
+ * associações análise↔grupo numa operação só, com rollback total em falha.
+ */
+function salvarDemandaComGrupos(args: Row) {
+  const backup = {
+    demandas_propostas: (store.demandas_propostas ?? []).map((r) => ({ ...r })),
+    demanda_grupos_amostras: (store.demanda_grupos_amostras ?? []).map((r) => ({ ...r })),
+    demanda_analises: (store.demanda_analises ?? []).map((r) => ({ ...r })),
+  };
+
+  try {
+    const payload = (args.p_demanda ?? {}) as Row;
+    const idEntrada = args.p_demanda_id == null ? null : Number(args.p_demanda_id);
+    let demandaId: number;
+    let criada = false;
+
+    store.demandas_propostas = store.demandas_propostas ?? [];
+    if (idEntrada == null) {
+      demandaId = nextId("demandas_propostas");
+      store.demandas_propostas.push({
+        id: demandaId,
+        status: "nova",
+        modalidade: "analises",
+        prioridade: "normal",
+        data_solicitacao: new Date().toISOString().slice(0, 10),
+        ...payload,
+      });
+      criada = true;
+    } else {
+      const atual = store.demandas_propostas.find((r) => Number(r.id) === idEntrada);
+      if (!atual) throw new Error(`Demanda ${idEntrada} nao encontrada ou sem permissao de escrita.`);
+      for (const [chave, valor] of Object.entries(payload)) {
+        if (valor !== undefined) atual[chave] = valor;
+      }
+      demandaId = idEntrada;
+    }
+
+    const resGrupos = sincronizarDemandaGrupos({
+      p_demanda_id: demandaId,
+      p_grupos: args.p_grupos ?? [],
+    });
+    const chaves = (resGrupos.chaves ?? {}) as Record<string, number>;
+
+    let analisesGravadas = 0;
+    if (args.p_analises != null) {
+      const analises = Array.isArray(args.p_analises) ? (args.p_analises as Row[]) : [];
+      store.demanda_analises = (store.demanda_analises ?? []).filter(
+        (r) => Number(r.demanda_id) !== demandaId,
+      );
+      for (const item of analises) {
+        const codigo = String(item.codigo_analise ?? "").trim();
+        if (!codigo) throw new Error("Item de analise sem codigo.");
+        let grupoId: number | null = null;
+        const chave = item.grupo_chave ? String(item.grupo_chave) : "";
+        if (chave) {
+          if (chaves[chave] == null) {
+            throw new Error(
+              `Analise ${codigo} referencia o grupo "${chave}", que nao existe nesta demanda.`,
+            );
+          }
+          grupoId = chaves[chave];
+        }
+        store.demanda_analises.push({
+          id: nextId("demanda_analises"),
+          demanda_id: demandaId,
+          codigo_analise: codigo,
+          quantidade_amostras: Math.max(Number(item.quantidade_amostras) || 1, 1),
+          origem_quantidade: item.origem_quantidade ?? "manual",
+          status_custeio: item.status_custeio ?? "pendente",
+          grupo_amostra_id: grupoId,
+        });
+        analisesGravadas += 1;
+      }
+    }
+
+    return {
+      demanda_id: demandaId,
+      criada,
+      grupos: resGrupos.grupos,
+      chaves,
+      analises: analisesGravadas,
+    };
+  } catch (error) {
+    store.demandas_propostas = backup.demandas_propostas;
+    store.demanda_grupos_amostras = backup.demanda_grupos_amostras;
+    store.demanda_analises = backup.demanda_analises;
+    throw error;
+  }
+}
+
+/** Espelha `excluir_planejamento_rascunho` (migration 0104). */
+function excluirPlanejamentoRascunho(args: Row) {
+  const planId = Number(args.p_planejamento_id);
+  const plano = store.planejamento?.find((row) => Number(row.id) === planId);
+  if (!plano) throw new Error(`Planejamento ${planId} nao encontrado.`);
+  if (plano.status_operacional !== "rascunho") {
+    throw new Error(
+      `Somente planejamento em rascunho pode ser excluido. Status atual: ${plano.status_operacional}.`,
+    );
+  }
+
+  const vinculos = [
+    ["reservas", store.reservas_estoque],
+    ["equipamentos", store.equipamento_reservas],
+    ["pedidos internos", store.pedidos_internos],
+  ] as const;
+  for (const [rotulo, tabela] of vinculos) {
+    const total = (tabela ?? []).filter((row) => Number(row.planejamento_id) === planId).length;
+    if (total > 0) {
+      throw new Error(
+        `Planejamento ${planId} possui vinculos (${rotulo}: ${total}) e nao pode ser excluido fisicamente.`,
+      );
+    }
+  }
+
+  const itens = (store.planejamento_itens ?? []).filter(
+    (row) => Number(row.planejamento_id) === planId,
+  ).length;
+  store.planejamento_itens = (store.planejamento_itens ?? []).filter(
+    (row) => Number(row.planejamento_id) !== planId,
+  );
+  store.planejamento = (store.planejamento ?? []).filter((row) => Number(row.id) !== planId);
+
+  return { planejamento_id: planId, nome: plano.nome ?? null, itens_removidos: itens };
+}
+
 function sincronizarDemandaAnalises(args: Row) {
   const demandaId = Number(args.p_demanda_id);
   const itens = Array.isArray(args.p_itens) ? args.p_itens as Row[] : [];
@@ -938,13 +1154,37 @@ export function createMockSupabaseClient() {
     },
     from: (table: string) => new MockQuery(table),
     rpc: async (fn: string, args: Row) => {
-      if (fn === "receber_lote" || fn === "entrada_inventario") receiveLot(args);
-      if (fn === "aceitar_lote") setLotStatus(Number(args.p_lote_id), "aceito");
-      if (fn === "bloquear_lote") setLotStatus(Number(args.p_lote_id), "bloqueado");
-      if (fn === "desbloquear_lote") setLotStatus(Number(args.p_lote_id), "aceito");
-      if (fn === "descartar_lote") setLotStatus(Number(args.p_lote_id), "descartado");
-      if (fn === "baixa_manual_lote") baixarManualLote(args);
-      if (fn === "ajustar_saldo_lote") ajustarSaldoLote(args);
+      // Cada ramo devolve explicitamente. Antes eles apenas mutavam o
+      // estado e caíam no retorno permissivo do final — o que tornava
+      // indistinguível "simulado com sucesso" de "não simulado".
+      if (fn === "receber_lote" || fn === "entrada_inventario") {
+        receiveLot(args);
+        return { data: null, error: null };
+      }
+      if (fn === "aceitar_lote") {
+        setLotStatus(Number(args.p_lote_id), "aceito");
+        return { data: null, error: null };
+      }
+      if (fn === "bloquear_lote") {
+        setLotStatus(Number(args.p_lote_id), "bloqueado");
+        return { data: null, error: null };
+      }
+      if (fn === "desbloquear_lote") {
+        setLotStatus(Number(args.p_lote_id), "aceito");
+        return { data: null, error: null };
+      }
+      if (fn === "descartar_lote") {
+        setLotStatus(Number(args.p_lote_id), "descartado");
+        return { data: null, error: null };
+      }
+      if (fn === "baixa_manual_lote") {
+        baixarManualLote(args);
+        return { data: null, error: null };
+      }
+      if (fn === "ajustar_saldo_lote") {
+        ajustarSaldoLote(args);
+        return { data: null, error: null };
+      }
       if (fn === "sincronizar_demanda_analises") {
         try {
           return { data: sincronizarDemandaAnalises(args), error: null };
@@ -953,7 +1193,39 @@ export function createMockSupabaseClient() {
         }
       }
       if (fn === "emitir_orcamento_final_transacional") return { data: emitirOrcamentoFinalTransacional(args), error: null };
-      return { data: null, error: null };
+      if (fn === "sincronizar_demanda_grupos") {
+        try {
+          return { data: sincronizarDemandaGrupos(args), error: null };
+        } catch (error) {
+          return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
+        }
+      }
+      if (fn === "salvar_demanda_com_grupos") {
+        try {
+          return { data: salvarDemandaComGrupos(args), error: null };
+        } catch (error) {
+          return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
+        }
+      }
+      if (fn === "excluir_planejamento_rascunho") {
+        try {
+          return { data: excluirPlanejamentoRascunho(args), error: null };
+        } catch (error) {
+          return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
+        }
+      }
+      // Uma RPC sem simulação precisa falhar explicitamente. O fallback
+      // anterior (`{ data: null, error: null }`) devolvia sucesso para
+      // qualquer função desconhecida — inclusive para funções que não
+      // existem no banco — e tornava impossível um teste E2E falhar por
+      // causa de RPC. Ver RPCS_SIMULADAS para a lista coberta.
+      return {
+        data: null,
+        error: {
+          message: `RPC "${fn}" não tem simulação no mock. Implemente-a em mock-supabase.ts ou ajuste o teste; sucesso não é presumido.`,
+          code: "MOCK_RPC_NAO_SIMULADA",
+        },
+      };
     },
   };
 }
