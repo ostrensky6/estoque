@@ -30,6 +30,12 @@ import type { UsuarioRow } from "./UsuariosTable";
 
 const initial: FormState = { ok: false, message: "" };
 
+const permissoesPorModulo = new Map<string, typeof PERMISSOES>();
+for (const permissao of PERMISSOES) {
+  permissoesPorModulo.set(permissao.modulo, [...(permissoesPorModulo.get(permissao.modulo) ?? []), permissao]);
+}
+const GRUPOS_PERMISSOES = Array.from(permissoesPorModulo.entries());
+
 type DialogAberto = "editar" | "assinatura" | "senha" | "apagar" | "pre_aprovar" | null;
 
 function EditarDialog({
@@ -60,62 +66,95 @@ function EditarDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-3xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
+        <DialogHeader className="pr-8">
           <DialogTitle>Editar usuário</DialogTitle>
           <DialogDescription>{row.email}</DialogDescription>
         </DialogHeader>
-        <form action={handle} className="space-y-4">
+        <form action={handle} className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-4">
           <input type="hidden" name="id" value={row.id} />
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground">Nome</label>
-            <Input name="nome" defaultValue={row.nome === "—" ? "" : row.nome} className="mt-1" />
+          <input type="hidden" name="permissoes_presentes" value="1" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor={`editar-usuario-nome-${row.id}`} className="block text-xs font-medium text-muted-foreground">
+                Nome
+              </label>
+              <Input
+                id={`editar-usuario-nome-${row.id}`}
+                name="nome"
+                defaultValue={row.nome === "—" ? "" : row.nome}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label htmlFor={`editar-usuario-papel-${row.id}`} className="block text-xs font-medium text-muted-foreground">
+                Categoria
+              </label>
+              <Select
+                id={`editar-usuario-papel-${row.id}`}
+                name="papel"
+                value={papel}
+                onChange={(event) => setPapel(event.target.value)}
+                className="mt-1 h-9"
+              >
+                {PAPEIS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground">Categoria</label>
-            <Select name="papel" value={papel} onChange={(event) => setPapel(event.target.value)} className="mt-1 h-9">
-              {PAPEIS.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Permissões efetivas</p>
-            <div className="grid gap-2 md:grid-cols-2">
-              {PERMISSOES.map((permissao) => (
-                <label
-                  key={permissao.key}
-                  className="flex items-start gap-2 rounded-md border border-border p-2 text-xs"
-                >
-                  <Checkbox
-                    key={`${papel}-${permissao.key}`}
-                    name="permissoes"
-                    value={permissao.key}
-                    defaultChecked={Boolean(permissoes[permissao.key])}
-                    disabled={papel === "admin"}
-                    className="mt-0.5"
-                  />
-                  <span>
-                    <span className="block font-semibold text-foreground">
-                      {permissao.modulo} · {permissao.label}
+          <div className="min-h-0 overflow-y-auto pr-1">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Permissões efetivas</p>
+            <div className="space-y-2">
+              {GRUPOS_PERMISSOES.map(([modulo, permissoesModulo]) => (
+                <details key={modulo} className="rounded-md border border-border bg-background/50">
+                  <summary className="min-h-11 cursor-pointer px-3 py-3 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                    {modulo}
+                    <span className="float-right text-xs font-normal text-muted-foreground">
+                      {permissoesModulo.length} permissões
                     </span>
-                    <span className="block leading-4 text-muted-foreground">{permissao.descricao}</span>
-                  </span>
-                </label>
+                  </summary>
+                  <fieldset className="border-t border-border p-2">
+                    <legend className="sr-only">{modulo}</legend>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {permissoesModulo.map((permissao) => (
+                        <label
+                          key={permissao.key}
+                          className="flex items-start gap-2 rounded-md border border-border p-2 text-xs"
+                        >
+                          <Checkbox
+                            key={`${papel}-${permissao.key}`}
+                            name="permissoes"
+                            value={permissao.key}
+                            defaultChecked={Boolean(permissoes[permissao.key])}
+                            disabled={papel === "admin"}
+                            className="mt-0.5"
+                          />
+                          <span>
+                            <span className="block font-semibold text-foreground">{permissao.label}</span>
+                            <span className="block leading-4 text-muted-foreground">{permissao.descricao}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                </details>
               ))}
             </div>
             {papel === "admin" && (
-              <p className="text-xs text-muted-foreground">Administradores sempre recebem todas as permissões.</p>
+              <p className="mt-2 text-xs text-muted-foreground">Administradores sempre recebem todas as permissões.</p>
             )}
           </div>
-          {erro && <p className="text-xs text-danger-strong">{erro}</p>}
-          <DialogFooter>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Salvando…" : "Salvar"}
-            </Button>
-          </DialogFooter>
+          <div className="space-y-3 border-t border-border pt-4">
+            {erro && <p role="alert" className="text-xs text-danger-strong">{erro}</p>}
+            <DialogFooter>
+              <Button type="submit" disabled={pending} aria-busy={pending}>
+                {pending ? "Salvando…" : "Salvar"}
+              </Button>
+            </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
@@ -314,6 +353,7 @@ function ExcluirDialog({
 export function UsuarioAcoes({ row }: { row: UsuarioRow }) {
   const [dialog, setDialog] = useState<DialogAberto>(null);
   const [, startTransition] = useTransition();
+  const nomeAusente = row.temAcesso && row.nome === "—";
 
   function suspender() {
     const fd = new FormData();
@@ -323,10 +363,26 @@ export function UsuarioAcoes({ row }: { row: UsuarioRow }) {
   }
 
   return (
-    <div className="flex justify-end">
+    <div className="flex flex-col items-end justify-end gap-1 md:flex-row md:items-center">
+      {nomeAusente && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-11 md:h-8"
+          onClick={() => setDialog("editar")}
+        >
+          Completar nome
+        </Button>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Ações do usuário">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-11 w-11 md:h-8 md:w-8"
+            aria-label={`Ações de ${nomeAusente ? row.email : row.nome}`}
+          >
             <MoreHorizontal />
           </Button>
         </DropdownMenuTrigger>

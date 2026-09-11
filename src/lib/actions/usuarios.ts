@@ -5,7 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, mensagemErroAdminSupabase } from "@/lib/supabase/admin";
 import { temPapel, usuarioAtual } from "@/lib/auth/roles";
 import { APP_METADATA_SENHA_PROVISORIA, SENHA_PROVISORIA } from "@/lib/auth/senha-provisoria";
-import { PAPEIS, normalizePermissions, selectedPermissionsFromForm, type PapelUsuario } from "@/lib/auth/permissions";
+import {
+  PAPEIS,
+  normalizePermissions,
+  selectedPermissionsFromForm,
+  type PapelUsuario,
+} from "@/lib/auth/permissions";
 import type { FormState } from "./cadastros";
 
 const PAPEIS_VALIDOS = PAPEIS.map((papel) => papel.value);
@@ -21,8 +26,23 @@ function mensagemErroAcao(error: unknown) {
   return "Não foi possível concluir a operação administrativa.";
 }
 
+function mensagemErroExclusaoUsuario(error: { message?: string; code?: string } | null | undefined) {
+  const message = error?.message ?? "";
+
+  if (/storage|owns?\s+(storage\s+)?objects?|bucket/i.test(message)) {
+    return "Não foi possível excluir o usuário porque ele ainda possui arquivos no Storage. Reatribua ou remova esses arquivos e tente novamente.";
+  }
+  if (error?.code === "23503" || /database error deleting user|foreign key|constraint/i.test(message)) {
+    return "Não foi possível excluir o usuário porque ainda existem vínculos históricos não contemplados. Reatribua esses vínculos e tente novamente.";
+  }
+  return "Não foi possível excluir o usuário. A exclusão não foi confirmada; verifique vínculos e arquivos associados antes de tentar novamente.";
+}
+
 async function permissoesDaCategoria(papel: string, formData?: FormData) {
-  if (formData?.getAll("permissoes").length) {
+  if (
+    formData &&
+    (formData.get("permissoes_presentes") === "1" || formData.getAll("permissoes").length > 0)
+  ) {
     return selectedPermissionsFromForm(formData, papel);
   }
 
@@ -32,7 +52,7 @@ async function permissoesDaCategoria(papel: string, formData?: FormData) {
     .eq("papel", papel)
     .maybeSingle();
 
-  return normalizePermissions(papel, data?.permissoes);
+  return normalizePermissions(papel, papel === "admin" ? {} : data?.permissoes);
 }
 
 // ban "permanente" para suspensão; o GoTrue aceita uma duração em horas.
@@ -415,7 +435,7 @@ export async function excluirUsuario(_prev: FormState, formData: FormData): Prom
     if (eu?.id === id) return { ok: false, message: "Você não pode excluir o seu próprio usuário." };
 
     const { error } = await createAdminClient().auth.admin.deleteUser(id);
-    if (error) return { ok: false, message: mensagemErroAdminSupabase(error) };
+    if (error) return { ok: false, message: mensagemErroExclusaoUsuario(error) };
 
     revalidatePath("/usuarios");
     return { ok: true, message: `Usuário ${email || ""} excluído.` };

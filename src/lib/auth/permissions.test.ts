@@ -55,4 +55,20 @@ describe("permissoes reconciliadas", () => {
 
     expect(Object.values(selectedPermissionsFromForm(formData, "admin")).every(Boolean)).toBe(true);
   });
+
+  it("distingue zero permissoes explicitas de formulario sem sentinel", () => {
+    const explicitamenteVazio = new FormData();
+    explicitamenteVazio.set("permissoes_presentes", "1");
+    const semFormularioExplicito = new FormData();
+
+    expect(
+      Object.values(selectedPermissionsFromForm(explicitamenteVazio, "tecnico")).every(
+        (enabled) => enabled === false,
+      ),
+    ).toBe(true);
+    expect(selectedPermissionsFromForm(semFormularioExplicito, "tecnico")).toMatchObject(
+      normalizePermissions("tecnico", {}),
+    );
+    expect(Object.values(selectedPermissionsFromForm(explicitamenteVazio, "admin")).every(Boolean)).toBe(true);
+  });
 });
