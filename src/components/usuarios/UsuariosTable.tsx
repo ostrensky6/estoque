@@ -31,7 +31,16 @@ function statusTexto(row: UsuarioRow) {
 }
 
 const columns: ColumnDef<UsuarioRow, unknown>[] = [
-  { accessorKey: "nome", header: "Usuário" },
+  {
+    accessorKey: "nome",
+    header: "Usuário",
+    cell: ({ row }) =>
+      row.original.nome === "—" ? (
+        <span className="font-medium text-warning-strong">Nome não informado</span>
+      ) : (
+        row.original.nome
+      ),
+  },
   { accessorKey: "email", header: "E-mail" },
   { accessorKey: "papelLabel", header: "Categoria", filterFn: "equalsString" },
   {
@@ -71,8 +80,11 @@ export function UsuariosTable({ rows }: { rows: UsuarioRow[] }) {
           options: PAPEIS.map((papel) => ({ value: papel.label, label: papel.label })),
         },
       ]}
-      getMobileTitle={(row) => row.nome}
+      getMobileTitle={(row) =>
+        row.nome === "—" ? <span className="text-warning-strong">Nome não informado</span> : row.nome
+      }
       getMobileDescription={(row) => `${row.email} · ${row.papelLabel} · ${statusTexto(row)}`}
+      getMobileMeta={(row) => <UsuarioAcoes row={row} />}
     />
   );
 }

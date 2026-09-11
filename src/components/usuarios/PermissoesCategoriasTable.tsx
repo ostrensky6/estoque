@@ -87,6 +87,7 @@ export function PermissoesCategoriasTable({ permissoesPorCategoria }: { permisso
           {categoria && (
             <form action={action} className="space-y-4">
               <input type="hidden" name="papel" value={categoria.value} />
+              <input type="hidden" name="permissoes_presentes" value="1" />
               <div className="grid gap-2 md:grid-cols-2">
                 {PERMISSOES.map((permissao) => (
                   <label key={permissao.key} className="flex items-start gap-2 rounded-md border border-border p-2 text-xs">
