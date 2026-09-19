@@ -36,6 +36,7 @@ export type LoteRow = {
   statusLabel: string;
   vencido: boolean;
   critico: boolean;
+  estornoDiretoPermitido: boolean;
 };
 
 function SaldoStatusBadge({ status, label }: { status: SaldoRow["status"]; label: string }) {
@@ -64,7 +65,7 @@ function LoteStatusBadge({ status, label }: { status: string; label: string }) {
   return <Badge className={className}>{label}</Badge>;
 }
 
-const saldoColumns: ColumnDef<SaldoRow, unknown>[] = [
+const saldoColumns = (entradaInicialInsumoId?: number): ColumnDef<SaldoRow, unknown>[] => [
   {
     accessorKey: "especificacao",
     header: "Reagente",
@@ -147,6 +148,7 @@ const saldoColumns: ColumnDef<SaldoRow, unknown>[] = [
         insumoId={row.original.insumoId}
         especificacao={row.original.especificacao}
         unidade={row.original.unidade === "—" ? null : row.original.unidade}
+        abertoInicial={row.original.insumoId === entradaInicialInsumoId}
       />
     ),
   },
@@ -206,6 +208,7 @@ const lotesColumns = (
         quantidadeAtual={row.original.quantidadeAtual}
         unidade={row.original.unidade}
         critico={row.original.critico}
+        estornoDiretoPermitido={row.original.estornoDiretoPermitido}
         podeAceitar={podeAceitar}
         podeGerir={podeGerir}
       />
@@ -213,30 +216,41 @@ const lotesColumns = (
   },
 ];
 
-export function SaldoTable({ rows }: { rows: SaldoRow[] }) {
+export function SaldoTable({
+  rows,
+  entradaInicialInsumoId,
+}: {
+  rows: SaldoRow[];
+  entradaInicialInsumoId?: number;
+}) {
   return (
-    <DataTable
-      data={rows}
-      columns={saldoColumns}
-      searchPlaceholder="Buscar reagente..."
-      emptyText="Nenhum saldo encontrado."
-      filters={[
-        {
-          columnId: "statusLabel",
-          label: "Status",
-          options: [
-            { value: "OK", label: "OK" },
-            { value: "Repor", label: "Repor" },
-            { value: "Sem estoque", label: "Sem estoque" },
-          ],
-        },
-      ]}
-      getMobileTitle={(row) => row.especificacao}
-      getMobileDescription={(row) =>
-        `${row.disponivel} ${row.unidade} disponível · cobertura ${row.diasCobertura != null ? `${fmt(row.diasCobertura)} d` : "—"} · ponto sugerido ${row.pontoSugerido || "—"}`
-      }
-      getMobileMeta={(row) => <SaldoStatusBadge status={row.status} label={row.statusLabel} />}
-    />
+    <div>
+      <p className="mb-2 text-xs text-muted-foreground">
+        Os saldos são calculados a partir dos lotes e não são campos do cadastro do insumo.
+      </p>
+      <DataTable
+        data={rows}
+        columns={saldoColumns(entradaInicialInsumoId)}
+        searchPlaceholder="Buscar reagente..."
+        emptyText="Nenhum saldo encontrado."
+        filters={[
+          {
+            columnId: "statusLabel",
+            label: "Status",
+            options: [
+              { value: "OK", label: "OK" },
+              { value: "Repor", label: "Repor" },
+              { value: "Sem estoque", label: "Sem estoque" },
+            ],
+          },
+        ]}
+        getMobileTitle={(row) => row.especificacao}
+        getMobileDescription={(row) =>
+          `${row.disponivel} ${row.unidade} disponível · cobertura ${row.diasCobertura != null ? `${fmt(row.diasCobertura)} d` : "—"} · ponto sugerido ${row.pontoSugerido || "—"}`
+        }
+        getMobileMeta={(row) => <SaldoStatusBadge status={row.status} label={row.statusLabel} />}
+      />
+    </div>
   );
 }
 

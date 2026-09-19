@@ -46,9 +46,24 @@ const ALERTA_META: Record<string, { label: string; cls: string }> = {
   quarentena: { label: "Quarentena", cls: "bg-info-soft text-info-strong" },
 };
 
-export default async function EstoquePage() {
+export default async function EstoquePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ entrada?: string | string[] }>;
+}) {
+  const query = await searchParams;
+  const entrada = Array.isArray(query.entrada) ? query.entrada[0] : query.entrada;
+  const entradaInicialInsumoId = /^\d+$/.test(entrada ?? "") ? Number(entrada) : undefined;
   const supabase = await createClient();
-  const [{ data: saldo }, { data: alertas }, { data: lotes }, { data: previsao }, { data: custos }] = await Promise.all([
+  const [
+    { data: saldo },
+    { data: alertas },
+    { data: lotes },
+    { data: previsao },
+    { data: custos },
+    { data: vinculosCompra, error: vinculosCompraError },
+    { data: vinculosInternos, error: vinculosInternosError },
+  ] = await Promise.all([
     supabase.from("v_estoque_saldo").select("*").order("especificacao"),
     supabase.from("v_alertas_estoque").select("*"),
     supabase
@@ -58,6 +73,8 @@ export default async function EstoquePage() {
       .order("validade", { nullsFirst: false }),
     supabase.from("v_previsao_suprimentos").select("*"),
     supabase.from("v_custo_estoque_vigente").select("*").order("especificacao"),
+    supabase.from("pedidos_compra_item_recebimentos").select("lote_id"),
+    supabase.from("pedidos_internos_item_recebimentos").select("lote_id"),
   ]);
   const [podeAceitar, podeGerir] = await Promise.all([
     temPapel("coordenador"),
@@ -76,6 +93,11 @@ export default async function EstoquePage() {
   const custosDivergentes = ((custos ?? []) as CustoEstoque[])
     .filter((custo) => custo.situacao === "divergente" || custo.situacao === "sem_custo_padrao")
     .sort((a, b) => Math.abs(Number(b.divergencia_percentual ?? 0)) - Math.abs(Number(a.divergencia_percentual ?? 0)));
+  const origemEstornoComprovada = !vinculosCompraError && !vinculosInternosError;
+  const lotesVinculados = new Set([
+    ...(vinculosCompra ?? []).map((recebimento) => Number(recebimento.lote_id)),
+    ...(vinculosInternos ?? []).map((recebimento) => Number(recebimento.lote_id)),
+  ]);
   const saldoRows: SaldoRow[] = (saldo ?? []).map((s) => {
     const prev = previsaoMap.get(s.insumo_id);
     const pontoReposicao = Number(s.ponto_reposicao ?? 0);
@@ -121,6 +143,8 @@ export default async function EstoquePage() {
       statusLabel: LOTE_STATUS[l.status] ?? l.status,
       vencido: validadeEfetiva != null && new Date(validadeEfetiva) < hoje,
       critico: ins?.categoria_compra === "critico",
+      estornoDiretoPermitido:
+        origemEstornoComprovada && !lotesVinculados.has(Number(l.id)),
     };
   });
 
@@ -199,7 +223,7 @@ export default async function EstoquePage() {
         </section>
 
         <div className="mt-8">
-          <SaldoTable rows={saldoRows} />
+          <SaldoTable rows={saldoRows} entradaInicialInsumoId={entradaInicialInsumoId} />
         </div>
         <p className="mt-3 text-xs text-muted-foreground/80">
           {saldoRows.length} reagentes · previsão usa consumo dos últimos{" "}

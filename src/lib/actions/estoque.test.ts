@@ -3,6 +3,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const rpc = vi.fn();
 const single = vi.fn();
 const revalidatePath = vi.fn();
+let origemLote: Record<string, { data: Array<{ id: number }>; error: { message: string } | null }>;
+const from = vi.fn((table: string) => {
+  if (table === "insumos") {
+    return {
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({ single })),
+      })),
+    };
+  }
+  return {
+    select: vi.fn(() => ({
+      eq: vi.fn(() => ({
+        limit: vi.fn(async () => origemLote[table]),
+      })),
+    })),
+  };
+});
 
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("@/lib/auth/roles", () => ({
@@ -11,13 +28,7 @@ vi.mock("@/lib/auth/roles", () => ({
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
     rpc,
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single,
-        })),
-      })),
-    })),
+    from,
   })),
 }));
 
@@ -26,6 +37,11 @@ describe("actions de estoque", () => {
     rpc.mockReset();
     single.mockReset();
     single.mockResolvedValue({ data: { categoria_compra: "operacional" }, error: null });
+    from.mockClear();
+    origemLote = {
+      pedidos_compra_item_recebimentos: { data: [], error: null },
+      pedidos_internos_item_recebimentos: { data: [], error: null },
+    };
     revalidatePath.mockReset();
   });
 
@@ -141,5 +157,87 @@ describe("actions de estoque", () => {
       p_quantidade_nova: 8,
       p_motivo: "contagem cíclica",
     });
+  });
+
+  it("estorna uma entrada pela RPC auditavel e revalida o estoque", async () => {
+    rpc.mockResolvedValue({ error: null });
+    const { estornarRecebimentoLote } = await import("./estoque");
+    const formData = new FormData();
+    formData.set("lote_id", "9");
+    formData.set("motivo", "quantidade digitada incorretamente");
+
+    const result = await estornarRecebimentoLote({ ok: false }, formData);
+
+    expect(result).toEqual({ ok: true, message: "Entrada estornada." });
+    expect(rpc).toHaveBeenCalledWith("estornar_recebimento_lote", {
+      p_lote_id: 9,
+      p_motivo: "quantidade digitada incorretamente",
+    });
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(from).toHaveBeenCalledWith("pedidos_compra_item_recebimentos");
+    expect(from).toHaveBeenCalledWith("pedidos_internos_item_recebimentos");
+    expect(revalidatePath).toHaveBeenCalledWith("/estoque");
+    expect(revalidatePath).toHaveBeenCalledWith("/estoque/lotes/9");
+  });
+
+  it.each([
+    "pedidos_compra_item_recebimentos",
+    "pedidos_internos_item_recebimentos",
+  ])("recusa no servidor lote vinculado em %s", async (table) => {
+    rpc.mockResolvedValue({ error: null });
+    origemLote[table] = { data: [{ id: 41 }], error: null };
+    const { estornarRecebimentoLote } = await import("./estoque");
+    const formData = new FormData();
+    formData.set("lote_id", "9");
+    formData.set("motivo", "quantidade digitada incorretamente");
+
+    const result = await estornarRecebimentoLote({ ok: false }, formData);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Este lote pertence a um recebimento vinculado. Faça o estorno pelo fluxo de Recebimento para reconciliar pedidos e histórico.",
+    });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("repete a recusa de lote vinculado sem chamar a primitiva", async () => {
+    rpc.mockResolvedValue({ error: null });
+    origemLote.pedidos_internos_item_recebimentos = { data: [{ id: 42 }], error: null };
+    const { estornarRecebimentoLote } = await import("./estoque");
+    const formData = new FormData();
+    formData.set("lote_id", "9");
+    formData.set("motivo", "quantidade digitada incorretamente");
+
+    const primeira = await estornarRecebimentoLote({ ok: false }, formData);
+    const segunda = await estornarRecebimentoLote({ ok: false }, formData);
+
+    expect(primeira).toEqual(segunda);
+    expect(primeira.ok).toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("nao inicia estorno sem motivo auditavel", async () => {
+    const { estornarRecebimentoLote } = await import("./estoque");
+    const formData = new FormData();
+    formData.set("lote_id", "9");
+
+    const result = await estornarRecebimentoLote({ ok: false }, formData);
+
+    expect(result.ok).toBe(false);
+    expect(result.errors?.motivo).toBe("Obrigatório");
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("nao mascara a negativa de autorizacao ao estornar", async () => {
+    rpc.mockResolvedValue({ error: { message: "Acesso negado." } });
+    const { estornarRecebimentoLote } = await import("./estoque");
+    const formData = new FormData();
+    formData.set("lote_id", "9");
+    formData.set("motivo", "quantidade digitada incorretamente");
+
+    const result = await estornarRecebimentoLote({ ok: false }, formData);
+
+    expect(result).toEqual({ ok: false, message: "Acesso negado." });
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

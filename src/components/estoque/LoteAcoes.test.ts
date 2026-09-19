@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(new URL("./LoteAcoes.tsx", import.meta.url), "utf8");
+const tables = readFileSync(new URL("./EstoqueTables.tsx", import.meta.url), "utf8");
+const page = readFileSync(new URL("../../app/estoque/page.tsx", import.meta.url), "utf8");
 const resultadoDaAcao =
   /(?:const|let)\s+(\w+)\s*=\s*await\s+[\w.]+\(\s*(?!\{)[^,\r\n]+\)\s*;/.exec(source);
 const nomeResultado = resultadoDaAcao?.[1] ?? "";
@@ -32,5 +34,15 @@ describe("LoteAcoes", () => {
 
     expect(antesDaAcao).toMatch(/if\s*\([^)]*\)\s*(?:\{[\s\S]*?\breturn\b|return\s*;)/);
     expect(source).toMatch(/<button[\s\S]{0,500}disabled=\{[^}]+\}[\s\S]{0,500}onClick=/);
+  });
+
+  it("expoe estorno auditavel somente com origem avulsa comprovada", () => {
+    expect(source).toContain("estornarRecebimentoLote");
+    expect(source).toMatch(/status\s*===\s*"quarentena"\s*&&\s*podeAceitar[\s\S]+estornoDiretoPermitido[\s\S]+Estornar entrada/);
+    expect(source).toMatch(/modal\s*===\s*"estornar"[\s\S]+runState\(estornarRecebimentoLote/);
+    expect(tables).toContain("estornoDiretoPermitido={row.original.estornoDiretoPermitido}");
+    expect(page).toContain('from("pedidos_compra_item_recebimentos")');
+    expect(page).toContain('from("pedidos_internos_item_recebimentos")');
+    expect(page).toContain("estornoDiretoPermitido:");
   });
 });

@@ -11,6 +11,7 @@ export type FormState = {
   ok: boolean;
   message?: string;
   errors?: Record<string, string>;
+  createdId?: number;
 };
 
 export type ImportCadastroResumo = {
@@ -293,14 +294,27 @@ export async function salvarRegistro(
   const supabase = await createClientUntyped();
   const payload = parsed.data;
 
-  const res = id
-    ? await supabase.from(tabela).update(payload).eq("id", id)
-    : await supabase.from(tabela).insert(payload);
+  if (id) {
+    const { error } = await supabase.from(tabela).update(payload).eq("id", id);
+    if (error) return { ok: false, message: error.message };
 
-  if (res.error) return { ok: false, message: res.error.message };
+    revalidarDependentes(slug);
+    return { ok: true, message: "Atualizado." };
+  }
+
+  const { data, error } = await supabase.from(tabela).insert(payload).select("id").single();
+  if (error) return { ok: false, message: error.message };
+
+  const createdId = data?.id;
+  if (typeof createdId !== "number" || !Number.isSafeInteger(createdId) || createdId <= 0) {
+    return {
+      ok: false,
+      message: "Não foi possível confirmar o identificador do registro criado.",
+    };
+  }
 
   revalidarDependentes(slug);
-  return { ok: true, message: id ? "Atualizado." : "Criado." };
+  return { ok: true, message: "Criado.", createdId };
 }
 
 export async function excluirRegistro(

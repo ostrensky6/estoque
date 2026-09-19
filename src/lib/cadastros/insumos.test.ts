@@ -47,10 +47,24 @@ describe("totais de unidades de insumos", () => {
       "Item específico / SKU",
       "Marca / fabricante",
       "Unidade",
-      "Unidades fechadas",
-      "Unidades abertas",
+      "Unidades fechadas (calculado)",
+      "Unidades abertas (calculado)",
     ]);
     expect(headers).not.toContain("Tipo técnico");
     expect(headers).not.toContain("Código interno");
+  });
+
+  it("marca os totais de lotes como calculados e fora do formulario", () => {
+    expect(CADASTROS.insumos.colunas.find((coluna) => coluna.key === "unidades_fechadas")).toMatchObject({
+      label: "Unidades fechadas (calculado)",
+      calculada: true,
+    });
+    expect(CADASTROS.insumos.colunas.find((coluna) => coluna.key === "unidades_abertas")).toMatchObject({
+      label: "Unidades abertas (calculado)",
+      calculada: true,
+    });
+    expect(CADASTROS.insumos.campos.map((campo) => campo.name)).not.toEqual(
+      expect.arrayContaining(["unidades_fechadas", "unidades_abertas"]),
+    );
   });
 });
