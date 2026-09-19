@@ -200,8 +200,8 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       { key: "especificacao", label: "Item específico / SKU", largura: "lg" },
       { key: "fabricante", label: "Marca / fabricante", largura: "sm" },
       { key: "unidade", label: "Unidade", largura: "xs" },
-      { key: "unidades_fechadas", label: "Unidades fechadas", tipo: "number", alinhar: "right", largura: "sm", calculada: true },
-      { key: "unidades_abertas", label: "Unidades abertas", tipo: "number", alinhar: "right", largura: "sm", calculada: true },
+      { key: "unidades_fechadas", label: "Unidades fechadas (calculado)", tipo: "number", alinhar: "right", largura: "sm", calculada: true },
+      { key: "unidades_abertas", label: "Unidades abertas (calculado)", tipo: "number", alinhar: "right", largura: "sm", calculada: true },
       { key: "custo_unitario", label: "Custo un.", tipo: "currency", alinhar: "right", largura: "sm", calculada: true },
       { key: "data_validade", label: "Validade", tipo: "date", largura: "sm" },
       { key: "ponto_reposicao", label: "Repos.", tipo: "number", alinhar: "right", largura: "xs" },
@@ -210,8 +210,8 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       { key: "especificacao", label: "Item específico / SKU" },
       { key: "fabricante", label: "Marca / fabricante" },
       { key: "unidade", label: "Unidade" },
-      { key: "unidades_fechadas", label: "Unidades fechadas", tipo: "number", calculada: true },
-      { key: "unidades_abertas", label: "Unidades abertas", tipo: "number", calculada: true },
+      { key: "unidades_fechadas", label: "Unidades fechadas (calculado)", tipo: "number", calculada: true },
+      { key: "unidades_abertas", label: "Unidades abertas (calculado)", tipo: "number", calculada: true },
     ],
     campos: [
       {

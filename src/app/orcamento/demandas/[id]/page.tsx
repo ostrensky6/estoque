@@ -8,13 +8,13 @@ import {
   emitirOrcamentoFinalDaDemanda,
   gerarOrcamentoAnalisesDaDemanda,
   gerarOrcamentoProjetoDaDemanda,
-  salvarDemanda,
 } from "@/lib/actions/demandas";
 import { planejarModulosProposta, type PlanoModulo } from "@/lib/orcamento/garantir-modulos";
 import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
 import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
 import { PainelParametrosEconomicos } from "@/components/orcamento/PainelParametrosEconomicos";
+import { SalvarDemandaForm } from "@/components/orcamento/SalvarDemandaForm";
 import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
 import { montarEtapasProposta, ORDEM_ETAPAS, type EtapaId } from "@/lib/orcamento/etapas-proposta";
@@ -865,7 +865,7 @@ export default async function DemandaDetalhe({
               {completudeDemanda.completa ? "Completa" : `${completudeDemanda.faltante}% faltante`}
             </span>
           </div>
-          <form action={salvarDemanda} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <SalvarDemandaForm>
             <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
             <div className="sm:col-span-2">
               <label className={lbl}>Título</label>
@@ -973,12 +973,7 @@ export default async function DemandaDetalhe({
               <label className={lbl}>Observações</label>
               <textarea {...hydrationSafe} name="observacoes" rows={3} defaultValue={demanda.observacoes ?? ""} className={`${inp} mt-1 w-full`} />
             </div>
-            <div className="sm:col-span-2">
-              <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                Salvar demanda
-              </button>
-            </div>
-          </form>
+          </SalvarDemandaForm>
         </section>
 
         <section id="historico" className={`mt-6 scroll-mt-20 rounded-lg border border-border bg-card p-4 shadow-sm ${passo("historico")}`}>

@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidatePath = vi.fn();
+const single = vi.fn();
+const select = vi.fn(() => ({ single }));
 const insert = vi.fn();
+const eq = vi.fn();
 const update = vi.fn();
 const from = vi.fn(() => ({ insert, update }));
 
@@ -29,14 +32,25 @@ function formInsumo(overrides: Record<string, string> = {}) {
   return formData;
 }
 
+function formInsumoExistente(id: number) {
+  const formData = formInsumo();
+  formData.set("_id", String(id));
+  return formData;
+}
+
 describe("cadastro de insumos", () => {
   beforeEach(() => {
     revalidatePath.mockReset();
     from.mockClear();
     insert.mockReset();
     update.mockReset();
-    insert.mockResolvedValue({ error: null });
-    update.mockResolvedValue({ error: null });
+    select.mockClear();
+    single.mockReset();
+    eq.mockReset();
+    insert.mockReturnValue({ select });
+    update.mockReturnValue({ eq });
+    single.mockResolvedValue({ data: { id: 321 }, error: null });
+    eq.mockResolvedValue({ error: null });
   });
 
   it("bloqueia fator de conversao zero ou negativo", async () => {
@@ -61,7 +75,7 @@ describe("cadastro de insumos", () => {
     const { salvarRegistro } = await import("./cadastros");
     const result = await salvarRegistro({ ok: false }, formInsumo());
 
-    expect(result).toEqual({ ok: true, message: "Criado." });
+    expect(result).toEqual({ ok: true, message: "Criado.", createdId: 321 });
     expect(from).toHaveBeenCalledWith("insumos");
     expect(insert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -73,5 +87,49 @@ describe("cadastro de insumos", () => {
         custo_unitario: 5,
       }),
     );
+    expect(select).toHaveBeenCalledWith("id");
+    expect(single).toHaveBeenCalledOnce();
+    expect(insert).toHaveBeenCalledOnce();
+  });
+
+  it("não retorna ID quando a criação falha", async () => {
+    single.mockResolvedValue({ data: null, error: { message: "Falha ao criar." } });
+    const { salvarRegistro } = await import("./cadastros");
+
+    const result = await salvarRegistro({ ok: false }, formInsumo());
+
+    expect(result).toEqual({ ok: false, message: "Falha ao criar." });
+    expect(result).not.toHaveProperty("createdId");
+    expect(insert).toHaveBeenCalledOnce();
+  });
+
+  it("não inventa criação ao atualizar", async () => {
+    const { salvarRegistro } = await import("./cadastros");
+
+    const result = await salvarRegistro({ ok: false }, formInsumoExistente(321));
+
+    expect(result).toEqual({ ok: true, message: "Atualizado." });
+    expect(result).not.toHaveProperty("createdId");
+    expect(update).toHaveBeenCalledOnce();
+    expect(eq).toHaveBeenCalledWith("id", 321);
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["ausente", null],
+    ["malformado", { id: "321" }],
+  ])("falha fechada quando o ID criado é %s", async (_caso, data) => {
+    single.mockResolvedValue({ data, error: null });
+    const { salvarRegistro } = await import("./cadastros");
+
+    const result = await salvarRegistro({ ok: false }, formInsumo());
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Não foi possível confirmar o identificador do registro criado.",
+    });
+    expect(result).not.toHaveProperty("createdId");
+    expect(insert).toHaveBeenCalledOnce();
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

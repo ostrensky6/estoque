@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   type ColumnDef,
@@ -407,6 +408,14 @@ export function CrudShell({
         </Button>
       </div>
 
+      {slug === "insumos" && (
+        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+          Unidades fechadas e abertas são calculadas automaticamente pelos lotes: fechada = sem data
+          de abertura; aberta = com data de abertura. Os valores são atualizados pelo fluxo de estoque
+          e não são editáveis neste cadastro.
+        </p>
+      )}
+
       {/* Tabela */}
       <div className="mt-4 overflow-x-auto rounded-lg border border-border bg-card text-xs shadow-sm">
         <Table>
@@ -684,13 +693,53 @@ function CadastroDrawer({
     salvarRegistro,
     { ok: false },
   );
+  const ofertaEntradaId =
+    slug === "insumos" &&
+    !registro &&
+    state.ok &&
+    typeof state.createdId === "number" &&
+    Number.isSafeInteger(state.createdId) &&
+    state.createdId > 0
+      ? state.createdId
+      : null;
 
   useEffect(() => {
-    if (state.ok) {
-      router.refresh();
-      onClose();
-    }
-  }, [state.ok, router, onClose]);
+    if (!state.ok) return;
+    router.refresh();
+    if (!ofertaEntradaId) onClose();
+  }, [state.ok, ofertaEntradaId, router, onClose]);
+
+  if (ofertaEntradaId) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Insumo criado</DrawerTitle>
+            <DrawerDescription>
+              O cadastro foi concluído. A entrada de estoque é uma etapa separada e opcional.
+            </DrawerDescription>
+          </DrawerHeader>
+
+          <div
+            role="status"
+            aria-live="polite"
+            className="mt-6 rounded-md bg-success-soft px-3 py-3 text-sm text-success-strong"
+          >
+            {state.message ?? "Insumo criado com sucesso."}
+          </div>
+
+          <DrawerFooter className="flex-col-reverse sm:flex-row">
+            <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
+              Fechar
+            </Button>
+            <Button asChild className="w-full sm:w-auto">
+              <Link href={`/estoque?entrada=${ofertaEntradaId}`}>Lançar estoque inicial</Link>
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
