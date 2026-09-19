@@ -122,4 +122,14 @@ describe("contrato transacional de recebimento", () => {
     expect.soft(estorno).toContain("update pedidos_compra_itens");
     expect.soft(estorno).toContain("update pedidos_compra");
   });
+
+  it("estorna o lote uma unica vez sem apagar o historico", () => {
+    const estorno = latestFunction("estornar_recebimento_lote");
+
+    expect.soft(estorno).toContain("for update");
+    expect.soft(estorno).toContain("status in ('consumido','descartado')");
+    expect.soft(estorno).toContain("quantidade_atual <> v_lote.quantidade_inicial");
+    expect.soft(estorno).toMatch(/set\s+quantidade_atual\s*=\s*0[\s\S]+status\s*=\s*'descartado'/);
+    expect.soft(estorno.match(/insert into estoque_movimentacoes/g)).toHaveLength(1);
+  });
 });

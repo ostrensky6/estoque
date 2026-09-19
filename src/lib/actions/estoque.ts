@@ -49,6 +49,14 @@ const ajusteSaldoSchema = z.object({
   ),
 });
 
+const estornoSchema = z.object({
+  lote_id: z.preprocess((v) => Number(v), z.number().int().positive()),
+  motivo: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : String(v).trim()),
+    z.string({ error: "Obrigatório" }).min(3, "Informe o motivo"),
+  ),
+});
+
 function formErrors(error: z.ZodError): Record<string, string> {
   const errors: Record<string, string> = {};
   for (const i of error.issues) {
@@ -145,6 +153,55 @@ export async function descartarLote(formData: FormData): Promise<FormState> {
     p_lote_id: Number(formData.get("lote_id")),
     p_justificativa: (formData.get("justificativa") as string) || "—",
   });
+}
+
+export async function estornarRecebimentoLote(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = estornoSchema.safeParse({
+    lote_id: formData.get("lote_id"),
+    motivo: formData.get("motivo"),
+  });
+  if (!parsed.success) {
+    return { ok: false, message: "Verifique os campos.", errors: formErrors(parsed.error) };
+  }
+
+  const supabase = await createClient();
+  const [recebimentoCompra, recebimentoInterno] = await Promise.all([
+    supabase
+      .from("pedidos_compra_item_recebimentos")
+      .select("id")
+      .eq("lote_id", parsed.data.lote_id)
+      .limit(1),
+    supabase
+      .from("pedidos_internos_item_recebimentos")
+      .select("id")
+      .eq("lote_id", parsed.data.lote_id)
+      .limit(1),
+  ]);
+  if (recebimentoCompra.error || recebimentoInterno.error) {
+    return {
+      ok: false,
+      message: "Não foi possível confirmar a origem da entrada. Tente novamente.",
+    };
+  }
+  if ((recebimentoCompra.data?.length ?? 0) > 0 || (recebimentoInterno.data?.length ?? 0) > 0) {
+    return {
+      ok: false,
+      message: "Este lote pertence a um recebimento vinculado. Faça o estorno pelo fluxo de Recebimento para reconciliar pedidos e histórico.",
+    };
+  }
+
+  const { error } = await supabase.rpc("estornar_recebimento_lote" as never, {
+    p_lote_id: parsed.data.lote_id,
+    p_motivo: parsed.data.motivo,
+  } as never);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/estoque");
+  revalidatePath(`/estoque/lotes/${parsed.data.lote_id}`);
+  return { ok: true, message: "Entrada estornada." };
 }
 
 export async function baixarManualLote(

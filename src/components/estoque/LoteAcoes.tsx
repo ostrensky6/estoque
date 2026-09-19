@@ -9,6 +9,7 @@ import {
   bloquearLote,
   desbloquearLote,
   descartarLote,
+  estornarRecebimentoLote,
 } from "@/lib/actions/estoque";
 import type { FormState } from "@/lib/actions/cadastros";
 
@@ -21,6 +22,7 @@ export function LoteAcoes({
   quantidadeAtual,
   unidade,
   critico,
+  estornoDiretoPermitido = false,
   podeAceitar,
   podeGerir,
 }: {
@@ -29,13 +31,14 @@ export function LoteAcoes({
   quantidadeAtual: number;
   unidade: string;
   critico: boolean;
+  estornoDiretoPermitido?: boolean;
   podeAceitar: boolean;
   podeGerir: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const executando = useRef(false);
-  const [modal, setModal] = useState<null | "aceitar" | "bloquear" | "descartar" | "baixa" | "ajuste">(null);
+  const [modal, setModal] = useState<null | "aceitar" | "estornar" | "bloquear" | "descartar" | "baixa" | "ajuste">(null);
   const [motivo, setMotivo] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [responsavel, setResponsavel] = useState("");
@@ -103,9 +106,16 @@ export function LoteAcoes({
   return (
     <span className="inline-flex flex-wrap gap-1">
       {status === "quarentena" && podeAceitar && (
-        <button disabled={pending} onClick={() => setModal("aceitar")} className={`${btn} text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/30`}>
-          Aceitar
-        </button>
+        <>
+          <button disabled={pending} onClick={() => setModal("aceitar")} className={`${btn} text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/30`}>
+            Aceitar
+          </button>
+          {estornoDiretoPermitido && (
+            <button disabled={pending} onClick={() => setModal("estornar")} className={`${btn} text-danger-strong hover:bg-danger-soft`}>
+              Estornar entrada
+            </button>
+          )}
+        </>
       )}
       {(status === "aceito" || status === "em_uso") && podeGerir && (
         <button disabled={pending} onClick={() => setModal("bloquear")} className={`${btn} text-warning-strong hover:bg-warning-soft`}>
@@ -148,6 +158,8 @@ export function LoteAcoes({
             <h3 className="text-base font-semibold">
               {modal === "aceitar"
                 ? "Aceitar lote"
+                : modal === "estornar"
+                  ? "Estornar entrada"
                 : modal === "bloquear"
                 ? "Bloquear lote"
                 : modal === "descartar"
@@ -161,6 +173,8 @@ export function LoteAcoes({
                 ? critico
                   ? "Material crítico precisa de responsável e critério de aceite antes de ficar disponível."
                   : "Registre a liberação do lote para uso."
+                : modal === "estornar"
+                  ? "Corrige o lançamento sem editar nem excluir o histórico. O lote será zerado e receberá um movimento compensatório."
                 : modal === "bloquear"
                 ? "Informe o motivo do bloqueio (não conformidade, recall, investigação…)."
                 : modal === "descartar"
@@ -242,6 +256,7 @@ export function LoteAcoes({
                 }
                 onClick={() => {
                   if (modal === "aceitar") run(aceitarLote, { criterio: motivo, responsavel });
+                  if (modal === "estornar") runState(estornarRecebimentoLote, { motivo });
                   if (modal === "bloquear") run(bloquearLote, { motivo });
                   if (modal === "descartar") run(descartarLote, { justificativa: motivo });
                   if (modal === "baixa") runState(baixarManualLote, { motivo, quantidade });
@@ -259,9 +274,11 @@ export function LoteAcoes({
               >
                 {pending
                   ? "Processando…"
-                  : modal === "aceitar"
-                    ? "Aceitar"
-                  : modal === "bloquear"
+                   : modal === "aceitar"
+                     ? "Aceitar"
+                   : modal === "estornar"
+                     ? "Confirmar estorno"
+                   : modal === "bloquear"
                     ? "Bloquear"
                     : modal === "descartar"
                       ? "Descartar"

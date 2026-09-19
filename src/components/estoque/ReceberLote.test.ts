@@ -1,0 +1,41 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const button = readFileSync(new URL("./ReceberLote.tsx", import.meta.url), "utf8");
+const tables = readFileSync(new URL("./EstoqueTables.tsx", import.meta.url), "utf8");
+const loteAcoes = readFileSync(new URL("./LoteAcoes.tsx", import.meta.url), "utf8");
+const page = readFileSync(new URL("../../app/estoque/page.tsx", import.meta.url), "utf8");
+
+describe("entrada inicial de estoque", () => {
+  it("permite abrir a mesma porta canonica de entrada por deep link do insumo", () => {
+    expect(button).toMatch(/abertoInicial[\s\S]+useState\(abertoInicial\)/);
+    expect(tables).toContain("entradaInicialInsumoId");
+    expect(page).toMatch(/searchParams[\s\S]+entrada[\s\S]+entradaInicialInsumoId/);
+    expect(button).toContain("entradaInventario");
+  });
+
+  it("mantem os saldos operacionais separados das unidades abertas e fechadas", () => {
+    expect(tables).toContain('header: "Em mãos"');
+    expect(tables).toContain('header: "Quarentena"');
+    expect(tables).toContain("Os saldos são calculados a partir dos lotes");
+    expect(tables).toContain("não são campos do cadastro do insumo");
+    expect(tables).not.toContain('header: "Saldo aceito (calculado)"');
+  });
+
+  it("orienta antes e depois da entrada sem prometer permissao", () => {
+    expect(button).toContain("Esta entrada cria um lote em quarentena");
+    expect(button).toMatch(/só integrará o saldo disponível depois de ser\s+aceito/);
+    expect(button).toContain("A ação Aceitar aparece na tabela somente para usuários autorizados");
+    expect(button).toContain('role="status"');
+    expect(button).toContain('aria-live="polite"');
+    const successBranch = button.indexOf("{state.ok ? (");
+    expect(successBranch).toBeGreaterThan(-1);
+    expect(successBranch).toBeLessThan(button.indexOf("<form action={action}"));
+  });
+
+  it("mantem Aceitar visivel somente sob a permissao existente", () => {
+    expect(loteAcoes).toMatch(/status\s*===\s*"quarentena"\s*&&\s*podeAceitar/);
+    expect(loteAcoes).toMatch(/podeAceitar[\s\S]+setModal\("aceitar"\)[\s\S]+Aceitar/);
+    expect(loteAcoes).toContain("estornoDiretoPermitido");
+  });
+});
