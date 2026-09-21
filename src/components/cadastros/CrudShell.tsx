@@ -8,7 +8,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   type ColumnDef,
@@ -28,6 +27,7 @@ import type { Campo, Coluna } from "@/lib/cadastros/config";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AjusteInventarioButton } from "@/components/estoque/ReceberLote";
 import {
   Dialog,
   DialogContent,
@@ -702,6 +702,13 @@ function CadastroDrawer({
     state.createdId > 0
       ? state.createdId
       : null;
+  const insumoExistenteId =
+    slug === "insumos" &&
+    registro?.id != null &&
+    Number.isSafeInteger(Number(registro.id)) &&
+    Number(registro.id) > 0
+      ? Number(registro.id)
+      : null;
 
   useEffect(() => {
     if (!state.ok) return;
@@ -716,7 +723,8 @@ function CadastroDrawer({
           <DrawerHeader>
             <DrawerTitle>Insumo criado</DrawerTitle>
             <DrawerDescription>
-              O cadastro foi concluído. A entrada de estoque é uma etapa separada e opcional.
+              O cadastro foi concluído. Se houver quantidade inicial, lance-a agora pelo fluxo de
+              estoque.
             </DrawerDescription>
           </DrawerHeader>
 
@@ -732,9 +740,11 @@ function CadastroDrawer({
             <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
               Fechar
             </Button>
-            <Button asChild className="w-full sm:w-auto">
-              <Link href={`/estoque?entrada=${ofertaEntradaId}`}>Lançar estoque inicial</Link>
-            </Button>
+            <AjusteInventarioButton
+              insumoId={ofertaEntradaId}
+              triggerLabel="Lançar quantidade"
+              triggerClassName="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
+            />
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
@@ -752,6 +762,24 @@ function CadastroDrawer({
             Preencha os campos obrigatórios e salve para atualizar o cadastro.
           </DrawerDescription>
         </DrawerHeader>
+
+        {insumoExistenteId && (
+          <div className="mt-4 flex flex-col gap-3 rounded-md bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium">Quantidade em estoque</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Use o fluxo de estoque para registrar um novo lote deste insumo.
+              </p>
+            </div>
+            <AjusteInventarioButton
+              insumoId={insumoExistenteId}
+              especificacao={String(registro?.especificacao ?? singular)}
+              unidade={typeof registro?.unidade === "string" ? registro.unidade : null}
+              triggerLabel="Lançar quantidade"
+              triggerClassName="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
+            />
+          </div>
+        )}
 
         <form action={action} className="mt-6 grid grid-cols-2 gap-4">
           <input type="hidden" name="_slug" value={slug} />

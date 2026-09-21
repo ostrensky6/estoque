@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { entradaInventario } from "@/lib/actions/estoque";
 import type { FormState } from "@/lib/actions/cadastros";
@@ -14,11 +15,15 @@ export function AjusteInventarioButton({
   especificacao,
   unidade,
   abertoInicial = false,
+  triggerLabel = "+ Entrada",
+  triggerClassName,
 }: {
   insumoId: number;
-  especificacao: string;
-  unidade: string | null;
+  especificacao?: string;
+  unidade?: string | null;
   abertoInicial?: boolean;
+  triggerLabel?: string;
+  triggerClassName?: string;
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(abertoInicial);
@@ -45,10 +50,14 @@ export function AjusteInventarioButton({
   return (
     <>
       <button
+        type="button"
         onClick={() => setAberto(true)}
-        className="rounded px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/30"
+        className={
+          triggerClassName ??
+          "rounded px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/30"
+        }
       >
-        + Entrada
+        {triggerLabel}
       </button>
 
       {aberto && (
@@ -56,17 +65,19 @@ export function AjusteInventarioButton({
           <div className="absolute inset-0 bg-black/40" onClick={() => !pending && fechar()} />
           <div className="relative w-full max-w-md rounded-xl bg-card p-5 shadow-xl">
             <h3 className="text-base font-semibold">Entrada de inventário (ajuste)</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {especificacao}
-              {unidade ? ` · ${unidade}` : ""}
-            </p>
+            {(especificacao || unidade) && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {especificacao}
+                {unidade ? ` · ${unidade}` : ""}
+              </p>
+            )}
             <p className="mt-2 rounded-md bg-warning-soft px-3 py-2 text-xs text-warning-strong">
               Para compras, prefira <strong>receber pelo item do pedido</strong> (em Compras) — assim a
               entrada fecha o pedido. Use esta porta só para contagem, doação ou correção de inventário.
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
-              Esta entrada cria um lote em quarentena. Ele só integrará o saldo disponível depois de ser
-              aceito por um usuário autorizado.
+              Esta entrada cria um lote em quarentena. Após o aceite, ele compõe as unidades fechadas. As
+              unidades abertas surgem após a abertura do lote no primeiro consumo.
             </p>
 
             {state.ok ? (
@@ -81,14 +92,20 @@ export function AjusteInventarioButton({
                     A ação Aceitar aparece na tabela somente para usuários autorizados.
                   </p>
                 </div>
-                <div className="flex justify-end">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <button
                     type="button"
                     onClick={fechar}
-                    className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500"
+                    className="min-h-11 rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted"
                   >
                     Fechar
                   </button>
+                  <Link
+                    href="/estoque"
+                    className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500"
+                  >
+                    Revisar no Estoque
+                  </Link>
                 </div>
               </div>
             ) : (
