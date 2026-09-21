@@ -39,17 +39,21 @@ describe("CrudShell: handoff para estoque inicial", () => {
     expect(source).not.toMatch(/router\.(?:push|replace)\([^)]*estoque/);
   });
 
-  it("mostra confirmacao acessivel e o deep link canonico sem novo submit", () => {
-    expect(source).toContain('import Link from "next/link";');
+  it("oferece a entrada canonica na criacao e na edicao sem novo submit de cadastro", () => {
+    expect(source).toContain('import { AjusteInventarioButton } from "@/components/estoque/ReceberLote";');
     expect(source).toContain('role="status"');
     expect(source).toContain('aria-live="polite"');
-    expect(source).toContain("Lançar estoque inicial");
-    expect(source).toContain('href={`/estoque?entrada=${ofertaEntradaId}`}');
+    expect(source).toContain("Lançar quantidade");
+    expect(source).toContain("insumoExistenteId");
+    expect(source.match(/<AjusteInventarioButton/g)).toHaveLength(2);
+    expect(source).not.toContain('href={`/estoque?entrada=${ofertaEntradaId}`}');
 
     const oferta = source.indexOf("if (ofertaEntradaId)");
-    const formulario = source.indexOf("<form action={action}", oferta);
+    const acoes = [...source.matchAll(/<AjusteInventarioButton/g)].map((match) => match.index);
+    const formulario = source.indexOf("<form action={action}", acoes[1]);
     expect(oferta).toBeGreaterThan(-1);
-    expect(formulario).toBeGreaterThan(oferta);
+    expect(acoes).toHaveLength(2);
+    expect(formulario).toBeGreaterThan(acoes[1]);
   });
 
   it("permite fechar a oferta e mantem o fechamento atual nos demais sucessos", () => {

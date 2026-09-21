@@ -24,10 +24,15 @@ describe("entrada inicial de estoque", () => {
 
   it("orienta antes e depois da entrada sem prometer permissao", () => {
     expect(button).toContain("Esta entrada cria um lote em quarentena");
-    expect(button).toMatch(/só integrará o saldo disponível depois de ser\s+aceito/);
+    expect(button).toContain("Após o aceite, ele compõe as unidades fechadas");
+    expect(button).toMatch(/unidades abertas surgem após a abertura do lote\s+no primeiro consumo/);
     expect(button).toContain("A ação Aceitar aparece na tabela somente para usuários autorizados");
+    expect(button).toContain('href="/estoque"');
+    expect(button).toContain("Revisar no Estoque");
     expect(button).toContain('role="status"');
     expect(button).toContain('aria-live="polite"');
+    expect(button).toMatch(/<button\s+type="button"[\s\S]+\{triggerLabel\}/);
+    expect(button.match(/await entradaInventario\(/g)).toHaveLength(1);
     const successBranch = button.indexOf("{state.ok ? (");
     expect(successBranch).toBeGreaterThan(-1);
     expect(successBranch).toBeLessThan(button.indexOf("<form action={action}"));
