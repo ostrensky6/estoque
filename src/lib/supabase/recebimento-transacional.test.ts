@@ -92,8 +92,11 @@ describe("contrato transacional de recebimento", () => {
     }
 
     const saldo = latestView("v_estoque_saldo");
+    // O modelo legado (por volume) preserva exatamente a mesma condicao de
+    // disponibilidade; a partir da 0109 o disponivel_bruto tambem soma
+    // embalagens fechadas 'aceito' (nunca quarentena), sem alterar o legado.
     expect.soft(saldo).toMatch(
-      /sum\s*\(\s*l\.quantidade_atual\s*\)[\s\S]*?where\s+l\.status\s+in\s*\(\s*'aceito'\s*,\s*'em_uso'\s*\)\s+and\s+\(\s*(?:public\.)?menor_validade\(\s*l\.validade\s*,\s*l\.validade_apos_abertura\s*\)\s+is\s+null\s+or\s+(?:public\.)?menor_validade\(\s*l\.validade\s*,\s*l\.validade_apos_abertura\s*\)\s*>=\s*current_date\s*\)[\s\S]*?as\s+disponivel_bruto/,
+      /l\.status\s+in\s*\(\s*'aceito'\s*,\s*'em_uso'\s*\)\s*(?:\r?\n\s*)?and\s*\(\s*(?:public\.)?menor_validade\(\s*l\.validade\s*,\s*l\.validade_apos_abertura\s*\)\s+is\s+null\s+or\s+(?:public\.)?menor_validade\(\s*l\.validade\s*,\s*l\.validade_apos_abertura\s*\)\s*>=\s*current_date\s*\)[\s\S]*?as\s+disponivel_bruto/,
     );
     expect.soft(saldo).toContain("status = 'quarentena'");
     expect.soft(latestFunction("reservar_plano")).toMatch(

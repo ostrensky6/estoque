@@ -50,6 +50,14 @@ const optNum = (opts: { min?: number; max?: number } = {}) =>
       .nullable(),
   );
 const reqStr = z.string().trim().min(1, "Obrigatório");
+const quantidadeInsumoSchema = z.preprocess(
+  (v) => (v === "" || v == null ? 0 : Number(v)),
+  z
+    .number({ error: "Número inválido" })
+    .refine((n) => !Number.isNaN(n), "Número inválido")
+    .refine((n) => Number.isInteger(n), "Use um número inteiro de embalagens")
+    .refine((n) => n >= 0, "Mínimo 0"),
+);
 const optStr = z.preprocess(
   (v) => (v === "" || v == null ? null : String(v).trim()),
   z.string().nullable(),
@@ -300,6 +308,38 @@ export async function salvarRegistro(
 
     revalidarDependentes(slug);
     return { ok: true, message: "Atualizado." };
+  }
+
+  // Insumos: a quantidade (embalagens fechadas) é informada no próprio
+  // cadastro e entra direto (sem quarentena), atômico com a criação do
+  // insumo — ver public.criar_insumo_com_quantidade.
+  if (slug === "insumos") {
+    const quantidadeParsed = quantidadeInsumoSchema.safeParse(formData.get("quantidade"));
+    if (!quantidadeParsed.success) {
+      return {
+        ok: false,
+        message: "Verifique os campos destacados.",
+        errors: { quantidade: quantidadeParsed.error.issues[0]?.message ?? "Inválido" },
+      };
+    }
+    const operacaoId = String(formData.get("_operacao_id") ?? "").trim() || crypto.randomUUID();
+    const { data, error } = await supabase.rpc("criar_insumo_com_quantidade", {
+      p_dados_insumo: payload,
+      p_quantidade_embalagens: quantidadeParsed.data,
+      p_operacao_id: operacaoId,
+    });
+    if (error) return { ok: false, message: error.message };
+
+    const createdId = (data as { insumo_id?: number } | null)?.insumo_id;
+    if (typeof createdId !== "number" || !Number.isSafeInteger(createdId) || createdId <= 0) {
+      return {
+        ok: false,
+        message: "Não foi possível confirmar o identificador do registro criado.",
+      };
+    }
+
+    revalidarDependentes(slug);
+    return { ok: true, message: "Criado.", createdId };
   }
 
   const { data, error } = await supabase.from(tabela).insert(payload).select("id").single();

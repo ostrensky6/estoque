@@ -7,10 +7,11 @@ const insert = vi.fn();
 const eq = vi.fn();
 const update = vi.fn();
 const from = vi.fn(() => ({ insert, update }));
+const rpc = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("@/lib/supabase/server", () => ({
-  createClientUntyped: vi.fn(async () => ({ from })),
+  createClientUntyped: vi.fn(async () => ({ from, rpc })),
 }));
 
 function formInsumo(overrides: Record<string, string> = {}) {
@@ -47,10 +48,12 @@ describe("cadastro de insumos", () => {
     select.mockClear();
     single.mockReset();
     eq.mockReset();
+    rpc.mockReset();
     insert.mockReturnValue({ select });
     update.mockReturnValue({ eq });
     single.mockResolvedValue({ data: { id: 321 }, error: null });
     eq.mockResolvedValue({ error: null });
+    rpc.mockResolvedValue({ data: { insumo_id: 321, repetido: false }, error: null });
   });
 
   it("bloqueia fator de conversao zero ou negativo", async () => {
@@ -60,6 +63,7 @@ describe("cadastro de insumos", () => {
     expect(result.ok).toBe(false);
     expect(result.errors?.fator_conversao).toBe("Mínimo 0.000001");
     expect(from).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it("bloqueia quantidade de embalagem zerada", async () => {
@@ -69,16 +73,35 @@ describe("cadastro de insumos", () => {
     expect(result.ok).toBe(false);
     expect(result.errors?.quantidade_embalagem).toBe("Mínimo 0.000001");
     expect(from).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("calcula custo unitario e salva fator/unidade de consumo", async () => {
+  it("bloqueia quantidade em estoque negativa ou fracionada", async () => {
     const { salvarRegistro } = await import("./cadastros");
-    const result = await salvarRegistro({ ok: false }, formInsumo());
+
+    const negativa = await salvarRegistro({ ok: false }, formInsumo({ quantidade: "-1" }));
+    expect(negativa.ok).toBe(false);
+    expect(negativa.errors?.quantidade).toBe("Mínimo 0");
+
+    const fracionada = await salvarRegistro({ ok: false }, formInsumo({ quantidade: "1.5" }));
+    expect(fracionada.ok).toBe(false);
+    expect(fracionada.errors?.quantidade).toBe("Use um número inteiro de embalagens");
+
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("cria o insumo com quantidade pela RPC atomica, sem tocar insert direto", async () => {
+    const { salvarRegistro } = await import("./cadastros");
+    const result = await salvarRegistro({ ok: false }, formInsumo({ quantidade: "3" }));
 
     expect(result).toEqual({ ok: true, message: "Criado.", createdId: 321 });
-    expect(from).toHaveBeenCalledWith("insumos");
-    expect(insert).toHaveBeenCalledWith(
-      expect.objectContaining({
+    expect(insert).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledOnce();
+    const [fn, args] = rpc.mock.calls[0];
+    expect(fn).toBe("criar_insumo_com_quantidade");
+    expect(args).toMatchObject({
+      p_quantidade_embalagens: 3,
+      p_dados_insumo: expect.objectContaining({
         especificacao: "Master mix qPCR",
         quantidade_embalagem: 100,
         unidade: "frasco",
@@ -86,21 +109,45 @@ describe("cadastro de insumos", () => {
         fator_conversao: 100,
         custo_unitario: 5,
       }),
+    });
+    expect(typeof args.p_operacao_id).toBe("string");
+    expect(args.p_operacao_id.length).toBeGreaterThan(0);
+    // "quantidade" nao e uma coluna de insumos: nao pode vazar no payload.
+    expect(args.p_dados_insumo).not.toHaveProperty("quantidade");
+  });
+
+  it("assume quantidade zero quando o campo nao e enviado", async () => {
+    const { salvarRegistro } = await import("./cadastros");
+    await salvarRegistro({ ok: false }, formInsumo());
+
+    expect(rpc).toHaveBeenCalledWith(
+      "criar_insumo_com_quantidade",
+      expect.objectContaining({ p_quantidade_embalagens: 0 }),
     );
-    expect(select).toHaveBeenCalledWith("id");
-    expect(single).toHaveBeenCalledOnce();
-    expect(insert).toHaveBeenCalledOnce();
+  });
+
+  it("reutiliza o operacao_id enviado pelo formulario (reenvio idempotente)", async () => {
+    const { salvarRegistro } = await import("./cadastros");
+    await salvarRegistro(
+      { ok: false },
+      formInsumo({ quantidade: "3", _operacao_id: "11111111-1111-1111-1111-111111111111" }),
+    );
+
+    expect(rpc).toHaveBeenCalledWith(
+      "criar_insumo_com_quantidade",
+      expect.objectContaining({ p_operacao_id: "11111111-1111-1111-1111-111111111111" }),
+    );
   });
 
   it("não retorna ID quando a criação falha", async () => {
-    single.mockResolvedValue({ data: null, error: { message: "Falha ao criar." } });
+    rpc.mockResolvedValue({ data: null, error: { message: "Falha ao criar." } });
     const { salvarRegistro } = await import("./cadastros");
 
     const result = await salvarRegistro({ ok: false }, formInsumo());
 
     expect(result).toEqual({ ok: false, message: "Falha ao criar." });
     expect(result).not.toHaveProperty("createdId");
-    expect(insert).toHaveBeenCalledOnce();
+    expect(rpc).toHaveBeenCalledOnce();
   });
 
   it("não inventa criação ao atualizar", async () => {
@@ -113,13 +160,14 @@ describe("cadastro de insumos", () => {
     expect(update).toHaveBeenCalledOnce();
     expect(eq).toHaveBeenCalledWith("id", 321);
     expect(insert).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it.each([
     ["ausente", null],
-    ["malformado", { id: "321" }],
+    ["malformado", { insumo_id: "321" }],
   ])("falha fechada quando o ID criado é %s", async (_caso, data) => {
-    single.mockResolvedValue({ data, error: null });
+    rpc.mockResolvedValue({ data, error: null });
     const { salvarRegistro } = await import("./cadastros");
 
     const result = await salvarRegistro({ ok: false }, formInsumo());
@@ -129,7 +177,7 @@ describe("cadastro de insumos", () => {
       message: "Não foi possível confirmar o identificador do registro criado.",
     });
     expect(result).not.toHaveProperty("createdId");
-    expect(insert).toHaveBeenCalledOnce();
+    expect(rpc).toHaveBeenCalledOnce();
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 });
