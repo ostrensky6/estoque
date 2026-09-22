@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CADASTROS } from "./config";
-import { projetarTotaisInsumos, type LoteInsumo } from "./insumos";
+import { modeloQuantidadePorInsumo, projetarTotaisInsumos, type LoteInsumo, type LoteModelo } from "./insumos";
 import { workbookColumns } from "./xlsx";
 
 const lote = (overrides: Partial<LoteInsumo> = {}): LoteInsumo => ({
@@ -54,17 +54,47 @@ describe("totais de unidades de insumos", () => {
     expect(headers).not.toContain("Código interno");
   });
 
-  it("marca os totais de lotes como calculados e fora do formulario", () => {
-    expect(CADASTROS.insumos.colunas.find((coluna) => coluna.key === "unidades_fechadas")).toMatchObject({
-      label: "Unidades fechadas (calculado)",
+  it("mostra uma unica coluna Quantidade, calculada e fora do formulario", () => {
+    expect(CADASTROS.insumos.colunas.find((coluna) => coluna.key === "quantidade")).toMatchObject({
+      label: "Quantidade",
       calculada: true,
     });
-    expect(CADASTROS.insumos.colunas.find((coluna) => coluna.key === "unidades_abertas")).toMatchObject({
-      label: "Unidades abertas (calculado)",
-      calculada: true,
-    });
+    expect(CADASTROS.insumos.colunas.some((coluna) => coluna.key === "unidades_fechadas")).toBe(false);
+    expect(CADASTROS.insumos.colunas.some((coluna) => coluna.key === "unidades_abertas")).toBe(false);
     expect(CADASTROS.insumos.campos.map((campo) => campo.name)).not.toEqual(
-      expect.arrayContaining(["unidades_fechadas", "unidades_abertas"]),
+      expect.arrayContaining(["quantidade", "unidades_fechadas", "unidades_abertas"]),
     );
+  });
+});
+
+describe("modelo de quantidade por insumo", () => {
+  const loteModelo = (overrides: Partial<LoteModelo> = {}): LoteModelo => ({
+    insumo_id: 1,
+    modelo_quantidade: "EMBALAGEM_FECHADA",
+    quantidade_atual: 3,
+    ...overrides,
+  });
+
+  it("classifica como embalagem fechada quando so ha lotes desse modelo com saldo", () => {
+    const mapa = modeloQuantidadePorInsumo([loteModelo()]);
+    expect(mapa.get("1")).toBe("EMBALAGEM_FECHADA");
+  });
+
+  it("ignora lotes com saldo zerado", () => {
+    const mapa = modeloQuantidadePorInsumo([loteModelo({ quantidade_atual: 0 })]);
+    expect(mapa.has("1")).toBe(false);
+  });
+
+  it("da prioridade ao legado quando o insumo mistura os dois modelos", () => {
+    const mapa = modeloQuantidadePorInsumo([
+      loteModelo({ modelo_quantidade: "LEGADO" }),
+      loteModelo({ modelo_quantidade: "EMBALAGEM_FECHADA" }),
+    ]);
+    expect(mapa.get("1")).toBe("LEGADO");
+  });
+
+  it("trata modelo nulo/desconhecido como legado por seguranca", () => {
+    const mapa = modeloQuantidadePorInsumo([loteModelo({ modelo_quantidade: null })]);
+    expect(mapa.get("1")).toBe("LEGADO");
   });
 });

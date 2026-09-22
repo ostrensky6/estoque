@@ -240,4 +240,78 @@ describe("actions de estoque", () => {
     expect(result).toEqual({ ok: false, message: "Acesso negado." });
     expect(revalidatePath).not.toHaveBeenCalled();
   });
+
+  describe("corrigirQuantidadeEmbalagens", () => {
+    it("exige motivo e quantidade alvo inteira antes de chamar a RPC", async () => {
+      const { corrigirQuantidadeEmbalagens } = await import("./estoque");
+      const formData = new FormData();
+      formData.set("insumo_id", "5");
+      formData.set("quantidade_alvo", "2.5");
+
+      const result = await corrigirQuantidadeEmbalagens({ ok: false }, formData);
+
+      expect(result.ok).toBe(false);
+      expect(result.errors?.quantidade_alvo).toBe("Use um número inteiro de embalagens");
+      expect(result.errors?.motivo).toBe("Obrigatório");
+      expect(rpc).not.toHaveBeenCalled();
+    });
+
+    it("envia a correcao pela RPC transacional com operacao_id gerado", async () => {
+      rpc.mockResolvedValue({ error: null });
+      const { corrigirQuantidadeEmbalagens } = await import("./estoque");
+      const formData = new FormData();
+      formData.set("insumo_id", "5");
+      formData.set("quantidade_alvo", "2");
+      formData.set("motivo", "contagem física divergente");
+
+      const result = await corrigirQuantidadeEmbalagens({ ok: false }, formData);
+
+      expect(result).toEqual({ ok: true, message: "Quantidade corrigida." });
+      expect(rpc).toHaveBeenCalledOnce();
+      const [fn, args] = rpc.mock.calls[0];
+      expect(fn).toBe("corrigir_quantidade_embalagens_fechadas");
+      expect(args).toMatchObject({
+        p_insumo_id: 5,
+        p_quantidade_alvo: 2,
+        p_motivo: "contagem física divergente",
+      });
+      expect(typeof args.p_operacao_id).toBe("string");
+      expect(revalidatePath).toHaveBeenCalledWith("/estoque");
+      expect(revalidatePath).toHaveBeenCalledWith("/cadastros/insumos");
+    });
+
+    it("reutiliza o operacao_id enviado (reenvio idempotente sem duplicar)", async () => {
+      rpc.mockResolvedValue({ error: null });
+      const { corrigirQuantidadeEmbalagens } = await import("./estoque");
+      const formData = new FormData();
+      formData.set("insumo_id", "5");
+      formData.set("quantidade_alvo", "2");
+      formData.set("motivo", "contagem física divergente");
+      formData.set("operacao_id", "22222222-2222-2222-2222-222222222222");
+
+      await corrigirQuantidadeEmbalagens({ ok: false }, formData);
+
+      expect(rpc).toHaveBeenCalledWith(
+        "corrigir_quantidade_embalagens_fechadas",
+        expect.objectContaining({ p_operacao_id: "22222222-2222-2222-2222-222222222222" }),
+      );
+    });
+
+    it("propaga a negativa de autorizacao (papel insuficiente) sem revalidar", async () => {
+      rpc.mockResolvedValue({ error: { message: "Sem permissão: requer papel coordenador ou superior." } });
+      const { corrigirQuantidadeEmbalagens } = await import("./estoque");
+      const formData = new FormData();
+      formData.set("insumo_id", "5");
+      formData.set("quantidade_alvo", "2");
+      formData.set("motivo", "contagem física divergente");
+
+      const result = await corrigirQuantidadeEmbalagens({ ok: false }, formData);
+
+      expect(result).toEqual({
+        ok: false,
+        message: "Sem permissão: requer papel coordenador ou superior.",
+      });
+      expect(revalidatePath).not.toHaveBeenCalled();
+    });
+  });
 });

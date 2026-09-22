@@ -27,7 +27,6 @@ import type { Campo, Coluna } from "@/lib/cadastros/config";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AjusteInventarioButton } from "@/components/estoque/ReceberLote";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +67,7 @@ import {
   excluirRegistro,
   type FormState,
 } from "@/lib/actions/cadastros";
+import { corrigirQuantidadeEmbalagens } from "@/lib/actions/estoque";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/formatters";
 
@@ -410,9 +410,9 @@ export function CrudShell({
 
       {slug === "insumos" && (
         <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-          Unidades fechadas e abertas são calculadas automaticamente pelos lotes: fechada = sem data
-          de abertura; aberta = com data de abertura. Os valores são atualizados pelo fluxo de estoque
-          e não são editáveis neste cadastro.
+          Quantidade é o número de embalagens fechadas em mãos (frascos, pacotes, kits) — não o
+          conteúdo/volume de cada uma. É calculada pelos lotes e não é editável direto na tabela; para
+          corrigi-la, abra o insumo.
         </p>
       )}
 
@@ -693,63 +693,19 @@ function CadastroDrawer({
     salvarRegistro,
     { ok: false },
   );
-  const ofertaEntradaId =
-    slug === "insumos" &&
-    !registro &&
-    state.ok &&
-    typeof state.createdId === "number" &&
-    Number.isSafeInteger(state.createdId) &&
-    state.createdId > 0
-      ? state.createdId
-      : null;
-  const insumoExistenteId =
-    slug === "insumos" &&
-    registro?.id != null &&
-    Number.isSafeInteger(Number(registro.id)) &&
-    Number(registro.id) > 0
-      ? Number(registro.id)
-      : null;
+  // Estavel enquanto o drawer ficar aberto: um reenvio (duplo clique, retry
+  // de rede) usa o mesmo id e a RPC de criação devolve o resultado anterior
+  // em vez de duplicar o insumo/lote.
+  const [operacaoId] = useState(() => crypto.randomUUID());
+  const isInsumos = slug === "insumos";
+  const quantidadeModelo = isInsumos ? (registro?.quantidade_modelo as string | null | undefined) : null;
+  const podeCorrigirQuantidade = isInsumos && registro?.id != null && quantidadeModelo !== "LEGADO";
 
   useEffect(() => {
     if (!state.ok) return;
     router.refresh();
-    if (!ofertaEntradaId) onClose();
-  }, [state.ok, ofertaEntradaId, router, onClose]);
-
-  if (ofertaEntradaId) {
-    return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>Insumo criado</DrawerTitle>
-            <DrawerDescription>
-              O cadastro foi concluído. Se houver quantidade inicial, lance-a agora pelo fluxo de
-              estoque.
-            </DrawerDescription>
-          </DrawerHeader>
-
-          <div
-            role="status"
-            aria-live="polite"
-            className="mt-6 rounded-md bg-success-soft px-3 py-3 text-sm text-success-strong"
-          >
-            {state.message ?? "Insumo criado com sucesso."}
-          </div>
-
-          <DrawerFooter className="flex-col-reverse sm:flex-row">
-            <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
-              Fechar
-            </Button>
-            <AjusteInventarioButton
-              insumoId={ofertaEntradaId}
-              triggerLabel="Lançar quantidade"
-              triggerClassName="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
-            />
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
-    );
-  }
+    onClose();
+  }, [state.ok, router, onClose]);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -763,26 +719,16 @@ function CadastroDrawer({
           </DrawerDescription>
         </DrawerHeader>
 
-        {insumoExistenteId && (
-          <div className="mt-4 flex flex-col gap-3 rounded-md bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-medium">Quantidade em estoque</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Use o fluxo de estoque para registrar um novo lote deste insumo.
-              </p>
-            </div>
-            <AjusteInventarioButton
-              insumoId={insumoExistenteId}
-              especificacao={String(registro?.especificacao ?? singular)}
-              unidade={typeof registro?.unidade === "string" ? registro.unidade : null}
-              triggerLabel="Lançar quantidade"
-              triggerClassName="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
-            />
-          </div>
+        {podeCorrigirQuantidade && (
+          <QuantidadeInsumoResumo
+            insumoId={Number(registro?.id)}
+            quantidadeAtual={Number(registro?.quantidade ?? 0)}
+          />
         )}
 
         <form action={action} className="mt-6 grid grid-cols-2 gap-4">
           <input type="hidden" name="_slug" value={slug} />
+          <input type="hidden" name="_operacao_id" value={operacaoId} />
           {registro?.id != null && (
             <input type="hidden" name="_id" value={String(registro.id)} />
           )}
@@ -801,6 +747,33 @@ function CadastroDrawer({
               />
             </Fragment>
           ))}
+
+          {isInsumos && !registro && (
+            <div className="col-span-2">
+              <Label className="block">
+                Quantidade (embalagens fechadas) <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                name="quantidade"
+                type="number"
+                min={0}
+                step="1"
+                defaultValue="0"
+                className={cn(
+                  "mt-1",
+                  state.errors?.quantidade && "border-destructive focus-visible:ring-destructive",
+                )}
+              />
+              {state.errors?.quantidade ? (
+                <p className="mt-1 text-xs text-destructive">{state.errors.quantidade}</p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Número de frascos/pacotes/kits fechados, não o volume de cada um. Ex.: 3 frascos de
+                  500 mL = 3, não 1500. Entra direto no estoque, sem quarentena.
+                </p>
+              )}
+            </div>
+          )}
 
           {state.message && !state.ok && (
             <p className="col-span-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -823,6 +796,137 @@ function CadastroDrawer({
         </form>
       </DrawerContent>
     </Drawer>
+  );
+}
+
+function QuantidadeInsumoResumo({
+  insumoId,
+  quantidadeAtual,
+}: {
+  insumoId: number;
+  quantidadeAtual: number;
+}) {
+  const [corrigindo, setCorrigindo] = useState(false);
+
+  return (
+    <div className="mt-4 flex flex-col gap-3 rounded-md bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-sm font-medium">Quantidade atual: {quantidadeAtual}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Embalagens fechadas. Corrigir exige motivo e fica registrado na auditoria.
+        </p>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        className="shrink-0"
+        onClick={() => setCorrigindo(true)}
+      >
+        Corrigir quantidade
+      </Button>
+      <CorrigirQuantidadeDialog
+        open={corrigindo}
+        onOpenChange={setCorrigindo}
+        insumoId={insumoId}
+        quantidadeAtual={quantidadeAtual}
+      />
+    </div>
+  );
+}
+
+function CorrigirQuantidadeDialog({
+  open,
+  onOpenChange,
+  insumoId,
+  quantidadeAtual,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  insumoId: number;
+  quantidadeAtual: number;
+}) {
+  const router = useRouter();
+  const [operacaoId] = useState(() => crypto.randomUUID());
+  const [state, action, pending] = useActionState<FormState, FormData>(
+    corrigirQuantidadeEmbalagens,
+    { ok: false },
+  );
+
+  useEffect(() => {
+    if (!state.ok) return;
+    router.refresh();
+    onOpenChange(false);
+  }, [state.ok, router, onOpenChange]);
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
+      <DialogContent className="max-w-sm" showCloseButton={!pending}>
+        <DialogHeader>
+          <DialogTitle>Corrigir quantidade</DialogTitle>
+          <DialogDescription>
+            Requer papel coordenador ou superior. A diferença fica registrada com o motivo informado
+            — não sobrescreve o histórico.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form action={action} className="mt-2 grid gap-3">
+          <input type="hidden" name="insumo_id" value={insumoId} />
+          <input type="hidden" name="operacao_id" value={operacaoId} />
+          <div>
+            <Label className="block">Quantidade correta (embalagens fechadas)</Label>
+            <Input
+              name="quantidade_alvo"
+              type="number"
+              min={0}
+              step="1"
+              defaultValue={quantidadeAtual}
+              className={cn(
+                "mt-1",
+                state.errors?.quantidade_alvo && "border-destructive focus-visible:ring-destructive",
+              )}
+            />
+            {state.errors?.quantidade_alvo && (
+              <p className="mt-1 text-xs text-destructive">{state.errors.quantidade_alvo}</p>
+            )}
+          </div>
+          <div>
+            <Label className="block">Motivo</Label>
+            <Input
+              name="motivo"
+              placeholder="Ex.: contagem física divergente do cadastro"
+              className={cn(
+                "mt-1",
+                state.errors?.motivo && "border-destructive focus-visible:ring-destructive",
+              )}
+            />
+            {state.errors?.motivo && (
+              <p className="mt-1 text-xs text-destructive">{state.errors.motivo}</p>
+            )}
+          </div>
+
+          {state.message && !state.ok && (
+            <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {state.message}
+            </p>
+          )}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              disabled={pending}
+            >
+              Cancelar
+            </Button>
+            <Button disabled={pending} size="sm">
+              {pending ? "Corrigindo…" : "Corrigir"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

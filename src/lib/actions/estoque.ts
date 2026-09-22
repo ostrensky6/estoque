@@ -37,6 +37,25 @@ const baixaManualSchema = z.object({
   ),
 });
 
+const corrigirQuantidadeSchema = z.object({
+  insumo_id: z.preprocess((v) => Number(v), z.number().int().positive()),
+  quantidade_alvo: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : Number(v)),
+    z
+      .number({ error: "Obrigatório" })
+      .refine((n) => Number.isInteger(n), "Use um número inteiro de embalagens")
+      .refine((n) => n >= 0, "Deve ser >= 0"),
+  ),
+  motivo: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : String(v).trim()),
+    z.string({ error: "Obrigatório" }).min(3, "Informe o motivo"),
+  ),
+  operacao_id: z.preprocess(
+    (v) => (v ? String(v) : crypto.randomUUID()),
+    z.string().min(1),
+  ),
+});
+
 const ajusteSaldoSchema = z.object({
   lote_id: z.preprocess((v) => Number(v), z.number().int().positive()),
   quantidade_nova: z.preprocess(
@@ -228,6 +247,40 @@ export async function baixarManualLote(
   revalidatePath("/estoque");
   revalidatePath(`/estoque/lotes/${parsed.data.lote_id}`);
   return { ok: true, message: "Baixa manual registrada." };
+}
+
+/**
+ * Correção autorizada e auditável da quantidade (embalagens fechadas) de um
+ * insumo no fluxo novo — usada na edição do cadastro. Nunca sobrescreve o
+ * saldo diretamente: aumento cria um lote de ajuste, redução baixa dos lotes
+ * existentes; ambos com motivo obrigatório e trilha em eventos_status.
+ */
+export async function corrigirQuantidadeEmbalagens(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = corrigirQuantidadeSchema.safeParse({
+    insumo_id: formData.get("insumo_id"),
+    quantidade_alvo: formData.get("quantidade_alvo"),
+    motivo: formData.get("motivo"),
+    operacao_id: formData.get("operacao_id"),
+  });
+  if (!parsed.success) {
+    return { ok: false, message: "Verifique os campos.", errors: formErrors(parsed.error) };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("corrigir_quantidade_embalagens_fechadas" as never, {
+    p_insumo_id: parsed.data.insumo_id,
+    p_quantidade_alvo: parsed.data.quantidade_alvo,
+    p_operacao_id: parsed.data.operacao_id,
+    p_motivo: parsed.data.motivo,
+  } as never);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/estoque");
+  revalidatePath("/cadastros/insumos");
+  return { ok: true, message: "Quantidade corrigida." };
 }
 
 export async function ajustarSaldoLote(

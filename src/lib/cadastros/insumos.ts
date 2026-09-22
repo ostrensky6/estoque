@@ -50,3 +50,32 @@ export function projetarTotaisInsumos(insumos: InsumoRow[], lotes: LoteInsumo[],
     return { ...insumo, unidades_fechadas: total.fechadas, unidades_abertas: total.abertas };
   });
 }
+
+export type ModeloQuantidade = "LEGADO" | "EMBALAGEM_FECHADA";
+
+export type LoteModelo = {
+  insumo_id: number | string | null;
+  modelo_quantidade: string | null;
+  quantidade_atual: number | string | null;
+};
+
+/**
+ * Classifica cada insumo por modelo de quantidade a partir dos lotes com
+ * saldo (> 0): LEGADO tem prioridade (preserva controle por volume existente
+ * e evita reinterpretar saldo antigo como contagem de embalagens); insumos
+ * sem nenhum lote com saldo não aparecem no mapa (equivalentes a "nenhum").
+ */
+export function modeloQuantidadePorInsumo(lotes: LoteModelo[]): Map<string, ModeloQuantidade> {
+  const temLegado = new Set<string>();
+  const temFechada = new Set<string>();
+  for (const lote of lotes) {
+    if (lote.insumo_id == null || !(Number(lote.quantidade_atual) > 0)) continue;
+    const chave = String(lote.insumo_id);
+    if (lote.modelo_quantidade === "EMBALAGEM_FECHADA") temFechada.add(chave);
+    else temLegado.add(chave);
+  }
+  const mapa = new Map<string, ModeloQuantidade>();
+  for (const chave of temLegado) mapa.set(chave, "LEGADO");
+  for (const chave of temFechada) if (!mapa.has(chave)) mapa.set(chave, "EMBALAGEM_FECHADA");
+  return mapa;
+}
