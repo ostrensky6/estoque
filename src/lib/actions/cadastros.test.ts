@@ -107,13 +107,14 @@ describe("cadastro de insumos", () => {
         unidade: "frasco",
         unidade_consumo: "reacao",
         fator_conversao: 100,
-        custo_unitario: 5,
       }),
     });
     expect(typeof args.p_operacao_id).toBe("string");
     expect(args.p_operacao_id.length).toBeGreaterThan(0);
     // "quantidade" nao e uma coluna de insumos: nao pode vazar no payload.
     expect(args.p_dados_insumo).not.toHaveProperty("quantidade");
+    // a RPC (0109) recusa chaves fora da lista e deriva o custo unitario.
+    expect(args.p_dados_insumo).not.toHaveProperty("custo_unitario");
   });
 
   it("assume quantidade zero quando o campo nao e enviado", async () => {

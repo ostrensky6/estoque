@@ -1,12 +1,24 @@
 import ExcelJS from "exceljs";
 import { CADASTROS, getCadastrosOrdenados, type CadastroConfig, type Campo } from "@/lib/cadastros/config";
-import { projetarTotaisInsumos, type LoteInsumo } from "@/lib/cadastros/insumos";
+import {
+  QUANTIDADE_INSUMO_KEY,
+  QUANTIDADE_INSUMO_LABEL,
+  TECH_ID_HEADER,
+  TECH_SUFFIX,
+} from "@/lib/cadastros/importacao";
+import { projetarQuantidadeInsumos, type LoteInsumo } from "@/lib/cadastros/insumos";
 import { createClientUntyped } from "@/lib/supabase/server";
+
+export { TECH_ID_HEADER, TECH_SUFFIX };
 
 export type CadastroRow = Record<string, unknown>;
 
-export const TECH_ID_HEADER = "ID";
-export const TECH_SUFFIX = "__id";
+export const INSTRUCOES_SHEET = "Instruções";
+const TITULO_OBRIGATORIAS = "Colunas obrigatórias por aba";
+
+const NOTA_QUANTIDADE_INSUMO =
+  "Só para itens novos: número inteiro de embalagens fechadas que entram no estoque ao criar o insumo. " +
+  "Para itens existentes a coluna é apenas informativa e é ignorada; entradas e baixas são feitas em Estoque.";
 
 export function safeFileName(value: string) {
   return value
@@ -136,16 +148,59 @@ export function applyWorksheetFormatting(
   };
 
   const campoPorNome = new Map(cfg.campos.map((campo) => [campo.name, campo]));
+  const colunaXlsxPorChave = new Map((cfg.colunasXlsx ?? []).map((coluna) => [coluna.key, coluna]));
   for (const column of sheet.columns) {
     column.alignment = { vertical: "top", wrapText: true };
     const key = String(column.key ?? "");
     const campo = campoPorNome.get(key.endsWith(TECH_SUFFIX) ? key.slice(0, -TECH_SUFFIX.length) : key);
+    const tipo = campo?.tipo ?? colunaXlsxPorChave.get(key)?.tipo;
     if (key.endsWith(TECH_SUFFIX)) column.hidden = true;
-    if (campo?.tipo === "currency") column.numFmt = '"R$" #,##0.00';
-    if (campo?.tipo === "number") column.numFmt = "#,##0.###";
-    if (campo?.tipo === "percent") column.numFmt = "0.0%";
-    if (campo?.tipo === "date") column.numFmt = "yyyy-mm-dd";
+    if (tipo === "currency") column.numFmt = '"R$" #,##0.00';
+    if (tipo === "number") column.numFmt = "#,##0.###";
+    if (tipo === "percent") column.numFmt = "0.0%";
+    if (tipo === "date") column.numFmt = "dd/mm/yyyy";
   }
+
+  if (cfg.slug === "insumos") {
+    const colunaQuantidade = sheet.columns.find((column) => column.key === QUANTIDADE_INSUMO_KEY);
+    if (colunaQuantidade?.number) {
+      sheet.getRow(1).getCell(colunaQuantidade.number).note = NOTA_QUANTIDADE_INSUMO;
+    }
+  }
+}
+
+/** Linhas da aba "Instruções" (texto curto, pt-BR). */
+export function instrucoesImportacao(cadastros: CadastroConfig[]): string[] {
+  const linhas = [
+    "Como usar esta planilha",
+    "",
+    "• Cada aba corresponde a um cadastro. Você pode enviar só as abas que quiser importar (por exemplo, apenas Insumos); abas ausentes são ignoradas.",
+    "• A importação só adiciona e atualiza: nenhum registro é excluído do Kontrol, mesmo que a linha seja apagada da planilha.",
+    "• Para atualizar, mantenha a coluna ID. Linhas sem ID são comparadas pelo nome; se o nome não existir, um novo registro é criado.",
+    "• Em registros existentes, célula vazia mantém o valor atual. Para limpar um campo, edite o registro no Kontrol.",
+    "• Números aceitam o formato brasileiro (1.234,56) e datas aceitam dd/mm/aaaa.",
+    `• Insumos: a coluna "${QUANTIDADE_INSUMO_LABEL}" só vale para itens novos e cria o estoque inicial (número inteiro de embalagens). Para itens existentes ela é ignorada; entradas e baixas são feitas em Estoque.`,
+    '• Colunas terminadas em "ID" e colunas ocultas são técnicas: não as altere.',
+    "",
+    TITULO_OBRIGATORIAS,
+  ];
+  for (const cfg of cadastros) {
+    const obrigatorias = cfg.campos
+      .filter((campo) => campo.obrigatorio && campo.exportar !== false)
+      .map((campo) => campo.label);
+    linhas.push(`• ${cfg.titulo}: ${obrigatorias.length ? obrigatorias.join(", ") : "nenhuma"}`);
+  }
+  return linhas;
+}
+
+function addInstrucoesWorksheet(workbook: ExcelJS.Workbook, cadastros: CadastroConfig[]) {
+  const sheet = workbook.addWorksheet(INSTRUCOES_SHEET);
+  sheet.columns = [{ key: "texto", width: 120 }];
+  const linhas = instrucoesImportacao(cadastros);
+  for (const texto of linhas) sheet.addRow({ texto });
+  sheet.getColumn(1).alignment = { vertical: "top", wrapText: true };
+  sheet.getRow(1).font = { bold: true, size: 13 };
+  sheet.getRow(linhas.indexOf(TITULO_OBRIGATORIAS) + 1).font = { bold: true };
 }
 
 export async function addCadastroWorksheet(
@@ -183,6 +238,7 @@ export async function buildCadastrosWorkbook(slug?: string) {
   workbook.created = new Date();
 
   const cadastros = slug ? [CADASTROS[slug]].filter(Boolean) : getCadastrosOrdenados();
+  addInstrucoesWorksheet(workbook, cadastros);
   for (const cfg of cadastros) {
     const { data, error } = await supabase.from(cfg.tabela).select("*").order("id");
     if (error) throw new Error(error.message);
@@ -192,7 +248,7 @@ export async function buildCadastrosWorkbook(slug?: string) {
         .from("lotes_estoque")
         .select("insumo_id, status, quantidade_atual, validade, validade_apos_abertura, data_abertura");
       if (lotesError) throw new Error(lotesError.message);
-      rows = projetarTotaisInsumos(rows, (lotes ?? []) as LoteInsumo[]);
+      rows = projetarQuantidadeInsumos(rows, (lotes ?? []) as LoteInsumo[]);
     }
     await addCadastroWorksheet(workbook, cfg, rows);
   }

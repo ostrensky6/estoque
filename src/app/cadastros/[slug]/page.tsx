@@ -7,7 +7,7 @@ import {
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { CrudShell } from "@/components/cadastros/CrudShell";
 import { equipCustoDia } from "@/lib/costing/engine";
-import { modeloQuantidadePorInsumo, projetarTotaisInsumos, type LoteInsumo, type LoteModelo } from "@/lib/cadastros/insumos";
+import { modeloQuantidadePorInsumo, projetarQuantidadeInsumos, type LoteInsumo, type LoteModelo } from "@/lib/cadastros/insumos";
 
 export const dynamic = "force-dynamic";
 
@@ -142,11 +142,10 @@ export default async function CadastroPage({
       .from("lotes_estoque")
       .select("insumo_id, status, quantidade_atual, validade, validade_apos_abertura, data_abertura, modelo_quantidade");
     if (lotesError) throw new Error(lotesError.message);
-    linhas = projetarTotaisInsumos(linhas, (lotes ?? []) as LoteInsumo[]);
+    linhas = projetarQuantidadeInsumos(linhas, (lotes ?? []) as LoteInsumo[]);
     const modelos = modeloQuantidadePorInsumo((lotes ?? []) as LoteModelo[]);
     linhas = linhas.map((r) => ({
       ...r,
-      quantidade: Number(r.unidades_fechadas ?? 0) + Number(r.unidades_abertas ?? 0),
       quantidade_modelo: modelos.get(String(r.id)) ?? null,
     }));
   }
