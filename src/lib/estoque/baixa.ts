@@ -62,7 +62,9 @@ export function disponivelParaBaixa(lote: Pick<LoteBaixa, "quantidadeAtual" | "r
   return lote.modeloQuantidade === "EMBALAGEM_FECHADA" ? Math.floor(livre) : livre;
 }
 
-export type SituacaoBaixa = { permitida: true } | { permitida: false; motivo: string };
+export type SituacaoBaixa =
+  | { permitida: true; somenteVencimento?: boolean }
+  | { permitida: false; motivo: string };
 
 export function situacaoBaixa(lote: LoteBaixa, hoje = hojeIso()): SituacaoBaixa {
   const statusValidos = lote.modeloQuantidade === "EMBALAGEM_FECHADA" ? ["aceito"] : ["aceito", "em_uso"];
@@ -73,12 +75,11 @@ export function situacaoBaixa(lote: LoteBaixa, hoje = hojeIso()): SituacaoBaixa 
     };
   }
   if (!(Number(lote.quantidadeAtual) > 0)) return { permitida: false, motivo: "Lote sem saldo." };
-  if (loteVencido(lote.validade, hoje)) {
-    return { permitida: false, motivo: "Lote vencido: não pode receber baixa para uso; descarte o lote." };
-  }
   if (!(disponivelParaBaixa(lote) > 0)) {
     return { permitida: false, motivo: "Saldo totalmente reservado para planos." };
   }
+  // vencido não vai para uso, mas pode sair do saldo como perda (0117)
+  if (loteVencido(lote.validade, hoje)) return { permitida: true, somenteVencimento: true };
   return { permitida: true };
 }
 

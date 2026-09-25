@@ -6,6 +6,7 @@ import { formatCompactCurrency, formatDate, formatNumber } from "@/lib/formatter
 import { papelAtual } from "@/lib/auth/roles";
 import { permiteMinRole, type Role } from "@/config/modules";
 import { statusInfo } from "@/components/app/status";
+import { HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { PageShell } from "@/components/app/PageShell";
 import { PageHeader } from "@/components/app/PageHeader";
 import { SectionCard } from "@/components/app/SectionCard";
@@ -100,16 +101,32 @@ function AcaoRapida({
 function JornadaCard({
   titulo,
   subtitulo,
+  ajuda,
   badge,
   passos,
 }: {
   titulo: string;
   subtitulo: string;
+  ajuda?: React.ReactNode;
   badge: React.ReactNode;
   passos: Array<{ titulo: string; desc: string; href: string }>;
 }) {
   return (
-    <SectionCard title={titulo} description={subtitulo} actions={badge} contentClassName="grid gap-2">
+    <SectionCard
+      title={
+        ajuda ? (
+          <span className="flex items-center gap-1">
+            {titulo}
+            <HelpTip title={titulo}>{ajuda}</HelpTip>
+          </span>
+        ) : (
+          titulo
+        )
+      }
+      description={subtitulo}
+      actions={badge}
+      contentClassName="grid gap-2"
+    >
       {passos.map((p, i) => (
         <Link
           key={p.href}
@@ -250,7 +267,22 @@ export default async function Home() {
     <PageShell>
       <PageHeader
         title="Painel de decisão operacional"
-        description="Orçamento, planejamento, estoque e compras no mesmo fluxo de decisão. Este painel mostra o que precisa de compra, aceite, baixa ou revisão antes de virar problema operacional."
+        description="O que precisa de compra, aceite, baixa ou revisão hoje."
+        help={
+          <HelpTip title="Painel de decisão">
+            <p>
+              Junta orçamento, planejamento, estoque e compras numa só tela, para que você veja o
+              que resolver antes que vire problema na bancada.
+            </p>
+            <HelpLegend
+              items={[
+                { tom: "critico", rotulo: "Crítico", texto: "vencido ou sem saldo disponível." },
+                { tom: "atencao", rotulo: "Atenção", texto: "abaixo do ponto de reposição ou vencendo." },
+                { tom: "info", rotulo: "Em andamento", texto: "compras abertas ou lotes em quarentena." },
+              ]}
+            />
+          </HelpTip>
+        }
         meta={<StatusBadge status={statusGeralTom} label={statusGeral} />}
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -349,7 +381,7 @@ export default async function Home() {
           <StatCard
             label="Margem média"
             value={`${formatNumber(dashboard?.margem_media_pct)}%`}
-            detail="orçamentos com snapshot de preço"
+            detail="orçamentos com preço registrado"
           />
         </div>
         <div className="mt-4">
@@ -360,7 +392,13 @@ export default async function Home() {
       <section className="grid gap-4 lg:grid-cols-2" aria-label="Jornadas">
         <JornadaCard
           titulo="Orçamento"
-          subtitulo="Da solicitação do cliente ao preço final, com análises, custos diretos, overhead e fatores comerciais documentados."
+          subtitulo="Do pedido do cliente à proposta emitida."
+          ajuda={
+            <p>
+              O preço sai das análises escolhidas: custos diretos (reagentes, equipamento e pessoal),
+              overhead e fatores comerciais, tudo registrado na proposta.
+            </p>
+          }
           badge={<Badge variant="muted">{nAnalises ?? 0} análises ativas</Badge>}
           passos={[
             { href: "/orcamento/demandas/nova", titulo: "Novo orçamento", desc: "Cliente, amostras e análises em um só formulário." },
@@ -371,7 +409,13 @@ export default async function Home() {
         />
         <JornadaCard
           titulo="Estoque"
-          subtitulo="Do planejamento à reposição: calcula demanda, reserva insumos, baixa por FEFO e aciona compras quando o saldo fica insuficiente."
+          subtitulo="Do planejamento à reposição."
+          ajuda={
+            <p>
+              O plano calcula quanto de cada insumo será usado, reserva os lotes, dá baixa pelo lote
+              que vence antes e gera pedido de compra quando o saldo não basta.
+            </p>
+          }
           badge={<StatusBadge status={statusGeralTom} label={statusGeral} />}
           passos={[
             { href: "/planejamento", titulo: "Planejamento", desc: "Calcule consumo por campanha e reserve material antes da execução." },
@@ -418,16 +462,26 @@ export default async function Home() {
       </section>
 
       <SectionCard
-        title="Base de controle"
-        description="Cadastros, permissões e auditoria sustentam os dois fluxos: sem isso, custo, estoque e compra perdem rastreabilidade."
+        title={
+          <span className="flex items-center gap-1">
+            Base de controle
+            <HelpTip title="Base de controle">
+              <p>
+                Cadastros, permissões e auditoria sustentam orçamento e estoque. Sem eles, custo,
+                saldo e compra perdem a rastreabilidade.
+              </p>
+            </HelpTip>
+          </span>
+        }
+        description="Cadastros, qualidade dos dados, auditoria e usuários."
         actions={<Badge variant="muted">governança</Badge>}
         contentClassName="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
       >
         {(
           [
             ["Cadastros", "/cadastros", "Insumos, equipamentos, técnicos, fornecedores, locais e parâmetros."],
-            ["Qualidade", "/cadastros/qualidade", "Pendências de receita, custo, unidade, lote, fornecedor e oferta antes da operação."],
-            ["Auditoria", "/auditoria", "Trilha de alterações para saldo, lote, compra, orçamento e cadastros.", "gestor"],
+            ["Qualidade", "/cadastros/qualidade", "O que falta nos cadastros e distorce custo ou compra."],
+            ["Auditoria", "/auditoria", "Quem alterou o quê, e quando.", "gestor"],
             ["Usuários", "/usuarios", "Papéis de técnico, coordenador, gestor e administrador.", "admin"],
           ] as Array<[string, string, string, Role?]>
         )

@@ -18,6 +18,7 @@ import {
 } from "docx";
 import { saveAs } from "file-saver";
 import { formatCurrency } from "@/lib/formatters";
+import { rotuloModalidade } from "./orcamento-economico";
 import type { PropostaFinalExport } from "./proposta-final-export";
 
 const pct = (v: number) => `${v.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
@@ -48,7 +49,7 @@ export async function exportOrcamentoFinalXlsx(dados: PropostaFinalExport) {
     ["CNPJ/CPF", info.clienteCnpj ?? ""],
     ["Contato", info.clienteContato ?? ""],
     ["Demanda", info.demandaTitulo ?? ""],
-    ["Modalidade", info.modalidade ?? ""],
+    ["Modalidade", info.modalidade ? rotuloModalidade(info.modalidade) : ""],
     ["Validade", info.validade ?? ""],
     ["Responsável", info.responsavel ?? ""],
     ["Escopo", info.escopo ?? ""],

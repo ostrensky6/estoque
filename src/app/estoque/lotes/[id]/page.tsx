@@ -3,10 +3,13 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Barcode39 } from "@/components/common/Barcode39";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { HelpTip } from "@/components/common/HelpTip";
 import { QrCode } from "@/components/common/QrCode";
 import { formatNumber as fmt, formatDate as fdata, formatCurrency } from "@/lib/formatters";
+import { LoteAcoes } from "@/components/estoque/LoteAcoes";
+import { temPapel } from "@/lib/auth/roles";
+import { origemPublicaKontrol } from "@/lib/scanner/origem";
 import { gerarUrlCurtaKontrol } from "@/lib/scanner/urls";
-import { DarBaixaDialog } from "@/components/estoque/DarBaixaDialog";
 import { loteBaixaDeDb, loteVencido, somarReservasPorLote, type LoteDbBaixa } from "@/lib/estoque/baixa";
 
 export const dynamic = "force-dynamic";
@@ -43,12 +46,21 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
 
   const { data: lote } = await supabase
     .from("lotes_estoque")
-    .select("*, insumos(especificacao, nome_item, unidade)")
+    .select("*, insumos(especificacao, nome_item, unidade, categoria_compra)")
     .eq("id", id)
     .single();
   if (!lote) notFound();
 
-  const [{ data: movs }, { data: local }, { data: reservas }] = await Promise.all([
+  const [
+    { data: movs },
+    { data: local },
+    { data: reservas },
+    podeAceitar,
+    podeGerir,
+    origem,
+    vinculoCompra,
+    vinculoInterno,
+  ] = await Promise.all([
     supabase
       .from("estoque_movimentacoes")
       .select("id, tipo, quantidade, custo_unitario, data, motivo, referencia")
@@ -63,18 +75,33 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
       .select("lote_id, quantidade, quantidade_consumida, status")
       .eq("lote_id", id)
       .in("status", ["reservado", "parcial"]),
+    temPapel("coordenador"),
+    temPapel("gestor"),
+    origemPublicaKontrol(),
+    supabase.from("pedidos_compra_item_recebimentos").select("lote_id").eq("lote_id", id).limit(1),
+    supabase.from("pedidos_internos_item_recebimentos").select("lote_id").eq("lote_id", id).limit(1),
   ]);
 
-  const ins = lote.insumos as { especificacao: string | null; nome_item: string | null; unidade: string | null } | null;
+  const ins = lote.insumos as {
+    especificacao: string | null;
+    nome_item: string | null;
+    unidade: string | null;
+    categoria_compra: string | null;
+  } | null;
+  // estorno direto só quando é comprovado que o lote não veio de um pedido (mesma regra de /estoque)
+  const estornoDiretoPermitido =
+    !vinculoCompra.error &&
+    !vinculoInterno.error &&
+    (vinculoCompra.data ?? []).length === 0 &&
+    (vinculoInterno.data ?? []).length === 0;
+  const unidade = ins?.unidade ?? "";
   const s = LOTE_STATUS[lote.status] ?? { label: lote.status, cls: "bg-muted text-muted-foreground" };
   // modelo_quantidade (0109) ainda não está nos tipos gerados.
   const loteBaixa = loteBaixaDeDb(
     lote as unknown as LoteDbBaixa,
     somarReservasPorLote(reservas ?? []),
   );
-  const unidade = ins?.unidade ?? "";
   const vencido = loteVencido(loteBaixa.validade);
-  const loteAtivo = ["aceito", "em_uso"].includes(lote.status) && loteBaixa.quantidadeAtual > 0;
 
   // Rastreabilidade reversa: planos que consumiram este lote (referencia 'plano N')
   const planosConsumo = Array.from(
@@ -87,7 +114,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
   );
 
   const codigoEtiqueta = lote.codigo_lote || `LOTE-${lote.id}`;
-  const qrUrl = gerarUrlCurtaKontrol("lote", lote.id as number);
+  const qrUrl = gerarUrlCurtaKontrol("lote", lote.id as number, origem);
   const nomeCurto = ins?.especificacao ?? ins?.nome_item ?? "Lote sem descrição";
 
   return (
@@ -108,30 +135,36 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{ins?.especificacao ?? ins?.nome_item ?? "—"}</p>
           </div>
-          {loteAtivo && (
-            <div className="flex flex-col items-end gap-1">
-              {vencido ? (
-                <p className="max-w-72 rounded-md bg-danger-soft px-3 py-2 text-xs text-danger-strong">
-                  Lote vencido: não pode receber baixa para uso. Para registrar a perda, descarte o lote
-                  em Estoque → Lotes em estoque.
-                </p>
-              ) : (
-                <DarBaixaDialog
-                  lotes={[loteBaixa]}
-                  unidade={ins?.unidade ?? ""}
-                  especificacao={ins?.especificacao ?? ins?.nome_item ?? undefined}
-                  triggerClassName="inline-flex h-9 items-center rounded-md border border-danger-strong/40 bg-card px-4 text-sm font-medium text-danger-strong shadow-sm hover:bg-danger-soft"
-                />
-              )}
-            </div>
-          )}
+          <LoteAcoes
+            loteId={lote.id as number}
+            codigoLote={lote.codigo_lote ?? undefined}
+            status={lote.status}
+            quantidadeAtual={Number(lote.quantidade_atual ?? 0)}
+            unidade={unidade}
+            critico={ins?.categoria_compra === "critico"}
+            validade={loteBaixa.validade}
+            vencido={vencido}
+            reservado={loteBaixa.reservado}
+            modeloQuantidade={loteBaixa.modeloQuantidade}
+            estornoDiretoPermitido={estornoDiretoPermitido}
+            podeAceitar={podeAceitar}
+            podeGerir={podeGerir}
+          />
         </div>
 
         {/* Etiqueta imprimível com código de barras */}
         <section className="mt-6 rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="min-w-56">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground/80">Etiqueta do lote</p>
+              <p className="flex items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground/80">
+                Etiqueta do lote
+                <HelpTip title="Etiqueta do lote">
+                  <p>
+                    Cole a etiqueta na embalagem. Ao ler o QR com a câmera do celular, esta página abre
+                    direto, com as ações do lote. O código de barras serve para leitores de mão.
+                  </p>
+                </HelpTip>
+              </p>
               <p className="mt-1 text-sm font-medium">{nomeCurto}</p>
               <p className="text-xs text-muted-foreground">
                 Validade: {fdata(lote.validade)} · Saldo: {fmt(lote.quantidade_atual)} {unidade}
@@ -149,16 +182,12 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
                   <dt className="uppercase tracking-wide text-muted-foreground/80">Código do lote</dt>
                   <dd className="font-mono text-foreground">{codigoEtiqueta}</dd>
                 </div>
-                <div>
-                  <dt className="uppercase tracking-wide text-muted-foreground/80">URL interna</dt>
-                  <dd className="font-mono text-foreground">{qrUrl}</dd>
-                </div>
               </dl>
             </div>
             <div className="flex flex-wrap items-center gap-4">
               <div className="text-center">
-                <QrCode value={qrUrl} label={`QR interno do lote ${lote.id}`} />
-                <p className="mt-1 font-mono text-xs text-foreground">{qrUrl}</p>
+                <QrCode value={qrUrl} label={`QR do lote ${codigoEtiqueta}`} />
+                <p className="mt-1 text-xs text-muted-foreground">Leia com a câmera</p>
               </div>
               <div className="text-center">
                 <Barcode39 value={codigoEtiqueta} height={52} />

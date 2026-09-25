@@ -137,6 +137,32 @@ describe("actions de orcamentos", () => {
     expect(redirect).toHaveBeenCalledWith("/orcamento");
   });
 
+  it("não anuncia sucesso quando a exclusão falha no banco", async () => {
+    const { excluirOrcamento } = await import("./orcamentos");
+    const formData = new FormData();
+    formData.set("orcamento_id", "42");
+    single.mockResolvedValue({ data: { status: "rascunho" }, error: null });
+    deleteRow.mockReturnValue({ eq: vi.fn(async () => ({ error: { message: "violação de chave" } })) });
+
+    await expect(excluirOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/42?erro_exclusao=");
+    expect(revalidatePath).not.toHaveBeenCalledWith("/orcamento");
+  });
+
+  it("remove item só dentro do próprio orçamento e propaga erro", async () => {
+    const { removerItemOrcamento } = await import("./orcamentos");
+    const formData = new FormData();
+    formData.set("orcamento_id", "42");
+    formData.set("item_id", "7");
+    single.mockResolvedValue({ data: { status: "rascunho", status_operacional: "preenchido" }, error: null });
+    const eqOrcamento = vi.fn(async () => ({ error: { message: "sem permissão" } }));
+    const eqItem = vi.fn(() => ({ eq: eqOrcamento }));
+    deleteRow.mockReturnValue({ eq: eqItem });
+
+    await expect(removerItemOrcamento(formData)).rejects.toThrow(/sem permissão/);
+    expect(eqItem).toHaveBeenCalledWith("id", 7);
+    expect(eqOrcamento).toHaveBeenCalledWith("orcamento_id", 42);
+  });
+
   it("cancela orcamento preservando historico", async () => {
     const { cancelarOrcamento } = await import("./orcamentos");
     const formData = new FormData();

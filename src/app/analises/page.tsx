@@ -1,8 +1,14 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { gargalo, horasBancadaPorAmostra, type Etapa } from "@/lib/costing/engine";
 import { calcularTodas } from "@/lib/costing/loader";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
+import { podeEditarAnalises } from "@/lib/auth/permissao-efetiva";
+import { HelpLegend, HelpTip } from "@/components/common/HelpTip";
+import {
+  AnaliseLinhaAcoes,
+  NovaAnaliseButton,
+  type AnaliseOpcao,
+} from "@/components/analises/AnaliseCatalogoAcoes";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +40,6 @@ type ConsultaIssue = {
 
 const card =
   "rounded-lg border border-border bg-card p-4 shadow-sm";
-const subtle = "text-sm text-muted-foreground";
 
 function statusTextualIndicaRevisao(status: string | null) {
   return /experimental|experimento|revis|avali|pend|todo/i.test(status ?? "");
@@ -148,14 +153,29 @@ export default async function AnalisesPage() {
   );
   const ativasNaoOfertaveis = diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "ativas_nao_ofertaveis");
   const inativas = diagnosticos.filter((item) => grupoDaAnalise(item.analise) === "inativas");
+  const podeEditar = await podeEditarAnalises();
+  const opcoes: AnaliseOpcao[] = diagnosticos.map((item) => ({
+    codigo: item.analise.codigo,
+    rotulo: rotuloPrincipal(item.analise),
+  }));
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
-        <div className="max-w-3xl">
-          <h1 className="text-xl font-semibold tracking-tight">Análises</h1>
-          <p className={`mt-2 ${subtle}`}>
-            Gerencie a receita técnica de uma análise por vez: etapas, materiais, equipamentos, capacidade e custeio.
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-1">
+            <h1 className="text-xl font-semibold tracking-tight">Análises</h1>
+            <HelpTip title="Catálogo de análises">
+              <p>
+                Cada análise tem uma receita: etapas, materiais e equipamentos. É dela que saem a
+                capacidade por dia, o custo e o preço usados nos orçamentos.
+              </p>
+              <p>
+                Use <b>Nova análise</b> para criar (em branco ou copiando outra) e <b>⋯</b> na linha para
+                duplicar ou excluir. Análises já usadas não podem ser excluídas: inative-as na ficha.
+              </p>
+            </HelpTip>
+          </div>
+          {podeEditar && <NovaAnaliseButton analises={opcoes} />}
         </div>
 
         {consultaIssues.length > 0 && <ConsultaAlert issues={consultaIssues} />}
@@ -167,14 +187,31 @@ export default async function AnalisesPage() {
           </div>
         )}
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-4">
+        <div className="mt-6 flex items-center gap-1 text-xs font-medium text-muted-foreground">
+          Situação do catálogo
+          <HelpTip title="Situação das análises">
+            <HelpLegend
+              items={[
+                { tom: "ok", rotulo: "Ofertável", texto: "ativa e disponível para o cliente nas propostas" },
+                { tom: "atencao", rotulo: "Em revisão", texto: "ofertável, mas com status marcado para revisão" },
+                { tom: "info", rotulo: "Ativa", texto: "usada em planos internos, fora da oferta comercial" },
+                { tom: "neutro", rotulo: "Inativa", texto: "fora de uso; histórico preservado, pode ser reativada" },
+              ]}
+            />
+          </HelpTip>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="Ofertáveis totais" value={String(totalOfertaveis.length)} />
           <Stat label="Ofertáveis em revisão" value={String(ofertaveisEmRevisao.length)} />
           <Stat label="Ativas não ofertáveis" value={String(ativasNaoOfertaveis.length)} />
           <Stat label="Inativas" value={String(inativas.length)} />
         </div>
 
-        {diagnosticos.length > 0 ? <AnalisesResumoTable rows={diagnosticos} /> : <EmptyAnalises />}
+        {diagnosticos.length > 0 ? (
+          <AnalisesResumoTable rows={diagnosticos} opcoes={opcoes} podeEditar={podeEditar} />
+        ) : (
+          <EmptyAnalises />
+        )}
       </main>
     </div>
   );
@@ -202,9 +239,7 @@ function EmptyAnalises() {
   return (
     <section className={`${card} mt-6`}>
       <p className="font-medium">Nenhuma análise cadastrada.</p>
-      <p className="mt-1 text-sm text-muted-foreground">
-        O módulo está acessível, mas o catálogo técnico não retornou registros para seleção.
-      </p>
+      <p className="mt-1 text-sm text-muted-foreground">Crie a primeira em “Nova análise”.</p>
     </section>
   );
 }
@@ -218,7 +253,15 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function AnalisesResumoTable({ rows }: { rows: DiagnosticoAnalise[] }) {
+function AnalisesResumoTable({
+  rows,
+  opcoes,
+  podeEditar,
+}: {
+  rows: DiagnosticoAnalise[];
+  opcoes: AnaliseOpcao[];
+  podeEditar: boolean;
+}) {
   return (
     <section className="mt-6 rounded-lg border border-border bg-card shadow-sm">
       <div className="border-b border-border/70 px-3 py-2">
@@ -280,9 +323,12 @@ function AnalisesResumoTable({ rows }: { rows: DiagnosticoAnalise[] }) {
                     )}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 text-right align-middle">
-                    <Link href={`/analises/${encodeURIComponent(analise.codigo)}`} className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
-                      Gerenciar ficha
-                    </Link>
+                    <AnaliseLinhaAcoes
+                      codigo={analise.codigo}
+                      rotulo={rotuloPrincipal(analise)}
+                      analises={opcoes}
+                      podeEditar={podeEditar}
+                    />
                   </td>
                 </tr>
               );

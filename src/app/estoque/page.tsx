@@ -8,7 +8,9 @@ import {
   type LoteBaixa,
   type LoteDbBaixa,
 } from "@/lib/estoque/baixa";
-import { formatCurrency, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatPercent } from "@/lib/formatters";
+import { DownloadButton } from "@/components/common/DownloadButton";
+import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import {
   LotesTable,
   SaldoTable,
@@ -162,7 +164,7 @@ export default async function EstoquePage({
       especificacao: ins?.especificacao ?? "—",
       unidade: ins?.unidade ?? "",
       codigoLote: l.codigo_lote ?? "—",
-      validade: baixa.validade ?? "—",
+      validade: baixa.validade ? formatDate(baixa.validade) : "—",
       validadeIso: baixa.validade,
       quantidadeAtual: baixa.quantidadeAtual,
       reservado: baixa.reservado,
@@ -179,11 +181,24 @@ export default async function EstoquePage({
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
-        <h1 className="text-xl font-semibold tracking-tight">Estoque</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Saldo por reagente (em mãos · reservado · disponível) e alertas de
-          reposição e vencimento. Lotes consumidos por FEFO.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-1">
+            <h1 className="text-xl font-semibold tracking-tight">Estoque</h1>
+            <HelpTip title="Estoque">
+              <p>
+                Saldo de cada insumo, alertas de reposição e vencimento e os lotes guardados. O uso
+                segue FEFO: o lote que vence antes sai antes.
+              </p>
+              <p>
+                <b>+ Entrada</b> registra material recebido. <b>Saída</b> retira perda, quebra,
+                vencido, descarte ou uso fora de plano.
+              </p>
+            </HelpTip>
+          </div>
+          <DownloadButton href="/cadastros/insumos/export" fileName="insumos.xlsx">
+            Planilha de insumos
+          </DownloadButton>
+        </div>
 
         {/* Alertas */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -202,7 +217,7 @@ export default async function EstoquePage({
                 {porTipo[t].slice(0, 4).map((a, i) => (
                   <li key={i} className="truncate" title={a.especificacao ?? ""}>
                     {a.especificacao}
-                    {a.validade ? ` · vence ${a.validade}` : ""}
+                    {a.validade ? ` · vence ${formatDate(a.validade)}` : ""}
                   </li>
                 ))}
                 {porTipo[t].length === 0 && <li className="text-muted-foreground/80">Nenhum</li>}
@@ -214,10 +229,18 @@ export default async function EstoquePage({
         <section className="mt-8 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Custo de estoque vigente</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Padrão para simulação; médio ponderado dos lotes liberados para previsão; custo real preservado por lote no consumo.
-              </p>
+              <div className="flex items-center gap-1">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Custo de estoque vigente</h2>
+                <HelpTip title="Custo de estoque vigente">
+                  <p>
+                    Compara o <b>custo padrão</b> do cadastro (usado nas simulações) com o{" "}
+                    <b>custo médio</b> dos lotes liberados. Cada consumo guarda o custo real do lote.
+                  </p>
+                  <HelpExample>
+                    Padrão R$ 100, lotes a R$ 120 → variação +20%: revise o custo padrão.
+                  </HelpExample>
+                </HelpTip>
+              </div>
             </div>
             <span className="text-sm tabular-nums text-warning-strong">{custosDivergentes.length} divergência(s)</span>
           </div>
@@ -251,22 +274,29 @@ export default async function EstoquePage({
         </section>
 
         <div className="mt-8">
-          <SaldoTable rows={saldoRows} entradaInicialInsumoId={entradaInicialInsumoId} />
+          <SaldoTable
+            rows={saldoRows}
+            entradaInicialInsumoId={entradaInicialInsumoId}
+            janelaDias={Number(previsao?.[0]?.janela_dias ?? 90)}
+          />
         </div>
-        <p className="mt-3 text-xs text-muted-foreground/80">
-          {saldoRows.length} reagentes · previsão usa consumo dos últimos{" "}
-          {previsao?.[0]?.janela_dias ?? 90} dias, lead time e estoque de segurança.
-          Ajuste o ponto manual em Cadastros → Insumos quando precisar travar uma política.
-        </p>
+
 
         {/* Lotes (rastreabilidade + estados) */}
-        <h2 className="mt-10 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Lotes em estoque
-        </h2>
-        <p className="mt-1 text-xs text-muted-foreground/80">
-          Material recebido entra em <b>quarentena</b> e só fica disponível após
-          aceitação. Consumo por FEFO (vence antes, sai antes).
-        </p>
+        <div className="mt-10 flex items-center gap-1">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Lotes em estoque</h2>
+          <HelpTip title="Estados do lote">
+            <HelpLegend
+              items={[
+                { tom: "atencao", rotulo: "Quarentena", texto: "recebido, aguardando conferência; ainda não pode ser usado" },
+                { tom: "info", rotulo: "Aceito", texto: "liberado para uso" },
+                { tom: "info", rotulo: "Em uso", texto: "embalagem aberta; vale a validade após abertura" },
+                { tom: "critico", rotulo: "Bloqueado", texto: "retido (recall, não conformidade); não sai para uso" },
+              ]}
+            />
+            <p>O uso segue FEFO: o lote que vence antes sai antes.</p>
+          </HelpTip>
+        </div>
         <div className="mt-3">
           <LotesTable rows={loteRows} podeAceitar={podeAceitar} podeGerir={podeGerir} />
         </div>

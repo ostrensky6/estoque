@@ -24,6 +24,7 @@ import { projetarQuantidadeInsumos, type LoteInsumo } from "@/lib/cadastros/insu
 import { opcoesParaCampos } from "@/lib/cadastros/xlsx";
 import { lerLinhasCadastro, prepararSalarioTecnico } from "@/lib/cadastros/salario";
 import { podeVerSalario } from "@/lib/auth/permissao-efetiva";
+import { dadosCriacaoInsumo } from "@/lib/cadastros/insumo-rpc";
 import { createClientUntyped } from "@/lib/supabase/server";
 
 export type FormState = {
@@ -298,6 +299,18 @@ function schemaEObjeto(
   };
 }
 
+/** Mensagem legível para recusas do banco (RLS, vínculo, duplicidade). */
+function mensagemErroBanco(error: { code?: string | null; message: string }) {
+  if (error.code === "42501" || /row-level security|permission denied/i.test(error.message)) {
+    return "Seu perfil não tem permissão para alterar este cadastro.";
+  }
+  if (error.code === "23505") return "Já existe um registro com esses dados.";
+  return error.message;
+}
+
+const NADA_ALTERADO =
+  "Nada foi alterado: o registro não existe mais ou seu perfil não tem permissão para alterá-lo.";
+
 function errosZod(error: z.ZodError) {
   const errors: Record<string, string> = {};
   for (const issue of error.issues) {
@@ -334,8 +347,10 @@ export async function salvarRegistro(
   const payload = parsed.data;
 
   if (id) {
-    const { error } = await supabase.from(tabela).update(payload).eq("id", id);
-    if (error) return { ok: false, message: error.message };
+    // o RLS recusa sem erro (0 linhas): sem esta conferência a tela diria "Atualizado."
+    const { data, error } = await supabase.from(tabela).update(payload).eq("id", id).select("id");
+    if (error) return { ok: false, message: mensagemErroBanco(error) };
+    if (!data?.length) return { ok: false, message: NADA_ALTERADO };
 
     revalidarDependentes(slug);
     return { ok: true, message: "Atualizado." };
@@ -357,11 +372,12 @@ export async function salvarRegistro(
     // A RPC recusa chaves fora da lista de 0109 (ex.: custo_unitario, que ela
     // mesma deriva da embalagem): envia só os campos aceitos.
     const { data, error } = await supabase.rpc("criar_insumo_com_quantidade", {
-      p_dados_insumo: payloadRpcInsumo(payload),
+      // campos aceitos pela RPC + número do lote informado no cadastro (0113)
+      p_dados_insumo: dadosCriacaoInsumo(payloadRpcInsumo(payload), formData),
       p_quantidade_embalagens: quantidadeParsed.data,
       p_operacao_id: operacaoId,
     });
-    if (error) return { ok: false, message: error.message };
+    if (error) return { ok: false, message: mensagemErroBanco(error) };
 
     const createdId = (data as { insumo_id?: number } | null)?.insumo_id;
     if (typeof createdId !== "number" || !Number.isSafeInteger(createdId) || createdId <= 0) {
@@ -376,7 +392,7 @@ export async function salvarRegistro(
   }
 
   const { data, error } = await supabase.from(tabela).insert(payload).select("id").single();
-  if (error) return { ok: false, message: error.message };
+  if (error) return { ok: false, message: mensagemErroBanco(error) };
 
   const createdId = data?.id;
   if (typeof createdId !== "number" || !Number.isSafeInteger(createdId) || createdId <= 0) {
@@ -400,15 +416,16 @@ export async function excluirRegistro(
   if (!tabela || !id) return { ok: false, message: "Registro inválido." };
 
   const supabase = await createClientUntyped();
-  const { error } = await supabase.from(tabela).delete().eq("id", id);
+  const { data, error } = await supabase.from(tabela).delete().eq("id", id).select("id");
 
   if (error) {
     const msg =
       error.code === "23503"
-        ? "Não é possível excluir: está em uso por outra tabela (ex.: alocação em análise)."
-        : error.message;
+        ? "Não é possível excluir: o registro está em uso (ex.: em uma análise, lote ou pedido)."
+        : mensagemErroBanco(error);
     return { ok: false, message: msg };
   }
+  if (!data?.length) return { ok: false, message: NADA_ALTERADO };
 
   revalidarDependentes(slug);
   return { ok: true, message: "Excluído." };

@@ -2,6 +2,9 @@ import { createClientUntyped } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
 import { criarCicloInventario } from "@/lib/actions/inventario";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
+import { FormComMensagem } from "@/components/pedido/FormComMensagem";
+import { formatDate, formatNumber } from "@/lib/formatters";
 import {
   InventarioScannerPanel,
   type InventarioCicloOpcao,
@@ -86,25 +89,25 @@ export default async function InventarioPage() {
     };
   });
 
-  async function criarCiclo(formData: FormData) {
-    "use server";
-    await criarCicloInventario({ ok: false }, formData);
-  }
-
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Estoque", href: "/estoque" }, { label: "Inventário" }]} />
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Inventário cíclico</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Abra uma campanha, escaneie local e lote, registre a quantidade contada e aplique ajuste
-              somente depois de justificar divergências.
-            </p>
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Inventário cíclico</h1>
+              <HelpTip title="Inventário cíclico">
+                <p>
+                  Conferência física do estoque: abra uma campanha, leia o local e o lote, digite quanto
+                  há de fato. Se a contagem diferir do sistema, justifique antes de ajustar o saldo.
+                </p>
+                <HelpExample>Sistema diz 12, você contou 10: diferença −2, ajuste só com justificativa.</HelpExample>
+              </HelpTip>
+            </div>
           </div>
           {podeCriar && (
-            <form action={criarCiclo} className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-card p-3 shadow-sm">
+            <FormComMensagem action={criarCicloInventario} className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-card p-3 shadow-sm">
               <div>
                 <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Campanha</label>
                 <input
@@ -131,7 +134,7 @@ export default async function InventarioPage() {
               <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                 Criar
               </button>
-            </form>
+            </FormComMensagem>
           )}
         </div>
 
@@ -166,17 +169,20 @@ export default async function InventarioPage() {
                   const divergente = Math.abs(Number(contagem.divergencia ?? 0)) > 0.000001;
                   return (
                     <tr key={contagem.id}>
-                      <td className="px-4 py-3">{ciclo?.nome ?? `#${contagem.ciclo_id}`}</td>
+                      <td className="px-4 py-3">
+                        {ciclo?.nome ?? `#${contagem.ciclo_id}`}
+                        <span className="block text-xs text-muted-foreground">{formatDate(contagem.contado_em)}</span>
+                      </td>
                       <td className="max-w-xs truncate px-4 py-3" title={insumo?.especificacao ?? ""}>
                         #{contagem.lote_id}
                         {lote?.codigo_lote ? ` · ${lote.codigo_lote}` : ""}
                         {insumo?.especificacao ? ` · ${insumo.especificacao}` : ""}
                       </td>
                       <td className="px-4 py-3">{local?.nome ?? "—"}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{Number(contagem.quantidade_sistema)}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{Number(contagem.quantidade_contada)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{formatNumber(contagem.quantidade_sistema)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{formatNumber(contagem.quantidade_contada)}</td>
                       <td className={`px-4 py-3 text-right tabular-nums ${divergente ? "text-warning-strong" : "text-brand-700 dark:text-brand-300"}`}>
-                        {Number(contagem.divergencia)}
+                        {formatNumber(contagem.divergencia)}
                       </td>
                       <td className="max-w-xs truncate px-4 py-3" title={contagem.justificativa ?? ""}>
                         {contagem.justificativa ?? "—"}

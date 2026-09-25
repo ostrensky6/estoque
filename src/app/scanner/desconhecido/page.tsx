@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HelpTip } from "@/components/common/HelpTip";
 import { TriagemCodigoDesconhecidoForm } from "@/components/scanner/TriagemCodigoDesconhecidoForm";
 import { prepararTriagemCadastro } from "@/lib/scanner/triagem";
 
@@ -7,6 +8,24 @@ export const dynamic = "force-dynamic";
 type SearchParams = {
   codigo?: string;
   triagem?: string;
+};
+
+const FORMATO_LABEL: Record<string, string> = {
+  kontrol_interno: "Código do Kontrol",
+  url_kontrol: "Link do Kontrol",
+  desconhecido: "Não reconhecido",
+};
+
+const TIPO_LABEL: Record<string, string> = {
+  insumo: "Insumo",
+  insumo_produto: "Produto de insumo",
+  lote: "Lote",
+  equipamento: "Equipamento",
+  equipamento_unidade: "Unidade de equipamento",
+  local: "Local",
+  pedido_compra: "Pedido de compra",
+  pedido_interno: "Pedido interno",
+  planejamento: "Planejamento",
 };
 
 function mensagemTriagem(status?: string) {
@@ -31,13 +50,16 @@ export default async function CodigoDesconhecidoPage({
 
   return (
     <main className="mx-auto max-w-lg px-4 py-6 sm:px-6 sm:py-8">
-      <h1 className="text-xl font-semibold text-foreground">
-        Codigo nao encontrado
-      </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        O Kontrol nao encontrou uma entidade ativa para este codigo. Registre uma triagem para
-        analise posterior, sem criar cadastro incompleto.
-      </p>
+      <div className="flex items-center gap-1">
+        <h1 className="text-xl font-semibold text-foreground">Código não encontrado</h1>
+        <HelpTip title="Código não encontrado">
+          <p>
+            Nenhum item, lote ou equipamento cadastrado tem este código. Registre uma triagem: alguém
+            confere depois e vincula o código ao cadastro certo, sem criar um cadastro pela metade.
+          </p>
+        </HelpTip>
+      </div>
+      <p className="mt-1 text-sm text-muted-foreground">Registre uma triagem para conferência posterior.</p>
 
       {codigo ? (
         <>
@@ -48,13 +70,13 @@ export default async function CodigoDesconhecidoPage({
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Formato</dt>
               <dd className="font-medium text-foreground">
-                {detalhes?.formato ?? "desconhecido"}
+                {FORMATO_LABEL[detalhes?.formato ?? "desconhecido"] ?? detalhes?.formato}
               </dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Tipo sugerido</dt>
               <dd className="font-medium text-foreground">
-                {detalhes?.tipoSugerido ?? "nao identificado"}
+                {detalhes?.tipoSugerido ? TIPO_LABEL[detalhes.tipoSugerido] ?? detalhes.tipoSugerido : "Não identificado"}
               </dd>
             </div>
           </dl>
@@ -72,9 +94,24 @@ export default async function CodigoDesconhecidoPage({
           </Link>
         </>
       ) : (
-        <p className="mt-4 rounded-md border border-warning-strong/30 bg-warning-soft px-3 py-2 text-sm text-warning-strong">
-          Nenhum codigo foi informado para triagem.
-        </p>
+        <form method="get" className="mt-4 grid gap-2">
+          <label htmlFor="codigo-manual" className="text-sm font-medium text-foreground">
+            Digite o código lido
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="codigo-manual"
+              name="codigo"
+              required
+              autoComplete="off"
+              placeholder="Ex.: código de barras do fornecedor"
+              className="h-9 min-w-0 flex-1 rounded-md border border-input bg-card px-3 text-sm"
+            />
+            <button className="rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+              Continuar
+            </button>
+          </div>
+        </form>
       )}
     </main>
   );

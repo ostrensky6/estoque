@@ -11,6 +11,7 @@ import {
   type RecebimentoItemRow,
 } from "@/components/pedido/RecebimentoItensTable";
 import { ScannerRecebimentoCompra } from "@/components/compras/ScannerRecebimentoCompra";
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 
 export const dynamic = "force-dynamic";
 
@@ -130,11 +131,16 @@ export default async function RecebimentoPage() {
       <main className="app-page-container">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Recebimento</h1>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Fila única de pedidos internos e compras formais. Cada chegada gera lote em quarentena e preserva
-              o saldo pendente até o recebimento integral.
-            </p>
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Recebimento</h1>
+              <HelpTip title="Recebimento">
+                <p>
+                  Tudo o que está para chegar, de pedidos internos e de compras. Cada entrega vira um lote em
+                  quarentena; o que faltar continua na fila até chegar tudo.
+                </p>
+                <HelpExample>Pedido de 10 caixas, chegaram 6: recebe 6 agora e 4 ficam pendentes.</HelpExample>
+              </HelpTip>
+            </div>
           </div>
           <div className="grid min-w-56 grid-cols-2 gap-2 text-xs">
             <div className="rounded-lg border border-border bg-card p-3">

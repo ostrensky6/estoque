@@ -32,10 +32,11 @@ describe("regras de baixa manual", () => {
     expect(lotesParaBaixa(lotes, HOJE).map((l) => l.id)).toEqual([1, 2, 3]);
   });
 
-  it("não oferece lote vencido, em quarentena, zerado ou todo reservado", () => {
+  it("vencido só com motivo Vencimento; não oferece quarentena, zerado ou todo reservado", () => {
+    // vencido: sai do saldo só com o motivo Vencimento (0117)
     expect(situacaoBaixa(lote({ validade: "2026-09-24" }), HOJE)).toEqual({
-      permitida: false,
-      motivo: "Lote vencido: não pode receber baixa para uso; descarte o lote.",
+      permitida: true,
+      somenteVencimento: true,
     });
     expect(situacaoBaixa(lote({ validade: HOJE }), HOJE)).toEqual({ permitida: true });
     expect(situacaoBaixa(lote({ status: "quarentena" }), HOJE)).toMatchObject({ permitida: false, motivo: "Aguardando aceite." });

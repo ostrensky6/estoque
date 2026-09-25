@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 
 type Option = { id: number; nome: string };
 type Demanda = {
@@ -111,7 +112,8 @@ export function DemandaForm({
   const quantidadeInicial = demanda.quantidade_amostras_estimada ?? 1;
   const [modalidade, setModalidade] = useState(demanda.modalidade ?? "analises");
   const [busca, setBusca] = useState("");
-  const [grupos, setGrupos] = useState(() => {
+  // Quantidade aceita "" durante a digitação para o campo poder ser apagado.
+  const [grupos, setGrupos] = useState<Array<Omit<GrupoAmostraDemanda, "quantidade_amostras"> & { quantidade_amostras: number | ""; key: string }>>(() => {
     const base = gruposAmostras.length > 0 ? gruposAmostras : [{
       identificacao: "Grupo A",
       tipo_matriz: demanda.matriz_amostra,
@@ -121,7 +123,7 @@ export function DemandaForm({
     }];
     return base.map((grupo, index) => ({ ...grupo, key: `grupo-${grupo.id ?? index + 1}` }));
   });
-  const [selecionadas, setSelecionadas] = useState(() =>
+  const [selecionadas, setSelecionadas] = useState<Array<{ grupoKey: string; codigo: string; quantidade: number | ""; origem: string; statusCusteio: string | null }>>(() =>
     analisesSelecionadas.map((item) => {
       const fallbackIndex = gruposAmostras.findIndex((grupo) => grupo.identificacao === item.grupo_identificacao);
       const fallbackKey = grupos[fallbackIndex >= 0 ? fallbackIndex : 0]?.key ?? "grupo-1";
@@ -163,7 +165,7 @@ export function DemandaForm({
     setSelecionadas((atuais) => {
       if (atuais.some((item) => item.codigo === codigo && item.grupoKey === grupoKey)) return atuais.filter((item) => !(item.codigo === codigo && item.grupoKey === grupoKey));
       const grupo = grupos.find((item) => item.key === grupoKey);
-      return [...atuais, { grupoKey, codigo, quantidade: grupo?.quantidade_amostras ?? quantidadeInicial, origem: "padrao", statusCusteio: porCodigo.get(codigo)?.custeio_disponivel ? "disponivel" : "pendente" }];
+      return [...atuais, { grupoKey, codigo, quantidade: Number(grupo?.quantidade_amostras) || quantidadeInicial, origem: "padrao", statusCusteio: porCodigo.get(codigo)?.custeio_disponivel ? "disponivel" : "pendente" }];
     });
   };
   const totalAmostras = selecionadas.reduce((total, item) => total + Number(item.quantidade || 0), 0);
@@ -324,8 +326,14 @@ export function DemandaForm({
             <input name="cliente_cnpj" defaultValue={demanda.cliente_cnpj ?? ""} className={`${inp} mt-1 w-full`} />
           </div>
           <div>
-            <label className={lbl}>Instituição</label>
-            <input name="instituicao" defaultValue={demanda.instituicao ?? ""} className={`${inp} mt-1 w-full`} />
+            <label className={`${lbl} flex items-center gap-1`}>
+              Instituição emissora
+              <HelpTip title="Instituição emissora">
+                <p>Define o cabeçalho, o logotipo e o responsável da proposta impressa e exportada.</p>
+                <HelpExample>Digite “GIA / UFPR” ou “ATGC”.</HelpExample>
+              </HelpTip>
+            </label>
+            <input name="instituicao" defaultValue={demanda.instituicao ?? ""} placeholder="GIA / UFPR ou ATGC" className={`${inp} mt-1 w-full`} />
           </div>
           <div className="sm:col-span-2">
             <label className={lbl}>Contato <Selo texto="Herdado do cliente quando selecionado" /></label>
@@ -373,7 +381,12 @@ export function DemandaForm({
               <input type="hidden" name="grupo_id" value={grupo.id ?? ""} />
               <div><label className={lbl}>Grupo</label><input name="grupo_identificacao" value={grupo.identificacao} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, identificacao: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
               <div className="sm:col-span-2"><label className={lbl}>Tipo/matriz</label><input name="grupo_tipo_matriz" value={grupo.tipo_matriz ?? ""} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, tipo_matriz: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
-              <div><label className={lbl}>Quantidade</label><input name="grupo_quantidade" type="number" min="1" step="1" value={grupo.quantidade_amostras} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, quantidade_amostras: Number(event.target.value) || 1 } : item))} className={`${operationalInp} mt-1 w-full`} /></div>
+              <div><label className={lbl}>Quantidade</label><input name="grupo_quantidade" type="number" min="1" step="1" required value={grupo.quantidade_amostras} onChange={(event) => {
+                const quantidade = lerQuantidade(event.target.value);
+                setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, quantidade_amostras: quantidade } : item));
+                // Análises que seguem o padrão do grupo acompanham a nova quantidade.
+                if (quantidade !== "") setSelecionadas((atuais) => atuais.map((atual) => atual.grupoKey === grupo.key && atual.origem === "padrao" ? { ...atual, quantidade } : atual));
+              }} className={`${operationalInp} mt-1 w-full`} /></div>
               <div><label className={lbl}>Unidade</label><input name="grupo_unidade" value={grupo.unidade} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, unidade: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
               <div className="sm:col-span-5"><label className={lbl}>Observação</label><input name="grupo_observacao" value={grupo.observacao ?? ""} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, observacao: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
               {grupos.length > 1 && (
@@ -431,8 +444,9 @@ export function DemandaForm({
                                   type="number"
                                   min="1"
                                   step="1"
+                                  required
                                   value={item.quantidade}
-                                  onChange={(event) => setSelecionadas((atuais) => atuais.map((atual) => atual.codigo === item.codigo && atual.grupoKey === item.grupoKey ? { ...atual, quantidade: Number(event.target.value) || 1, origem: "manual" } : atual))}
+                                  onChange={(event) => setSelecionadas((atuais) => atuais.map((atual) => atual.codigo === item.codigo && atual.grupoKey === item.grupoKey ? { ...atual, quantidade: lerQuantidade(event.target.value), origem: "manual" } : atual))}
                                   className={`${operationalInp} w-24`}
                                 />
                               </td>
@@ -641,11 +655,11 @@ function CamposDemandaLeitura({
   return (
     <section className="rounded-md border border-border bg-muted/50 p-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="flex items-center gap-1">
           <h3 className="text-sm font-semibold">Dados completos da demanda</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Campos herdados do formulário mestre. Edite estes dados na etapa Demanda; aqui eles ficam visíveis para conferência.
-          </p>
+          <HelpTip title="Somente leitura">
+            <p>Estes dados vêm da primeira etapa e aparecem aqui só para conferência. Para alterar, volte à etapa de dados do orçamento.</p>
+          </HelpTip>
         </div>
         <Selo texto="Leitura" />
       </div>
@@ -707,6 +721,13 @@ function Obrigatorio() {
 
 function Selo({ texto }: { texto: string }) {
   return <span className="rounded border border-input px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{texto}</span>;
+}
+
+// "" mantém o campo vazio durante a edição; valores válidos viram inteiros >= 1.
+function lerQuantidade(valor: string): number | "" {
+  if (valor.trim() === "") return "";
+  const n = Math.floor(Number(valor));
+  return Number.isFinite(n) && n >= 1 ? n : 1;
 }
 
 function formatNumber(valor: number) {

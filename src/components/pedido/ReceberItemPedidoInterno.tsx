@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Camera, Keyboard, Loader2, PackageCheck, ScanLine } from "lucide-react";
 
+import { HelpTip } from "@/components/common/HelpTip";
 import { receberItemPedidoInterno } from "@/lib/actions/pedidos-internos";
 import {
   resolverCodigoRecebimentoInterno,
@@ -126,7 +127,7 @@ export function ReceberItemPedidoInterno({
       setCameraMessage(
         error instanceof Error
           ? error.message
-          : "Não foi possível acessar a câmera. Use a entrada manual.",
+          : "Não foi possível acessar a câmera. Digite o código.",
       );
     }
   }
@@ -161,7 +162,15 @@ export function ReceberItemPedidoInterno({
             }}
           />
           <div className="relative max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-card p-5 shadow-xl">
-            <h3 className="text-base font-semibold">Receber item</h3>
+            <div className="flex items-center gap-1">
+              <h3 className="text-base font-semibold">Receber item</h3>
+              <HelpTip title="Receber item">
+                <p>
+                  Ao confirmar, a quantidade entra no estoque como um lote do insumo escolhido. Se chegou só
+                  uma parte, o item continua pendente até completar o pedido.
+                </p>
+              </HelpTip>
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {item.especificacao}
               {item.unidade ? ` · ${item.unidade}` : ""}
@@ -171,23 +180,19 @@ export function ReceberItemPedidoInterno({
                 Parcial recebido: {item.quantidadeRecebida} de {item.quantidade} {item.unidade ?? ""}. Saldo: {saldoPendente} {item.unidade ?? ""}.
               </p>
             )}
-            <p className="mt-2 rounded-md bg-leaf-50 px-3 py-2 text-xs text-leaf-800 dark:bg-leaf-950/30 dark:text-leaf-300">
-              Ao confirmar, a quantidade entra em estoque como um lote do insumo escolhido. Se o recebimento for
-              parcial, o item permanece pendente até completar a quantidade solicitada.
-            </p>
 
             <section className="mt-4 rounded-lg border border-border p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h4 className="inline-flex items-center gap-2 text-sm font-semibold">
                   <ScanLine className="h-4 w-4 text-leaf-600 dark:text-leaf-300" />
-                  Escanear codigo
+                  Ler código
                 </h4>
                 <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
                   {cameraStatus === "ativa"
                     ? "Câmera ativa"
                     : cameraStatus === "iniciando"
                       ? "Iniciando câmera"
-                      : "Manual disponível"}
+                      : "Digitação disponível"}
                 </span>
               </div>
 
@@ -207,7 +212,7 @@ export function ReceberItemPedidoInterno({
                   ) : (
                     <Camera className="h-3.5 w-3.5" />
                   )}
-                  Usar camera
+                  Usar câmera
                 </button>
                 <button
                   type="button"
@@ -215,7 +220,7 @@ export function ReceberItemPedidoInterno({
                   disabled={cameraStatus === "parada" || recebimentoPending}
                   className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
                 >
-                  Parar camera
+                  Parar câmera
                 </button>
               </div>
 
@@ -233,7 +238,7 @@ export function ReceberItemPedidoInterno({
                     value={codigoScanner}
                     onChange={(event) => setCodigoScanner(event.target.value)}
                     className={`${scanInput} pl-8`}
-                    placeholder="KONTROL:INS:123, /s/lote/123 ou código do fornecedor"
+                    placeholder="Código da etiqueta ou do fornecedor"
                   />
                 </div>
                 <button

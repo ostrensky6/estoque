@@ -7,6 +7,7 @@ import {
   type ProjetoBudgetRates,
 } from "@/lib/project-budget/legacy";
 import { ParametrosEconomicosForm } from "@/components/orcamento/ParametrosEconomicosForm";
+import { HelpExample, HelpFormula, HelpTip } from "@/components/common/HelpTip";
 import {
   formatCurrency as brl,
   formatNumber,
@@ -209,14 +210,13 @@ export default async function ParametrosEconomicosPage() {
             >
               Orçamentos
             </Link>
-            <h1 className="mt-2 text-xl font-semibold tracking-tight">
-              Parâmetros econômicos
-            </h1>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Cockpit financeiro para conferir custos recebidos, percentuais,
-              fórmula, impacto e versões antes de recalcular ou emitir novas
-              propostas.
-            </p>
+            <div className="mt-2 flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Parâmetros econômicos</h1>
+              <HelpTip title="Parâmetros econômicos">
+                <p>Confira custos, percentuais e o impacto no preço antes de recalcular ou emitir propostas. Cada salvamento gera uma nova versão.</p>
+                <p><b>Margem global</b> (aqui) vale como padrão do laboratório; o <b>lucro da proposta</b> é o percentual definido em cada orçamento de projeto.</p>
+              </HelpTip>
+            </div>
           </div>
           <Link
             href="/custeio"
@@ -284,9 +284,13 @@ export default async function ParametrosEconomicosPage() {
                   {projetosInvalidos.length} orçamento(s) de projeto têm gross-up inválido e precisam de revisão antes de emissão.
                 </span>
               ) : (
-                <span>
-                  Gross-up de projeto validado nos orçamentos recentes: a soma de impostos,
-                  incubação, reserva, investimentos e lucro fica abaixo de 100%.
+                <span className="flex items-center gap-1">
+                  Percentuais válidos nos orçamentos recentes (soma abaixo de 100%).
+                  <HelpTip title="Gross-up">
+                    <p>No projeto, impostos, incubação, reserva, investimentos e lucro incidem sobre o preço final; por isso a soma precisa ficar abaixo de 100%.</p>
+                    <HelpFormula>total = custo ÷ (1 − Σ%)</HelpFormula>
+                    <HelpExample>Custo R$ 1.000 e 25% → R$ 1.333,33.</HelpExample>
+                  </HelpTip>
                 </span>
               )}
             </div>
@@ -302,14 +306,12 @@ export default async function ParametrosEconomicosPage() {
 
         <section className="mt-8">
           <div className="mb-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Premissas de orçamento
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Alterações valem para novos cálculos e para orçamentos
-              recalculados. Orçamentos já emitidos mantêm o snapshot salvo até
-              você usar “Recalcular preços”.
-            </p>
+            <div className="flex items-center gap-1">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Premissas de orçamento</h2>
+              <HelpTip title="Quando as mudanças valem">
+                <p>Alterações valem para novos cálculos. Orçamentos já existentes mantêm os valores gravados até você usar “Recalcular preços”.</p>
+              </HelpTip>
+            </div>
           </div>
           <ParametrosEconomicosForm valores={valores} />
         </section>
@@ -400,10 +402,12 @@ export default async function ParametrosEconomicosPage() {
 
         <section className="mt-8 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div className="border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold">Versões de parâmetros</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Snapshots criados ao salvar parâmetros globais ou parâmetros econômicos de projeto.
-            </p>
+            <div className="flex items-center gap-1">
+              <h2 className="text-sm font-semibold">Versões de parâmetros</h2>
+              <HelpTip title="Versões de parâmetros">
+                <p>Cada vez que parâmetros globais ou de um projeto são salvos, uma versão é registrada aqui para consulta.</p>
+              </HelpTip>
+            </div>
           </div>
           <div className="divide-y divide-border/70">
             {(versoes ?? []).map((versao) => (
@@ -420,7 +424,7 @@ export default async function ParametrosEconomicosPage() {
             ))}
             {(versoes ?? []).length === 0 && (
               <p className="px-4 py-5 text-sm text-muted-foreground/80">
-                Nenhuma versão registrada ainda. O próximo salvamento criará o primeiro snapshot.
+                Nenhuma versão registrada ainda. O próximo salvamento criará a primeira versão.
               </p>
             )}
           </div>
@@ -556,7 +560,7 @@ function versaoMaisRecente(
   escopo: "laboratorio_global" | "projeto",
 ) {
   const versao = (versoes ?? []).find((item) => item.escopo === escopo);
-  return versao ? `v${versao.versao}` : "sem snapshot";
+  return versao ? `v${versao.versao}` : "sem versão";
 }
 
 function somarParametrosProjeto(

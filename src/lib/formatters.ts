@@ -59,8 +59,21 @@ export function formatCompactCurrency(value: number | null | undefined) {
   return compactCurrencyFormatter.format(value ?? 0);
 }
 
+const dateOnlyFormatter = new Intl.DateTimeFormat(APP_LOCALE, {
+  timeZone: "UTC",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
 export function formatDate(value: string | Date | null | undefined) {
   if (!value) return "—";
+  // "2026-10-25" é uma data de calendário (validade, emissão): o Date a lê
+  // como meia-noite UTC e, no fuso de São Paulo, ela viraria 24/10.
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const date = new Date(`${value}T00:00:00Z`);
+    return Number.isNaN(date.getTime()) ? "—" : dateOnlyFormatter.format(date);
+  }
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return dateFormatter.format(date);

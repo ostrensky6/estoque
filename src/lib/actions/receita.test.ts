@@ -8,11 +8,12 @@ const eq = vi.fn();
 const select = vi.fn();
 const single = vi.fn();
 const from = vi.fn();
+const rpc = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect }));
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(async () => ({ from })),
+  createClient: vi.fn(async () => ({ from, rpc })),
 }));
 
 function materialForm(overrides: Record<string, string> = {}) {
@@ -43,9 +44,11 @@ describe("actions de receita - vinculo de materiais", () => {
     select.mockReset();
     single.mockReset();
     from.mockReset();
+    rpc.mockReset();
 
     insert.mockResolvedValue({ error: null });
-    eq.mockResolvedValue({ error: null });
+    // update/delete conferem as linhas afetadas com .select("id")
+    eq.mockReturnValue({ select: vi.fn().mockResolvedValue({ data: [{ id: 1 }], error: null }) });
     single.mockResolvedValue({ data: null, error: null });
     select.mockReturnValue({ eq });
     update.mockReturnValue({ eq });
@@ -123,74 +126,8 @@ describe("actions de receita - vinculo de materiais", () => {
     );
   });
 
-  it("duplicarAnalise preserva preferencial tecnico dos materiais", async () => {
-    const insertAnalise = vi.fn().mockResolvedValue({ error: null });
-    const insertEtapas = vi.fn().mockResolvedValue({ error: null });
-    const insertEquipamentos = vi.fn().mockResolvedValue({ error: null });
-    const insertMateriais = vi.fn().mockResolvedValue({ error: null });
-
-    from.mockImplementation((table: string) => {
-      if (table === "analises") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              single: vi.fn().mockResolvedValue({
-                data: { nome: "PCR", descricao: "Base" },
-                error: null,
-              }),
-            })),
-          })),
-          insert: insertAnalise,
-        };
-      }
-      if (table === "etapas") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn().mockResolvedValue({
-              data: [{ nome_etapa: "Preparo", nome_atividade: "PCR" }],
-              error: null,
-            }),
-          })),
-          insert: insertEtapas,
-        };
-      }
-      if (table === "equipamento_analise") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn().mockResolvedValue({
-              data: [{ equipamento_id: 1, peso_alocacao: 1 }],
-              error: null,
-            }),
-          })),
-          insert: insertEquipamentos,
-        };
-      }
-      if (table === "insumo_analise") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn().mockResolvedValue({
-              data: [
-                {
-                  nome_etapa: "Preparo",
-                  nome_atividade: "PCR",
-                  especificacao_insumo: "Kit A",
-                  grupo_escolha: "kit",
-                  preferencial: true,
-                  quantidade_por_amostra: 1,
-                  unidade: "uL",
-                  modo_cobranca: "por_amostra",
-                  base_calculo: null,
-                  insumo_id: 7,
-                },
-              ],
-              error: null,
-            }),
-          })),
-          insert: insertMateriais,
-        };
-      }
-      return { insert, update, select };
-    });
+  it("duplicarAnalise copia a análise inteira numa transação do banco (preserva preferencial)", async () => {
+    rpc.mockResolvedValue({ data: { codigo: "PCR-002" }, error: null });
     const { duplicarAnalise } = await import("./receita");
     const formData = new FormData();
     formData.set("origem", "PCR-001");
@@ -198,13 +135,22 @@ describe("actions de receita - vinculo de materiais", () => {
 
     await duplicarAnalise(formData);
 
-    expect(insertMateriais).toHaveBeenCalledWith([
-      expect.objectContaining({
-        codigo_analise: "PCR-002",
-        grupo_escolha: "kit",
-        preferencial: true,
-      }),
-    ]);
+    expect(rpc).toHaveBeenCalledWith("duplicar_analise", {
+      p_origem: "PCR-001",
+      p_novo: "PCR-002",
+      p_nome: null,
+    });
+    expect(from).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith("/analises/PCR-002");
+
+    // a cópia no banco usa todas as colunas das tabelas filhas (inclui preferencial)
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const sql = readFileSync(
+      join(process.cwd(), "supabase", "migrations", "0116_catalogo_analises_transacional.sql"),
+      "utf8",
+    );
+    expect(sql).toContain("from information_schema.columns");
+    expect(sql).toContain("array['etapas', 'equipamento_analise', 'insumo_analise'");
   });
 });

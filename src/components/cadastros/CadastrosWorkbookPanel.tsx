@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import Link from "next/link";
-import { Download, Upload } from "lucide-react";
+import { DownloadButton } from "@/components/common/DownloadButton";
+import { Upload } from "lucide-react";
 import { importarCadastrosWorkbook, type ImportCadastrosState } from "@/lib/actions/cadastros";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,12 +45,9 @@ export function CadastrosWorkbookPanel() {
               importação só adiciona e atualiza: nada é excluído, e células vazias mantêm o valor atual.
             </CardDescription>
           </div>
-          <Button asChild variant="outline">
-            <Link href="/cadastros/export">
-              <Download />
-              Baixar XLSX
-            </Link>
-          </Button>
+          <DownloadButton href="/cadastros/export" fileName="todos-os-cadastros.xlsx">
+            Baixar XLSX
+          </DownloadButton>
         </div>
       </CardHeader>
       <CardContent>

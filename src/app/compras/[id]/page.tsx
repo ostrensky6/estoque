@@ -7,6 +7,7 @@ import {
   removerItemPedido,
 } from "@/lib/actions/compras";
 import { PedidoAcoes } from "@/components/compras/PedidoAcoes";
+import { FormComMensagem } from "@/components/pedido/FormComMensagem";
 import { ScannerRecebimentoCompra } from "@/components/compras/ScannerRecebimentoCompra";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { listarEventos } from "@/lib/actions/eventos";
@@ -107,7 +108,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
           {pedido.projeto ? `Projeto: ${pedido.projeto} · ` : ""}
           Solicitante: {pedido.solicitante ?? "—"}
           {pedido.aprovador ? ` · Aprovado por ${pedido.aprovador}` : ""}
-          {pedido.data_prevista_entrega ? ` · Previsão: ${pedido.data_prevista_entrega}` : ""}
+          {pedido.data_prevista_entrega ? ` · Previsão: ${formatDate(pedido.data_prevista_entrega)}` : ""}
         </p>
 
         {/* itens */}
@@ -176,11 +177,11 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                       {(editavel || recebivel) && (
                         <td className="px-4 py-2.5 text-right">
                           {editavel && (
-                            <form action={removerItemPedido} className="inline">
+                            <FormComMensagem action={removerItemPedido} className="inline">
                               <input type="hidden" name="item_id" value={it.id} />
                               <input type="hidden" name="pedido_id" value={pedidoId} />
                               <button className="text-xs text-danger-strong hover:underline">Remover</button>
-                            </form>
+                            </FormComMensagem>
                           )}
                           {recebivel && Number(it.quantidade_recebida ?? 0) < Number(it.quantidade) && (
                             <ScannerRecebimentoCompra
@@ -209,7 +210,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
           <p className="mt-2 text-right text-sm text-muted-foreground">Total estimado: <b>{brl(total)}</b></p>
 
           {editavel && (
-            <form action={adicionarItemPedido} className="mt-3 flex flex-wrap items-end gap-2">
+            <FormComMensagem action={adicionarItemPedido} className="mt-3 flex flex-wrap items-end gap-2">
               <input type="hidden" name="pedido_id" value={pedidoId} />
               <div>
                 <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Insumo</label>
@@ -229,7 +230,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                 <input name="custo_unitario_estimado" type="number" min="0" step="0.01" className={`${inp} w-28`} />
               </div>
               <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Adicionar</button>
-            </form>
+            </FormComMensagem>
           )}
         </section>
 

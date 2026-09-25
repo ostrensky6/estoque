@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import type { PermissaoUsuario } from "@/lib/auth/permissions";
 import { createClientUntyped } from "@/lib/supabase/server";
+import { temPapel } from "@/lib/auth/roles";
 
 /**
  * Permissão granular EFETIVA do usuário corrente, avaliada pelo próprio banco
@@ -22,4 +23,13 @@ export const temPermissao = cache(async (chave: PermissaoUsuario): Promise<boole
 /** Atalho para a permissão que protege salários e valores de pessoal (PE). */
 export function podeVerSalario() {
   return temPermissao("tecnicos.salario.ver");
+}
+
+/**
+ * Pode criar, duplicar, excluir e editar análises: coordenador ou acima (regra
+ * antiga) ou quem recebeu "Editar análises" — mesma regra das policies (0114).
+ */
+export async function podeEditarAnalises() {
+  if (await temPapel("coordenador")) return true;
+  return temPermissao("analises.editar");
 }

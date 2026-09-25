@@ -20,6 +20,19 @@ export function normalizarModalidadeOrcamento(modalidade?: string | null) {
   return "analises";
 }
 
+// Rótulos de exibição; códigos legados caem na forma canônica equivalente.
+const ROTULOS_MODALIDADE: Record<string, string> = {
+  analises: "Apenas análises laboratoriais",
+  projeto: "Apenas projeto",
+  projeto_com_analises: "Projeto com análises laboratoriais",
+};
+
+export function rotuloModalidade(modalidade?: string | null) {
+  if (!modalidade) return "—";
+  const conhecida = MODALIDADES_LABORATORIO.has(modalidade) || MODALIDADES_PROJETO.has(modalidade);
+  return conhecida ? ROTULOS_MODALIDADE[normalizarModalidadeOrcamento(modalidade)] : modalidade;
+}
+
 export function modalidadeExigeLaboratorio(modalidade?: string | null) {
   return MODALIDADES_LABORATORIO.has(modalidade ?? "analises");
 }

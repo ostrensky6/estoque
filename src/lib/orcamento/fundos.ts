@@ -28,6 +28,7 @@ type ParametroSnapshot = {
   key?: unknown;
   label?: unknown;
   valorCalculado?: unknown;
+  valorNominal?: unknown;
   amount?: unknown;
 };
 
@@ -58,7 +59,8 @@ function chaveParametro(parametro: ParametroSnapshot) {
 }
 
 function valorParametro(parametro: ParametroSnapshot) {
-  return numero(parametro.valorCalculado ?? parametro.amount);
+  // Snapshot atual grava `valorNominal`; `valorCalculado`/`amount` vêm de formatos anteriores.
+  return numero(parametro.valorCalculado ?? parametro.valorNominal ?? parametro.amount);
 }
 
 export function extrairFundosPrevistos(parametrosSnapshot: unknown, snapshotFinal?: unknown): FundosPrevistos {
@@ -89,7 +91,11 @@ function extrairFundosDoSnapshotFinal(snapshotFinal?: unknown): FundosPrevistos 
   const consolidado = (snapshotFinal as { consolidado?: unknown }).consolidado;
   if (!consolidado || typeof consolidado !== "object") return vazio;
 
-  const parametros = (consolidado as { parametrosProjeto?: unknown }).parametrosProjeto;
+  // Engine atual: consolidado.economia.parametros; versões antigas: parametrosProjeto.
+  const economia = (consolidado as { economia?: { parametros?: unknown } }).economia;
+  const parametros = Array.isArray(economia?.parametros)
+    ? economia.parametros
+    : (consolidado as { parametrosProjeto?: unknown }).parametrosProjeto;
   if (!Array.isArray(parametros)) return vazio;
 
   return extrairFundosPrevistos(parametros);

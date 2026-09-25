@@ -110,19 +110,43 @@ describe("recebimento de pedido formal de compra", () => {
     });
     const { receberItemPedido } = await import("./compras");
 
-    await expect(receberItemPedido(formRecebimento())).rejects.toThrow(
-      "Validade é obrigatória para receber insumo crítico.",
-    );
+    await expect(receberItemPedido(formRecebimento())).resolves.toEqual({
+      ok: false,
+      message: "Validade é obrigatória para receber insumo crítico.",
+    });
 
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("devolve mensagem (sem fechar como sucesso) quando falta permissão", async () => {
+    const roles = await import("@/lib/auth/roles");
+    vi.mocked(roles.temPapel).mockResolvedValueOnce(false);
+    const { receberItemPedido } = await import("./compras");
+
+    const resultado = await receberItemPedido(formRecebimento({ validade: "2026-12-31" }));
+
+    expect(resultado.ok).toBe(false);
+    expect(resultado.message).toMatch(/Sem permissão/);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("devolve o erro da RPC como mensagem", async () => {
+    rpc.mockResolvedValueOnce({ error: { message: "Pedido não está aprovado." } });
+    const { receberItemPedido } = await import("./compras");
+
+    await expect(receberItemPedido(formRecebimento({ validade: "2026-12-31" }))).resolves.toEqual({
+      ok: false,
+      message: "Pedido não está aprovado.",
+    });
   });
 
   it("rejeita operacao_id ausente antes da RPC", async () => {
     const { receberItemPedido } = await import("./compras");
 
-    await expect(receberItemPedido(formRecebimento({ operacao_id: "" }))).rejects.toThrow(
-      "Identificador da operação de recebimento inválido.",
-    );
+    await expect(receberItemPedido(formRecebimento({ operacao_id: "" }))).resolves.toEqual({
+      ok: false,
+      message: "Identificador da operação de recebimento inválido.",
+    });
 
     expect(rpc).not.toHaveBeenCalled();
   });
@@ -130,7 +154,7 @@ describe("recebimento de pedido formal de compra", () => {
   it("mantem recebimento formal operacional", async () => {
     const { receberItemPedido } = await import("./compras");
 
-    await receberItemPedido(formRecebimento({ validade: "2026-12-31" }));
+    await expect(receberItemPedido(formRecebimento({ validade: "2026-12-31" }))).resolves.toMatchObject({ ok: true });
 
     expect(rpc).toHaveBeenCalledWith("receber_item_pedido_compra", expect.objectContaining({
       p_pedido_id: 20,
@@ -142,6 +166,7 @@ describe("recebimento de pedido formal de compra", () => {
     }));
     expect(revalidatePath).toHaveBeenCalledWith("/compras/20");
     expect(revalidatePath).toHaveBeenCalledWith("/estoque");
+    expect(revalidatePath).toHaveBeenCalledWith("/recebimento");
   });
 
   it("encaminha operacao_id estavel para a RPC de recebimento formal", async () => {
@@ -185,6 +210,9 @@ describe("recebimento de pedido formal de compra", () => {
       p_status_destino: "aprovado",
       p_data_prevista_entrega: "2026-07-06",
     }));
+    for (const rota of ["/compras/20", "/compras", "/recebimento", "/suprimentos"]) {
+      expect(revalidatePath).toHaveBeenCalledWith(rota);
+    }
   });
 
   it("aprovarPedido cai para prazo medio do fornecedor quando insumo nao tem lead time", async () => {

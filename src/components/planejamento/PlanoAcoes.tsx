@@ -9,6 +9,7 @@ import {
   concluirPlano,
 } from "@/lib/actions/planejamento";
 import type { FormState } from "@/lib/actions/cadastros";
+import { HelpTip } from "@/components/common/HelpTip";
 
 type Action = (prev: FormState, fd: FormData) => Promise<FormState>;
 
@@ -130,7 +131,7 @@ export function PlanoAcoes({
     <div className="space-y-3">
       {!contextoCompleto && (
         <p className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-strong">
-          Complete projeto e período previsto para transformar a previsão em reserva de estoque.
+          Complete projeto e período previsto para poder reservar insumos.
         </p>
       )}
       {status === "Reservado" && reservaDesatualizada && (
@@ -139,13 +140,28 @@ export function PlanoAcoes({
         </p>
       )}
       {status === "Reservado" && temFalta && (
-        <p className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-strong">
-          Há falta operacional. Gere pedido, libere/receba lotes ou replaneje antes de iniciar a baixa.
+        <p className="flex items-center gap-1 rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-strong">
+          Há insumos em falta; resolva antes de iniciar.
+          <HelpTip title="Como resolver a falta">
+            <p>Escolha uma saída:</p>
+            <ul className="list-disc space-y-0.5 pl-4">
+              <li><b>Gerar pedido interno</b> com os itens em falta;</li>
+              <li>liberar ou receber lotes no estoque;</li>
+              <li>reduzir as análises ou amostras do plano.</li>
+            </ul>
+          </HelpTip>
         </p>
       )}
       {status === "Reservado" && !temFalta && temBloqueioEquipamentos && (
-        <p className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-strong">
-          Há equipamento obrigatório sem reserva operacional válida. Reserve uma unidade disponível antes de iniciar.
+        <p className="flex items-center gap-1 rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-strong">
+          Falta reservar equipamento obrigatório.
+          <HelpTip title="Equipamento sem reserva">
+            <p>
+              Uma análise do plano exige um equipamento que ainda não tem reserva válida para o
+              período. Reserve uma unidade disponível em <b>Capacidade e equipamentos</b> antes de
+              iniciar.
+            </p>
+          </HelpTip>
         </p>
       )}
       <div className="flex flex-wrap items-start gap-3">

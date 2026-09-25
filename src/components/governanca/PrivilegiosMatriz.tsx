@@ -13,6 +13,7 @@ import {
 } from "@/lib/auth/permissions";
 import type { PermissoesPorCategoria } from "@/lib/auth/permission-categories";
 import { Button } from "@/components/ui/button";
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -40,11 +41,16 @@ export function PrivilegiosMatriz({ permissoesPorCategoria }: { permissoesPorCat
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
-        <h2 className="text-sm font-semibold">Reconciliação de papéis históricos</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          O banco atual mantém quatro papéis. O papel administrativo histórico não foi recriado como papel de perfil;
-          suas capacidades foram preservadas como privilégios editáveis para evitar alteração de RLS e perfis existentes.
-        </p>
+        <div className="flex items-center gap-1">
+          <h2 className="text-sm font-semibold">Papéis antigos e equivalência atual</h2>
+          <HelpTip title="Papéis antigos">
+            <p>
+              O Kontrol usa quatro papéis: técnico, coordenador, gestor e administrador. O antigo papel
+              &quot;administrativo&quot; não voltou como papel; o que ele podia fazer virou privilégios
+              que você liga ou desliga na matriz abaixo.
+            </p>
+          </HelpTip>
+        </div>
         <div className="mt-4 overflow-x-auto rounded-md border border-border">
           <table className="w-full min-w-[760px] border-collapse text-sm">
             <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
@@ -70,10 +76,19 @@ export function PrivilegiosMatriz({ permissoesPorCategoria }: { permissoesPorCat
       <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold">Matriz granular de privilégios</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Privilégios recuperados da matriz histórica e mantidos no modelo atual por categoria.
-            </p>
+            <div className="flex items-center gap-1">
+              <h2 className="text-sm font-semibold">Privilégios por papel</h2>
+              <HelpTip title="Privilégios por papel">
+                <p>
+                  Define o que cada papel pode fazer por padrão. Um usuário específico pode ter ajustes
+                  próprios em <b>Usuários e permissões → Editar</b>, que valem acima do padrão do papel.
+                </p>
+                <HelpExample>
+                  Ligar &quot;Ver salário dos técnicos&quot; para Coordenador mostra o salário dos
+                  técnicos a todos os coordenadores.
+                </HelpExample>
+              </HelpTip>
+            </div>
           </div>
         </div>
 
@@ -137,12 +152,14 @@ export function PrivilegiosMatriz({ permissoesPorCategoria }: { permissoesPorCat
           <DialogHeader>
             <DialogTitle>Editar privilégios: {papel?.label}</DialogTitle>
             <DialogDescription>
-              Altera os padrões granulares desse papel sem modificar o papel salvo nos perfis existentes.
+              Muda o padrão do papel. Ajustes individuais de usuários continuam valendo.
             </DialogDescription>
           </DialogHeader>
           {papel && (
             <form action={action} className="space-y-4">
               <input type="hidden" name="papel" value={papel.value} />
+              {/* sem isto, desmarcar tudo voltaria aos padrões do código */}
+              <input type="hidden" name="permissoes_presentes" value="1" />
               <div className="max-h-[55dvh] overflow-y-auto pr-1">
                 {grupos.map(([modulo, permissoes]) => (
                   <fieldset key={modulo} className="mb-4">

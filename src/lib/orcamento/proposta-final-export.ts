@@ -8,7 +8,7 @@
 // Compatibilidade histórica: versões SEM snapshot da nova engine são exportadas em
 // MODO LEGADO — o total salvo é preservado e nada é recalculado.
 import { modalidadeExigeLaboratorio, modalidadeExigeProjeto } from "./orcamento-economico";
-import { exigirIdentidadeInstitucional, type IdentidadeInstitucional } from "./identidade-institucional";
+import { resolverIdentidadeComAviso, type IdentidadeInstitucional } from "./identidade-institucional";
 import {
   montarComponentesTecnicos,
   reconciliarComposicao,
@@ -25,6 +25,8 @@ export type ParametroExport = { label: string; percentual: number; valorNominal:
 export type PropostaFinalExport = {
   legado: boolean;
   avisoLegado?: string;
+  /** Presente quando a instituição não foi reconhecida e a identidade padrão foi usada. */
+  avisoIdentidade?: string;
   exigeLaboratorio: boolean;
   exigeProjeto: boolean;
   info: {
@@ -120,7 +122,7 @@ export function montarPropostaFinalExport(args: {
   const legado = economia?.politica !== "A_GROSS_UP_TOTAL";
 
   const modalidade = args.demanda?.modalidade ?? null;
-  const identidade = exigirIdentidadeInstitucional(args.demanda?.instituicao);
+  const { identidade, aviso: avisoIdentidade } = resolverIdentidadeComAviso(args.demanda?.instituicao);
   const exigeLaboratorio = modalidadeExigeLaboratorio(modalidade);
   const exigeProjeto = modalidadeExigeProjeto(modalidade);
 
@@ -186,6 +188,7 @@ export function montarPropostaFinalExport(args: {
   return {
     legado,
     avisoLegado: legado ? "Versão emitida com regra econômica anterior." : undefined,
+    avisoIdentidade: avisoIdentidade ?? undefined,
     exigeLaboratorio,
     exigeProjeto,
     info: {

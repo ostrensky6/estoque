@@ -5,6 +5,14 @@ import type { PedidoItemView } from "@/components/pedido/PedidoItensQuickView";
 import { NovoPedidoDialog } from "@/components/pedido/NovoPedidoDialog";
 import { pedidoInternoNumero, pedidoInternoStatus } from "@/lib/pedido/status";
 import { formatCurrency as brl, formatDate } from "@/lib/formatters";
+import { statusInfo } from "@/components/app/status";
+
+const URGENCIA_LABEL: Record<string, string> = {
+  baixa: "Baixa",
+  normal: "Normal",
+  alta: "Alta",
+  critica: "Crítica",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -133,7 +141,7 @@ export default async function PedidoPage() {
     const docsCotacao = pedido.pedidos_internos_anexos.some((doc) => ["orcamento_previo", "proposta", "print", "email"].includes(doc.tipo));
     const recebidos = pedido.pedidos_internos_itens.filter((item) => item.recebido_em).length;
     const proxima = proximaAcao(pedido.status);
-    const compraFormal = compraRow?.id ? `#${compraRow.id} · ${compraRow.status}` : "—";
+    const compraFormal = compraRow?.id ? `#${compraRow.id} · ${statusInfo(compraRow.status).label}` : "—";
     return {
       id: pedido.id,
       numero: pedidoInternoNumero(pedido.id),
@@ -143,7 +151,7 @@ export default async function PedidoPage() {
       coordenador,
       solicitante: pedido.solicitante ?? "—",
       necessidade: formatDate(pedido.data_necessidade),
-      urgencia: pedido.urgencia ?? "normal",
+      urgencia: URGENCIA_LABEL[pedido.urgencia ?? "normal"] ?? pedido.urgencia ?? "Normal",
       itens: itens.length,
       itensDetalhe: itens,
       total: brl(total),

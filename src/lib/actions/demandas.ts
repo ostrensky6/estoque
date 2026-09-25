@@ -98,11 +98,23 @@ async function clienteSnapshot(clienteId: number | null) {
 }
 
 export async function criarDemanda(formData: FormData) {
+  const erro = await executarCriacaoDemanda(formData);
+  if (erro) throw new Error(erro);
+}
+
+// Cria e redireciona; em falha devolve a mensagem (o formulário não se perde).
+async function executarCriacaoDemanda(formData: FormData): Promise<string | null> {
   await exigirPapelOrcamento("criar_demanda");
   const supabase = await createClient();
   // Validação dos grupos e das análises antes de qualquer escrita.
-  const grupos = lerGruposAmostras(formData);
-  const analises = lerAnalisesSelecionadas(formData);
+  let grupos;
+  let analises;
+  try {
+    grupos = lerGruposAmostras(formData);
+    analises = lerAnalisesSelecionadas(formData);
+  } catch (e) {
+    return e instanceof Error ? e.message : "Grupos de amostras inválidos.";
+  }
   const clienteId = numeroOuNull(formData, "cliente_id");
   const cliente = await clienteSnapshot(clienteId);
   const demanda = {
@@ -112,6 +124,10 @@ export async function criarDemanda(formData: FormData) {
     cliente_nome: cliente?.nome ?? texto(formData, "cliente_nome"),
     cliente_cnpj: cliente?.cnpj ?? texto(formData, "cliente_cnpj"),
     cliente_contato: cliente?.contato || cliente?.email || cliente?.telefone || texto(formData, "cliente_contato"),
+    instituicao: texto(formData, "instituicao"),
+    responsavel_interno: texto(formData, "responsavel_interno"),
+    data_solicitacao: texto(formData, "data_solicitacao") ?? undefined,
+    prazo_esperado: texto(formData, "prazo_esperado"),
     modalidade: texto(formData, "modalidade") || "analises",
     origem: texto(formData, "origem"),
     prioridade: texto(formData, "prioridade") || "normal",
@@ -142,9 +158,9 @@ export async function criarDemanda(formData: FormData) {
     p_analises: analises,
   } as never);
 
-  if (error) throw new Error(error.message);
+  if (error) return `Não foi possível criar o orçamento: ${error.message}`;
   const demandaId = (data as { demanda_id?: number } | null)?.demanda_id;
-  if (!demandaId) throw new Error("A criação da demanda não foi confirmada pelo banco.");
+  if (!demandaId) return "O banco não confirmou a criação do orçamento. Nada foi salvo.";
 
   revalidatePath(listaPath);
   redirect(`${listaPath}/${demandaId}`);
@@ -154,8 +170,8 @@ export async function criarDemandaCompleta(
   _prevState: DemandaFormState,
   formData: FormData,
 ): Promise<DemandaFormState> {
-  await criarDemanda(formData);
-  return { ok: true, message: "Demanda criada." };
+  const erro = await executarCriacaoDemanda(formData);
+  return { ok: false, message: erro ?? "Não foi possível criar o orçamento." };
 }
 
 export async function salvarDemanda(formData: FormData): Promise<void>;
@@ -434,7 +450,7 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
     redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent("Complete a demanda antes de emitir o orçamento final.")}`);
   }
 
-  const [{ data: orcamentos }, { data: orcProjetos }] = await Promise.all([
+  const [{ data: orcamentosTodos }, { data: orcProjetosTodos }] = await Promise.all([
     supabase
       .from("orcamentos")
       .select("id, status, status_operacional, fonte_custo_insumos, custo_snapshot, orcamento_itens(id, n_amostras, custo_unitario, preco_unitario, valor_snapshot)")
@@ -446,6 +462,9 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
       .eq("demanda_id", id)
       .order("id"),
   ]);
+  // Módulos cancelados não entram em totais, validações nem no snapshot.
+  const orcamentos = (orcamentosTodos ?? []).filter((o) => o.status !== "cancelado" && o.status_operacional !== "cancelado");
+  const orcProjetos = (orcProjetosTodos ?? []).filter((o) => o.status !== "cancelado");
 
   // Integridade: não emitir com duplicidade ativa (também travado na RPC sob lock).
   const labAtivos = (orcamentos ?? [])
@@ -545,6 +564,13 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
 
   if (!consolidado.pronto) {
     redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent(consolidado.pendencias.join("; "))}`);
+  }
+
+  // Σ parâmetros = 0: a proposta sairia pelo custo técnico, sem impostos nem
+  // lucro. Só emite com confirmação explícita do formulário.
+  if (consolidado.somaPercentual <= 0 && String(formData.get("confirmar_sem_parametros") ?? "") !== "sim") {
+    const msg = "Nenhum parâmetro econômico definido: a proposta sairia pelo custo técnico, sem impostos nem lucro. Confirme para emitir assim.";
+    redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent(msg)}`);
   }
 
   // Validação defensiva (Fase 10): bloqueia emissão com custo técnico <= 0 sem

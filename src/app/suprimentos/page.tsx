@@ -4,6 +4,8 @@ import { temPapel } from "@/lib/auth/roles";
 import { GerarPedidoReposicaoButton } from "@/components/pedido/GerarPedidoReposicaoButton";
 import { PlanoLinhaAcoes } from "@/components/planejamento/PlanoGestao";
 import { avaliarGestaoPlano } from "@/lib/planejamento/gestao";
+import { HelpTip } from "@/components/common/HelpTip";
+import { statusInfo } from "@/components/app/status";
 import { formatDate, formatNumber as fmt } from "@/lib/formatters";
 import { pedidoInternoNumero, pedidoInternoStatus } from "@/lib/pedido/status";
 
@@ -101,6 +103,24 @@ const MODALIDADE: Record<string, string> = {
   universidade: "Universidade",
   outra: "Outra",
 };
+
+const STATUS_EXTRA: Record<string, string> = {
+  operacional: "Operacional",
+  em_manutencao: "Em manutenção",
+  calibracao_pendente: "Calibração pendente",
+  calibracao_vencida: "Calibração vencida",
+  em_transito: "Em trânsito",
+};
+
+/** Código gravado no banco (ex.: "em_manutencao") → rótulo legível. */
+function rotulo(valor: string | null | undefined) {
+  if (!valor) return "—";
+  if (STATUS_EXTRA[valor]) return STATUS_EXTRA[valor];
+  const label = statusInfo(valor).label;
+  if (label !== valor) return label;
+  const texto = valor.replaceAll("_", " ");
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
 
 function validadeEfetiva(lote: Pick<LoteRow, "validade" | "validade_apos_abertura">) {
   if (lote.validade && lote.validade_apos_abertura) {
@@ -373,10 +393,15 @@ export default async function SuprimentosPage() {
       <main className="app-page-container">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Suprimentos</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Central operacional de planejamento, reservas, pedidos internos, compras, recebimento, quarentena e rastreabilidade.
-            </p>
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Suprimentos</h1>
+              <HelpTip title="Suprimentos">
+                <p>
+                  Visão geral do material do laboratório: o que está reservado para planos, pedidos e compras
+                  em andamento, o que está chegando, lotes em quarentena e de onde veio cada lote.
+                </p>
+              </HelpTip>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {podeGerarReposicao && <GerarPedidoReposicaoButton />}
@@ -396,6 +421,15 @@ export default async function SuprimentosPage() {
               {label}
             </Link>
           ))}
+        </nav>
+
+        <nav className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" aria-label="Ferramentas de estoque">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ferramentas</span>
+          <Link href="/estoque/controle" className="font-medium text-primary hover:underline">Controle de estoque</Link>
+          <Link href="/estoque/inventario" className="font-medium text-primary hover:underline">Inventário (contagem)</Link>
+          <Link href="/etiquetas" className="font-medium text-primary hover:underline">Etiquetas QR</Link>
+          <Link href="/scanner/triagem" className="font-medium text-primary hover:underline">Códigos não reconhecidos</Link>
+          <Link href="/estoque/equipamentos" className="font-medium text-primary hover:underline">Equipamentos</Link>
         </nav>
 
         <Section id="visao-geral" title="Visão geral">
@@ -499,7 +533,7 @@ export default async function SuprimentosPage() {
                         <td className={td}><span className={`rounded-md px-2 py-1 text-xs ${status.className}`}>{status.label}</span></td>
                         <td className={td}>{prox.acao}</td>
                         <td className={td}>{prox.responsavel}</td>
-                        <td className={td}>{docsCotacao(pedido) ? <Pill tone="green">ok</Pill> : <Pill tone="amber">pendente</Pill>}</td>
+                        <td className={td}>{docsCotacao(pedido) ? <Pill tone="green">OK</Pill> : <Pill tone="amber">Pendente</Pill>}</td>
                         <td className={td}>{pedido.modalidade_compra ? MODALIDADE[pedido.modalidade_compra] ?? pedido.modalidade_compra : "—"}</td>
                         <td className={td}>{materiais.length ? `${recebidos}/${materiais.length}` : "—"}</td>
                         <td className={td}>{pendencias.length ? <span className="text-warning-strong">{pendencias.join(", ")}</span> : "—"}</td>
@@ -534,7 +568,7 @@ export default async function SuprimentosPage() {
                           <td className={`${td} font-medium`}><Link href={`/compras/${compra.id}`} className="text-primary hover:underline">Compra #{compra.id}</Link></td>
                           <td className={td}>{compra.fornecedores?.nome ?? "—"}</td>
                           <td className={td}>{compra.projetos?.nome ?? "—"}</td>
-                          <td className={td}><Pill tone={isAtrasada(compra.data_prevista_entrega, compra.status) ? "red" : "blue"}>{compra.status}</Pill></td>
+                          <td className={td}><Pill tone={isAtrasada(compra.data_prevista_entrega, compra.status) ? "red" : "blue"}>{rotulo(compra.status)}</Pill></td>
                           <td className={td}>{formatDate(compra.data_prevista_entrega)}</td>
                           <td className={td}>{compra.pedidos_compra_itens.length}</td>
                         </tr>
@@ -613,7 +647,7 @@ export default async function SuprimentosPage() {
                       <tr key={lote.id}>
                         <td className={`${td} font-mono text-xs`}><Link href={`/estoque/lotes/${lote.id}`} className="text-primary hover:underline">{lote.codigo_lote ?? `#${lote.id}`}</Link></td>
                         <td className={td}>{lote.insumos?.especificacao ?? "—"}</td>
-                        <td className={td}><Pill tone={lote.status === "quarentena" ? "amber" : validade && validade < hoje ? "red" : "blue"}>{lote.status}</Pill></td>
+                        <td className={td}><Pill tone={lote.status === "quarentena" ? "amber" : validade && validade < hoje ? "red" : "blue"}>{rotulo(lote.status)}</Pill></td>
                         <td className={td}>{formatDate(validade)}</td>
                         <td className={td}>{fmt(lote.quantidade_atual)} {lote.insumos?.unidade ?? ""}</td>
                         <td className={`${td} text-right`}><Link href={`/estoque/lotes/${lote.id}`} className="font-medium text-primary hover:underline">Ver lote</Link></td>
@@ -643,9 +677,9 @@ export default async function SuprimentosPage() {
                     const reserva = (equip.equipamento_reservas ?? []).find((r) => ["reservado", "em_uso"].includes(r.status));
                     return (
                       <tr key={equip.id}>
-                        <td className={`${td} font-medium`}><Link href={`/estoque/equipamentos?scan=${equip.id}`} className="text-primary hover:underline">{equip.equipamentos?.nome ?? `Equipamento #${equip.id}`}</Link></td>
+                        <td className={`${td} font-medium`}><Link href={`/estoque/equipamentos?focus=${equip.id}`} className="text-primary hover:underline">{equip.equipamentos?.nome ?? `Equipamento #${equip.id}`}</Link></td>
                         <td className={td}>{equip.codigo_patrimonio ?? "—"}</td>
-                        <td className={td}><Pill tone={!equip.ativo || ["em_manutencao", "calibracao_vencida", "inativo", "descartado"].includes(equip.status_operacional) ? "red" : equip.status_operacional === "reservado" ? "blue" : "green"}>{equip.status_operacional}</Pill></td>
+                        <td className={td}><Pill tone={!equip.ativo || ["em_manutencao", "calibracao_vencida", "inativo", "descartado"].includes(equip.status_operacional) ? "red" : equip.status_operacional === "reservado" ? "blue" : "green"}>{equip.ativo ? rotulo(equip.status_operacional) : "Inativo"}</Pill></td>
                         <td className={td}>{reserva ? `${formatDate(reserva.data_inicio)} → ${formatDate(reserva.data_fim)}` : "—"}</td>
                       </tr>
                     );
@@ -666,7 +700,7 @@ export default async function SuprimentosPage() {
                       <p className="font-medium">{n.titulo}</p>
                       {n.corpo && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{n.corpo}</p>}
                     </div>
-                    <Pill tone="amber">{n.tipo}</Pill>
+                    <Pill tone="amber">{rotulo(n.tipo)}</Pill>
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">{formatDate(n.criado_em)}</p>
                 </Link>
@@ -695,7 +729,7 @@ export default async function SuprimentosPage() {
                     return (
                       <tr key={pedido.id}>
                         <td className={`${td} font-medium`}><Link href={`/pedido/${pedido.id}`} className="text-primary hover:underline">{pedidoInternoNumero(pedido.id)} · {pedido.titulo}</Link></td>
-                        <td className={td}>{asOne(pedido.pedidos_compra)?.id ? <Link href={`/compras/${asOne(pedido.pedidos_compra)?.id}`} className="text-primary hover:underline">#{asOne(pedido.pedidos_compra)?.id} · {asOne(pedido.pedidos_compra)?.status}</Link> : "—"}</td>
+                        <td className={td}>{asOne(pedido.pedidos_compra)?.id ? <Link href={`/compras/${asOne(pedido.pedidos_compra)?.id}`} className="text-primary hover:underline">#{asOne(pedido.pedidos_compra)?.id} · {rotulo(asOne(pedido.pedidos_compra)?.status)}</Link> : "—"}</td>
                         <td className={td}>{pedido.pedidos_internos_itens.filter((item) => item.recebido_em).length}/{pedido.pedidos_internos_itens.length}</td>
                         <td className={td}>
                           {lotesRecebidos.length ? lotesRecebidos.map((item) => (

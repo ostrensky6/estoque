@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Camera, Keyboard, Loader2, ScanLine } from "lucide-react";
 
+import { HelpTip } from "@/components/common/HelpTip";
 import { receberItemPedido } from "@/lib/actions/compras";
 import {
   resolverCodigoRecebimentoInterno,
@@ -124,7 +125,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
       setCameraMessage(
         error instanceof Error
           ? error.message
-          : "Não foi possível acessar a câmera. Use a entrada manual.",
+          : "Não foi possível acessar a câmera. Digite o código.",
       );
     }
   }
@@ -133,7 +134,11 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
     setErroRecebimento(null);
     startRecebimentoTransition(async () => {
       try {
-        await receberItemPedido(formData);
+        const resultado = await receberItemPedido(formData);
+        if (!resultado.ok) {
+          setErroRecebimento(resultado.message ?? "Não foi possível receber o item.");
+          return;
+        }
         setOperacaoId(crypto.randomUUID());
         pararCamera();
         setAberto(false);
@@ -169,27 +174,32 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
             onClick={fechar}
           />
           <div className="relative max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-card p-5 shadow-xl">
-            <h3 className="text-base font-semibold">Receber item de compra</h3>
+            <div className="flex items-center gap-1">
+              <h3 className="text-base font-semibold">Receber item de compra</h3>
+              <HelpTip title="Recebimento com leitor">
+                <p>
+                  A leitura do código só preenche ou confere os campos. O item só é recebido quando você
+                  clica em “Confirmar recebimento”; o lote entra em quarentena até ser aceito.
+                </p>
+              </HelpTip>
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {item.insumoDescricao ?? `Insumo #${item.insumoId ?? "-"}`}
               {item.unidade ? ` · ${item.unidade}` : ""}
-            </p>
-            <p className="mt-2 rounded-md bg-brand-50 px-3 py-2 text-xs text-brand-800 dark:bg-brand-950/30 dark:text-brand-300">
-              O scanner apenas preenche ou confere dados. O recebimento so acontece ao confirmar.
             </p>
 
             <section className="mt-4 rounded-lg border border-border p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h4 className="inline-flex items-center gap-2 text-sm font-semibold">
                   <ScanLine className="h-4 w-4 text-brand-600 dark:text-brand-300" />
-                  Escanear codigo
+                  Ler código
                 </h4>
                 <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
                   {cameraStatus === "ativa"
                     ? "Câmera ativa"
                     : cameraStatus === "iniciando"
                       ? "Iniciando câmera"
-                      : "Manual disponível"}
+                      : "Digitação disponível"}
                 </span>
               </div>
 
@@ -209,7 +219,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                   ) : (
                     <Camera className="h-3.5 w-3.5" />
                   )}
-                  Usar camera
+                  Usar câmera
                 </button>
                 <button
                   type="button"
@@ -217,7 +227,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                   disabled={cameraStatus === "parada" || recebimentoPending}
                   className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
                 >
-                  Parar camera
+                  Parar câmera
                 </button>
               </div>
 
@@ -235,7 +245,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                     value={codigoScanner}
                     onChange={(event) => setCodigoScanner(event.target.value)}
                     className={`${scanInput} pl-8`}
-                    placeholder="KONTROL:INS:123, /s/lote/123 ou código do fornecedor"
+                    placeholder="Código da etiqueta ou do fornecedor"
                   />
                 </div>
                 <button

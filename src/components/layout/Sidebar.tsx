@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { HelpCircle, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { abrirAjudaContextual } from "@/components/layout/ContextHelp";
 import { KontrolLogo } from "@/components/brand/KontrolLogo";
 import { SideNav, type NavGroup } from "@/components/layout/SideNav";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -233,16 +234,29 @@ export function Sidebar({
             fetchPriority="high"
           />
         </Link>
-        <Button
-          type="button"
-          aria-label="Buscar ou executar ação"
-          onClick={abrirPaletaComandos}
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 text-muted-foreground"
-        >
-          <Search className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center">
+          {/* No celular a ajuda contextual abre daqui, e não por um botão flutuante. */}
+          <Button
+            type="button"
+            aria-label="Ajuda contextual"
+            onClick={abrirAjudaContextual}
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 text-muted-foreground"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+          <Button
+            type="button"
+            aria-label="Buscar ou executar ação"
+            onClick={abrirPaletaComandos}
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 text-muted-foreground"
+          >
+            <Search className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       {/* Rail estática (desktop) */}

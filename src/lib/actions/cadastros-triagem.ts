@@ -19,17 +19,17 @@ function texto(formData: FormData, chave: string) {
 }
 
 const triagemSchema = z.object({
-  codigo: z.string().trim().min(1, "Codigo obrigatorio."),
+  codigo: z.string().trim().min(1, "Código obrigatório."),
 });
 
 const resolverExistenteSchema = z.object({
-  triagem_id: z.coerce.number().int().positive("Triagem invalida."),
-  entidade_tipo: z.string().refine(isTipoResolucaoTriagem, "Tipo de resolucao invalido."),
+  triagem_id: z.coerce.number().int().positive("Triagem inválida."),
+  entidade_tipo: z.string().refine(isTipoResolucaoTriagem, "Tipo de resolução inválido."),
   entidade_id: z.coerce.number().int().positive("Entidade obrigatoria."),
 });
 
 const novoInsumoSchema = z.object({
-  triagem_id: z.coerce.number().int().positive("Triagem invalida."),
+  triagem_id: z.coerce.number().int().positive("Triagem inválida."),
   especificacao: z.string().trim().min(1, "Especificacao obrigatoria."),
   unidade: z.string().trim().min(1, "Unidade de estoque obrigatoria."),
   unidade_consumo: z.string().trim().min(1, "Unidade de consumo obrigatoria."),
@@ -42,7 +42,7 @@ const novoInsumoSchema = z.object({
 });
 
 const arquivarSchema = z.object({
-  triagem_id: z.coerce.number().int().positive("Triagem invalida."),
+  triagem_id: z.coerce.number().int().positive("Triagem inválida."),
 });
 
 type TriagemPendente = {
@@ -124,7 +124,7 @@ async function vincularCodigoTriagem(args: {
     if (!mesmoDestino) {
       return {
         ok: false,
-        message: "Este codigo ja esta vinculado a outra entidade ativa.",
+        message: "Este código já está vinculado a outro item ativo.",
       };
     }
   } else {
@@ -185,7 +185,7 @@ export async function criarTriagemCodigoDesconhecido(
   if (!parsed.success) {
     return {
       ok: false,
-      message: parsed.error.issues[0]?.message ?? "Codigo invalido.",
+      message: parsed.error.issues[0]?.message ?? "Código inválido.",
     };
   }
 
@@ -254,9 +254,9 @@ export async function resolverTriagemComEntidadeExistente(
   const supabase = await createClientUntyped();
   const tipo = parsed.data.entidade_tipo;
   const triagem = await carregarTriagemPendente(supabase, parsed.data.triagem_id);
-  if (!triagem) return { ok: false, message: "Triagem pendente nao encontrada." };
+  if (!triagem) return { ok: false, message: "Triagem pendente não encontrada." };
   if (!(await entidadeExiste(supabase, tipo, parsed.data.entidade_id))) {
-    return { ok: false, message: "Entidade selecionada nao existe." };
+    return { ok: false, message: "O item selecionado não existe." };
   }
 
   const usuario = await usuarioAtual();
@@ -322,7 +322,7 @@ export async function arquivarTriagemCodigoDesconhecido(
   const parsed = arquivarSchema.safeParse({
     triagem_id: formData.get("triagem_id"),
   });
-  if (!parsed.success) return { ok: false, message: "Triagem invalida." };
+  if (!parsed.success) return { ok: false, message: "Triagem inválida." };
 
   const supabase = await createClientUntyped();
   const { error } = await supabase

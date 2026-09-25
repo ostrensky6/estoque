@@ -2,7 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { criarPedido } from "@/lib/actions/compras";
 import { ComprasTable, type CompraRow } from "@/components/compras/ComprasTable";
 import { GerarPedidoReposicaoButton } from "@/components/pedido/GerarPedidoReposicaoButton";
-import { formatNumber as fmt } from "@/lib/formatters";
+import { FormComMensagem } from "@/components/pedido/FormComMensagem";
+import { HelpTip, HelpExample } from "@/components/common/HelpTip";
+import { formatDate, formatNumber as fmt } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +35,7 @@ export default async function ComprasPage() {
     const projeto = p.projeto_id != null ? projetoNome.get(p.projeto_id) ?? "—" : p.projeto ?? "—";
     return {
       id: p.id as number,
-      pedido: `#${p.id} · ${p.data_solicitacao ?? "—"}`,
+      pedido: `#${p.id} · ${formatDate(p.data_solicitacao)}`,
       fornecedor,
       projeto,
       solicitante: p.solicitante ?? "—",
@@ -69,23 +71,31 @@ export default async function ComprasPage() {
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
-        <h1 className="text-xl font-semibold tracking-tight">Compras</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Solicitação → aprovação → recebimento. O material recebido entra em
-          quarentena até a aceitação.
-        </p>
+        <div className="flex items-center gap-1">
+          <h1 className="text-xl font-semibold tracking-tight">Compras</h1>
+          <HelpTip title="Compras">
+            <p>
+              Caminho de uma compra: solicitação → aprovação → envio ao fornecedor → recebimento. O
+              material recebido entra em quarentena até alguém conferir e aceitar o lote.
+            </p>
+          </HelpTip>
+        </div>
 
         {/* sugestões */}
         {(sugestoes.length > 0 || sugestoesHistoricas.length > 0) && (
           <div className="mt-6 rounded-xl border border-warning-strong/30 bg-warning-soft p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold text-warning-strong">
-                  Sugestões de reposição ({Math.max(sugestoes.length, sugestoesHistoricas.length)})
-                </h2>
-                <p className="mt-1 text-xs text-warning-strong">
-                  Combina ponto configurado com consumo histórico, lead time e estoque de segurança.
-                </p>
+                <div className="flex items-center gap-1">
+                  <h2 className="text-sm font-semibold text-warning-strong">Sugestões de reposição ({Math.max(sugestoes.length, sugestoesHistoricas.length)})</h2>
+                  <HelpTip title="Sugestões de reposição">
+                    <p>
+                      Itens que estão acabando. A quantidade sugerida considera o ponto de reposição, o
+                      consumo recente, o prazo de entrega do fornecedor e a reserva de segurança.
+                    </p>
+                    <HelpExample>“disp. 2 · pedir ~10”: restam 2 e convém pedir cerca de 10.</HelpExample>
+                  </HelpTip>
+                </div>
               </div>
               <GerarPedidoReposicaoButton />
             </div>
@@ -93,7 +103,7 @@ export default async function ComprasPage() {
               {sugestoesRender.slice(0, 8).map((s, i) => (
                 <li key={i} className="flex justify-between gap-4">
                   <span className="truncate">
-                    {s.categoria === "critico" && "Critico · "}
+                    {s.categoria === "critico" && "Crítico · "}
                     {s.especificacao}
                   </span>
                   <span className="shrink-0 tabular-nums">
@@ -108,20 +118,22 @@ export default async function ComprasPage() {
         <div className="mt-6 rounded-xl border border-info-strong/30 bg-info-soft p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-info-strong">
-                Reposição via pedido interno
-              </h2>
-              <p className="mt-1 max-w-2xl text-xs leading-5 text-info-strong">
-                A reposição deve nascer como pedido interno estruturado. Depois de validado,
-                o pedido tramita para a compra formal e recebimento.
-              </p>
+              <div className="flex items-center gap-1">
+                <h2 className="text-sm font-semibold text-info-strong">Reposição via pedido interno</h2>
+                <HelpTip title="Reposição via pedido interno">
+                  <p>
+                    A reposição começa como um pedido interno com os itens em falta. Depois de validado,
+                    ele vira a compra formal e segue para o recebimento.
+                  </p>
+                </HelpTip>
+              </div>
             </div>
             <GerarPedidoReposicaoButton />
           </div>
         </div>
 
         {/* novo pedido */}
-        <form action={criarPedido} className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+        <FormComMensagem action={criarPedido} className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div>
             <label className="block text-xs font-medium text-muted-foreground">Fornecedor</label>
             <select aria-label="Fornecedor" name="fornecedor_id" className={`${inp} mt-1`} defaultValue="">
@@ -147,7 +159,7 @@ export default async function ComprasPage() {
           <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
             + Nova solicitação
           </button>
-        </form>
+        </FormComMensagem>
 
         <div className="mt-6">
           <ComprasTable rows={linhas} />

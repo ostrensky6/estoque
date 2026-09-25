@@ -8,6 +8,7 @@ import {
   MOTIVOS_BAIXA,
   disponivelParaBaixa,
   formatarDataIso,
+  loteVencido,
   lotesParaBaixa,
   situacaoBaixa,
   type LoteBaixa,
@@ -88,6 +89,10 @@ export function DarBaixaDialog({
   }
 
   const emEmbalagens = lote?.modeloQuantidade === "EMBALAGEM_FECHADA";
+  // lote vencido não vai para uso: só sai do saldo como Vencimento
+  const somenteVencimento = lote ? loteVencido(lote.validade) : false;
+  const motivosPermitidos = somenteVencimento ? (["Vencimento"] as const) : MOTIVOS_BAIXA;
+  const motivoEfetivo = somenteVencimento ? "Vencimento" : motivoTipo;
   const disponivel = lote ? disponivelParaBaixa(lote) : 0;
   const unidadeQtd = emEmbalagens ? "embalagem(ns)" : unidade;
 
@@ -118,8 +123,8 @@ export function DarBaixaDialog({
     else if (n > disponivel) {
       novos.quantidade = `Máximo disponível: ${formatNumber(disponivel)} ${unidadeQtd}.`;
     }
-    if (!motivoTipo) novos.motivo_tipo = "Selecione o motivo.";
-    if (motivoTipo === "Outro" && motivoDetalhe.trim().length < 3) novos.motivo_detalhe = "Descreva o motivo.";
+    if (!motivoEfetivo) novos.motivo_tipo = "Selecione o motivo.";
+    if (motivoEfetivo === "Outro" && motivoDetalhe.trim().length < 3) novos.motivo_detalhe = "Descreva o motivo.";
     return novos;
   }
 
@@ -134,7 +139,7 @@ export function DarBaixaDialog({
     formData.set("lote_id", String(lote.id));
     formData.set("quantidade", quantidade.replace(",", "."));
     formData.set("quantidade_esperada", String(lote.quantidadeAtual));
-    formData.set("motivo_tipo", motivoTipo);
+    formData.set("motivo_tipo", motivoEfetivo);
     formData.set("motivo_detalhe", motivoDetalhe);
     formData.set("operacao_id", operacaoId);
 
@@ -244,19 +249,23 @@ export function DarBaixaDialog({
               <Select
                 id={`${uid}-motivo`}
                 name="motivo_tipo"
-                value={motivoTipo}
+                value={motivoEfetivo}
                 onChange={(event) => setMotivoTipo(event.target.value)}
+                disabled={somenteVencimento}
                 aria-invalid={Boolean(erros.motivo_tipo)}
                 aria-describedby={erros.motivo_tipo ? `${uid}-motivo-erro` : undefined}
                 required
               >
                 <option value="">Selecione…</option>
-                {MOTIVOS_BAIXA.map((motivo) => (
+                {motivosPermitidos.map((motivo) => (
                   <option key={motivo} value={motivo}>
                     {motivo}
                   </option>
                 ))}
               </Select>
+              {somenteVencimento && (
+                <p className="text-xs text-warning-strong">Lote vencido: sai do saldo como perda por vencimento.</p>
+              )}
               {erros.motivo_tipo && (
                 <p id={`${uid}-motivo-erro`} className="text-xs text-danger-strong">
                   {erros.motivo_tipo}

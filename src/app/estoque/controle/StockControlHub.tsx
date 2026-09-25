@@ -77,6 +77,7 @@ type AlertaEstoque = {
 type LoteDbRow = {
   id: number;
   insumoId: number;
+  estornoDiretoPermitido?: boolean;
   codigoLote: string;
   validade: string;
   validadeIso: string | null;
@@ -613,7 +614,7 @@ export function StockControlHub({
                                     <Bell className="h-3 w-3 text-muted-foreground/80" /> {n.titulo}
                                   </span>
                                   <span className="text-[10px] text-muted-foreground/80 shrink-0">
-                                    {new Date(n.criado_em).toLocaleDateString("pt-BR")}
+                                    {formatDate(n.criado_em)}
                                   </span>
                                 </div>
                                 {n.corpo && <p className="text-muted-foreground mt-0.5 line-clamp-1">{n.corpo}</p>}
@@ -659,7 +660,7 @@ export function StockControlHub({
                           {item.alerts.filter((a) => a.tipo === "vencido" || a.tipo === "vencimento").map((a) => (
                             <div key={`${item.insumo_id ?? item.especificacao}-${a.tipo}-${a.validade ?? "sem-data"}`} className="text-xs text-danger-strong font-semibold flex items-center gap-1.5">
                               <CalendarClock className="h-3.5 w-3.5" />
-                              {a.tipo === "vencido" ? "Vencido em:" : "Vence em:"} {a.validade ? new Date(a.validade).toLocaleDateString("pt-BR") : "sem data"}
+                              {a.tipo === "vencido" ? "Vencido em:" : "Vence em:"} {a.validade ? formatDate(a.validade) : "sem data"}
                             </div>
                           ))}
                         </div>
@@ -677,7 +678,7 @@ export function StockControlHub({
                             especificacao={item.especificacao ?? undefined}
                             triggerClassName="inline-flex items-center gap-1 rounded-md border border-danger-strong/30 bg-card px-2.5 py-1.5 text-xs font-semibold text-danger-strong shadow-sm hover:bg-danger-soft"
                           />
-                          {disponivel <= ponto && (
+                          {ponto > 0 && disponivel <= ponto && (
                             <GerarPedidoInsumoButton insumoId={item.insumo_id} />
                           )}
                         </div>
@@ -716,7 +717,9 @@ export function StockControlHub({
                         {lote.especificacao}
                       </td>
                       <td className="px-6 py-4 font-mono text-xs">
-                        {lote.codigoLote}
+                        <Link href={`/estoque/lotes/${lote.id}`} className="text-primary hover:underline">
+                          {lote.codigoLote}
+                        </Link>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
@@ -748,6 +751,7 @@ export function StockControlHub({
                           vencido={lote.vencido}
                           reservado={lote.reservado}
                           modeloQuantidade={lote.modeloQuantidade}
+                          estornoDiretoPermitido={lote.estornoDiretoPermitido}
                           podeAceitar={podeAceitar}
                           podeGerir={podeGerir}
                         />

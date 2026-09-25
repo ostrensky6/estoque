@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { createClient, createClientUntyped } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
 import { GerarPedidoReposicaoButton } from "@/components/pedido/GerarPedidoReposicaoButton";
+import { HelpTip } from "@/components/common/HelpTip";
 import { hojeIso, loteBaixaDeDb, loteVencido, somarReservasPorLote, type LoteDbBaixa } from "@/lib/estoque/baixa";
 import { StockControlHub } from "./StockControlHub";
 
@@ -30,6 +32,8 @@ export default async function EstoqueControlePage() {
     { data: alertasRaw },
     { data: lotesRaw },
     { data: reservasRaw },
+    { data: vinculosCompra, error: vinculosCompraError },
+    { data: vinculosInternos, error: vinculosInternosError },
   ] = await Promise.all([
     supabase
       .from("notificacoes")
@@ -47,8 +51,16 @@ export default async function EstoqueControlePage() {
       .from("reservas_estoque")
       .select("lote_id, quantidade, quantidade_consumida, status")
       .in("status", ["reservado", "parcial"]),
+    supabase.from("pedidos_compra_item_recebimentos").select("lote_id"),
+    supabase.from("pedidos_internos_item_recebimentos").select("lote_id"),
   ]);
   const reservadoPorLote = somarReservasPorLote(reservasRaw ?? []);
+  // estorno direto só quando é comprovado que o lote não veio de um pedido (mesma regra de /estoque)
+  const origemEstornoComprovada = !vinculosCompraError && !vinculosInternosError;
+  const lotesVinculados = new Set([
+    ...(vinculosCompra ?? []).map((r) => Number(r.lote_id)),
+    ...(vinculosInternos ?? []).map((r) => Number(r.lote_id)),
+  ]);
 
   const [podeAceitar, podeGerir] = await Promise.all([
     temPapel("coordenador"),
@@ -67,6 +79,7 @@ export default async function EstoqueControlePage() {
     return {
       id: l.id,
       insumoId: Number(l.insumo_id),
+      estornoDiretoPermitido: origemEstornoComprovada && !lotesVinculados.has(Number(l.id)),
       codigoLote: l.codigo_lote ?? "—",
       validade: baixa.validade ?? "—",
       validadeIso: baixa.validade,
@@ -90,12 +103,20 @@ export default async function EstoqueControlePage() {
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Suprimentos · Estoque e equipamentos
             </p>
-            <h1 className="mt-1 text-xl font-semibold tracking-tight text-foreground">
-              Controle de Estoque
-            </h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Visualização ampla de insumos, rastreabilidade por lote e ações operacionais com trilha de auditoria.
-            </p>
+            <div className="mt-1 flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">Controle de Estoque</h1>
+              <HelpTip title="Controle de Estoque">
+                <p>
+                  Saldo de cada insumo, alertas e os lotes guardados, com as ações de cada lote (aceitar,
+                  dar baixa, bloquear, descartar). Toda ação fica registrada com quem fez e quando.
+                </p>
+              </HelpTip>
+            </div>
+            <nav aria-label="Ferramentas de estoque" className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+              <Link href="/estoque/inventario" className="font-medium text-primary hover:underline">Inventário (contagem)</Link>
+              <Link href="/etiquetas?tipo=lotes" className="font-medium text-primary hover:underline">Etiquetas QR</Link>
+              <Link href="/scanner/triagem" className="font-medium text-primary hover:underline">Códigos não reconhecidos</Link>
+            </nav>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {podeAceitar && <GerarPedidoReposicaoButton />}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 import { createClientUntyped } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -96,10 +97,19 @@ export default async function QualidadeCadastrosPage() {
         <Breadcrumbs items={[{ label: "Cadastros", href: "/cadastros" }, { label: "Qualidade dos dados" }]} />
         <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Qualidade dos cadastros</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Pendências que afetam custo, planejamento, compra ou disponibilidade comercial antes de chegarem à operação.
-            </p>
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Qualidade dos cadastros</h1>
+              <HelpTip title="Qualidade dos cadastros">
+                <p>
+                  Lista o que falta nos cadastros e pode distorcer custo, planejamento, compra ou
+                  proposta. Corrija aqui antes que o problema chegue à operação.
+                </p>
+                <HelpExample>
+                  Um insumo sem custo entra como R$ 0 no custeio e barateia a análise.
+                </HelpExample>
+              </HelpTip>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">Pendências que afetam custo, compra ou operação.</p>
           </div>
           <span className={`rounded-full px-3 py-1 text-sm font-semibold ${pendencias > 0 ? "bg-warning-soft text-warning-strong" : "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"}`}>
             {pendencias} pendência(s)

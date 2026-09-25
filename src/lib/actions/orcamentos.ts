@@ -393,11 +393,12 @@ export async function alternarAnaliseOrcamento(formData: FormData) {
   if (!incluir) {
     const supabase = await createClient();
     await assegurarLaboratorioEditavel(supabase, id);
-    await supabase
+    const { error } = await supabase
       .from("orcamento_itens")
       .delete()
       .eq("orcamento_id", id)
       .eq("codigo_analise", codigo);
+    if (error) throw new Error(`Não foi possível remover a análise: ${error.message}`);
     await atualizarOperacionalLaboratorio(supabase, id);
     revalidatePath(`/orcamento/${id}`);
     return;
@@ -409,10 +410,16 @@ export async function removerItemOrcamento(formData: FormData) {
   await exigirPapelOrcamento("preencher_custos");
   const id = Number(formData.get("orcamento_id"));
   const itemId = Number(formData.get("item_id"));
-  if (!itemId) return;
+  if (!itemId || !id) return;
   const supabase = await createClient();
   await assegurarLaboratorioEditavel(supabase, id);
-  await supabase.from("orcamento_itens").delete().eq("id", itemId);
+  // Filtra também pelo orçamento: a trava acima vale só para este orçamento.
+  const { error } = await supabase
+    .from("orcamento_itens")
+    .delete()
+    .eq("id", itemId)
+    .eq("orcamento_id", id);
+  if (error) throw new Error(`Não foi possível remover a análise: ${error.message}`);
   await atualizarOperacionalLaboratorio(supabase, id);
   revalidatePath(`/orcamento/${id}`);
 }
@@ -535,7 +542,10 @@ export async function excluirOrcamento(formData: FormData) {
     redirect(`/orcamento/${id}?erro_exclusao=${encodeURIComponent("Orçamento enviado ou aprovado não pode ser excluído. Use cancelamento/versionamento quando disponível.")}`);
   }
 
-  await supabase.from("orcamentos").delete().eq("id", id);
+  const { error } = await supabase.from("orcamentos").delete().eq("id", id);
+  if (error) {
+    redirect(`/orcamento/${id}?erro_exclusao=${encodeURIComponent(`Não foi possível excluir o orçamento: ${error.message}`)}`);
+  }
   revalidatePath("/orcamento");
   redirect("/orcamento");
 }

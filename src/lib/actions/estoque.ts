@@ -462,3 +462,69 @@ export async function ajustarSaldoLote(
   revalidatePath(`/estoque/lotes/${parsed.data.lote_id}`);
   return { ok: true, message: "Saldo do lote ajustado." };
 }
+
+const entradaEmbalagensSchema = z.object({
+  insumo_id: z.preprocess((v) => Number(v), z.number().int().positive()),
+  quantidade: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : Number(v)),
+    z
+      .number({ error: "Obrigatório" })
+      .refine((n) => Number.isInteger(n), "Use um número inteiro de embalagens")
+      .refine((n) => n > 0, "Deve ser maior que zero"),
+  ),
+  validade: z.preprocess((v) => (v === "" || v == null ? null : String(v)), z.string().nullable()),
+  custo: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : Number(String(v).replace(",", "."))),
+    z.number({ error: "Obrigatório" }).min(0, "Deve ser ≥ 0"),
+  ),
+  codigo: z.preprocess((v) => (v === "" || v == null ? null : String(v).trim()), z.string().max(80).nullable()),
+  fornecedor: z.preprocess((v) => (v === "" || v == null ? null : String(v).trim()), z.string().nullable()),
+  motivo: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : String(v).trim()),
+    z.string({ error: "Obrigatório" }).min(3, "Informe o motivo"),
+  ),
+  operacao_id: z.string().uuid("Operação inválida; recarregue a página."),
+});
+
+/**
+ * Entrada de um novo lote para insumo contado em embalagens fechadas
+ * (registrar_entrada_manual_embalagens, 0109). Mantém o mesmo modelo de
+ * contagem do insumo: o lote entra liberado e com número inteiro.
+ */
+export async function entradaEmbalagens(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = entradaEmbalagensSchema.safeParse({
+    insumo_id: formData.get("insumo_id"),
+    quantidade: formData.get("quantidade"),
+    validade: formData.get("validade"),
+    custo: formData.get("custo"),
+    codigo: formData.get("codigo"),
+    fornecedor: formData.get("fornecedor"),
+    motivo: formData.get("motivo"),
+    operacao_id: formData.get("operacao_id"),
+  });
+  if (!parsed.success) {
+    return { ok: false, message: "Verifique os campos.", errors: formErrors(parsed.error) };
+  }
+
+  const d = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("registrar_entrada_manual_embalagens" as never, {
+    p_insumo_id: d.insumo_id,
+    p_quantidade_embalagens: d.quantidade,
+    p_operacao_id: d.operacao_id,
+    p_validade: d.validade,
+    p_custo_total_embalagem: d.custo,
+    p_codigo_lote: d.codigo,
+    p_fornecedor: d.fornecedor,
+    p_motivo: d.motivo,
+  } as never);
+  if (error) return { ok: false, message: error.message };
+
+  for (const path of ["/estoque", "/estoque/controle", "/suprimentos", "/cadastros/insumos", "/insumos"]) {
+    revalidatePath(path);
+  }
+  return { ok: true, message: "Lote registrado e liberado para uso." };
+}

@@ -1028,7 +1028,9 @@ class MockQuery {
         this.matches(row) ? { ...row, ...(this.mutation?.payload as Row) } : row,
       );
     }
+    let removidos: Row[] = [];
     if (this.mutation?.type === "delete") {
+      removidos = (store[this.table] ?? []).filter((row) => this.matches(row));
       store[this.table] = (store[this.table] ?? []).filter((row) => !this.matches(row));
     }
     if (this.mutation?.type === "upsert") {
@@ -1041,10 +1043,13 @@ class MockQuery {
       }
     }
 
+    // como o PostgREST com .select(): delete devolve as linhas removidas
     const source =
       this.mutation?.type === "insert"
         ? (this.mutation.payload as Row[])
-        : (store[this.table] ?? []).filter((row) => this.matches(row));
+        : this.mutation?.type === "delete"
+          ? removidos
+          : (store[this.table] ?? []).filter((row) => this.matches(row));
     const linhas = source.map((row) => withRelations(this.table, row));
     // Tabelas com coluna sigilosa: devolve só as colunas pedidas, como o
     // PostgREST faria (as demais tabelas mantêm o comportamento anterior).
@@ -1142,7 +1147,10 @@ function baixarManualLote(args: Row) {
     throw new Error("Lote de embalagens fechadas: use a baixa por embalagens (baixa_manual_embalagens).");
   }
   if (!["aceito", "em_uso"].includes(String(lote.status))) throw new Error("Só é possível baixar lote aceito ou em uso.");
-  if (lote.validade && String(lote.validade) < hojeMock()) throw new Error("Lote vencido não pode ser baixado para uso.");
+  const vencimento = /^vencimento/i.test(String(args.p_motivo ?? "").trim());
+  if (lote.validade && String(lote.validade) < hojeMock() && !vencimento) {
+    throw new Error("Lote vencido: registre a baixa com o motivo Vencimento.");
+  }
   if (quantidade > atual) throw new Error("Quantidade maior que o saldo atual do lote.");
   if (reservadoNoLote(Number(lote.id)) > atual - quantidade) {
     throw new Error("Há reserva ativa neste lote: é possível baixar no máximo o saldo não reservado.");
@@ -1180,8 +1188,8 @@ function baixarManualEmbalagens(args: Row) {
     throw new Error("Este lote é controlado por volume (modelo legado); use a baixa manual do lote.");
   }
   if (lote.status !== "aceito") throw new Error("Só é possível dar baixa em lote aceito.");
-  if (lote.validade && String(lote.validade) < hojeMock()) {
-    throw new Error("Lote vencido não pode receber baixa para uso; descarte o lote.");
+  if (lote.validade && String(lote.validade) < hojeMock() && !/^vencimento/i.test(String(args.p_motivo ?? "").trim())) {
+    throw new Error("Lote vencido: registre a baixa com o motivo Vencimento.");
   }
   const atual = Number(lote.quantidade_atual ?? 0);
   if (atual !== esperada) throw new Error("A quantidade do lote mudou; recarregue e tente novamente.");
@@ -1896,6 +1904,46 @@ export function createMockSupabaseClient(sessao: SessaoMock = {}) {
         } catch (error) {
           return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
         }
+      }
+      if (fn === "registrar_entrada_manual_embalagens") {
+        const lote = {
+          id: nextId("lotes_estoque"),
+          insumo_id: args.p_insumo_id,
+          codigo_lote: args.p_codigo_lote ?? `MANUAL-${Date.now()}`,
+          validade: args.p_validade ?? null,
+          quantidade_atual: Number(args.p_quantidade_embalagens),
+          status: "aceito",
+          modelo_quantidade: "EMBALAGEM_FECHADA",
+        };
+        store.lotes_estoque.push(lote);
+        return { data: { insumo_id: args.p_insumo_id, lote_id: lote.id, repetido: false }, error: null };
+      }
+      if (fn === "duplicar_analise") {
+        const origem = (store.analises ?? []).find((a) => a.codigo === args.p_origem);
+        if (!origem) return { data: null, error: { message: "Análise de origem não encontrada." } };
+        if ((store.analises ?? []).some((a) => a.codigo === args.p_novo)) {
+          return { data: null, error: { message: `Já existe uma análise com o código ${args.p_novo}.` } };
+        }
+        store.analises.push({ ...origem, codigo: args.p_novo, nome: args.p_nome ?? `${origem.nome ?? origem.codigo} (cópia)`, ativo: true, ofertavel: false });
+        for (const tabela of ["etapas", "equipamento_analise", "insumo_analise"]) {
+          const copias = (store[tabela] ?? [])
+            .filter((linha) => linha.codigo_analise === args.p_origem)
+            .map((linha) => ({ ...linha, id: nextId(tabela), codigo_analise: args.p_novo }));
+          store[tabela] = [...(store[tabela] ?? []), ...copias];
+        }
+        return { data: { codigo: args.p_novo }, error: null };
+      }
+      if (fn === "excluir_analise_sem_historico") {
+        const usos = ["orcamento_itens", "orcamento_projeto_analises", "planejamento_itens", "demanda_analises"]
+          .reduce((acc, tabela) => acc + (store[tabela] ?? []).filter((l) => l.codigo_analise === args.p_codigo).length, 0);
+        if (usos > 0) {
+          return { data: null, error: { message: "Esta análise aparece em orçamentos ou planos. Para preservar o histórico, inative-a em vez de excluir." } };
+        }
+        for (const tabela of ["etapas", "equipamento_analise", "insumo_analise"]) {
+          store[tabela] = (store[tabela] ?? []).filter((linha) => linha.codigo_analise !== args.p_codigo);
+        }
+        store.analises = (store.analises ?? []).filter((a) => a.codigo !== args.p_codigo);
+        return { data: { codigo: args.p_codigo, excluida: true }, error: null };
       }
       // Uma RPC sem simulação precisa falhar explicitamente. O fallback
       // anterior (`{ data: null, error: null }`) devolvia sucesso para
