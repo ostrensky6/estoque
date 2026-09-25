@@ -15,9 +15,9 @@ import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
 import { PainelParametrosEconomicos } from "@/components/orcamento/PainelParametrosEconomicos";
 import { SalvarDemandaForm } from "@/components/orcamento/SalvarDemandaForm";
+import { EditorCustosProjeto } from "@/components/orcamento/projeto/EditorCustosProjeto";
 import { ConfirmSubmitButton } from "@/components/common/ConfirmSubmitButton";
-import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
-import { statusInfo } from "@/components/app/status";
+import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
 import { montarEtapasProposta, ORDEM_ETAPAS, type EtapaId } from "@/lib/orcamento/etapas-proposta";
 import {
@@ -323,16 +323,6 @@ export default async function DemandaDetalhe({
       total + (orcamento.orcamento_itens ?? []).reduce((subtotal, item) => subtotal + Number(item.preco_unitario ?? 0) * Number(item.n_amostras ?? 0), 0),
     0,
   );
-  const totalProjetoCustos = orcamentosProjeto.reduce(
-    (total, orcamento) =>
-      total + (orcamento.orcamento_projeto_custos ?? []).reduce((subtotal, item) => subtotal + Number(item.custo_unitario ?? 0) * Number(item.quantidade ?? 0), 0),
-    0,
-  );
-  const totalProjetoAnalises = orcamentosProjeto.reduce(
-    (total, orcamento) =>
-      total + (orcamento.orcamento_projeto_analises ?? []).reduce((subtotal, item) => subtotal + Number(item.custo_unitario ?? 0) * Number(item.n_amostras ?? 0), 0),
-    0,
-  );
 
   // §8.2: valor digitado/escolhido pelo usuário aparece em azul (TOM_ENTRADA).
   const inp =
@@ -456,9 +446,9 @@ export default async function DemandaDetalhe({
                 demandaCompleta={completudeDemanda.completa}
                 demandaId={demandaId}
                 acaoCriar={gerarOrcamentoProjetoDaDemanda}
-                hrefBase="/orcamento/projetos"
+                hrefBase={`/orcamento/demandas/${demandaId}`}
                 hrefAbrir={`/orcamento/demandas/${demandaId}?etapa=projeto`}
-                rotuloAbrir="Ver custos do projeto"
+                rotuloAbrir="Editar custos do projeto"
               />
             </div>
           </div>
@@ -552,7 +542,7 @@ export default async function DemandaDetalhe({
             <div>
               <h2 className="text-sm font-semibold">Custos do projeto</h2>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Custos próprios, análises internas do projeto e justificativas de projeto sem custo.
+                Rubricas, pessoal por mês, viagens e análises dentro do projeto. Valores em custo técnico; os parâmetros entram na etapa seguinte.
               </p>
             </div>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusClasse(moduloProjeto.status)}`}>
@@ -564,31 +554,28 @@ export default async function DemandaDetalhe({
             <div className="mt-4 rounded-md bg-muted/50 px-3 py-4 text-sm text-muted-foreground">
               Esta modalidade não exige orçamento de projeto.
             </div>
+          ) : planoModulosUi.projeto.acao === "abrir" && planoModulosUi.projeto.moduloId ? (
+            // O editor só consulta o banco quando a etapa está aberta.
+            etapaAtiva === "projeto" && (
+              <EditorCustosProjeto orcamentoProjetoId={planoModulosUi.projeto.moduloId} demandaId={demandaId} />
+            )
+          ) : planoModulosUi.projeto.acao === "bloqueado" ? (
+            <p role="alert" className="mt-4 rounded-md border border-danger-strong/30 bg-danger-soft px-3 py-2 text-xs leading-5 text-danger-strong">
+              {planoModulosUi.erros.join(" ")}
+            </p>
           ) : (
-            <>
-              <p role="note" className="mt-4 rounded-md border border-warning-strong/30 bg-warning-soft px-3 py-2 text-xs leading-5 text-warning-strong">
-                A edição de custos de projeto (rubricas, pessoal, viagens e anexos) está indisponível nesta versão.
-                Os valores abaixo são os já registrados e continuam entrando na proposta final.
-              </p>
-              <div className="mt-4 grid gap-3 md:grid-cols-4">
-                <Info titulo="Orçamentos" texto={String(orcamentosProjeto.length)} />
-                <Info titulo="Itens/justificativas" texto={String(itensProjeto)} />
-                <Info titulo="Custos próprios" texto={brl(totalProjetoCustos)} />
-                <Info titulo="Análises no projeto" texto={brl(totalProjetoAnalises)} />
-              </div>
-              <TabelaSimples
-                colunas={["Projeto", "Status", "Data", "Custos", "Análises", "Justificativa"]}
-                vazio="Nenhum orçamento de projeto gerado."
-                linhas={orcamentosProjeto.map((orcamento) => [
-                  orcamento.titulo || `#${orcamento.id}`,
-                  statusInfo(orcamento.status).label,
-                  orcamento.data_orcamento ? formatDate(orcamento.data_orcamento) : "—",
-                  String(orcamento.orcamento_projeto_custos?.length ?? 0),
-                  String(orcamento.orcamento_projeto_analises?.length ?? 0),
-                  orcamento.projeto_sem_custo_justificativa ? "sim" : "não",
-                ])}
+            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-md bg-muted/50 px-3 py-4 text-sm text-muted-foreground">
+              <span>Nenhum orçamento de projeto ativo nesta proposta.</span>
+              <ModuloAcao
+                plano={planoModulosUi.projeto}
+                rotulo="de projeto"
+                demandaCompleta={completudeDemanda.completa}
+                demandaId={demandaId}
+                acaoCriar={gerarOrcamentoProjetoDaDemanda}
+                hrefBase={`/orcamento/demandas/${demandaId}`}
+                hrefAbrir={`/orcamento/demandas/${demandaId}?etapa=projeto`}
               />
-            </>
+            </div>
           )}
         </section>
 

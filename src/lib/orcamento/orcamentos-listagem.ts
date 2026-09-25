@@ -136,7 +136,7 @@ export async function carregarLinhasOrcamentos(): Promise<OrcamentoFila[]> {
     const etapaAtual = etapaProjeto(o.status, custos.length + analises.length);
     return {
       key: `projeto-${o.id}`,
-      href: `/orcamento/projetos/${o.id}`,
+      href: o.demanda_id != null ? `/orcamento/demandas/${o.demanda_id}?etapa=projeto` : `/orcamento/projetos/${o.id}`,
       titulo: o.titulo ?? `Projeto ${o.id}`,
       cliente: o.cliente_nome ?? demanda?.cliente_nome ?? "Cliente sem nome",
       projeto: o.projeto_id != null ? projetoNome.get(o.projeto_id) ?? "—" : "—",

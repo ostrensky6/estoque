@@ -363,36 +363,37 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
     id: "orcamento-projetos",
     titulo: "Orçamento de Projetos",
     grupo: "Orçamentos",
-    href: "/orcamento/projetos",
-    resumo: "Custos, rubricas e cronograma de projetos.",
+    href: "/orcamento/demandas",
+    resumo: "Custos próprios do projeto por rubrica, dentro da proposta.",
     intro:
-      "O orçamento de Projetos é voltado a propostas mais estruturadas, organizadas por rubricas (materiais, serviços, diárias, equipamentos) e com cronograma. Suporta templates reutilizáveis, anexos por orçamento e links públicos de aprovação, facilitando a negociação com órgãos e instituições.",
+      "Os custos de projeto são uma etapa do orçamento: abra o orçamento em Demandas/Propostas e vá para a etapa \"Custos do projeto\". Lá você lança os itens por rubrica (PE Pessoal, MC Material de consumo, MP Material permanente, ST Serviços de terceiros, VD Viagens e diárias, OU Outros), marca os meses do pessoal, informa as viagens e inclui análises laboratoriais dentro do projeto. Os valores são custo técnico; os parâmetros econômicos entram na etapa seguinte.",
     secoes: [
       {
         titulo: "Para que serve",
         itens: [
-          "Estruturar projetos por rubricas e fases, com custos e cronograma.",
-          "Reaproveitar estruturas com templates para projetos semelhantes.",
-          "Compartilhar o orçamento para aprovação externa via link público.",
+          "Montar os custos próprios do projeto por rubrica, a partir do catálogo ou de itens manuais.",
+          "Calcular o pessoal por meses marcados (valor mensal × meses) e as viagens pelas entradas de campo.",
+          "Exportar os custos do projeto em XLSX ou DOCX.",
         ],
       },
       {
         titulo: "Passo a passo",
         itens: [
-          "Crie o projeto e organize os itens por rubrica.",
-          "Use um template como ponto de partida quando fizer sentido.",
-          "Anexe documentos e gere o link público de aprovação quando for negociar.",
+          "Em Demandas/Propostas, abra o orçamento e vá para a etapa \"Custos do projeto\". Se ainda não houver custos de projeto, use \"Criar orçamento de projeto\".",
+          "Em cada rubrica, adicione itens do catálogo (com busca) ou manuais; edite e remova pela própria linha.",
+          "No Pessoal, marque os meses na grade (paginada por ano) e clique em \"Salvar meses\". Em Viagens, preencha as entradas e clique em \"Salvar e recalcular\".",
+          "Um coordenador (ou superior) usa \"Concluir revisão dos custos\": os custos ficam travados e a proposta libera parâmetros e emissão.",
         ],
       },
       {
         titulo: "Boas práticas",
         itens: [
-          "Mantenha rubricas padronizadas para comparar projetos com facilidade.",
-          "Versione anexos por orçamento para preservar o histórico de negociação.",
+          "Confira os totais por rubrica antes de concluir a revisão: custos revisados não voltam para edição nesta versão.",
+          "Nas viagens, salvar as entradas recalcula as quantidades automáticas e substitui ajustes manuais dessas linhas.",
         ],
       },
     ],
-    termos: ["projeto", "rubrica", "cronograma", "diárias", "template", "aprovação"],
+    termos: ["projeto", "rubrica", "pessoal", "meses", "viagens", "diárias", "catálogo", "revisão"],
   },
   {
     id: "orcamento-parametros",

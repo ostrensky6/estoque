@@ -328,7 +328,7 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
     redirect(`${listaPath}/${id}?etapa=demanda&erro_integridade=${encodeURIComponent(plano.erros.join("; "))}`);
   }
   if (projeto.acao === "abrir" && projeto.moduloId) {
-    redirect(`/orcamento/projetos/${projeto.moduloId}`);
+    redirect(`/orcamento/demandas/${id}?etapa=projeto`);
   }
 
   const { error } = await supabase

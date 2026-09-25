@@ -16,6 +16,7 @@ const createClient = vi.fn();
 const registrarEvento = vi.fn();
 const registrarVersaoParametrosEconomicos = vi.fn();
 const exigirPapelOrcamento = vi.fn();
+let lista: unknown[] = [];
 
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect }));
@@ -38,18 +39,25 @@ describe("actions de orcamento de projetos", () => {
     deleteRow.mockReset();
     from.mockReset();
     createClient.mockReset();
+    rpc.mockReset();
     rpc.mockResolvedValue({ error: null });
     registrarEvento.mockReset();
     registrarVersaoParametrosEconomicos.mockReset();
     exigirPapelOrcamento.mockReset();
-    eq.mockResolvedValue({ error: null });
-    select.mockReturnValue({ eq });
-    single.mockResolvedValue({ data: { status: "rascunho" }, error: null });
-    update.mockReturnValue({ eq });
+    lista = [];
+    // Encadeável como o cliente real: .eq().eq() e await direto devolvem { data: lista }.
+    const cadeia = {
+      eq,
+      single,
+      then: (resolver: (valor: { data: unknown; error: null }) => unknown) => resolver({ data: lista, error: null }),
+    };
+    select.mockReturnValue(cadeia);
+    single.mockResolvedValue({ data: { status: "rascunho", demanda_id: 5, project_months: 12 }, error: null });
+    update.mockReturnValue(cadeia);
     insert.mockResolvedValue({ error: null });
-    deleteRow.mockReturnValue({ eq });
+    deleteRow.mockReturnValue(cadeia);
     from.mockReturnValue({ select, update, delete: deleteRow, insert });
-    eq.mockReturnValue({ single });
+    eq.mockReturnValue(cadeia);
     createClient.mockResolvedValue({ from, rpc });
   });
 
@@ -111,13 +119,15 @@ describe("actions de orcamento de projetos", () => {
       categoria_institucional: "Material de consumo",
       nomenclatura_origem: "kontrol",
     });
-    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/projetos/77");
+    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/demandas/5");
+    expect(revalidatePath).not.toHaveBeenCalledWith(expect.stringContaining("/orcamento/projetos"));
   });
 
   it("bloqueia salvar parametros economicos com gross-up maior ou igual a 100%", async () => {
     const { salvarParametrosEconomicosProjeto } = await import("./orcamento-projetos");
     const formData = new FormData();
     formData.set("orcamento_projeto_id", "77");
+    formData.set("demanda_id", "5");
     formData.set("impostos_legacy", "50");
     formData.set("incubacao", "20");
     formData.set("reserva", "10");
@@ -125,7 +135,7 @@ describe("actions de orcamento de projetos", () => {
     formData.set("lucro", "10");
 
     await expect(salvarParametrosEconomicosProjeto(formData)).rejects.toThrow(
-      "NEXT_REDIRECT:/orcamento/projetos/77?erro_parametros=",
+      "NEXT_REDIRECT:/orcamento/demandas/5?etapa=parametros&erro_parametros=",
     );
 
     expect(exigirPapelOrcamento).toHaveBeenCalledWith("editar_parametros");
@@ -175,38 +185,38 @@ describe("actions de orcamento de projetos", () => {
       },
       origem: "orcamento/projetos",
     });
-    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/projetos/77");
-    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/projetos");
+    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/demandas/5");
+    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/demandas");
   });
 
   it("bloqueia exclusao de projeto enviado", async () => {
     const { excluirOrcamentoProjeto } = await import("./orcamento-projetos");
     const formData = new FormData();
     formData.set("orcamento_projeto_id", "77");
-    single.mockResolvedValue({ data: { status: "enviado" }, error: null });
+    single.mockResolvedValue({ data: { status: "enviado", demanda_id: 5 }, error: null });
 
     await expect(excluirOrcamentoProjeto(formData)).rejects.toThrow(
-      "NEXT_REDIRECT:/orcamento/projetos/77?erro_exclusao=",
+      "NEXT_REDIRECT:/orcamento/demandas/5?etapa=projeto&erro_exclusao=",
     );
 
     expect(exigirPapelOrcamento).toHaveBeenCalledWith("cancelar_documento");
     expect(deleteRow).not.toHaveBeenCalled();
-    expect(redirect).toHaveBeenCalledWith(expect.stringContaining("/orcamento/projetos/77?erro_exclusao="));
+    expect(redirect).toHaveBeenCalledWith(expect.stringContaining("/orcamento/demandas/5?etapa=projeto&erro_exclusao="));
   });
 
   it("permite exclusao de projeto em rascunho", async () => {
     const { excluirOrcamentoProjeto } = await import("./orcamento-projetos");
     const formData = new FormData();
     formData.set("orcamento_projeto_id", "77");
-    single.mockResolvedValue({ data: { status: "rascunho" }, error: null });
+    single.mockResolvedValue({ data: { status: "rascunho", demanda_id: 5 }, error: null });
 
-    await expect(excluirOrcamentoProjeto(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/projetos");
+    await expect(excluirOrcamentoProjeto(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/demandas/5?etapa=projeto");
 
     expect(exigirPapelOrcamento).toHaveBeenCalledWith("cancelar_documento");
     expect(deleteRow).toHaveBeenCalled();
     expect(eq).toHaveBeenCalledWith("id", 77);
-    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/projetos");
-    expect(redirect).toHaveBeenCalledWith("/orcamento/projetos");
+    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/demandas/5");
+    expect(redirect).toHaveBeenCalledWith("/orcamento/demandas/5?etapa=projeto");
   });
 
   it("cancela projeto preservando historico", async () => {
@@ -214,9 +224,9 @@ describe("actions de orcamento de projetos", () => {
     const formData = new FormData();
     formData.set("orcamento_projeto_id", "77");
     formData.set("motivo", "Cancelamento solicitado");
-    single.mockResolvedValue({ data: { status: "enviado" }, error: null });
+    single.mockResolvedValue({ data: { status: "enviado", demanda_id: 5 }, error: null });
     await expect(cancelarOrcamentoProjeto(formData)).rejects.toThrow(
-      "NEXT_REDIRECT:/orcamento/projetos/77",
+      "NEXT_REDIRECT:/orcamento/demandas/5?etapa=projeto",
     );
 
     expect(exigirPapelOrcamento).toHaveBeenCalledWith("cancelar_documento");
@@ -225,8 +235,8 @@ describe("actions de orcamento de projetos", () => {
       p_status_destino: "cancelado",
       p_observacao: "Cancelamento solicitado",
     }));
-    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/projetos/77");
-    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/projetos");
+    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/demandas/5");
+    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/demandas");
   });
 
   it("usa a identidade de versão retornada pelo retry idempotente", async () => {
@@ -267,5 +277,195 @@ describe("actions de orcamento de projetos", () => {
     }));
     expect(eq).toHaveBeenCalledWith("id", 12);
     expect(revalidatePath).toHaveBeenCalledWith("/orcamento/modelos");
+  });
+
+  it("atualiza custo do projeto restrito à linha do próprio orçamento", async () => {
+    const { atualizarCustoProjeto } = await import("./orcamento-projetos");
+    const formData = new FormData();
+    formData.set("orcamento_projeto_id", "77");
+    formData.set("item_id", "9");
+    formData.set("descricao", "Kit revisado");
+    formData.set("unidade", "cx");
+    formData.set("quantidade", "3");
+    formData.set("custo_unitario", "12.5");
+    formData.set("etapa", "Campo");
+
+    await atualizarCustoProjeto(formData);
+
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
+    expect(update).toHaveBeenCalledWith({
+      descricao: "Kit revisado",
+      unidade: "cx",
+      quantidade: 3,
+      custo_unitario: 12.5,
+      preco_unitario: 12.5,
+      etapa: "Campo",
+      atividade: null,
+      entrega: null,
+    });
+    expect(eq).toHaveBeenCalledWith("id", 9);
+    expect(eq).toHaveBeenCalledWith("orcamento_projeto_id", 77);
+    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/demandas/5");
+  });
+
+  it("não atualiza custo com quantidade zero nem com orçamento revisado", async () => {
+    const { atualizarCustoProjeto } = await import("./orcamento-projetos");
+    const formData = new FormData();
+    formData.set("orcamento_projeto_id", "77");
+    formData.set("item_id", "9");
+    formData.set("descricao", "Kit");
+    formData.set("quantidade", "0");
+    formData.set("custo_unitario", "10");
+    await expect(atualizarCustoProjeto(formData)).rejects.toThrow("maior que zero");
+
+    formData.set("quantidade", "1");
+    single.mockResolvedValue({ data: { status: "enviado", demanda_id: 5 }, error: null });
+    await expect(atualizarCustoProjeto(formData)).rejects.toThrow('status "enviado"');
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("grava meses do pessoal só das linhas enviadas, dentro do prazo do projeto", async () => {
+    const { salvarMesesPessoalProjeto } = await import("./orcamento-projetos");
+    lista = [
+      { id: 1, quantidade: 1, meses_selecionados: [] },
+      { id: 2, quantidade: 4, meses_selecionados: [1, 2] },
+      { id: 3, quantidade: 2, meses_selecionados: [5] },
+    ];
+    const formData = new FormData();
+    formData.set("orcamento_projeto_id", "77");
+    formData.append("linha_1", "1");
+    for (const mes of ["3", "1", "2", "13", "2"]) formData.append("meses_1", mes);
+    formData.append("linha_2", "1");
+    for (const mes of ["1", "2"]) formData.append("meses_2", mes);
+
+    await salvarMesesPessoalProjeto(formData);
+
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledWith({ meses_selecionados: [1, 2, 3], quantidade: 3 });
+    expect(eq).toHaveBeenCalledWith("id", 1);
+    expect(eq).toHaveBeenCalledWith("rubrica", "PE");
+    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/demandas/5");
+  });
+
+  it("limpar meses do pessoal mantém a quantidade anterior (coluna exige > 0)", async () => {
+    const { salvarMesesPessoalProjeto } = await import("./orcamento-projetos");
+    lista = [{ id: 2, quantidade: 4, meses_selecionados: [1, 2, 3, 4] }];
+    const formData = new FormData();
+    formData.set("orcamento_projeto_id", "77");
+    formData.append("linha_2", "1");
+
+    await salvarMesesPessoalProjeto(formData);
+
+    expect(update).toHaveBeenCalledWith({ meses_selecionados: [], quantidade: 4 });
+  });
+
+  it("altera a duração e retira meses do pessoal que ficam fora do prazo", async () => {
+    const { salvarDuracaoProjeto } = await import("./orcamento-projetos");
+    lista = [
+      { id: 1, quantidade: 12, meses_selecionados: [1, 6, 7, 12] },
+      { id: 2, quantidade: 2, meses_selecionados: [1, 2] },
+    ];
+    const formData = new FormData();
+    formData.set("orcamento_projeto_id", "77");
+    formData.set("project_months", "6");
+
+    await salvarDuracaoProjeto(formData);
+
+    expect(update).toHaveBeenCalledWith({ project_months: 6 });
+    expect(update).toHaveBeenCalledWith({ meses_selecionados: [1, 6], quantidade: 2 });
+    expect(update).toHaveBeenCalledTimes(2);
+
+    formData.set("project_months", "61");
+    await expect(salvarDuracaoProjeto(formData)).rejects.toThrow("1 a 60 meses");
+  });
+
+  it("conclui a revisão dos custos de projeto pelo RPC transacional", async () => {
+    const { concluirRevisaoCustosProjeto } = await import("./orcamento-projetos");
+    single.mockResolvedValue({
+      data: { status: "rascunho", demanda_id: 5, orcamento_projeto_custos: [{ id: 1 }], orcamento_projeto_analises: [] },
+      error: null,
+    });
+    const formData = new FormData();
+    formData.set("orcamento_projeto_id", "77");
+
+    await concluirRevisaoCustosProjeto(formData);
+
+    expect(exigirPapelOrcamento).toHaveBeenCalledWith("revisar_modulo");
+    expect(rpc).toHaveBeenCalledWith("transicionar_orcamento_projeto", {
+      p_orcamento_projeto_id: 77,
+      p_status_destino: "enviado",
+      p_observacao: "Revisão dos custos de projeto concluída.",
+    });
+    expect(update).not.toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/demandas/5");
+  });
+
+  it("não conclui revisão sem itens nem fora do rascunho", async () => {
+    const { concluirRevisaoCustosProjeto } = await import("./orcamento-projetos");
+    const formData = new FormData();
+    formData.set("orcamento_projeto_id", "77");
+
+    single.mockResolvedValue({
+      data: { status: "rascunho", demanda_id: 5, orcamento_projeto_custos: [], orcamento_projeto_analises: [] },
+      error: null,
+    });
+    await expect(concluirRevisaoCustosProjeto(formData)).rejects.toThrow("ao menos um custo");
+
+    single.mockResolvedValue({
+      data: { status: "enviado", demanda_id: 5, orcamento_projeto_custos: [{ id: 1 }], orcamento_projeto_analises: [] },
+      error: null,
+    });
+    await expect(concluirRevisaoCustosProjeto(formData)).rejects.toThrow("em edição");
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("propaga a recusa de permissão do papel antes de tocar no banco", async () => {
+    const { concluirRevisaoCustosProjeto } = await import("./orcamento-projetos");
+    exigirPapelOrcamento.mockRejectedValueOnce(new Error("Sem permissão para revisar módulo."));
+    const formData = new FormData();
+    formData.set("orcamento_projeto_id", "77");
+
+    await expect(concluirRevisaoCustosProjeto(formData)).rejects.toThrow("Sem permissão");
+    expect(createClient).not.toHaveBeenCalled();
+  });
+
+  it("reabre somente custos recusados", async () => {
+    const { reabrirCustosProjeto } = await import("./orcamento-projetos");
+    const formData = new FormData();
+    formData.set("orcamento_projeto_id", "77");
+
+    single.mockResolvedValue({ data: { status: "enviado", demanda_id: 5 }, error: null });
+    await expect(reabrirCustosProjeto(formData)).rejects.toThrow("recusados");
+    expect(rpc).not.toHaveBeenCalled();
+
+    single.mockResolvedValue({ data: { status: "recusado", demanda_id: 5 }, error: null });
+    await reabrirCustosProjeto(formData);
+    expect(rpc).toHaveBeenCalledWith("transicionar_orcamento_projeto", expect.objectContaining({
+      p_orcamento_projeto_id: 77,
+      p_status_destino: "rascunho",
+    }));
+  });
+
+  it("salva viagens, recalcula linhas VD e cria as linhas padrão que faltam", async () => {
+    const { salvarViagensProjeto } = await import("./orcamento-projetos");
+    // Mesma lista serve para as linhas VD atuais e para o catálogo VD (mock simples).
+    lista = [
+      { id: 4, descricao: "Alimentação", categoria: "deslocamento", catalogo_item_id: null },
+    ];
+    const formData = new FormData();
+    formData.set("orcamento_projeto_id", "77");
+    formData.set("pessoas", "2");
+    formData.set("dias_campo", "3");
+    formData.set("criar_linhas_padrao", "1");
+
+    await salvarViagensProjeto(formData);
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      travel_inputs: expect.objectContaining({ pessoas: 2, dias_campo: 3 }),
+    }));
+    expect(update).toHaveBeenCalledWith({ quantidade: 6 });
+    // A alimentação já existe (mesmo tipo de despesa): nada é duplicado.
+    expect(insert).not.toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith("/orcamento/demandas/5");
   });
 });
