@@ -62,6 +62,8 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
+import { DownloadButton } from "@/components/common/DownloadButton";
 import {
   salvarRegistro,
   excluirRegistro,
@@ -399,22 +401,31 @@ export function CrudShell({
         })}
 
         <Badge variant={temFiltro ? "secondary" : "muted"}>
-          {temFiltro ? `${totalFiltrado} de ${rows.length}` : `${rows.length} registro(s)`}
+          {temFiltro
+            ? `${totalFiltrado} de ${rows.length}`
+            : `${rows.length} ${rows.length === 1 ? "registro" : "registros"}`}
         </Badge>
 
-        <Button onClick={novo} className="ml-auto">
-          <Plus />
-          Novo {singular}
-        </Button>
-      </div>
+        {slug === "insumos" && (
+          <HelpTip title="Coluna Quantidade" side="bottom">
+            <p>
+              Número de <b>embalagens fechadas</b> em estoque (frascos, pacotes, kits), somando os
+              lotes aceitos. Não é o volume de cada embalagem.
+            </p>
+            <p>Para corrigir, registrar um lote novo ou dar baixa, abra o insumo.</p>
+          </HelpTip>
+        )}
 
-      {slug === "insumos" && (
-        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-          Quantidade é o número de embalagens fechadas em mãos (frascos, pacotes, kits) — não o
-          conteúdo/volume de cada uma. É calculada pelos lotes e não é editável direto na tabela; para
-          corrigi-la, abra o insumo.
-        </p>
-      )}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <DownloadButton href={`/cadastros/${slug}/export`} fileName={`${slug}.xlsx`}>
+            Planilha
+          </DownloadButton>
+          <Button onClick={novo}>
+            <Plus />
+            Novo {singular}
+          </Button>
+        </div>
+      </div>
 
       {/* Tabela */}
       <div className="mt-4 overflow-x-auto rounded-lg border border-border bg-card text-xs shadow-sm">
@@ -726,7 +737,7 @@ function CadastroDrawer({
           />
         )}
 
-        <form action={action} className="mt-6 grid grid-cols-2 gap-4">
+        <form action={action} className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <input type="hidden" name="_slug" value={slug} />
           <input type="hidden" name="_operacao_id" value={operacaoId} />
           {registro?.id != null && (
@@ -736,7 +747,7 @@ function CadastroDrawer({
           {campos.map((c) => (
             <Fragment key={c.name}>
               {c.grupo && (
-                <h3 className="col-span-2 mt-2 border-b border-border pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <h3 className="mt-2 sm:col-span-2 border-b border-border pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {c.grupo}
                 </h3>
               )}
@@ -749,39 +760,78 @@ function CadastroDrawer({
           ))}
 
           {isInsumos && !registro && (
-            <div className="col-span-2">
-              <Label className="block">
-                Quantidade (embalagens fechadas) <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                name="quantidade"
-                type="number"
-                min={0}
-                step="1"
-                defaultValue="0"
-                className={cn(
-                  "mt-1",
-                  state.errors?.quantidade && "border-destructive focus-visible:ring-destructive",
+            <>
+              <h3 className="mt-2 border-b border-border pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:col-span-2">
+                Estoque inicial
+              </h3>
+              <div>
+                <div className="flex min-h-5 items-center gap-0.5">
+                  <Label htmlFor="campo-quantidade" className="block">
+                    Quantidade (embalagens fechadas)
+                  </Label>
+                  <HelpTip title="Quantidade em estoque">
+                    <p>
+                      Conte <b>embalagens fechadas</b> (frascos, pacotes, kits), não o volume de cada
+                      uma. Entra direto no estoque, sem quarentena. Deixe 0 se ainda não houver.
+                    </p>
+                    <HelpExample>
+                      3 frascos de 500 mL → informe <b>3</b> (não 1500).
+                    </HelpExample>
+                  </HelpTip>
+                </div>
+                <Input
+                  id="campo-quantidade"
+                  name="quantidade"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  step="1"
+                  defaultValue="0"
+                  aria-invalid={state.errors?.quantidade ? true : undefined}
+                  className={cn(
+                    "mt-1",
+                    state.errors?.quantidade && "border-destructive focus-visible:ring-destructive",
+                  )}
+                />
+                {state.errors?.quantidade && (
+                  <p className="mt-1 text-xs text-destructive">{state.errors.quantidade}</p>
                 )}
-              />
-              {state.errors?.quantidade ? (
-                <p className="mt-1 text-xs text-destructive">{state.errors.quantidade}</p>
-              ) : (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Número de frascos/pacotes/kits fechados, não o volume de cada um. Ex.: 3 frascos de
-                  500 mL = 3, não 1500. Entra direto no estoque, sem quarentena.
-                </p>
-              )}
-            </div>
+              </div>
+              <div>
+                <div className="flex min-h-5 items-center gap-0.5">
+                  <Label htmlFor="campo-codigo_lote" className="block">
+                    Número do lote
+                  </Label>
+                  <HelpTip title="Número do lote">
+                    <p>
+                      Código impresso na embalagem pelo fabricante. Liga o estoque à validade (FEFO),
+                      à quarentena e ao rastreio. Vale para a quantidade informada ao lado.
+                    </p>
+                    <HelpExample>
+                      Frasco com “LOT 24B1187” → informe <b>24B1187</b>. Sem código? Deixe vazio e o
+                      sistema cria um identificador.
+                    </HelpExample>
+                  </HelpTip>
+                </div>
+                <Input
+                  id="campo-codigo_lote"
+                  name="codigo_lote"
+                  maxLength={80}
+                  placeholder="Ex.: 24B1187"
+                  autoComplete="off"
+                  className="mt-1"
+                />
+              </div>
+            </>
           )}
 
           {state.message && !state.ok && (
-            <p className="col-span-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <p className="rounded-md sm:col-span-2 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {state.message}
             </p>
           )}
 
-          <DrawerFooter className="col-span-2">
+          <DrawerFooter className="sm:col-span-2">
             <Button
               type="button"
               variant="ghost"
@@ -944,19 +994,32 @@ function CampoInput({
     (erro
       ? "border-destructive focus-visible:ring-destructive"
       : "");
-  const span = campo.colSpan === 2 ? "col-span-2" : "col-span-1";
+  const span = campo.colSpan === 2 ? "sm:col-span-2" : "sm:col-span-1";
   const valorInicial = valor == null ? campo.valorPadrao : valor;
   const v = valorInicial == null ? "" : String(valorInicial);
+  const inputId = `campo-${campo.name}`;
+  const erroId = erro ? `${inputId}-erro` : undefined;
 
   return (
     <div className={span}>
-      <Label className="block">
-        {campo.label}
-        {campo.obrigatorio && <span className="text-destructive"> *</span>}
-      </Label>
+      <div className="flex min-h-5 items-center gap-0.5">
+        <Label htmlFor={inputId} className="block">
+          {campo.label}
+          {campo.obrigatorio && <span className="text-destructive"> *</span>}
+        </Label>
+        {campo.ajuda && (
+          <HelpTip title={campo.label}>
+            <p>{campo.ajuda}</p>
+            {campo.exemplo && <HelpExample>{campo.exemplo}</HelpExample>}
+          </HelpTip>
+        )}
+      </div>
 
       {campo.tipo === "textarea" ? (
         <Textarea
+          id={inputId}
+          aria-invalid={erro ? true : undefined}
+          aria-describedby={erroId}
           name={campo.name}
           defaultValue={v}
           rows={3}
@@ -968,6 +1031,9 @@ function CampoInput({
         />
       ) : campo.tipo === "select" ? (
         <Select
+          id={inputId}
+          aria-invalid={erro ? true : undefined}
+          aria-describedby={erroId}
           name={campo.name}
           defaultValue={v}
           className={cn(
@@ -985,12 +1051,16 @@ function CampoInput({
       ) : campo.tipo === "checkbox" ? (
         <div className="mt-2">
           <Checkbox
+            id={inputId}
             name={campo.name}
             defaultChecked={valor === undefined ? Boolean(campo.padraoLigado) : Boolean(valor)}
           />
         </div>
       ) : (
         <Input
+          id={inputId}
+          aria-invalid={erro ? true : undefined}
+          aria-describedby={erroId}
           name={campo.name}
           defaultValue={v}
           placeholder={campo.placeholder}
@@ -1015,11 +1085,11 @@ function CampoInput({
         />
       )}
 
-      {erro ? (
-        <p className="mt-1 text-xs text-destructive">{erro}</p>
-      ) : campo.ajuda ? (
-        <p className="mt-1 text-xs text-muted-foreground">{campo.ajuda}</p>
-      ) : null}
+      {erro && (
+        <p id={erroId} className="mt-1 text-xs text-destructive">
+          {erro}
+        </p>
+      )}
     </div>
   );
 }

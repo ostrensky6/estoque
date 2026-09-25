@@ -107,13 +107,48 @@ describe("cadastro de insumos", () => {
         unidade: "frasco",
         unidade_consumo: "reacao",
         fator_conversao: 100,
-        custo_unitario: 5,
       }),
     });
     expect(typeof args.p_operacao_id).toBe("string");
     expect(args.p_operacao_id.length).toBeGreaterThan(0);
     // "quantidade" nao e uma coluna de insumos: nao pode vazar no payload.
     expect(args.p_dados_insumo).not.toHaveProperty("quantidade");
+    // A RPC calcula o custo unitario e recusa a chave ("Campo não reconhecido").
+    expect(args.p_dados_insumo).not.toHaveProperty("custo_unitario");
+  });
+
+  it("envia somente chaves aceitas pela RPC do banco (bug: Campo não reconhecido)", async () => {
+    const { readFileSync, readdirSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const dir = join(process.cwd(), "supabase", "migrations");
+    // a definição mais recente da função é a que vale no banco
+    const sql = readdirSync(dir)
+      .filter((nome) => nome.endsWith(".sql"))
+      .sort()
+      .map((nome) => readFileSync(join(dir, nome), "utf8"))
+      .filter((texto) => texto.includes("function public.criar_insumo_com_quantidade("))
+      .at(-1);
+    expect(sql).toBeTruthy();
+    const lista = sql!.match(/where k not in \(([\s\S]*?)\)\s*\)/)?.[1] ?? "";
+    const aceitas = new Set([...lista.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]));
+    expect(aceitas.size).toBeGreaterThan(10);
+
+    const { salvarRegistro } = await import("./cadastros");
+    await salvarRegistro(
+      { ok: false },
+      formInsumo({
+        quantidade: "2",
+        codigo_lote: "L-2026-01",
+        data_aquisicao: "2026-09-01",
+        validade_dias: "30",
+        categoria_compra: "critico",
+        ponto_reposicao: "1",
+      }),
+    );
+    const [, args] = rpc.mock.calls[0];
+    const enviadas = Object.keys(args.p_dados_insumo);
+    expect(enviadas.filter((chave) => !aceitas.has(chave))).toEqual([]);
+    expect(args.p_dados_insumo.codigo_lote).toBe("L-2026-01");
   });
 
   it("assume quantidade zero quando o campo nao e enviado", async () => {

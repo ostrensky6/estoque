@@ -7,10 +7,13 @@ import { DataTable, numericSort } from "@/components/common/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { LoteAcoes } from "@/components/estoque/LoteAcoes";
 import { AjusteInventarioButton } from "@/components/estoque/ReceberLote";
+import { SaidaAvulsaButton } from "@/components/estoque/SaidaAvulsaButton";
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 import { formatNumber as fmt } from "@/lib/formatters";
 
 export type SaldoRow = {
   insumoId: number;
+  embalagemFechada?: boolean;
   especificacao: string;
   unidade: string;
   emMaos: number;
@@ -27,6 +30,8 @@ export type SaldoRow = {
 
 export type LoteRow = {
   id: number;
+  insumoId?: number;
+  embalagemFechada?: boolean;
   especificacao: string;
   unidade: string;
   codigoLote: string;
@@ -143,16 +148,53 @@ const saldoColumns = (entradaInicialInsumoId?: number): ColumnDef<SaldoRow, unkn
     enableSorting: false,
     enableGlobalFilter: false,
     meta: { align: "right" },
-    cell: ({ row }) => (
-      <AjusteInventarioButton
-        insumoId={row.original.insumoId}
-        especificacao={row.original.especificacao}
-        unidade={row.original.unidade === "—" ? null : row.original.unidade}
-        abertoInicial={row.original.insumoId === entradaInicialInsumoId}
-      />
-    ),
+    cell: ({ row }) => <SaldoAcoes row={row.original} entradaInicialInsumoId={entradaInicialInsumoId} />,
   },
 ];
+
+function SaldoAcoes({ row, entradaInicialInsumoId }: { row: SaldoRow; entradaInicialInsumoId?: number }) {
+  return (
+    <span className="inline-flex flex-wrap items-center justify-end gap-1.5">
+      <AjusteInventarioButton
+        insumoId={row.insumoId}
+        especificacao={row.especificacao}
+        unidade={row.unidade === "—" ? null : row.unidade}
+        abertoInicial={row.insumoId === entradaInicialInsumoId}
+        embalagemFechada={row.embalagemFechada}
+      />
+      {row.emMaos > 0 && (
+        <SaidaAvulsaButton
+          insumoId={row.insumoId}
+          especificacao={row.especificacao}
+          unidade={row.unidade === "—" ? null : row.unidade}
+          saldo={row.emMaos}
+          embalagemFechada={row.embalagemFechada}
+          triggerVariant="ghost"
+          triggerClassName="h-8 px-2 text-xs text-danger-strong hover:bg-danger-soft hover:text-danger-strong"
+        />
+      )}
+    </span>
+  );
+}
+
+function LoteAcoesLinha({ row, podeAceitar, podeGerir }: { row: LoteRow; podeAceitar: boolean; podeGerir: boolean }) {
+  return (
+    <LoteAcoes
+      loteId={row.id}
+      insumoId={row.insumoId}
+      especificacao={row.especificacao}
+      codigoLote={row.codigoLote}
+      embalagemFechada={row.embalagemFechada}
+      status={row.status}
+      quantidadeAtual={row.quantidadeAtual}
+      unidade={row.unidade}
+      critico={row.critico}
+      estornoDiretoPermitido={row.estornoDiretoPermitido}
+      podeAceitar={podeAceitar}
+      podeGerir={podeGerir}
+    />
+  );
+}
 
 const lotesColumns = (
   podeAceitar: boolean,
@@ -201,33 +243,38 @@ const lotesColumns = (
     enableSorting: false,
     enableGlobalFilter: false,
     meta: { align: "right" },
-    cell: ({ row }) => (
-      <LoteAcoes
-        loteId={row.original.id}
-        status={row.original.status}
-        quantidadeAtual={row.original.quantidadeAtual}
-        unidade={row.original.unidade}
-        critico={row.original.critico}
-        estornoDiretoPermitido={row.original.estornoDiretoPermitido}
-        podeAceitar={podeAceitar}
-        podeGerir={podeGerir}
-      />
-    ),
+    cell: ({ row }) => <LoteAcoesLinha row={row.original} podeAceitar={podeAceitar} podeGerir={podeGerir} />,
   },
 ];
 
 export function SaldoTable({
   rows,
   entradaInicialInsumoId,
+  janelaDias = 90,
 }: {
   rows: SaldoRow[];
   entradaInicialInsumoId?: number;
+  janelaDias?: number;
 }) {
   return (
     <div>
-      <p className="mb-2 text-xs text-muted-foreground">
-        Os saldos são calculados a partir dos lotes e não são campos do cadastro do insumo.
-      </p>
+      <h2 className="mb-2 flex items-center gap-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Saldo por insumo
+        <HelpTip title="Como ler o saldo">
+          <p>
+            <b>Em mãos</b> soma os lotes liberados. <b>Reservado</b> já está prometido a planos.{" "}
+            <b>Disponível</b> = em mãos − reservado (sem vencidos).
+          </p>
+          <p>
+            <b>Cobertura</b>: quantos dias o disponível dura no ritmo de consumo dos últimos{" "}
+            {janelaDias} dias. <b>Ponto sugerido</b> considera o prazo de entrega e o estoque de
+            segurança.
+          </p>
+          <HelpExample>
+            10 em mãos, 4 reservados → 6 disponíveis. Consumo de 0,5/dia → cobertura de 12 dias.
+          </HelpExample>
+        </HelpTip>
+      </h2>
       <DataTable
         data={rows}
         columns={saldoColumns(entradaInicialInsumoId)}
@@ -246,9 +293,10 @@ export function SaldoTable({
         ]}
         getMobileTitle={(row) => row.especificacao}
         getMobileDescription={(row) =>
-          `${row.disponivel} ${row.unidade} disponível · cobertura ${row.diasCobertura != null ? `${fmt(row.diasCobertura)} d` : "—"} · ponto sugerido ${row.pontoSugerido || "—"}`
+          `${fmt(row.disponivel)} ${row.unidade} disponível · cobertura ${row.diasCobertura != null ? `${fmt(row.diasCobertura)} d` : "—"} · ponto sugerido ${row.pontoSugerido ? fmt(row.pontoSugerido) : "—"}`
         }
         getMobileMeta={(row) => <SaldoStatusBadge status={row.status} label={row.statusLabel} />}
+        getMobileActions={(row) => <SaldoAcoes row={row} entradaInicialInsumoId={entradaInicialInsumoId} />}
       />
     </div>
   );
@@ -268,7 +316,7 @@ export function LotesTable({
       data={rows}
       columns={lotesColumns(podeAceitar, podeGerir)}
       searchPlaceholder="Buscar reagente ou lote..."
-      emptyText="Nenhum lote em estoque. Use + Lote na tabela acima para receber."
+      emptyText="Nenhum lote em estoque. Use + Entrada na tabela acima para receber."
       filters={[
         {
           columnId: "statusLabel",
@@ -286,6 +334,8 @@ export function LotesTable({
         `Lote ${row.codigoLote} · validade ${row.validade} · ${fmt(row.quantidadeAtual)} ${row.unidade}`
       }
       getMobileMeta={(row) => <LoteStatusBadge status={row.status} label={row.statusLabel} />}
+      getMobileHref={(row) => `/estoque/lotes/${row.id}`}
+      getMobileActions={(row) => <LoteAcoesLinha row={row} podeAceitar={podeAceitar} podeGerir={podeGerir} />}
     />
   );
 }

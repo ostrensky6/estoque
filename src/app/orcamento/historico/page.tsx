@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import Link from "next/link";
 
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { DownloadButton } from "@/components/common/DownloadButton";
+import { HelpTip } from "@/components/common/HelpTip";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import {
   atualizarOrcamentosFinaisVencidos,
@@ -170,15 +172,20 @@ export default async function HistoricoOrcamentosPage({
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Histórico de Orçamentos</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Área de consulta para registros fechados. Versões finais preservam snapshot técnico, parâmetros e valores emitidos.
-            </p>
+            <h1 className="flex items-center gap-1 text-xl font-semibold tracking-tight">
+              Histórico de Orçamentos
+              <HelpTip title="Histórico de Orçamentos">
+                <p>
+                  Consulta das versões já fechadas. Cada versão final guarda os custos, parâmetros e
+                  valores do momento da emissão; mudanças posteriores nos cadastros não a alteram.
+                </p>
+              </HelpTip>
+            </h1>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href={exportHref} className="rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted">
+            <DownloadButton href={exportHref} fileName="historico-orcamentos.csv">
               Exportar CSV
-            </Link>
+            </DownloadButton>
             <Link href="/orcamento/demandas/nova" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
               + Novo Orçamento
             </Link>

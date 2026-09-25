@@ -117,6 +117,26 @@ export function montarEquipamentosAlocados(
     .filter((ea) => Number.isFinite(ea.peso) && ea.peso > 0);
 }
 
+/**
+ * Valor-hora de pessoal = Σ (valor_mes / horas_mes_base × %dedicado/100).
+ * Vem agregado do banco (fn_valor_hora_pessoal, migration 0112) para que o
+ * custeio funcione sem expor a remuneração individual; antes da migration,
+ * calcula a partir da tabela.
+ */
+async function carregarValorHoraPessoal(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data, error } = await supabase.rpc("fn_valor_hora_pessoal" as never);
+  if (!error && data != null && Number.isFinite(Number(data))) return Number(data);
+
+  const { data: tecnicos } = await supabase
+    .from("tecnicos")
+    .select("valor_mes, horas_mes_base, percentual_dedicado");
+  return (tecnicos ?? []).reduce((acc, t) => {
+    const custoHora =
+      Number(t.horas_mes_base) > 0 ? Number(t.valor_mes) / Number(t.horas_mes_base) : 0;
+    return acc + (custoHora * Number(t.percentual_dedicado)) / 100;
+  }, 0);
+}
+
 /** Carrega tudo do banco e calcula o breakdown de todas as análises. */
 export async function calcularTodas(
   cenarioPorAnalise: Record<string, Cenario> = {},
@@ -129,7 +149,6 @@ export async function calcularTodas(
     { data: etapas },
     { data: equipamentos },
     { data: equipAnalise },
-    { data: tecnicos },
     { data: overhead },
     { data: insumoAnalise },
     { data: parametros },
@@ -139,7 +158,6 @@ export async function calcularTodas(
     supabase.from("etapas").select("*"),
     supabase.from("equipamentos").select("*"),
     supabase.from("equipamento_analise").select("*"),
-    supabase.from("tecnicos").select("*"),
     supabase.from("overhead").select("*"),
     supabase
       .from("insumo_analise")
@@ -172,14 +190,7 @@ export async function calcularTodas(
     fundo_investimento: par.fundo_investimento ?? 0,
   };
 
-  // valor-hora de pessoal = Σ valor_hh (custo_hora × %dedicado/100)
-  const valorHoraPessoal = (tecnicos ?? []).reduce((acc, t) => {
-    const custoHora =
-      Number(t.horas_mes_base) > 0
-        ? Number(t.valor_mes) / Number(t.horas_mes_base)
-        : 0;
-    return acc + (custoHora * Number(t.percentual_dedicado)) / 100;
-  }, 0);
+  const valorHoraPessoal = await carregarValorHoraPessoal(supabase);
 
   // custo-hora de overhead = Σ (custo_mensal/horas_bancada_mes × %compensada/100)
   const custoHoraOverhead = (overhead ?? []).reduce((acc, o) => {

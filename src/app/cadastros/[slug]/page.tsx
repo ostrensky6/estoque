@@ -6,6 +6,7 @@ import {
 } from "@/lib/cadastros/config";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { CrudShell } from "@/components/cadastros/CrudShell";
+import { HelpTip } from "@/components/common/HelpTip";
 import { equipCustoDia } from "@/lib/costing/engine";
 import { modeloQuantidadePorInsumo, projetarTotaisInsumos, type LoteInsumo, type LoteModelo } from "@/lib/cadastros/insumos";
 
@@ -207,8 +208,12 @@ export default async function CadastroPage({
       <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Cadastros", href: "/cadastros" }, { label: cfg.titulo }]} />
 
-        <h1 className="mt-6 text-xl font-semibold tracking-tight">{cfg.titulo}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{cfg.subtitulo}</p>
+        <h1 className="mt-6 flex items-center gap-1 text-xl font-semibold tracking-tight">
+          {cfg.titulo}
+          <HelpTip title={cfg.titulo}>
+            <p>{cfg.subtitulo}</p>
+          </HelpTip>
+        </h1>
 
         <div className="mt-6">
           <CrudShell

@@ -12,12 +12,17 @@ import {
   estornarRecebimentoLote,
 } from "@/lib/actions/estoque";
 import type { FormState } from "@/lib/actions/cadastros";
+import { SaidaAvulsaButton } from "@/components/estoque/SaidaAvulsaButton";
 
 type Acao = (fd: FormData) => Promise<{ ok: boolean; message?: string }>;
 type ActionState = (prev: FormState, fd: FormData) => Promise<FormState>;
 
 export function LoteAcoes({
   loteId,
+  insumoId,
+  especificacao,
+  codigoLote,
+  embalagemFechada = false,
   status,
   quantidadeAtual,
   unidade,
@@ -27,6 +32,11 @@ export function LoteAcoes({
   podeGerir,
 }: {
   loteId: number;
+  /** com o insumo, a saída usa a RPC de saída avulsa (motivo estruturado, reservas, embalagens) */
+  insumoId?: number;
+  especificacao?: string;
+  codigoLote?: string;
+  embalagemFechada?: boolean;
   status: string;
   quantidadeAtual: number;
   unidade: string;
@@ -122,10 +132,24 @@ export function LoteAcoes({
           Bloquear
         </button>
       )}
-      {loteAtivo && (
-        <button disabled={pending} onClick={() => setModal("baixa")} className={`${btn} text-danger-strong hover:bg-danger-soft`}>
-          Baixa
-        </button>
+      {insumoId && status !== "consumido" && status !== "descartado" ? (
+        <SaidaAvulsaButton
+          insumoId={insumoId}
+          especificacao={especificacao ?? "Insumo"}
+          unidade={unidade}
+          loteId={loteId}
+          codigoLote={codigoLote}
+          saldo={quantidadeAtual}
+          embalagemFechada={embalagemFechada}
+          triggerVariant="ghost"
+          triggerClassName="h-7 px-2 text-xs text-danger-strong hover:bg-danger-soft hover:text-danger-strong"
+        />
+      ) : (
+        loteAtivo && (
+          <button disabled={pending} onClick={() => setModal("baixa")} className={`${btn} text-danger-strong hover:bg-danger-soft`}>
+            Baixa
+          </button>
+        )
       )}
       {loteAtivo && podeGerir && (
         <button disabled={pending} onClick={() => setModal("ajuste")} className={`${btn} text-info-strong hover:bg-info-soft`}>

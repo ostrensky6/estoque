@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCadastrosOrdenados, type CadastroConfig, type Campo } from "@/lib/cadastros/config";
 import { TECH_ID_HEADER, TECH_SUFFIX, opcoesParaCampos } from "@/lib/cadastros/xlsx";
+import { dadosCriacaoInsumo } from "@/lib/cadastros/insumo-rpc";
 import { createClientUntyped } from "@/lib/supabase/server";
 
 export type FormState = {
@@ -324,7 +325,7 @@ export async function salvarRegistro(
     }
     const operacaoId = String(formData.get("_operacao_id") ?? "").trim() || crypto.randomUUID();
     const { data, error } = await supabase.rpc("criar_insumo_com_quantidade", {
-      p_dados_insumo: payload,
+      p_dados_insumo: dadosCriacaoInsumo(payload, formData),
       p_quantidade_embalagens: quantidadeParsed.data,
       p_operacao_id: operacaoId,
     });

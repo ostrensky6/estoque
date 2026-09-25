@@ -1,12 +1,16 @@
 import { Breadcrumbs, type BreadcrumbItem } from "@/components/common/Breadcrumbs";
 import { cn } from "@/lib/utils";
 
-/** Cabeçalho padrão: breadcrumbs, h1 na escala fixa, meta (badges) e ações à direita. */
+/**
+ * Cabeçalho padrão: breadcrumbs, h1 na escala fixa, meta (badges) e ações à direita.
+ * `description` é uma linha curta; explicações longas vão em `help` (um <HelpTip>).
+ */
 export function PageHeader({
   breadcrumbs,
   title,
   description,
   meta,
+  help,
   actions,
   className,
 }: {
@@ -14,6 +18,7 @@ export function PageHeader({
   title: React.ReactNode;
   description?: React.ReactNode;
   meta?: React.ReactNode;
+  help?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
 }) {
@@ -23,7 +28,10 @@ export function PageHeader({
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+            <h1 className="flex items-center gap-1 text-xl font-semibold tracking-tight text-foreground">
+              {title}
+              {help}
+            </h1>
             {meta}
           </div>
           {description && (

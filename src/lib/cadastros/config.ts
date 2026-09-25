@@ -29,7 +29,10 @@ export type Campo = {
   opcoes?: { value: string; label: string }[];
   /** preenche as opções dinamicamente no servidor (ex.: lista de fornecedores) */
   opcoesDe?: "fornecedores" | "clientes" | "projetos" | "tipo_insumos";
+  /** explicação curta exibida no "?" ao lado do rótulo */
   ajuda?: string;
+  /** exemplo curto exibido junto da ajuda */
+  exemplo?: string;
   colSpan?: 1 | 2;
   placeholder?: string;
   /** título de seção; o primeiro campo de cada seção carrega o rótulo */
@@ -160,7 +163,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       { name: "quantidade", label: "Quantidade", tipo: "number", obrigatorio: true, min: 0, step: "1", grupo: "Aquisição e valor" },
       { name: "custo_unitario", label: "Custo unitário (R$)", tipo: "currency", obrigatorio: true, min: 0 },
       { name: "data_aquisicao", label: "Data de aquisição", tipo: "date" },
-      { name: "vida_util_anos", label: "Vida útil (anos)", tipo: "number", min: 0, step: "0.5", ajuda: "Para depreciação linear." },
+      { name: "vida_util_anos", label: "Vida útil (anos)", tipo: "number", min: 0, step: "0.5", ajuda: "Anos até o equipamento ser totalmente depreciado; o custo é distribuído igualmente por ano.", exemplo: "Equipamento de R$ 100.000 com vida útil de 10 anos → R$ 10.000 por ano." },
       {
         name: "data_validade",
         label: "Data de validade / fim da vida útil",
@@ -175,7 +178,8 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         min: 0,
         max: 1,
         step: "0.01",
-        ajuda: "Fração do valor: 0,05 = 5% ao ano.",
+        ajuda: "Percentual do valor do equipamento gasto com manutenção por ano.",
+        exemplo: "Equipamento de R$ 100.000 com 5% → R$ 5.000 por ano de manutenção.",
         grupo: "Manutenção",
       },
       {
@@ -183,7 +187,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         label: "Manutenção anual fixa (R$)",
         tipo: "currency",
         min: 0,
-        ajuda: "Opcional — contrato de manutenção; substitui a fração acima.",
+        ajuda: "Valor anual de um contrato de manutenção. Quando preenchido, substitui o percentual acima.",
       },
     ],
   },
@@ -236,7 +240,8 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         label: "Unidade de consumo",
         tipo: "text",
         placeholder: "uL, reações, un, mL…",
-        ajuda: "Unidade usada nas receitas e no estoque consumido. Use a mesma unidade da embalagem quando forem equivalentes.",
+        ajuda: "Unidade usada nas receitas das análises e no consumo do estoque. Pode ser igual à da embalagem.",
+        exemplo: "Embalagem em mL, receita em µL → unidade de consumo: µL.",
       },
       {
         name: "fator_conversao",
@@ -246,7 +251,8 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         min: 0.000001,
         step: "0.000001",
         valorPadrao: 1,
-        ajuda: "Quantas unidades de consumo correspondem a 1 unidade da embalagem. Use 1 quando as unidades forem equivalentes.",
+        ajuda: "Quantas unidades de consumo cabem em 1 unidade da embalagem. Use 1 quando as unidades forem iguais.",
+        exemplo: "Embalagem em mL e consumo em µL → 1 mL = 1000 µL → fator 1000.",
       },
 
       { name: "data_aquisicao", label: "Data da última compra", tipo: "date", grupo: "Compra e fornecedor" },
@@ -266,9 +272,9 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       { name: "quantidade_minima_compra", label: "Quantidade mínima de compra", tipo: "number", min: 0 },
       { name: "prazo_entrega_max_dias", label: "Prazo de entrega máx. (dias)", tipo: "number", min: 0 },
 
-      { name: "ponto_reposicao", label: "Ponto de reposição", tipo: "number", min: 0, ajuda: "Dispara alerta quando o disponível cai até aqui.", grupo: "Estoque e reposição" },
+      { name: "ponto_reposicao", label: "Ponto de reposição", tipo: "number", min: 0, ajuda: "Quando o saldo disponível chega a este número, o insumo entra nas sugestões de compra.", exemplo: "Ponto de reposição 2: com 2 frascos ou menos, o sistema sugere comprar.", grupo: "Estoque e reposição" },
       { name: "estoque_seguranca", label: "Estoque de segurança", tipo: "number", min: 0 },
-      { name: "lead_time_dias", label: "Lead time (dias)", tipo: "number", min: 0, ajuda: "Prazo típico de reposição." },
+      { name: "lead_time_dias", label: "Lead time (dias)", tipo: "number", min: 0, ajuda: "Dias entre fazer o pedido e o insumo chegar ao laboratório. Usado para antecipar a compra." },
 
       { name: "data_fabricacao", label: "Data de fabricação", tipo: "date", grupo: "Validade" },
       {
@@ -276,13 +282,14 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         label: "Validade após fabricação/aquisição (dias)",
         tipo: "number",
         min: 0,
-        ajuda: "Usado para calcular a data de validade quando ela não for informada manualmente.",
+        ajuda: "Se a data de validade ficar vazia, ela é calculada somando estes dias à fabricação (ou à última compra).",
+        exemplo: "Fabricado em 01/09/2026 + 180 dias → validade 28/02/2027.",
       },
       {
         name: "data_validade",
         label: "Data de validade",
         tipo: "date",
-        ajuda: "Pode ser preenchida manualmente; se vazia, usa fabricação ou última compra + validade em dias.",
+        ajuda: "Informe a data impressa na embalagem. Se ficar vazia, é calculada pela validade em dias.",
       },
       {
         name: "condicao_armazenamento",
@@ -297,7 +304,8 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         label: "Validade após abertura (dias)",
         tipo: "number",
         min: 0,
-        ajuda: "A validade de cada lote recebido é registrada em Estoque → Lotes.",
+        ajuda: "Prazo de uso depois que a embalagem é aberta. Vale a data que vencer primeiro: a do lote ou a da abertura.",
+        exemplo: "Aberto em 10/09 com 30 dias → usar até 10/10, mesmo que o lote vença depois.",
       },
       { name: "sds_url", label: "Ficha de segurança (URL do SDS)", tipo: "text", colSpan: 2 },
     ],
@@ -371,7 +379,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       },
 
       { name: "valor_mes", label: "Valor mensal (R$)", tipo: "currency", obrigatorio: true, min: 0, grupo: "Custo e dedicação" },
-      { name: "horas_mes_base", label: "Horas/mês base", tipo: "number", obrigatorio: true, min: 1, ajuda: "Horas trabalhadas por mês (ex.: 170)." },
+      { name: "horas_mes_base", label: "Horas/mês base", tipo: "number", obrigatorio: true, min: 1, ajuda: "Horas de trabalho por mês usadas para calcular o custo da hora.", exemplo: "44 h semanais ≈ 176 h/mês." },
       { name: "percentual_dedicado", label: "% dedicado ao laboratório", tipo: "percent", obrigatorio: true, min: 0, max: 100 },
     ],
   },

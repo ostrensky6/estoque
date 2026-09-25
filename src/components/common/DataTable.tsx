@@ -13,6 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import Link from "next/link";
 import { ChevronDown, ChevronUp, ChevronsUpDown, Rows3, Rows4, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,10 @@ type DataTableProps<TData> = {
   getMobileTitle?: (row: TData) => React.ReactNode;
   getMobileDescription?: (row: TData) => React.ReactNode;
   getMobileMeta?: (row: TData) => React.ReactNode;
+  /** ações exibidas no cartão do celular (a coluna de ações some abaixo de 768px) */
+  getMobileActions?: (row: TData) => React.ReactNode;
+  /** torna o título do cartão do celular um link */
+  getMobileHref?: (row: TData) => string | null | undefined;
   pageSize?: number;
 };
 
@@ -100,6 +105,8 @@ export function DataTable<TData>({
   getMobileTitle,
   getMobileDescription,
   getMobileMeta,
+  getMobileActions,
+  getMobileHref,
   pageSize = 25,
 }: DataTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = React.useState("");
@@ -324,7 +331,19 @@ export function DataTable<TData>({
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="font-medium">{getMobileTitle?.(row.original) ?? row.id}</div>
+                <div className="font-medium">
+                  {(() => {
+                    const titulo = getMobileTitle?.(row.original) ?? row.id;
+                    const href = getMobileHref?.(row.original);
+                    return href ? (
+                      <Link href={href} className="text-brand-700 hover:underline dark:text-brand-400">
+                        {titulo}
+                      </Link>
+                    ) : (
+                      titulo
+                    );
+                  })()}
+                </div>
                 {getMobileDescription && (
                   <div className="mt-1 text-sm text-muted-foreground">
                     {getMobileDescription(row.original)}
@@ -333,6 +352,11 @@ export function DataTable<TData>({
               </div>
               {getMobileMeta && <div className="shrink-0">{getMobileMeta(row.original)}</div>}
             </div>
+            {getMobileActions && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                {getMobileActions(row.original)}
+              </div>
+            )}
           </div>
         ))}
         {table.getRowModel().rows.length === 0 && (
