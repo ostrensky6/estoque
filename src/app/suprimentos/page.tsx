@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createClientUntyped } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
 import { GerarPedidoReposicaoButton } from "@/components/pedido/GerarPedidoReposicaoButton";
+import { PlanoLinhaAcoes } from "@/components/planejamento/PlanoGestao";
+import { avaliarGestaoPlano } from "@/lib/planejamento/gestao";
 import { formatDate, formatNumber as fmt } from "@/lib/formatters";
 import { pedidoInternoNumero, pedidoInternoStatus } from "@/lib/pedido/status";
 
@@ -14,7 +16,7 @@ type PlanejamentoRow = {
   status_operacional: string | null;
   projeto_id: number | null;
   projetos: { nome: string | null; coordenador?: string | null; coordenador_nome?: string | null; coordenador_email?: string | null } | Array<{ nome: string | null; coordenador?: string | null; coordenador_nome?: string | null; coordenador_email?: string | null }> | null;
-  reservas_estoque: Array<{ status: string; quantidade: number; lote_id?: number | null }> | null;
+  reservas_estoque: Array<{ status: string; quantidade: number; quantidade_consumida?: number | null; lote_id?: number | null }> | null;
 };
 
 type PedidoInternoRow = {
@@ -262,7 +264,7 @@ export default async function SuprimentosPage() {
   ] = await Promise.all([
     supabase
       .from("planejamento")
-      .select("id, nome, data_alvo, status_operacional, projeto_id, projetos(nome, coordenador), reservas_estoque(status, quantidade)")
+      .select("id, nome, data_alvo, status_operacional, projeto_id, projetos(nome, coordenador), reservas_estoque(status, quantidade, quantidade_consumida)")
       .order("criado_em", { ascending: false })
       .limit(60),
     consultarPedidosSuprimentos(supabase),
@@ -428,7 +430,7 @@ export default async function SuprimentosPage() {
                     <th className={th}>Data alvo</th>
                     <th className={th}>Status</th>
                     <th className={th}>Reservas</th>
-                    <th className={`${th} text-right`}>Ação</th>
+                    <th className={`${th} text-right`}>Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/70">
@@ -436,6 +438,7 @@ export default async function SuprimentosPage() {
                     const reservas = plano.reservas_estoque ?? [];
                     const reservadas = reservas.filter((r) => r.status === "reservado").length;
                     const parciais = reservas.filter((r) => r.status === "parcial").length;
+                    const gestao = avaliarGestaoPlano({ status: plano.status_operacional, reservas, podeGerir: podeGerarReposicao });
                     return (
                       <tr key={plano.id}>
                         <td className={`${td} font-medium`}><Link href={`/planejamento/${plano.id}`} className="text-primary hover:underline">{plano.nome}</Link></td>
@@ -443,7 +446,14 @@ export default async function SuprimentosPage() {
                         <td className={td}>{formatDate(plano.data_alvo)}</td>
                         <td className={td}><Pill tone={plano.status_operacional === "em_execucao" ? "blue" : plano.status_operacional === "reservado" ? "green" : "zinc"}>{STATUS_PLANO[plano.status_operacional ?? "rascunho"] ?? plano.status_operacional ?? "Rascunho"}</Pill></td>
                         <td className={td}>{reservadas} lote(s){parciais ? ` · ${parciais} parcial` : ""}</td>
-                        <td className={`${td} text-right`}><Link href={`/planejamento/${plano.id}`} className="font-medium text-primary hover:underline">Ver plano</Link></td>
+                        <td className={`${td} text-right`}>
+                          <PlanoLinhaAcoes
+                            planId={plano.id}
+                            nome={plano.nome}
+                            editavel={gestao.podeEditar}
+                            gestao={{ acao: gestao.acao, bloqueado: gestao.acaoBloqueada, motivo: gestao.motivoAcao }}
+                          />
+                        </td>
                       </tr>
                     );
                   })}

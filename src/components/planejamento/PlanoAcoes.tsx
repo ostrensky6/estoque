@@ -111,15 +111,18 @@ export function PlanoAcoes({
   temFalta,
   contextoCompleto,
   temBloqueioEquipamentos = false,
+  reservaDesatualizada = false,
 }: {
   planId: number;
   status: string;
   temFalta: boolean;
   contextoCompleto: boolean;
   temBloqueioEquipamentos?: boolean;
+  /** Itens mudaram depois da reserva (0111): exige nova reserva antes da baixa. */
+  reservaDesatualizada?: boolean;
 }) {
   const podeReservar = contextoCompleto && (status === "Rascunho" || status === "Reservado");
-  const podeIniciar = status === "Reservado" && !temFalta && !temBloqueioEquipamentos;
+  const podeIniciar = status === "Reservado" && !temFalta && !temBloqueioEquipamentos && !reservaDesatualizada;
   const podeLiberar = status === "Reservado";
   const podeConcluir = status === "Em execução" || status === "Iniciado";
 
@@ -128,6 +131,11 @@ export function PlanoAcoes({
       {!contextoCompleto && (
         <p className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-strong">
           Complete projeto e período previsto para transformar a previsão em reserva de estoque.
+        </p>
+      )}
+      {status === "Reservado" && reservaDesatualizada && (
+        <p className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-strong">
+          Os itens mudaram depois da reserva. Use Reservar insumos de novo para liberar o Iniciar.
         </p>
       )}
       {status === "Reservado" && temFalta && (

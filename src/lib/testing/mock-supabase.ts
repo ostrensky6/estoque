@@ -677,6 +677,28 @@ const baseStore = (): Store => {
         atualizado_em: "2026-06-21T10:00:00.000Z",
       },
     ];
+    // Plano que já teve baixa de material: só pode ser cancelado (0111).
+    seed.planejamento = [
+      {
+        id: 900,
+        nome: "Plano com baixa E2E",
+        projeto_id: 1,
+        status_operacional: "em_execucao",
+        reserva_desatualizada: false,
+        prioridade: "normal",
+        origem_planejamento: "manual",
+        data_inicio_prevista: "2026-06-22",
+        data_fim_prevista: "2026-06-30",
+        data_alvo: "2026-06-30",
+        criado_em: "2026-06-21T10:00:00.000Z",
+      },
+    ];
+    seed.planejamento_itens = [
+      { id: 900, planejamento_id: 900, codigo_analise: "qPCR_F", n_amostras: 5, n_controles: 0, repeticoes: 1, perda_percentual: 0 },
+    ];
+    seed.reservas_estoque = [
+      { id: 900, planejamento_id: 900, insumo_id: 1, lote_id: null, quantidade: 5, quantidade_consumida: 5, status: "consumido" },
+    ];
   }
 
   return seed;
@@ -721,6 +743,12 @@ function withRelations(table: string, row: Row): Row {
       ...row,
       orcamento_projeto_analises: store.orcamento_projeto_analises.filter((item) => item.orcamento_projeto_id === row.id),
       orcamento_projeto_custos: store.orcamento_projeto_custos.filter((item) => item.orcamento_projeto_id === row.id),
+    };
+  }
+  if (table === "planejamento") {
+    return {
+      ...row,
+      reservas_estoque: (store.reservas_estoque ?? []).filter((item) => valoresIguais(item.planejamento_id, row.id)),
     };
   }
   if (table === "lotes_estoque") {
@@ -921,9 +949,21 @@ class MockQuery {
       id: row.id ?? nextId(this.table),
       criado_em: row.criado_em ?? new Date().toISOString(),
       status: row.status ?? "rascunho",
+      // Espelha os defaults da tabela planejamento (0029/0111).
+      ...(this.table === "planejamento"
+        ? { status_operacional: "rascunho", reserva_desatualizada: false }
+        : {}),
       ...row,
     }));
+    if (this.table === "planejamento_itens") {
+      this.erro = guardarItensPlanejamento(inserted);
+      if (this.erro) {
+        this.mutation = { type: "insert", payload: [] };
+        return this;
+      }
+    }
     store[this.table] = [...(store[this.table] ?? []), ...inserted];
+    if (this.table === "reservas_estoque") limparReservaDesatualizada(inserted);
     this.mutation = { type: "insert", payload: inserted };
     return this;
   }
@@ -963,6 +1003,18 @@ class MockQuery {
 
   private execute(): MockResultado {
     if (this.erro) return { data: null, error: this.erro };
+    if (
+      this.table === "planejamento_itens" &&
+      (this.mutation?.type === "update" || this.mutation?.type === "delete")
+    ) {
+      const afetados = (store[this.table] ?? []).filter((row) => this.matches(row));
+      const destino = this.mutation.type === "update" ? (this.mutation.payload as Row) : {};
+      const erro = guardarItensPlanejamento([
+        ...afetados,
+        ...afetados.map((row) => ({ ...row, ...destino })),
+      ]);
+      if (erro) return { data: null, error: erro };
+    }
     if (this.mutation?.type === "update") {
       const erroSalario = violacaoSalario(
         this.table,
@@ -1388,6 +1440,163 @@ function excluirPlanejamentoRascunho(args: Row) {
   return { planejamento_id: planId, nome: plano.nome ?? null, itens_removidos: itens };
 }
 
+const STATUS_ITENS_EDITAVEIS = ["rascunho", "reservado"];
+
+/**
+ * Espelha o gatilho `trg_guardar_itens_planejamento_editavel` (0111): itens
+ * só mudam com o plano em rascunho/reservado; mudança em plano reservado
+ * marca `reserva_desatualizada`. Devolve o erro ou `null`.
+ */
+function guardarItensPlanejamento(itens: Row[]) {
+  const planos = new Set(itens.map((item) => Number(item.planejamento_id)));
+  const alvos: Row[] = [];
+  for (const planId of planos) {
+    const plano = store.planejamento?.find((row) => Number(row.id) === planId);
+    if (!plano) return { message: `Planejamento ${planId} não encontrado.`, code: "P0002" };
+    const status = String(plano.status_operacional ?? "rascunho");
+    if (!STATUS_ITENS_EDITAVEIS.includes(status)) {
+      return {
+        message: `Itens só podem ser alterados com o plano em rascunho ou reservado (status atual: ${status}).`,
+        code: "22023",
+      };
+    }
+    alvos.push(plano);
+  }
+  for (const plano of alvos) {
+    if (plano.status_operacional === "reservado") plano.reserva_desatualizada = true;
+  }
+  return null;
+}
+
+/** Espelha `trg_limpar_reserva_desatualizada` (0111). */
+function limparReservaDesatualizada(reservas: Row[]) {
+  for (const reserva of reservas) {
+    if (!["reservado", "parcial"].includes(String(reserva.status))) continue;
+    const plano = store.planejamento?.find((row) => valoresIguais(row.id, reserva.planejamento_id));
+    if (plano) plano.reserva_desatualizada = false;
+  }
+}
+
+function papelMockAtual() {
+  const perfil = (store.perfis ?? []).find((row) => row.id === "user-e2e");
+  return String(perfil?.papel ?? "tecnico");
+}
+
+function exigirCoordenadorMock() {
+  if (!["coordenador", "gestor", "admin"].includes(papelMockAtual())) {
+    throw Object.assign(new Error(`Sem permissão: requer papel coordenador ou superior (atual: ${papelMockAtual()}).`), { code: "42501" });
+  }
+}
+
+function motivoMock(args: Row, acao: string) {
+  const motivo = String(args.p_motivo ?? "").trim();
+  if (motivo.length < 3) {
+    throw Object.assign(new Error(`Informe o motivo ${acao}.`), { code: "22023" });
+  }
+  return motivo;
+}
+
+function registrarEventoPlanoMock(planId: number, de: unknown, para: string, observacao: string) {
+  store.eventos_status = [
+    ...(store.eventos_status ?? []),
+    {
+      id: nextId("eventos_status"),
+      entidade: "planejamento",
+      entidade_id: planId,
+      de_status: de ?? null,
+      para_status: para,
+      usuario: "admin@example.com",
+      observacao,
+      criado_em: new Date().toISOString(),
+    },
+  ];
+}
+
+/** Espelha `excluir_planejamento` (migration 0111): "Excluir se não houve baixa". */
+function excluirPlanejamento(args: Row) {
+  exigirCoordenadorMock();
+  const motivo = motivoMock(args, "da exclusão");
+  const planId = Number(args.p_planejamento_id);
+  const plano = store.planejamento?.find((row) => Number(row.id) === planId);
+  if (!plano) throw Object.assign(new Error(`Planejamento ${planId} não encontrado.`), { code: "P0002" });
+
+  const status = String(plano.status_operacional ?? "rascunho");
+  const doPlano = (tabela: string) =>
+    (store[tabela] ?? []).filter((row) => Number(row.planejamento_id) === planId);
+  const movimentos = [...(store.estoque_movimentacoes ?? []), ...(store.movimentacoes_estoque ?? [])];
+  const houveBaixa =
+    status === "em_execucao" ||
+    status === "concluido" ||
+    doPlano("reservas_estoque").some(
+      (row) => row.status === "consumido" || Number(row.quantidade_consumida ?? 0) > 0,
+    ) ||
+    movimentos.some(
+      (row) =>
+        row.tipo === "saida" &&
+        (row.referencia === `plano ${planId}` || String(row.referencia ?? "").startsWith(`plano ${planId};`)),
+    );
+  if (houveBaixa) {
+    throw Object.assign(new Error("Já houve baixa de material neste plano. Só é possível cancelar."), { code: "22023" });
+  }
+
+  const pedidos = doPlano("pedidos_internos").filter((row) => row.status !== "cancelado");
+  if (pedidos.length > 0) {
+    throw Object.assign(
+      new Error(
+        `Cancele antes os pedidos internos vinculados ao plano: ${pedidos.map((row) => `#${row.id} (${row.status})`).join(", ")}.`,
+      ),
+      { code: "23503" },
+    );
+  }
+
+  let reservasLiberadas = 0;
+  for (const reserva of doPlano("reservas_estoque")) {
+    if (["reservado", "parcial"].includes(String(reserva.status))) reservasLiberadas += 1;
+  }
+  const itens = doPlano("planejamento_itens").length;
+  registrarEventoPlanoMock(planId, status, "excluido", `Plano "${plano.nome ?? "-"}" excluído. Motivo: ${motivo}`);
+
+  for (const tabela of ["planejamento_itens", "reservas_estoque", "equipamento_reservas", "planejamento_lote_conferencias"]) {
+    if (store[tabela]) store[tabela] = store[tabela].filter((row) => Number(row.planejamento_id) !== planId);
+  }
+  for (const pedido of store.pedidos_internos ?? []) {
+    if (Number(pedido.planejamento_id) === planId) pedido.planejamento_id = null;
+  }
+  store.planejamento = (store.planejamento ?? []).filter((row) => Number(row.id) !== planId);
+
+  return {
+    planejamento_id: planId,
+    nome: plano.nome ?? null,
+    itens_removidos: itens,
+    reservas_liberadas: reservasLiberadas,
+    equipamentos_liberados: 0,
+  };
+}
+
+/** Espelha `cancelar_planejamento` (migration 0111). */
+function cancelarPlanejamento(args: Row) {
+  exigirCoordenadorMock();
+  const motivo = motivoMock(args, "do cancelamento");
+  const planId = Number(args.p_planejamento_id);
+  const plano = store.planejamento?.find((row) => Number(row.id) === planId);
+  if (!plano) throw Object.assign(new Error(`Planejamento ${planId} não encontrado.`), { code: "P0002" });
+  const status = String(plano.status_operacional ?? "rascunho");
+  if (status === "concluido") {
+    throw Object.assign(new Error("Planejamento concluído não pode ser cancelado."), { code: "22023" });
+  }
+  if (status === "cancelado") {
+    throw Object.assign(new Error("Planejamento já está cancelado."), { code: "22023" });
+  }
+  for (const reserva of store.reservas_estoque ?? []) {
+    if (Number(reserva.planejamento_id) === planId && ["reservado", "parcial"].includes(String(reserva.status))) {
+      reserva.status = "cancelado";
+    }
+  }
+  plano.status_operacional = "cancelado";
+  registrarEventoPlanoMock(planId, status, "cancelado", `Plano cancelado. Motivo: ${motivo}`);
+  return { planejamento_id: planId, status_anterior: status, status: "cancelado" };
+}
+
 function sincronizarDemandaAnalises(args: Row) {
   const demandaId = Number(args.p_demanda_id);
   const itens = Array.isArray(args.p_itens) ? args.p_itens as Row[] : [];
@@ -1665,6 +1874,20 @@ export function createMockSupabaseClient(sessao: SessaoMock = {}) {
           return { data: salvarDemandaComGrupos(args), error: null };
         } catch (error) {
           return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
+        }
+      }
+      if (fn === "excluir_planejamento" || fn === "cancelar_planejamento") {
+        try {
+          const data = fn === "excluir_planejamento" ? excluirPlanejamento(args) : cancelarPlanejamento(args);
+          return { data, error: null };
+        } catch (error) {
+          return {
+            data: null,
+            error: {
+              message: error instanceof Error ? error.message : "Erro na RPC",
+              code: (error as { code?: string }).code ?? "P0001",
+            },
+          };
         }
       }
       if (fn === "excluir_planejamento_rascunho") {

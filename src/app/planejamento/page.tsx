@@ -1,10 +1,12 @@
 import { createClientUntyped } from "@/lib/supabase/server";
 import { criarPlano } from "@/lib/actions/planejamento";
 import { PlanosTable, type PlanoRow } from "@/components/planejamento/PlanosTable";
+import { temPapel } from "@/lib/auth/roles";
+import { avaliarGestaoPlano } from "@/lib/planejamento/gestao";
 
 export const dynamic = "force-dynamic";
 
-type Reserva = { status: string };
+type Reserva = { status: string; quantidade_consumida?: number | null };
 type PlanejamentoListRow = {
   id: number;
   nome: string | null;
@@ -52,27 +54,34 @@ function statusPlano(reservas: Reserva[], statusOperacional?: string | null) {
   return { status: "rascunho", label: "Rascunho" };
 }
 
-export default async function PlanejamentoPage() {
+export default async function PlanejamentoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ excluido?: string }>;
+}) {
+  const { excluido } = await searchParams;
+  const planoExcluido = Number(excluido) > 0 ? Number(excluido) : null;
   const supabase = await createClientUntyped();
   const planejamentoQuery = supabase.from("planejamento") as unknown as PlanejamentoQuery;
-  const [planosResult, { data: projetos }] = await Promise.all([
+  const [planosResult, { data: projetos }, podeGerir] = await Promise.all([
     planejamentoQuery
-      .select("id, nome, data_alvo, data_inicio_prevista, data_fim_prevista, prioridade, responsavel, planejado_por, reservado_por, criado_em, projeto_id, status_operacional, planejamento_itens(count), reservas_estoque(status)")
+      .select("id, nome, data_alvo, data_inicio_prevista, data_fim_prevista, prioridade, responsavel, planejado_por, reservado_por, criado_em, projeto_id, status_operacional, planejamento_itens(count), reservas_estoque(status, quantidade_consumida)")
       .order("criado_em", { ascending: false }),
     supabase.from("projetos").select("id, nome").order("nome"),
+    temPapel("coordenador"),
   ]);
   const { data: planos } = erroSchemaCache(planosResult.error)
     ? await planejamentoQuery
-        .select("id, nome, data_alvo, responsavel, criado_em, projeto_id, status_operacional, planejamento_itens(count), reservas_estoque(status)")
+        .select("id, nome, data_alvo, responsavel, criado_em, projeto_id, status_operacional, planejamento_itens(count), reservas_estoque(status, quantidade_consumida)")
         .order("criado_em", { ascending: false })
     : planosResult;
   const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
   const linhas: PlanoRow[] = (planos ?? []).map((p) => {
     const itens = (p.planejamento_itens as { count: number }[])?.[0]?.count ?? 0;
-    const st = statusPlano(
-      (p.reservas_estoque as Reserva[]) ?? [],
-      (p as unknown as { status_operacional?: string | null }).status_operacional,
-    );
+    const statusOperacional = (p as unknown as { status_operacional?: string | null }).status_operacional;
+    const reservas = (p.reservas_estoque as Reserva[]) ?? [];
+    const st = statusPlano(reservas, statusOperacional);
+    const gestao = avaliarGestaoPlano({ status: statusOperacional, reservas, podeGerir });
     return {
       id: p.id as number,
       nome: p.nome ?? "Plano sem nome",
@@ -86,6 +95,8 @@ export default async function PlanejamentoPage() {
       itens,
       status: st.status,
       statusLabel: st.label,
+      editavel: gestao.podeEditar,
+      gestao: { acao: gestao.acao, bloqueado: gestao.acaoBloqueada, motivo: gestao.motivoAcao },
     };
   });
 
@@ -97,6 +108,11 @@ export default async function PlanejamentoPage() {
           Planejamento executivo de estoque: vincule projeto, período, análises,
           reservas de lote, compras por falta e baixa operacional.
         </p>
+        {planoExcluido && (
+          <p role="status" className="mt-3 rounded-lg border border-brand-300 bg-brand-50 px-4 py-2 text-sm text-brand-800 dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-300">
+            Plano #{planoExcluido} excluído. O motivo ficou registrado na trilha de auditoria.
+          </p>
+        )}
 
         {/* novo plano */}
         <form action={criarPlano} className="mt-6 grid gap-3 rounded-xl border border-border bg-card p-4 shadow-sm lg:grid-cols-[minmax(16rem,1.4fr)_minmax(11rem,.8fr)_minmax(11rem,.8fr)_minmax(12rem,.9fr)_minmax(10rem,.7fr)]">

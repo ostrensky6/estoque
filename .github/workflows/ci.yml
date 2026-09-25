@@ -23,6 +23,9 @@ jobs:
       - name: Validar permissoes reais dos cadastros
         run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/rls_cadastros_0108.sql
 
+      - name: Validar edição e exclusão de planejamento
+        run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/planejamento_edicao_exclusao_0111.sql
+
   check:
     runs-on: ubuntu-latest
     steps:

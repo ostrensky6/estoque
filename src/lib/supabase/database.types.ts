@@ -3448,6 +3448,7 @@ export type Database = {
           projeto: string | null
           projeto_id: number | null
           reservado_em: string | null
+          reserva_desatualizada: boolean
           reservado_por: string | null
           responsavel: string | null
           status_operacional: string
@@ -3472,6 +3473,7 @@ export type Database = {
           projeto?: string | null
           projeto_id?: number | null
           reservado_em?: string | null
+          reserva_desatualizada?: boolean
           reservado_por?: string | null
           responsavel?: string | null
           status_operacional?: string
@@ -3496,6 +3498,7 @@ export type Database = {
           projeto?: string | null
           projeto_id?: number | null
           reservado_em?: string | null
+          reserva_desatualizada?: boolean
           reservado_por?: string | null
           responsavel?: string | null
           status_operacional?: string

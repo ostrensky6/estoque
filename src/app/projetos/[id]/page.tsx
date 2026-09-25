@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { PlanoLinhaAcoes } from "@/components/planejamento/PlanoGestao";
+import { temPapel } from "@/lib/auth/roles";
+import { avaliarGestaoPlano } from "@/lib/planejamento/gestao";
 import { calcularOrcamentoProjetoLegacy } from "@/lib/project-budget/legacy";
 import { formatCurrency as moeda, formatDate as fmtData } from "@/lib/formatters";
 
@@ -100,7 +103,7 @@ export default async function ProjetoHubPage({
       .order("criado_em", { ascending: false }),
     supabase
       .from("planejamento")
-      .select("id, nome, data_alvo, criado_em, planejamento_itens(n_amostras)")
+      .select("id, nome, data_alvo, criado_em, status_operacional, planejamento_itens(n_amostras), reservas_estoque(status, quantidade_consumida)")
       .eq("projeto_id", id)
       .order("criado_em", { ascending: false }),
     supabase
@@ -193,8 +196,14 @@ export default async function ProjetoHubPage({
     .filter((c) => c.status !== "cancelado")
     .reduce((a, c) => a + c.total, 0);
 
+  const podeGerirPlanos = await temPapel("coordenador");
   const planosLinhas = (planos ?? []).map((p) => ({
     id: p.id,
+    gestao: avaliarGestaoPlano({
+      status: p.status_operacional,
+      reservas: p.reservas_estoque ?? [],
+      podeGerir: podeGerirPlanos,
+    }),
     nome: p.nome ?? `Plano ${p.id}`,
     dataAlvo: p.data_alvo,
     amostras: (p.planejamento_itens ?? []).reduce((a, it) => a + Number(it.n_amostras), 0),
@@ -293,6 +302,7 @@ export default async function ProjetoHubPage({
                     <th className={thCls}>Data-alvo</th>
                     <th className={`${thCls} text-right`}>Análises</th>
                     <th className={`${thCls} text-right`}>Amostras</th>
+                    <th className={`${thCls} text-right`}>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -302,6 +312,14 @@ export default async function ProjetoHubPage({
                       <td className={tdCls}>{fmtData(p.dataAlvo)}</td>
                       <td className={`${tdCls} text-right tabular-nums`}>{p.itens}</td>
                       <td className={`${tdCls} text-right tabular-nums`}>{p.amostras}</td>
+                      <td className={`${tdCls} text-right`}>
+                        <PlanoLinhaAcoes
+                          planId={p.id}
+                          nome={p.nome}
+                          editavel={p.gestao.podeEditar}
+                          gestao={{ acao: p.gestao.acao, bloqueado: p.gestao.acaoBloqueada, motivo: p.gestao.motivoAcao }}
+                        />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
