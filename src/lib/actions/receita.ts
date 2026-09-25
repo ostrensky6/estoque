@@ -33,6 +33,129 @@ function validarVinculoMaterial(quantidade_por_amostra: number | null, insumo_id
   }
 }
 
+const SEM_PERMISSAO_ANALISES =
+  "Nada foi alterado: seu perfil não tem permissão para editar análises. Peça a permissão “Editar análises” à coordenação.";
+
+/**
+ * O RLS recusa update/delete sem erro, afetando zero linhas; sem esta
+ * conferência a tela diria "salvo" sem ter salvo nada.
+ */
+function garantirEscrita(
+  resultado: { data: unknown[] | null; error: { message: string } | null },
+) {
+  if (resultado.error) throw new Error(resultado.error.message);
+  if (!resultado.data || resultado.data.length === 0) throw new Error(SEM_PERMISSAO_ANALISES);
+}
+
+export type AnaliseFormState = {
+  ok: boolean;
+  message?: string;
+  errors?: Record<string, string>;
+  codigo?: string;
+};
+
+const CODIGO_ANALISE = /^[A-Za-z0-9_.-]{2,60}$/;
+
+function mensagemRpcAnalise(message: string) {
+  if (/duplicar_analise|excluir_analise_sem_historico/.test(message) && /function|schema cache/i.test(message)) {
+    return "Função ainda não disponível no banco (migration 0114 pendente).";
+  }
+  return message;
+}
+
+/** Nova análise: em branco ou copiando etapas, materiais e equipamentos de outra. */
+export async function criarAnaliseAcao(
+  _prev: AnaliseFormState,
+  formData: FormData,
+): Promise<AnaliseFormState> {
+  const codigo = txtReq(formData, "codigo");
+  const nome = txt(formData, "nome");
+  const descricao = txt(formData, "descricao");
+  const origem = txt(formData, "origem");
+  if (!CODIGO_ANALISE.test(codigo)) {
+    return {
+      ok: false,
+      message: "Verifique os campos.",
+      errors: { codigo: "Use de 2 a 60 letras, números, _ . ou -, sem espaços." },
+    };
+  }
+
+  const supabase = await createClient();
+  if (origem) {
+    const { error } = await supabase.rpc("duplicar_analise" as never, {
+      p_origem: origem,
+      p_novo: codigo,
+      p_nome: nome,
+    } as never);
+    if (error) return { ok: false, message: mensagemRpcAnalise(error.message) };
+    if (descricao) {
+      await supabase.from("analises").update({ descricao }).eq("codigo", codigo);
+    }
+  } else {
+    const { error } = await supabase.from("analises").insert({ codigo, nome, descricao, ativo: true });
+    if (error) {
+      return {
+        ok: false,
+        message:
+          error.code === "23505"
+            ? `Já existe uma análise com o código ${codigo}.`
+            : error.code === "42501" || /row-level security/i.test(error.message)
+              ? SEM_PERMISSAO_ANALISES
+              : error.message,
+      };
+    }
+  }
+
+  revalidatePath("/analises");
+  return { ok: true, message: "Análise criada.", codigo };
+}
+
+/** Exclui somente análise sem histórico; com histórico, orienta a inativar. */
+export async function excluirAnaliseAcao(
+  _prev: AnaliseFormState,
+  formData: FormData,
+): Promise<AnaliseFormState> {
+  const codigo = txtReq(formData, "codigo");
+  if (!codigo) return { ok: false, message: "Análise inválida." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("excluir_analise_sem_historico" as never, {
+    p_codigo: codigo,
+  } as never);
+  if (error) return { ok: false, message: mensagemRpcAnalise(error.message) };
+  revalidatePath("/analises");
+  revalidatePath("/custeio");
+  return { ok: true, message: "Análise excluída.", codigo };
+}
+
+/** Ativa/inativa e coloca/retira da oferta comercial. */
+export async function definirSituacaoAnalise(
+  _prev: AnaliseFormState,
+  formData: FormData,
+): Promise<AnaliseFormState> {
+  const codigo = txtReq(formData, "codigo");
+  const campo = txtReq(formData, "campo");
+  const valor = formData.get("valor") === "true";
+  if (!codigo || (campo !== "ativo" && campo !== "ofertavel")) {
+    return { ok: false, message: "Operação inválida." };
+  }
+  const supabase = await createClient();
+  const alteracao =
+    campo === "ativo"
+      ? valor
+        ? { ativo: true }
+        : { ativo: false, ofertavel: false }
+      : { ofertavel: valor, ...(valor ? { ativo: true } : {}) };
+  const { data, error } = await supabase
+    .from("analises")
+    .update(alteracao)
+    .eq("codigo", codigo)
+    .select("codigo");
+  if (error) return { ok: false, message: error.message };
+  if (!data?.length) return { ok: false, message: SEM_PERMISSAO_ANALISES };
+  revalidarReceita(codigo);
+  return { ok: true, message: "Situação atualizada.", codigo };
+}
+
 // =====================================================================
 // Análise (cabeçalho) — criar / duplicar / atualizar / excluir
 // =====================================================================
@@ -56,15 +179,17 @@ export async function atualizarAnalise(formData: FormData) {
   const codigo = txtReq(formData, "codigo");
   if (!codigo) return;
   const supabase = await createClient();
-  const { error } = await supabase
+  garantirEscrita(
+    await supabase
     .from("analises")
     .update({
       nome: txt(formData, "nome"),
       descricao: txt(formData, "descricao"),
       ativo: bool(formData, "ativo"),
     })
-    .eq("codigo", codigo);
-  if (error) throw new Error(error.message);
+    .eq("codigo", codigo)
+    .select("codigo"),
+  );
   revalidarReceita(codigo);
 }
 
@@ -73,15 +198,17 @@ export async function atualizarCatalogoAnalise(formData: FormData) {
   const codigo = txtReq(formData, "codigo");
   if (!codigo) return;
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("analises")
-    .update({
-      nome_simplificado: txt(formData, "nome_simplificado"),
-      descricao: txt(formData, "descricao"),
-      status: txt(formData, "status"),
-    })
-    .eq("codigo", codigo);
-  if (error) throw new Error(error.message);
+  garantirEscrita(
+    await supabase
+      .from("analises")
+      .update({
+        nome_simplificado: txt(formData, "nome_simplificado"),
+        descricao: txt(formData, "descricao"),
+        status: txt(formData, "status"),
+      })
+      .eq("codigo", codigo)
+      .select("codigo"),
+  );
   revalidatePath("/analises");
   revalidatePath(`/analises/${codigo}`);
 }
@@ -90,23 +217,25 @@ export async function inativarAnalise(formData: FormData) {
   const codigo = txtReq(formData, "codigo");
   if (!codigo) return;
   const supabase = await createClient();
-  const { error } = await supabase.from("analises").update({ ativo: false }).eq("codigo", codigo);
-  if (error) throw new Error(error.message);
+  garantirEscrita(
+    await supabase
+      .from("analises")
+      .update({ ativo: false, ofertavel: false })
+      .eq("codigo", codigo)
+      .select("codigo"),
+  );
   revalidarReceita(codigo);
 }
 
-/** Exclusão física mantida para compatibilidade interna; não expor na UI administrativa normal. */
+/**
+ * Exclusão física numa transação (excluir_analise_sem_historico, 0114):
+ * recusa análise usada em orçamentos/planos em vez de apagar a receita e falhar.
+ */
 export async function excluirAnalise(formData: FormData) {
   const codigo = txtReq(formData, "codigo");
   if (!codigo) return;
-  const supabase = await createClient();
-  // remove dependentes antes (não há cascade garantido a partir de analises)
-  await supabase.from("insumo_analise").delete().eq("codigo_analise", codigo);
-  await supabase.from("equipamento_analise").delete().eq("codigo_analise", codigo);
-  await supabase.from("etapas").delete().eq("codigo_analise", codigo);
-  const { error } = await supabase.from("analises").delete().eq("codigo", codigo);
-  if (error) throw new Error(error.message);
-  revalidatePath("/analises");
+  const resultado = await excluirAnaliseAcao({ ok: false }, formData);
+  if (!resultado.ok) throw new Error(resultado.message);
   redirect("/analises");
 }
 
@@ -115,52 +244,14 @@ export async function duplicarAnalise(formData: FormData) {
   const origem = txtReq(formData, "origem");
   const novo = txtReq(formData, "novo_codigo");
   if (!origem || !novo) throw new Error("Código de origem e novo código são obrigatórios.");
+  // cópia atômica no banco (duplicar_analise, 0114): nada fica pela metade
   const supabase = await createClient();
-
-  const { data: base, error: baseErr } = await supabase
-    .from("analises")
-    .select("nome, descricao")
-    .eq("codigo", origem)
-    .single();
-  if (baseErr) throw new Error(baseErr.message);
-
-  const { error: insErr } = await supabase.from("analises").insert({
-    codigo: novo,
-    nome: txt(formData, "novo_nome") ?? (base.nome ? `${base.nome} (cópia)` : null),
-    descricao: base.descricao,
-    ativo: true,
-  });
-  if (insErr) throw new Error(insErr.message);
-
-  const [{ data: etapas }, { data: equip }, { data: materiais }] = await Promise.all([
-    supabase
-      .from("etapas")
-      .select(
-        "nome_etapa, nome_atividade, atividade_opcional, ordem, execucoes_por_dia, amostras_por_execucao, tempo_maquina_h, tempo_bancada_h, tipo_limitacao, dia_inicio, dia_fim_max",
-      )
-      .eq("codigo_analise", origem),
-    supabase
-      .from("equipamento_analise")
-      .select("equipamento_id, peso_alocacao")
-      .eq("codigo_analise", origem),
-    supabase
-      .from("insumo_analise")
-      .select(
-        "nome_etapa, nome_atividade, especificacao_insumo, grupo_escolha, quantidade_por_amostra, unidade, modo_cobranca, base_calculo, insumo_id",
-      )
-      .eq("codigo_analise", origem),
-  ]);
-
-  if (etapas?.length)
-    await supabase.from("etapas").insert(etapas.map((e) => ({ ...e, codigo_analise: novo })));
-  if (equip?.length)
-    await supabase
-      .from("equipamento_analise")
-      .insert(equip.map((e) => ({ ...e, codigo_analise: novo })));
-  if (materiais?.length)
-    await supabase
-      .from("insumo_analise")
-      .insert(materiais.map((m) => ({ ...m, codigo_analise: novo })));
+  const { error } = await supabase.rpc("duplicar_analise" as never, {
+    p_origem: origem,
+    p_novo: novo,
+    p_nome: txt(formData, "novo_nome"),
+  } as never);
+  if (error) throw new Error(mensagemRpcAnalise(error.message));
 
   revalidatePath("/analises");
   redirect(`/analises/${novo}`);
@@ -195,7 +286,8 @@ export async function atualizarEtapa(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) return;
   const supabase = await createClient();
-  const { error } = await supabase
+  garantirEscrita(
+    await supabase
     .from("etapas")
     .update({
       nome_etapa: txtReq(formData, "nome_etapa") || "Etapa",
@@ -207,8 +299,9 @@ export async function atualizarEtapa(formData: FormData) {
       tipo_limitacao: txt(formData, "tipo_limitacao"),
       atividade_opcional: bool(formData, "atividade_opcional"),
     })
-    .eq("id", id);
-  if (error) throw new Error(error.message);
+    .eq("id", id)
+    .select("id"),
+  );
   revalidarReceita(codigo);
 }
 
@@ -217,7 +310,7 @@ export async function removerEtapa(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from("etapas").delete().eq("id", id);
+  garantirEscrita(await supabase.from("etapas").delete().eq("id", id).select("id"));
   revalidarReceita(codigo);
 }
 
@@ -249,11 +342,13 @@ export async function atualizarEquipamentoAnalise(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) return;
   const supabase = await createClient();
-  const { error } = await supabase
+  garantirEscrita(
+    await supabase
     .from("equipamento_analise")
     .update({ peso_alocacao: numOrNull(formData, "peso_alocacao") ?? 0 })
-    .eq("id", id);
-  if (error) throw new Error(error.message);
+    .eq("id", id)
+    .select("id"),
+  );
   revalidarReceita(codigo);
 }
 
@@ -262,7 +357,7 @@ export async function removerEquipamento(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from("equipamento_analise").delete().eq("id", id);
+  garantirEscrita(await supabase.from("equipamento_analise").delete().eq("id", id).select("id"));
   revalidarReceita(codigo);
 }
 
@@ -302,7 +397,8 @@ export async function atualizarMaterial(formData: FormData) {
   validarVinculoMaterial(quantidade_por_amostra, insumo_id);
   const grupo_escolha = txt(formData, "grupo_escolha");
   const supabase = await createClient();
-  const { error } = await supabase
+  garantirEscrita(
+    await supabase
     .from("insumo_analise")
     .update({
       especificacao_insumo: txt(formData, "especificacao_insumo"),
@@ -313,8 +409,9 @@ export async function atualizarMaterial(formData: FormData) {
       grupo_escolha,
       preferencial: Boolean(grupo_escolha) && bool(formData, "preferencial"),
     })
-    .eq("id", id);
-  if (error) throw new Error(error.message);
+    .eq("id", id)
+    .select("id"),
+  );
   revalidarReceita(codigo);
 }
 
@@ -323,6 +420,6 @@ export async function removerMaterial(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from("insumo_analise").delete().eq("id", id);
+  garantirEscrita(await supabase.from("insumo_analise").delete().eq("id", id).select("id"));
   revalidarReceita(codigo);
 }

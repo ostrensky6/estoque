@@ -12,7 +12,6 @@ import {
   type InsumoLinha,
 } from "@/lib/costing/engine";
 import { calcularTodas } from "@/lib/costing/loader";
-import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { CustoAnaliseChart } from "@/components/analises/CustoAnaliseChart";
 import {
@@ -26,7 +25,9 @@ import {
   type InsumoOption,
   type MaterialEditRowData,
 } from "@/components/analises/MateriaisEditTable";
-import { atualizarCatalogoAnalise, inativarAnalise } from "@/lib/actions/receita";
+import { atualizarCatalogoAnalise } from "@/lib/actions/receita";
+import { AnaliseSituacao } from "@/components/analises/AnaliseCatalogoAcoes";
+import { podeEditarAnalises } from "@/lib/auth/permissao";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -273,20 +274,16 @@ export default async function AnaliseDetalhe({
               </label>
               <div className="flex flex-wrap items-center gap-2">
                 <button className={primaryButtonClass}>Salvar cadastro</button>
-                {analise.ativo ? (
-                  <ConfirmActionButton
-                    action={inativarAnalise}
-                    fields={{ codigo }}
-                    trigger="Inativar"
-                    titulo="Inativar analise"
-                    mensagem={`Inativar "${analise.codigo}"? A receita e o historico permanecem preservados.`}
-                    confirmLabel="Inativar"
-                  />
-                ) : (
-                  <span className="text-xs text-muted-foreground">Analise ja inativa.</span>
-                )}
               </div>
             </form>
+            <div className="lg:col-start-2">
+              <AnaliseSituacao
+                codigo={codigo}
+                ativo={analise.ativo}
+                ofertavel={analise.ofertavel}
+                podeEditar={await podeEditarAnalises()}
+              />
+            </div>
           </div>
         </section>
 

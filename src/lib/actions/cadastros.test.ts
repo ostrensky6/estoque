@@ -5,6 +5,7 @@ const single = vi.fn();
 const select = vi.fn(() => ({ single }));
 const insert = vi.fn();
 const eq = vi.fn();
+const selectAtualizados = vi.fn();
 const update = vi.fn();
 const from = vi.fn(() => ({ insert, update }));
 const rpc = vi.fn();
@@ -52,7 +53,9 @@ describe("cadastro de insumos", () => {
     insert.mockReturnValue({ select });
     update.mockReturnValue({ eq });
     single.mockResolvedValue({ data: { id: 321 }, error: null });
-    eq.mockResolvedValue({ error: null });
+    selectAtualizados.mockReset();
+    selectAtualizados.mockResolvedValue({ data: [{ id: 321 }], error: null });
+    eq.mockReturnValue({ select: selectAtualizados });
     rpc.mockResolvedValue({ data: { insumo_id: 321, repetido: false }, error: null });
   });
 
@@ -196,6 +199,16 @@ describe("cadastro de insumos", () => {
     expect(eq).toHaveBeenCalledWith("id", 321);
     expect(insert).not.toHaveBeenCalled();
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("não diz Atualizado quando o banco não alterou nenhuma linha (RLS)", async () => {
+    selectAtualizados.mockResolvedValue({ data: [], error: null });
+    const { salvarRegistro } = await import("./cadastros");
+
+    const result = await salvarRegistro({ ok: false }, formInsumoExistente(321));
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/Nada foi alterado/);
   });
 
   it.each([

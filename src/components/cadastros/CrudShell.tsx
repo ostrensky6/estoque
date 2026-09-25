@@ -64,6 +64,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
 import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 import { DownloadButton } from "@/components/common/DownloadButton";
+import { SaidaAvulsaButton } from "@/components/estoque/SaidaAvulsaButton";
 import {
   salvarRegistro,
   excluirRegistro,
@@ -147,6 +148,8 @@ export function CrudShell({
   campos,
   rows,
   initialFocusId,
+  somenteLeitura = false,
+  mascarar,
 }: {
   slug: string;
   singular: string;
@@ -155,6 +158,10 @@ export function CrudShell({
   campos: Campo[];
   rows: Registro[];
   initialFocusId?: string;
+  /** esconde criar/editar/excluir (ex.: técnicos sem permissão de remuneração) */
+  somenteLeitura?: boolean;
+  /** colunas exibidas como "XXX" */
+  mascarar?: string[];
 }) {
   const [aberto, setAberto] = useState(false);
   const [editando, setEditando] = useState<Registro | null>(null);
@@ -173,14 +180,14 @@ export function CrudShell({
   }, []);
 
   useEffect(() => {
-    if (focusApplied || !initialFocusId) return;
+    if (focusApplied || !initialFocusId || somenteLeitura) return;
     const registro = rows.find((row) => String(row.id) === initialFocusId);
     if (!registro) return;
     setGlobalFilter(initialFocusId);
     setEditando(registro);
     setAberto(true);
     setFocusApplied(true);
-  }, [focusApplied, initialFocusId, rows]);
+  }, [focusApplied, initialFocusId, rows, somenteLeitura]);
 
   const tipoPorKey = useMemo(
     () =>
@@ -204,11 +211,12 @@ export function CrudShell({
 
   const exibir = useCallback(
     (key: string, value: unknown, tipo?: Coluna["tipo"]) => {
+      if (mascarar?.includes(key)) return "XXX";
       const map = rotuloSelect[key];
       if (map && value != null && value !== "") return map.get(String(value)) ?? fmt(value, tipo);
       return fmt(value, tipo);
     },
-    [rotuloSelect],
+    [rotuloSelect, mascarar],
   );
 
   // busca global: casa contra o valor EXIBIDO (rótulo de select, "Sim", "R$", "%"…)
@@ -249,6 +257,7 @@ export function CrudShell({
         });
       }
     }
+    if (somenteLeitura) return dataCols;
     dataCols.push({
       id: "_acoes",
       header: "Ações",
@@ -264,7 +273,7 @@ export function CrudShell({
       ),
     });
     return dataCols;
-  }, [campos, colunas, slug, rotulo, editar, exibir]);
+  }, [campos, colunas, slug, rotulo, editar, exibir, somenteLeitura]);
 
   // O React Compiler não memoiza componentes que usam useReactTable (a API
   // retorna funções não-memoizáveis); o TanStack faz a própria memoização e os
@@ -420,10 +429,14 @@ export function CrudShell({
           <DownloadButton href={`/cadastros/${slug}/export`} fileName={`${slug}.xlsx`}>
             Planilha
           </DownloadButton>
-          <Button onClick={novo}>
-            <Plus />
-            Novo {singular}
-          </Button>
+          {somenteLeitura ? (
+            <Badge variant="muted">Somente consulta</Badge>
+          ) : (
+            <Button onClick={novo}>
+              <Plus />
+              Novo {singular}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -730,10 +743,15 @@ function CadastroDrawer({
           </DrawerDescription>
         </DrawerHeader>
 
-        {podeCorrigirQuantidade && (
-          <QuantidadeInsumoResumo
-            insumoId={Number(registro?.id)}
-            quantidadeAtual={Number(registro?.quantidade ?? 0)}
+        {isInsumos && registro?.id != null && (
+          <LotesInsumoResumo
+            insumoId={Number(registro.id)}
+            especificacao={String(registro.especificacao ?? singular)}
+            unidade={typeof registro.unidade === "string" ? registro.unidade : null}
+            quantidadeAtual={Number(registro.quantidade ?? 0)}
+            embalagemFechada={quantidadeModelo === "EMBALAGEM_FECHADA"}
+            podeCorrigirQuantidade={podeCorrigirQuantidade}
+            lotes={(registro.lotes_resumo as LoteResumo[] | undefined) ?? []}
           />
         )}
 
@@ -849,38 +867,120 @@ function CadastroDrawer({
   );
 }
 
-function QuantidadeInsumoResumo({
+type LoteResumo = {
+  id: number;
+  codigo_lote: string | null;
+  validade: string | null;
+  quantidade_atual: number;
+  status: string;
+};
+
+const ROTULO_STATUS_LOTE: Record<string, string> = {
+  quarentena: "Quarentena",
+  aceito: "Aceito",
+  em_uso: "Em uso",
+  bloqueado: "Bloqueado",
+};
+
+/** Seção "Lotes" da edição do insumo: saldo por lote, entrada de novo lote e saída. */
+function LotesInsumoResumo({
   insumoId,
+  especificacao,
+  unidade,
   quantidadeAtual,
+  embalagemFechada,
+  podeCorrigirQuantidade,
+  lotes,
 }: {
   insumoId: number;
+  especificacao: string;
+  unidade: string | null;
   quantidadeAtual: number;
+  embalagemFechada: boolean;
+  podeCorrigirQuantidade: boolean;
+  lotes: LoteResumo[];
 }) {
   const [corrigindo, setCorrigindo] = useState(false);
+  const saldo = lotes.reduce((total, lote) => total + Number(lote.quantidade_atual || 0), 0);
 
   return (
-    <div className="mt-4 flex flex-col gap-3 rounded-md bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-sm font-medium">Quantidade atual: {quantidadeAtual}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Embalagens fechadas. Corrigir exige motivo e fica registrado na auditoria.
-        </p>
+    <section className="mt-4 rounded-md border border-border bg-muted/40 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-1 text-sm font-semibold">
+          Lotes em estoque
+          <HelpTip title="Lotes do insumo">
+            <p>
+              Cada entrada vira um lote, com número, validade e saldo próprios. O uso segue FEFO: o
+              lote que vence antes sai antes.
+            </p>
+            <p>
+              <b>+ Entrada</b> registra um lote novo (com o número do fabricante). <b>Saída</b> retira
+              perda, quebra, vencido, descarte ou uso fora de plano.
+            </p>
+          </HelpTip>
+        </h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild size="sm" variant="outline">
+            <a href={`/estoque?entrada=${insumoId}`}>+ Entrada</a>
+          </Button>
+          {saldo > 0 && (
+            <SaidaAvulsaButton
+              insumoId={insumoId}
+              especificacao={especificacao}
+              unidade={unidade}
+              saldo={saldo}
+              embalagemFechada={embalagemFechada}
+              triggerClassName="text-danger-strong hover:text-danger-strong"
+            />
+          )}
+          {podeCorrigirQuantidade && (
+            <Button type="button" size="sm" variant="ghost" onClick={() => setCorrigindo(true)}>
+              Corrigir quantidade
+            </Button>
+          )}
+        </div>
       </div>
-      <Button
-        type="button"
-        variant="outline"
-        className="shrink-0"
-        onClick={() => setCorrigindo(true)}
-      >
-        Corrigir quantidade
-      </Button>
-      <CorrigirQuantidadeDialog
-        open={corrigindo}
-        onOpenChange={setCorrigindo}
-        insumoId={insumoId}
-        quantidadeAtual={quantidadeAtual}
-      />
-    </div>
+
+      {lotes.length > 0 ? (
+        <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-card text-xs">
+          {lotes.slice(0, 6).map((lote) => (
+            <li key={lote.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-2.5 py-1.5">
+              <a
+                href={`/estoque/lotes/${lote.id}`}
+                className="font-medium text-brand-700 hover:underline dark:text-brand-400"
+              >
+                Lote {lote.codigo_lote || lote.id}
+              </a>
+              <span className="text-muted-foreground">
+                validade {lote.validade ? formatDate(lote.validade) : "—"}
+              </span>
+              <span className="tabular-nums">
+                {formatNumber(lote.quantidade_atual)} {embalagemFechada ? "emb." : unidade ?? ""}
+              </span>
+              <Badge variant="muted">{ROTULO_STATUS_LOTE[lote.status] ?? lote.status}</Badge>
+            </li>
+          ))}
+          {lotes.length > 6 && (
+            <li className="px-2.5 py-1.5 text-muted-foreground">
+              +{lotes.length - 6} lote(s) — veja todos em Estoque.
+            </li>
+          )}
+        </ul>
+      ) : (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Nenhum lote com saldo. Quantidade atual: {quantidadeAtual}.
+        </p>
+      )}
+
+      {podeCorrigirQuantidade && (
+        <CorrigirQuantidadeDialog
+          open={corrigindo}
+          onOpenChange={setCorrigindo}
+          insumoId={insumoId}
+          quantidadeAtual={quantidadeAtual}
+        />
+      )}
+    </section>
   );
 }
 
@@ -896,7 +996,7 @@ function CorrigirQuantidadeDialog({
   quantidadeAtual: number;
 }) {
   const router = useRouter();
-  const [operacaoId] = useState(() => crypto.randomUUID());
+  const [operacaoId, setOperacaoId] = useState(() => crypto.randomUUID());
   const [state, action, pending] = useActionState<FormState, FormData>(
     corrigirQuantidadeEmbalagens,
     { ok: false },
@@ -904,9 +1004,11 @@ function CorrigirQuantidadeDialog({
 
   useEffect(() => {
     if (!state.ok) return;
+    // próxima correção é outra operação (o id repetido seria recusado pela RPC)
+    setOperacaoId(crypto.randomUUID());
     router.refresh();
     onOpenChange(false);
-  }, [state.ok, router, onOpenChange]);
+  }, [state, router, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>

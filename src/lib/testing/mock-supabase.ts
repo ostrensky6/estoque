@@ -718,7 +718,9 @@ class MockQuery {
         this.matches(row) ? { ...row, ...(this.mutation?.payload as Row) } : row,
       );
     }
+    let removidos: Row[] = [];
     if (this.mutation?.type === "delete") {
+      removidos = (store[this.table] ?? []).filter((row) => this.matches(row));
       store[this.table] = (store[this.table] ?? []).filter((row) => !this.matches(row));
     }
     if (this.mutation?.type === "upsert") {
@@ -731,10 +733,13 @@ class MockQuery {
       }
     }
 
+    // como o PostgREST com .select(): delete devolve as linhas removidas
     const source =
       this.mutation?.type === "insert"
         ? (this.mutation.payload as Row[])
-        : (store[this.table] ?? []).filter((row) => this.matches(row));
+        : this.mutation?.type === "delete"
+          ? removidos
+          : (store[this.table] ?? []).filter((row) => this.matches(row));
     return { data: source.map((row) => withRelations(this.table, row)), error: null };
   }
 
@@ -785,6 +790,30 @@ function baixarManualLote(args: Row) {
   const atual = Number(lote.quantidade_atual ?? 0);
   lote.quantidade_atual = Math.max(0, atual - quantidade);
   lote.status = Number(lote.quantidade_atual) <= 0 ? "consumido" : "em_uso";
+}
+
+/** Espelha registrar_saida_avulsa (0111): FEFO, sem vencidos para consumo avulso. */
+function registrarSaidaAvulsa(args: Row) {
+  let restante = Number(args.p_quantidade);
+  if (!(restante > 0)) throw new Error("Informe o insumo e uma quantidade maior que zero.");
+  const lotes = store.lotes_estoque
+    .filter((l) => l.insumo_id === args.p_insumo_id && (args.p_lote_id == null || l.id === args.p_lote_id))
+    .filter((l) => Number(l.quantidade_atual ?? 0) > 0 && ["aceito", "em_uso"].includes(String(l.status)))
+    .sort((a, b) => String(a.validade ?? "9999").localeCompare(String(b.validade ?? "9999")));
+  for (const lote of lotes) {
+    if (restante <= 0) break;
+    const retirar = Math.min(restante, Number(lote.quantidade_atual));
+    lote.quantidade_atual = Number(lote.quantidade_atual) - retirar;
+    if (Number(lote.quantidade_atual) <= 0) lote.status = "consumido";
+    restante -= retirar;
+  }
+  if (restante > 0) throw new Error(`Saldo livre insuficiente: faltam ${restante}.`);
+  const saldo = store.v_estoque_saldo.find((item) => item.insumo_id === args.p_insumo_id);
+  if (saldo) {
+    saldo.em_maos = Math.max(0, Number(saldo.em_maos ?? 0) - Number(args.p_quantidade));
+    saldo.disponivel = Math.max(0, Number(saldo.disponivel ?? 0) - Number(args.p_quantidade));
+  }
+  return { insumo_id: args.p_insumo_id, quantidade: args.p_quantidade, repetido: false };
 }
 
 function ajustarSaldoLote(args: Row) {
@@ -1213,6 +1242,67 @@ export function createMockSupabaseClient() {
         } catch (error) {
           return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
         }
+      }
+      if (fn === "tem_permissao") return { data: true, error: null }; // usuário E2E é admin
+      if (fn === "fn_valor_hora_pessoal") {
+        const total = (store.tecnicos ?? []).reduce((acc, t) => {
+          const horas = Number(t.horas_mes_base ?? 0);
+          return acc + (horas > 0 ? (Number(t.valor_mes ?? 0) / horas) * Number(t.percentual_dedicado ?? 0) / 100 : 0);
+        }, 0);
+        return { data: total, error: null };
+      }
+      if (fn === "listar_tecnicos") {
+        return {
+          data: (store.tecnicos ?? []).map((t) => ({ ...t, remuneracao_visivel: true })),
+          error: null,
+        };
+      }
+      if (fn === "registrar_saida_avulsa") {
+        try {
+          return { data: registrarSaidaAvulsa(args), error: null };
+        } catch (error) {
+          return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
+        }
+      }
+      if (fn === "registrar_entrada_manual_embalagens") {
+        const lote = {
+          id: nextId("lotes_estoque"),
+          insumo_id: args.p_insumo_id,
+          codigo_lote: args.p_codigo_lote ?? `MANUAL-${Date.now()}`,
+          validade: args.p_validade ?? null,
+          quantidade_atual: Number(args.p_quantidade_embalagens),
+          status: "aceito",
+          modelo_quantidade: "EMBALAGEM_FECHADA",
+        };
+        store.lotes_estoque.push(lote);
+        return { data: { insumo_id: args.p_insumo_id, lote_id: lote.id, repetido: false }, error: null };
+      }
+      if (fn === "duplicar_analise") {
+        const origem = (store.analises ?? []).find((a) => a.codigo === args.p_origem);
+        if (!origem) return { data: null, error: { message: "Análise de origem não encontrada." } };
+        if ((store.analises ?? []).some((a) => a.codigo === args.p_novo)) {
+          return { data: null, error: { message: `Já existe uma análise com o código ${args.p_novo}.` } };
+        }
+        store.analises.push({ ...origem, codigo: args.p_novo, nome: args.p_nome ?? `${origem.nome ?? origem.codigo} (cópia)`, ativo: true, ofertavel: false });
+        for (const tabela of ["etapas", "equipamento_analise", "insumo_analise"]) {
+          const copias = (store[tabela] ?? [])
+            .filter((linha) => linha.codigo_analise === args.p_origem)
+            .map((linha) => ({ ...linha, id: nextId(tabela), codigo_analise: args.p_novo }));
+          store[tabela] = [...(store[tabela] ?? []), ...copias];
+        }
+        return { data: { codigo: args.p_novo }, error: null };
+      }
+      if (fn === "excluir_analise_sem_historico") {
+        const usos = ["orcamento_itens", "orcamento_projeto_analises", "planejamento_itens", "demanda_analises"]
+          .reduce((acc, tabela) => acc + (store[tabela] ?? []).filter((l) => l.codigo_analise === args.p_codigo).length, 0);
+        if (usos > 0) {
+          return { data: null, error: { message: "Esta análise aparece em orçamentos ou planos. Para preservar o histórico, inative-a em vez de excluir." } };
+        }
+        for (const tabela of ["etapas", "equipamento_analise", "insumo_analise"]) {
+          store[tabela] = (store[tabela] ?? []).filter((linha) => linha.codigo_analise !== args.p_codigo);
+        }
+        store.analises = (store.analises ?? []).filter((a) => a.codigo !== args.p_codigo);
+        return { data: { codigo: args.p_codigo, excluida: true }, error: null };
       }
       // Uma RPC sem simulação precisa falhar explicitamente. O fallback
       // anterior (`{ data: null, error: null }`) devolvia sucesso para

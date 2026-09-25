@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import { CADASTROS, getCadastrosOrdenados, type CadastroConfig, type Campo } from "@/lib/cadastros/config";
 import { projetarTotaisInsumos, type LoteInsumo } from "@/lib/cadastros/insumos";
 import { createClientUntyped } from "@/lib/supabase/server";
+import { carregarTecnicos, mascararRemuneracao } from "@/lib/cadastros/tecnicos";
 
 export type CadastroRow = Record<string, unknown>;
 
@@ -184,9 +185,16 @@ export async function buildCadastrosWorkbook(slug?: string) {
 
   const cadastros = slug ? [CADASTROS[slug]].filter(Boolean) : getCadastrosOrdenados();
   for (const cfg of cadastros) {
-    const { data, error } = await supabase.from(cfg.tabela).select("*").order("id");
-    if (error) throw new Error(error.message);
-    let rows = ((data ?? []) as CadastroRow[]).map((row) => ({ ...row }));
+    let rows: CadastroRow[];
+    if (cfg.slug === "tecnicos") {
+      // salário só sai na planilha para quem tem a permissão de remuneração
+      const tecnicos = await carregarTecnicos(supabase);
+      rows = tecnicos.remuneracaoVisivel ? tecnicos.rows : mascararRemuneracao(tecnicos.rows);
+    } else {
+      const { data, error } = await supabase.from(cfg.tabela).select("*").order("id");
+      if (error) throw new Error(error.message);
+      rows = ((data ?? []) as CadastroRow[]).map((row) => ({ ...row }));
+    }
     if (cfg.slug === "insumos") {
       const { data: lotes, error: lotesError } = await supabase
         .from("lotes_estoque")

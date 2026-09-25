@@ -7,6 +7,11 @@ import {
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { CrudShell } from "@/components/cadastros/CrudShell";
 import { HelpTip } from "@/components/common/HelpTip";
+import {
+  COLUNAS_REMUNERACAO,
+  carregarTecnicos,
+  mascararRemuneracao,
+} from "@/lib/cadastros/tecnicos";
 import { equipCustoDia } from "@/lib/costing/engine";
 import { modeloQuantidadePorInsumo, projetarTotaisInsumos, type LoteInsumo, type LoteModelo } from "@/lib/cadastros/insumos";
 
@@ -130,25 +135,48 @@ export default async function CadastroPage({
   if (!cfg) notFound();
 
   const supabase = await createClientUntyped();
-  const [{ data: rows }, { data: parametros }] = await Promise.all([
-    supabase.from(cfg.tabela).select("*").order("id"),
+  const tecnicos = slug === "tecnicos" ? await carregarTecnicos(supabase) : null;
+  const [{ data: rows, error: rowsError }, { data: parametros }] = await Promise.all([
+    tecnicos
+      ? Promise.resolve({ data: tecnicos.rows, error: null })
+      : supabase.from(cfg.tabela).select("*").order("id"),
     supabase.from("parametros").select("chave, valor").eq("chave", "dias_uteis_ano"),
   ]);
+  if (rowsError) throw new Error(`Falha ao carregar ${cfg.titulo.toLowerCase()}: ${rowsError.message}`);
+  // sem a permissão de remuneração: salário mascarado e cadastro só para consulta
+  const remuneracaoOculta = tecnicos != null && !tecnicos.remuneracaoVisivel;
   const diasUteisAno = Number(parametros?.[0]?.valor ?? 222);
 
   let linhas = await comColunasCalculadas(slug, rows ?? [], diasUteisAno);
+  if (remuneracaoOculta) linhas = mascararRemuneracao(linhas);
 
   if (slug === "insumos") {
     const { data: lotes, error: lotesError } = await supabase
       .from("lotes_estoque")
-      .select("insumo_id, status, quantidade_atual, validade, validade_apos_abertura, data_abertura, modelo_quantidade");
+      .select("id, codigo_lote, insumo_id, status, quantidade_atual, validade, validade_apos_abertura, data_abertura, modelo_quantidade");
     if (lotesError) throw new Error(lotesError.message);
     linhas = projetarTotaisInsumos(linhas, (lotes ?? []) as LoteInsumo[]);
     const modelos = modeloQuantidadePorInsumo((lotes ?? []) as LoteModelo[]);
+    // lotes com saldo, para a seção "Lotes" da edição do insumo
+    const lotesPorInsumo = new Map<string, Record<string, unknown>[]>();
+    for (const lote of (lotes ?? []) as Record<string, unknown>[]) {
+      if (!(Number(lote.quantidade_atual) > 0) || ["consumido", "descartado"].includes(String(lote.status))) continue;
+      const chave = String(lote.insumo_id);
+      lotesPorInsumo.set(chave, [...(lotesPorInsumo.get(chave) ?? []), lote]);
+    }
     linhas = linhas.map((r) => ({
       ...r,
       quantidade: Number(r.unidades_fechadas ?? 0) + Number(r.unidades_abertas ?? 0),
       quantidade_modelo: modelos.get(String(r.id)) ?? null,
+      lotes_resumo: (lotesPorInsumo.get(String(r.id)) ?? [])
+        .sort((a, b) => String(a.validade ?? "9999").localeCompare(String(b.validade ?? "9999")))
+        .map((l) => ({
+          id: l.id,
+          codigo_lote: l.codigo_lote,
+          validade: l.validade,
+          quantidade_atual: Number(l.quantidade_atual),
+          status: l.status,
+        })),
     }));
   }
 
@@ -165,9 +193,9 @@ export default async function CadastroPage({
       label: String((r as unknown as { nome: string | null }).nome ?? ""),
     }));
   }
-  const campos: Campo[] = cfg.campos.map((c) =>
-    c.opcoesDe ? { ...c, opcoes: opcoesPorFonte[c.opcoesDe] ?? [] } : c,
-  );
+  const campos: Campo[] = cfg.campos
+    .filter((c) => !remuneracaoOculta || !(COLUNAS_REMUNERACAO as readonly string[]).includes(c.name))
+    .map((c) => (c.opcoesDe ? { ...c, opcoes: opcoesPorFonte[c.opcoesDe] ?? [] } : c));
 
   if (slug === "insumos") {
     const tipos = opcoesPorFonte["tipo_insumos"] ?? [];
@@ -212,6 +240,12 @@ export default async function CadastroPage({
           {cfg.titulo}
           <HelpTip title={cfg.titulo}>
             <p>{cfg.subtitulo}</p>
+            {remuneracaoOculta && (
+              <p>
+                O salário aparece como <b>XXX</b>: ver e editar a remuneração exige a permissão
+                “Ver remuneração da equipe” (Governança → Privilégios).
+              </p>
+            )}
           </HelpTip>
         </h1>
 
@@ -224,6 +258,8 @@ export default async function CadastroPage({
             campos={campos}
             rows={linhas}
             initialFocusId={typeof query.focus === "string" ? query.focus : undefined}
+            somenteLeitura={remuneracaoOculta}
+            mascarar={remuneracaoOculta ? [...COLUNAS_REMUNERACAO] : undefined}
           />
         </div>
       </main>
