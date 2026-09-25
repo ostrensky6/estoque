@@ -1,5 +1,13 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createClientUntyped } from "@/lib/supabase/server";
 import { temPapel } from "@/lib/auth/roles";
+import {
+  hojeIso,
+  loteBaixaDeDb,
+  loteVencido,
+  somarReservasPorLote,
+  type LoteBaixa,
+  type LoteDbBaixa,
+} from "@/lib/estoque/baixa";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import {
   LotesTable,
@@ -17,6 +25,11 @@ const LOTE_STATUS: Record<string, string> = {
   bloqueado: "Bloqueado",
   consumido: "Consumido",
   descartado: "Descartado",
+};
+
+type LoteEstoqueDb = LoteDbBaixa & {
+  insumo_id: number;
+  insumos: { especificacao: string | null; unidade: string | null; categoria_compra: string | null } | null;
 };
 
 type Alerta = {
@@ -55,27 +68,36 @@ export default async function EstoquePage({
   const entrada = Array.isArray(query.entrada) ? query.entrada[0] : query.entrada;
   const entradaInicialInsumoId = /^\d+$/.test(entrada ?? "") ? Number(entrada) : undefined;
   const supabase = await createClient();
+  // modelo_quantidade (0109) ainda não está nos tipos gerados.
+  const supabaseSemTipos = await createClientUntyped();
   const [
     { data: saldo },
     { data: alertas },
-    { data: lotes },
+    { data: lotesRaw },
     { data: previsao },
     { data: custos },
     { data: vinculosCompra, error: vinculosCompraError },
     { data: vinculosInternos, error: vinculosInternosError },
+    { data: reservasRaw },
   ] = await Promise.all([
     supabase.from("v_estoque_saldo").select("*").order("especificacao"),
     supabase.from("v_alertas_estoque").select("*"),
-    supabase
+    supabaseSemTipos
       .from("lotes_estoque")
-      .select("id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status, insumos(especificacao, unidade, categoria_compra)")
+      .select("id, insumo_id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status, modelo_quantidade, insumos(especificacao, unidade, categoria_compra)")
       .not("status", "in", "(consumido,descartado)")
       .order("validade", { nullsFirst: false }),
     supabase.from("v_previsao_suprimentos").select("*"),
     supabase.from("v_custo_estoque_vigente").select("*").order("especificacao"),
     supabase.from("pedidos_compra_item_recebimentos").select("lote_id"),
     supabase.from("pedidos_internos_item_recebimentos").select("lote_id"),
+    supabase
+      .from("reservas_estoque")
+      .select("lote_id, quantidade, quantidade_consumida, status")
+      .in("status", ["reservado", "parcial"]),
   ]);
+  const lotes = (lotesRaw ?? []) as unknown as LoteEstoqueDb[];
+  const reservadoPorLote = somarReservasPorLote(reservasRaw ?? []);
   const [podeAceitar, podeGerir] = await Promise.all([
     temPapel("coordenador"),
     temPapel("gestor"),
@@ -98,6 +120,13 @@ export default async function EstoquePage({
     ...(vinculosCompra ?? []).map((recebimento) => Number(recebimento.lote_id)),
     ...(vinculosInternos ?? []).map((recebimento) => Number(recebimento.lote_id)),
   ]);
+  const lotesBaixaPorInsumo = new Map<number, LoteBaixa[]>();
+  for (const l of lotes) {
+    if (!(Number(l.quantidade_atual ?? 0) > 0)) continue;
+    const lista = lotesBaixaPorInsumo.get(Number(l.insumo_id)) ?? [];
+    lista.push(loteBaixaDeDb(l, reservadoPorLote));
+    lotesBaixaPorInsumo.set(Number(l.insumo_id), lista);
+  }
   const saldoRows: SaldoRow[] = (saldo ?? []).map((s) => {
     const prev = previsaoMap.get(s.insumo_id);
     const pontoReposicao = Number(s.ponto_reposicao ?? 0);
@@ -121,27 +150,26 @@ export default async function EstoquePage({
       pontoSugerido,
       status,
       statusLabel: status === "repor" ? "Repor" : status === "sem_estoque" ? "Sem estoque" : "OK",
+      lotesBaixa: lotesBaixaPorInsumo.get(Number(s.insumo_id)) ?? [],
     };
   });
-  const hoje = new Date();
-  const loteRows: LoteRow[] = (lotes ?? []).map((l) => {
-    const ins = l.insumos as { especificacao: string | null; unidade: string | null; categoria_compra: string | null } | null;
-    const validadeEfetiva =
-      l.validade && l.validade_apos_abertura
-        ? l.validade <= l.validade_apos_abertura
-          ? l.validade
-          : l.validade_apos_abertura
-        : l.validade ?? l.validade_apos_abertura;
+  const hoje = hojeIso();
+  const loteRows: LoteRow[] = lotes.map((l) => {
+    const ins = l.insumos;
+    const baixa = loteBaixaDeDb(l, reservadoPorLote);
     return {
-      id: l.id as number,
+      id: l.id,
       especificacao: ins?.especificacao ?? "—",
       unidade: ins?.unidade ?? "",
       codigoLote: l.codigo_lote ?? "—",
-      validade: validadeEfetiva ?? "—",
-      quantidadeAtual: Number(l.quantidade_atual ?? 0),
+      validade: baixa.validade ?? "—",
+      validadeIso: baixa.validade,
+      quantidadeAtual: baixa.quantidadeAtual,
+      reservado: baixa.reservado,
+      modeloQuantidade: baixa.modeloQuantidade,
       status: l.status,
       statusLabel: LOTE_STATUS[l.status] ?? l.status,
-      vencido: validadeEfetiva != null && new Date(validadeEfetiva) < hoje,
+      vencido: loteVencido(baixa.validade, hoje),
       critico: ins?.categoria_compra === "critico",
       estornoDiretoPermitido:
         origemEstornoComprovada && !lotesVinculados.has(Number(l.id)),

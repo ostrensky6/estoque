@@ -36,6 +36,8 @@ import { arquivarNotificacao, marcarNotificacaoLida } from "@/lib/actions/notifi
 import { gerarPedidoReposicaoInsumo } from "@/lib/actions/pedidos-internos";
 import type { FormState } from "@/lib/actions/cadastros";
 import { LoteAcoes } from "@/components/estoque/LoteAcoes";
+import { DarBaixaDialog } from "@/components/estoque/DarBaixaDialog";
+import type { LoteBaixa, ModeloQuantidadeLote } from "@/lib/estoque/baixa";
 
 type Notificacao = {
   id: number;
@@ -74,9 +76,13 @@ type AlertaEstoque = {
 
 type LoteDbRow = {
   id: number;
+  insumoId: number;
   codigoLote: string;
   validade: string;
+  validadeIso: string | null;
   quantidadeAtual: number;
+  reservado: number;
+  modeloQuantidade: ModeloQuantidadeLote;
   status: string;
   statusLabel: string;
   especificacao: string;
@@ -110,6 +116,26 @@ export function StockControlHub({
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
   const [viewMode, setViewMode] = useState<"insumo" | "lote" | "grafica">("insumo");
   const [isPending, startTransition] = useTransition();
+
+  // Lotes com saldo por insumo, para o "Dar baixa" do cartão (FEFO no diálogo).
+  const lotesBaixaPorInsumo = useMemo(() => {
+    const mapa = new Map<number, LoteBaixa[]>();
+    for (const lote of lotes) {
+      if (!(lote.quantidadeAtual > 0)) continue;
+      const lista = mapa.get(lote.insumoId) ?? [];
+      lista.push({
+        id: lote.id,
+        codigoLote: lote.codigoLote,
+        validade: lote.validadeIso,
+        quantidadeAtual: lote.quantidadeAtual,
+        reservado: lote.reservado,
+        modeloQuantidade: lote.modeloQuantidade,
+        status: lote.status,
+      });
+      mapa.set(lote.insumoId, lista);
+    }
+    return mapa;
+  }, [lotes]);
 
   // Mapear notificações por insumo_id ou por texto correspondente
   const getNotificationsForInsumo = useCallback((insumoId: number | null, especificacao: string | null) => {
@@ -645,6 +671,12 @@ export function StockControlHub({
                           >
                             <ExternalLink className="h-3.5 w-3.5" /> Ficha
                           </Link>
+                          <DarBaixaDialog
+                            lotes={lotesBaixaPorInsumo.get(Number(item.insumo_id)) ?? []}
+                            unidade={item.unidade ?? ""}
+                            especificacao={item.especificacao ?? undefined}
+                            triggerClassName="inline-flex items-center gap-1 rounded-md border border-danger-strong/30 bg-card px-2.5 py-1.5 text-xs font-semibold text-danger-strong shadow-sm hover:bg-danger-soft"
+                          />
                           {disponivel <= ponto && (
                             <GerarPedidoInsumoButton insumoId={item.insumo_id} />
                           )}
@@ -707,10 +739,15 @@ export function StockControlHub({
                       <td className="px-6 py-4 text-right">
                         <LoteAcoes
                           loteId={lote.id}
+                          codigoLote={lote.codigoLote}
                           status={lote.status}
                           quantidadeAtual={lote.quantidadeAtual}
                           unidade={lote.unidade}
                           critico={lote.critico}
+                          validade={lote.validadeIso}
+                          vencido={lote.vencido}
+                          reservado={lote.reservado}
+                          modeloQuantidade={lote.modeloQuantidade}
                           podeAceitar={podeAceitar}
                           podeGerir={podeGerir}
                         />

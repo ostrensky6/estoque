@@ -352,6 +352,18 @@ const baseStore = (): Store => {
       disponivel: 0,
       ponto_reposicao: 10,
     },
+    {
+      // Insumo no modelo de embalagens fechadas (0109), com dois lotes
+      // aceitos para exercitar a baixa por embalagens e a escolha FEFO.
+      insumo_id: 900,
+      especificacao: "Kit extração E2E",
+      unidade: "kit",
+      em_maos: 60,
+      em_quarentena: 0,
+      reservado: 0,
+      disponivel: 60,
+      ponto_reposicao: 0,
+    },
   ],
   v_alertas_estoque: [
     {
@@ -369,7 +381,34 @@ const baseStore = (): Store => {
   demandas: [],
   compras: [],
   movimentacoes_estoque: [],
-  lotes_estoque: [],
+  lotes_estoque: [
+    {
+      id: 1,
+      insumo_id: 900,
+      codigo_lote: "EMB-E2E-A",
+      validade: "2099-06-30",
+      validade_apos_abertura: null,
+      quantidade_inicial: 40,
+      quantidade_atual: 40,
+      custo_unitario: 100,
+      status: "aceito",
+      modelo_quantidade: "EMBALAGEM_FECHADA",
+    },
+    {
+      id: 2,
+      insumo_id: 900,
+      codigo_lote: "EMB-E2E-B",
+      validade: "2099-12-31",
+      validade_apos_abertura: null,
+      quantidade_inicial: 20,
+      quantidade_atual: 20,
+      custo_unitario: 100,
+      status: "aceito",
+      modelo_quantidade: "EMBALAGEM_FECHADA",
+    },
+  ],
+  estoque_movimentacoes: [],
+  reservas_estoque: [],
   perfis: [{ id: "user-e2e", nome: "Admin E2E", email: "admin@example.com", papel: "admin" }],
   permissoes_categorias: MOCK_PERMISSOES_CATEGORIAS,
   notificacoes: [
@@ -778,13 +817,124 @@ function setLotStatus(loteId: number, status: string) {
   if (lote) lote.status = status;
 }
 
+function hojeMock() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function reservadoNoLote(loteId: number) {
+  return (store.reservas_estoque ?? [])
+    .filter((r) => Number(r.lote_id) === loteId && ["reservado", "parcial"].includes(String(r.status)))
+    .reduce((acc, r) => acc + Number(r.quantidade ?? 0) - Number(r.quantidade_consumida ?? 0), 0);
+}
+
+function registrarSaidaManual(lote: Row, quantidade: number, motivo: string, referencia: string) {
+  store.estoque_movimentacoes = [
+    ...(store.estoque_movimentacoes ?? []),
+    {
+      id: nextId("estoque_movimentacoes"),
+      insumo_id: lote.insumo_id,
+      lote_id: lote.id,
+      tipo: "saida",
+      quantidade,
+      custo_unitario: lote.custo_unitario ?? null,
+      motivo: `baixa manual: ${motivo.trim()}`,
+      referencia,
+      data: hojeMock(),
+    },
+  ];
+  const saldo = store.v_estoque_saldo.find((item) => item.insumo_id === lote.insumo_id);
+  if (saldo) {
+    saldo.em_maos = Math.max(0, Number(saldo.em_maos ?? 0) - quantidade);
+    saldo.disponivel = Math.max(0, Number(saldo.disponivel ?? 0) - quantidade);
+  }
+}
+
+/** Espelha baixa_manual_lote (0028 + guardas de 0110). */
 function baixarManualLote(args: Row) {
-  const lote = store.lotes_estoque.find((row) => row.id === args.p_lote_id);
-  if (!lote) return;
+  const lote = store.lotes_estoque.find((row) => Number(row.id) === Number(args.p_lote_id));
+  if (!lote) throw new Error("Lote não encontrado.");
   const quantidade = Number(args.p_quantidade);
   const atual = Number(lote.quantidade_atual ?? 0);
-  lote.quantidade_atual = Math.max(0, atual - quantidade);
+  if (!(quantidade > 0)) throw new Error("Quantidade deve ser maior que zero.");
+  if (!String(args.p_motivo ?? "").trim()) throw new Error("Informe o motivo da baixa manual.");
+  if (lote.modelo_quantidade === "EMBALAGEM_FECHADA") {
+    throw new Error("Lote de embalagens fechadas: use a baixa por embalagens (baixa_manual_embalagens).");
+  }
+  if (!["aceito", "em_uso"].includes(String(lote.status))) throw new Error("Só é possível baixar lote aceito ou em uso.");
+  if (lote.validade && String(lote.validade) < hojeMock()) throw new Error("Lote vencido não pode ser baixado para uso.");
+  if (quantidade > atual) throw new Error("Quantidade maior que o saldo atual do lote.");
+  if (reservadoNoLote(Number(lote.id)) > atual - quantidade) {
+    throw new Error("Há reserva ativa neste lote: é possível baixar no máximo o saldo não reservado.");
+  }
+  lote.quantidade_atual = atual - quantidade;
   lote.status = Number(lote.quantidade_atual) <= 0 ? "consumido" : "em_uso";
+  registrarSaidaManual(lote, quantidade, String(args.p_motivo), `lote ${lote.id}`);
+}
+
+/** Espelha baixa_manual_embalagens (0110), incluindo a idempotência por operacao_id. */
+function baixarManualEmbalagens(args: Row) {
+  const operacaoId = String(args.p_operacao_id ?? "");
+  const quantidade = Number(args.p_quantidade);
+  const esperada = Number(args.p_quantidade_esperada);
+  const motivo = String(args.p_motivo ?? "").trim();
+  if (!operacaoId || !Number.isInteger(quantidade) || quantidade <= 0 || !Number.isInteger(esperada) || esperada <= 0) {
+    throw new Error("Informe o lote e uma quantidade inteira de embalagens maior que zero.");
+  }
+  if (!motivo) throw new Error("Informe o motivo da baixa.");
+  const requisicao = { lote_id: Number(args.p_lote_id), quantidade, quantidade_esperada: esperada, motivo };
+  const anterior = (store.eventos_status ?? []).find(
+    (evento) => evento.entidade === "lote_embalagem_fechada" && evento.operacao_id === operacaoId,
+  );
+  if (anterior) {
+    const payload = anterior.operacao_payload as { requisicao: unknown; resultado: Row };
+    if (JSON.stringify(payload.requisicao) !== JSON.stringify(requisicao)) {
+      throw new Error("Esta operação já foi registrada com dados diferentes.");
+    }
+    return { ...payload.resultado, repetido: true };
+  }
+
+  const lote = store.lotes_estoque.find((row) => Number(row.id) === Number(args.p_lote_id));
+  if (!lote) throw new Error("Lote não encontrado.");
+  if (lote.modelo_quantidade !== "EMBALAGEM_FECHADA") {
+    throw new Error("Este lote é controlado por volume (modelo legado); use a baixa manual do lote.");
+  }
+  if (lote.status !== "aceito") throw new Error("Só é possível dar baixa em lote aceito.");
+  if (lote.validade && String(lote.validade) < hojeMock()) {
+    throw new Error("Lote vencido não pode receber baixa para uso; descarte o lote.");
+  }
+  const atual = Number(lote.quantidade_atual ?? 0);
+  if (atual !== esperada) throw new Error("A quantidade do lote mudou; recarregue e tente novamente.");
+  if (quantidade > atual) throw new Error(`Quantidade maior que o saldo do lote (${atual} embalagens).`);
+  const reservado = reservadoNoLote(Number(lote.id));
+  if (reservado > atual - quantidade) {
+    throw new Error(`Há reserva ativa neste lote: é possível baixar no máximo ${Math.max(0, Math.floor(atual - reservado))} embalagem(ns).`);
+  }
+
+  const restante = atual - quantidade;
+  lote.quantidade_atual = restante;
+  lote.status = restante === 0 ? "consumido" : "aceito";
+  registrarSaidaManual(lote, quantidade, motivo, operacaoId);
+  const resultado = {
+    lote_id: lote.id,
+    insumo_id: lote.insumo_id,
+    quantidade_baixada: quantidade,
+    quantidade_embalagens: restante,
+    repetido: false,
+  };
+  store.eventos_status = [
+    ...(store.eventos_status ?? []),
+    {
+      id: nextId("eventos_status"),
+      entidade: "lote_embalagem_fechada",
+      entidade_id: lote.id,
+      de_status: String(atual),
+      para_status: String(restante),
+      observacao: `baixa manual: ${motivo}`,
+      operacao_id: operacaoId,
+      operacao_payload: { requisicao, resultado },
+    },
+  ];
+  return resultado;
 }
 
 function ajustarSaldoLote(args: Row) {
@@ -1178,8 +1328,19 @@ export function createMockSupabaseClient() {
         return { data: null, error: null };
       }
       if (fn === "baixa_manual_lote") {
-        baixarManualLote(args);
-        return { data: null, error: null };
+        try {
+          baixarManualLote(args);
+          return { data: null, error: null };
+        } catch (error) {
+          return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
+        }
+      }
+      if (fn === "baixa_manual_embalagens") {
+        try {
+          return { data: baixarManualEmbalagens(args), error: null };
+        } catch (error) {
+          return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
+        }
       }
       if (fn === "ajustar_saldo_lote") {
         ajustarSaldoLote(args);

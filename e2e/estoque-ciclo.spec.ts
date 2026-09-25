@@ -26,9 +26,11 @@ test("ciclo de estoque: receber lote, aceitar, ajustar consumo e bloquear", asyn
   await expect(row.getByText("Aceito")).toBeVisible();
 
   await row.getByRole("button", { name: "Baixa" }).click();
-  await expect(page.getByRole("heading", { name: "Baixa manual" })).toBeVisible();
-  await page.locator('input[type="number"]').fill("5");
-  await page.locator("textarea").fill("Consumo extra E2E");
+  const baixa = page.getByRole("dialog");
+  await expect(baixa.getByRole("heading", { name: "Dar baixa" })).toBeVisible();
+  await baixa.getByLabel(/Quantidade a baixar/).fill("5");
+  await baixa.getByLabel("Motivo").selectOption("Consumo em análise");
+  await baixa.locator("textarea").fill("Consumo extra E2E");
   await page.getByRole("button", { name: "Registrar baixa" }).click();
   await expect(row.getByText("Em uso")).toBeVisible();
   await expect(row.getByText("20 uL")).toBeVisible();
