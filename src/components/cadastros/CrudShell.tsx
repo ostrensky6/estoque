@@ -906,8 +906,8 @@ function LotesInsumoResumo({
   return (
     <section className="mt-4 rounded-md border border-border bg-muted/40 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="flex items-center gap-1 text-sm font-semibold">
-          Lotes em estoque
+        <div className="flex items-center gap-1">
+          <h3 className="text-sm font-semibold">Lotes em estoque</h3>
           <HelpTip title="Lotes do insumo">
             <p>
               Cada entrada vira um lote, com número, validade e saldo próprios. O uso segue FEFO: o
@@ -918,7 +918,7 @@ function LotesInsumoResumo({
               perda, quebra, vencido, descarte ou uso fora de plano.
             </p>
           </HelpTip>
-        </h3>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild size="sm" variant="outline">
             <a href={`/estoque?entrada=${insumoId}`}>+ Entrada</a>
@@ -972,7 +972,7 @@ function LotesInsumoResumo({
         </p>
       )}
 
-      {podeCorrigirQuantidade && (
+      {podeCorrigirQuantidade && corrigindo && (
         <CorrigirQuantidadeDialog
           open={corrigindo}
           onOpenChange={setCorrigindo}
@@ -996,7 +996,8 @@ function CorrigirQuantidadeDialog({
   quantidadeAtual: number;
 }) {
   const router = useRouter();
-  const [operacaoId, setOperacaoId] = useState(() => crypto.randomUUID());
+  // o diálogo monta a cada abertura: cada correção é uma operação nova
+  const [operacaoId] = useState(() => crypto.randomUUID());
   const [state, action, pending] = useActionState<FormState, FormData>(
     corrigirQuantidadeEmbalagens,
     { ok: false },
@@ -1004,11 +1005,9 @@ function CorrigirQuantidadeDialog({
 
   useEffect(() => {
     if (!state.ok) return;
-    // próxima correção é outra operação (o id repetido seria recusado pela RPC)
-    setOperacaoId(crypto.randomUUID());
     router.refresh();
     onOpenChange(false);
-  }, [state, router, onOpenChange]);
+  }, [state.ok, router, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>

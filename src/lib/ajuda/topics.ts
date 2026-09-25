@@ -47,23 +47,26 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
         ],
       },
       {
-        titulo: "Passo a passo",
+        titulo: "Criar, duplicar e inativar",
         itens: [
-          "Cadastre uma nova análise informando nome, finalidade e a matriz a que se aplica.",
-          "Defina o método utilizado — ele orienta os insumos e o tempo técnico associados.",
-          "Revise periodicamente o catálogo para retirar análises descontinuadas e atualizar métodos.",
+          "Criar: Operação → Análises → 'Nova análise'. Comece em branco ou copiando etapas, materiais e equipamentos de outra análise.",
+          "Duplicar: no menu ⋯ da linha da análise, escolha 'Duplicar' e dê um código novo.",
+          "Inativar: na ficha da análise, 'Inativar' a retira de novos orçamentos e planos; o histórico é preservado.",
+          "Reativar: abra a ficha da análise inativa e clique em 'Reativar'.",
+          "Análise já usada em orçamento ou plano não pode ser excluída — inative-a.",
+          "Criar e editar análises exige a permissão 'Editar análises' (padrão: coordenador ou acima).",
         ],
       },
       {
         titulo: "Boas práticas",
         itens: [
           "Use nomes consistentes e evite duplicar análises que são essencialmente a mesma.",
-          "Antes de criar um orçamento novo, confirme que a análise está cadastrada e atualizada.",
+          "Antes de criar um orçamento novo, confirme que a análise está ativa e atualizada.",
           "Toda alteração relevante fica registrada na Auditoria — use isso para acompanhar mudanças.",
         ],
       },
     ],
-    termos: ["ensaio", "exame", "catálogo", "método", "matriz"],
+    termos: ["ensaio", "exame", "catálogo", "método", "matriz", "nova análise", "duplicar", "inativar", "reativar", "desativar"],
   },
   {
     id: "insumos-por-analise",
@@ -108,34 +111,34 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
     href: "/custeio",
     resumo: "Custo técnico, overhead e preço base por análise.",
     intro:
-      "O Custeio transforma a receita de insumos, a mão de obra e o overhead em um custo por análise e em um preço base. É também onde você simula cenários — trocar lotes, comparar grupos de insumos — para entender o impacto no custo antes de fechar um orçamento.",
+      "O Custeio transforma os insumos, a mão de obra e o overhead (custos fixos do laboratório) em um custo por amostra e em um preço. É também onde você simula quantas amostras entram numa corrida para ver o custo cair com lotes maiores.",
     secoes: [
       {
         titulo: "Para que serve",
         itens: [
-          "Calcular o custo total de cada análise: insumos + mão de obra + overhead.",
-          "Gerar o preço base que será usado nos orçamentos.",
-          "Simular cenários e medir o efeito de mudanças de custo antes de decidir.",
+          "Calcular o custo de cada análise: reagentes + equipamento + pessoal + overhead.",
+          "Mostrar o preço: custo total × (1 + fatores de preço).",
+          "Simular o número de amostras e comparar análises no gráfico.",
         ],
       },
       {
         titulo: "Passo a passo",
         itens: [
-          "Abra a análise e confira a composição de custo já calculada a partir dos insumos.",
-          "Use a simulação para trocar lotes ou comparar grupos de insumos alternativos.",
-          "Confirme a margem aplicada e gere o preço base para orçamento.",
+          "Confira a tabela: custo e preço por amostra de cada análise ativa.",
+          "No gráfico, escolha as análises e veja os degraus quando uma nova corrida é necessária.",
+          "Os fatores de preço (margem, impostos, taxas e fundos) ficam em Operação → Parâmetros de custeio (gestor ou acima).",
         ],
       },
       {
-        titulo: "Boas práticas",
+        titulo: "Remuneração da equipe",
         itens: [
-          "Sempre valide a margem antes de exportar um preço para proposta.",
-          "Reavalie o custo quando preços de insumos mudarem significativamente.",
-          "Compare cenários lado a lado em vez de alterar valores 'no olho'.",
+          "O salário e o custo-hora de cada técnico só aparecem para quem tem a permissão 'Ver remuneração da equipe'.",
+          "Padrão: gestor e administrador. Para liberar a outro papel: Governança → Privilégios.",
+          "Sem a permissão, o valor aparece mascarado; o custo das análises continua correto.",
         ],
       },
     ],
-    termos: ["custo", "preço", "margem", "overhead", "simulação", "cenário"],
+    termos: ["custo", "preço", "margem", "overhead", "simulação", "salário", "remuneração", "parâmetros de custeio"],
   },
 
   // ──────────────────────────── Suprimentos ────────────────────────────
@@ -157,24 +160,40 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
         ],
       },
       {
-        titulo: "Passo a passo",
+        titulo: "Entrada de lote (+ Entrada)",
         itens: [
-          "Ao receber um lote, registre-o e mantenha-o em quarentena até a conferência.",
-          "Libere (aceite) o lote para que ele fique disponível para consumo.",
-          "Consuma seguindo FEFO — o que vence primeiro sai primeiro.",
-          "Compare o ponto de reposição atual com o sugerido para abrir pedidos de compra.",
+          "Na linha do insumo, clique em '+ Entrada' e informe quantidade, validade e o número do lote do fabricante.",
+          "O número do lote também pode ser informado no cadastro do insumo (Cadastros → Insumos → Lotes em estoque → '+ Entrada').",
+          "O lote entra em quarentena: aceite-o depois da conferência para liberar o uso.",
+        ],
+      },
+      {
+        titulo: "Saída avulsa (Saída)",
+        itens: [
+          "Use para material que sai fora de um plano: perda, quebra, vencido, descarte ou uso avulso.",
+          "Onde: Estoque → 'Saída' na linha do insumo, ou 'Saída' nas ações de um lote específico.",
+          "Sem escolher o lote, a saída sai do lote que vence antes (FEFO); escolhendo o lote, sai só dele.",
+          "Toda saída pede o motivo e fica registrada na Auditoria.",
+        ],
+      },
+      {
+        titulo: "Planilha de insumos",
+        itens: [
+          "Estoque → 'Planilha de insumos' baixa a lista completa de insumos em Excel.",
+          "Cadastros → Insumos → 'Planilha' baixa a mesma lista.",
+          "Para importar alterações, use Cadastros → Todos os cadastros → 'Planilha preenchida' → 'Importar XLSX'.",
         ],
       },
       {
         titulo: "Boas práticas",
         itens: [
           "Não pule a quarentena: usar lote não conferido compromete a rastreabilidade.",
-          "Fique atento aos itens vencendo — priorize o consumo deles.",
+          "Fique atento aos itens vencendo — priorize o consumo deles (o que vence primeiro sai primeiro).",
           "Use o rastreio para saber em quais análises um lote foi utilizado.",
         ],
       },
     ],
-    termos: ["saldo", "lote", "validade", "quarentena", "fefo", "reposição", "rastreio"],
+    termos: ["saldo", "lote", "validade", "quarentena", "fefo", "reposição", "rastreio", "entrada", "saída", "baixa avulsa", "perda", "quebra", "descarte", "vencido", "número do lote", "planilha", "excel", "importar"],
   },
   {
     id: "planejamento",
@@ -196,9 +215,10 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
       {
         titulo: "Passo a passo",
         itens: [
-          "Crie um plano e adicione as análises com nº de amostras, controles e repetições.",
-          "Revise a demanda de insumos calculada e as reservas geradas no estoque.",
-          "Acompanhe a execução e dê baixa no consumo quando as análises forem realizadas.",
+          "Crie um plano, informe projeto e período e adicione as análises (só as ativas aparecem) com nº de amostras, controles e repetições.",
+          "Clique em 'Reservar insumos': os lotes ficam separados, mas o saldo ainda não sai do estoque.",
+          "Separe o material e escaneie os lotes para conferir com a reserva.",
+          "'Iniciar (baixa definitiva)' tira do estoque os lotes reservados; 'Concluir análise' encerra a execução.",
         ],
       },
       {
@@ -206,7 +226,7 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
         itens: [
           "Mantenha o plano realista — superestimar reserva trava estoque desnecessariamente.",
           "Libere reservas que não serão usadas para devolver saldo ao estoque.",
-          "Use o plano como gatilho para abrir Pedidos internos de compra com antecedência.",
+          "Com falta de insumo, 'Gerar pedido interno' abre o pedido de compra dos itens em falta.",
         ],
       },
     ],
@@ -298,27 +318,27 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
   // ───────────────────────────── Orçamentos ────────────────────────────
   {
     id: "orcamento-demandas",
-    titulo: "Demandas / Propostas",
+    titulo: "Orçamentos não finalizados",
     grupo: "Orçamentos",
     href: "/orcamento/demandas",
-    resumo: "Entrada de pedidos de cliente antes do orçamento formal.",
+    resumo: "Pedidos de cliente em andamento, antes da proposta emitida.",
     intro:
-      "Este é o estágio inicial do funil comercial: registrar e qualificar a demanda do cliente antes de transformá-la em um orçamento formal. Serve para não perder oportunidades e para reunir as informações necessárias (escopo, prazo, contato) que vão alimentar a proposta.",
+      "Este é o estágio inicial do funil comercial: registrar o pedido do cliente e completar o orçamento até que a proposta possa ser emitida. Serve para não perder oportunidades e para reunir as informações necessárias (escopo, prazo, contato).",
     secoes: [
       {
         titulo: "Para que serve",
         itens: [
-          "Captar o pedido do cliente antes da proposta formal.",
-          "Qualificar a demanda com escopo, prazo e dados de contato.",
+          "Registrar o pedido do cliente assim que ele chega (Orçamentos → Novo Orçamento).",
+          "Completar escopo, prazo e dados de contato.",
           "Servir de origem para o orçamento de Análises/Lab. ou de Projetos.",
         ],
       },
       {
         titulo: "Passo a passo",
         itens: [
-          "Registre a demanda com o que o cliente solicitou e o contexto.",
-          "Complemente com escopo e prazo para viabilizar o orçamento.",
-          "Converta a demanda qualificada em uma proposta formal quando pronta.",
+          "Registre o que o cliente solicitou e o contexto.",
+          "Complemente com escopo e prazo para calcular o orçamento.",
+          "Quando estiver completo, emita a proposta.",
         ],
       },
     ],
@@ -329,15 +349,15 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
     titulo: "Orçamento de Análises/Lab.",
     grupo: "Orçamentos",
     href: "/orcamento",
-    resumo: "Propostas com análises e projetos, com snapshot de custo e preço.",
+    resumo: "Propostas com análises e quantidades; o preço fica registrado na emissão.",
     intro:
-      "Aqui você monta a proposta comercial com base nas análises e seus preços. O orçamento guarda um 'retrato' (snapshot) do custo e do preço no momento da emissão, para que aprovações futuras não sejam afetadas por mudanças posteriores de custo. Ao ser aprovado, pode gerar um planejamento de execução.",
+      "Aqui você monta a proposta comercial com base nas análises e seus preços. Na emissão, a proposta guarda o custo e o preço daquele momento, para que mudanças posteriores de custo não alterem o que foi enviado ao cliente. Ao ser aprovada, pode gerar um planejamento de execução.",
     secoes: [
       {
         titulo: "Para que serve",
         itens: [
           "Elaborar propostas com análises e quantidades, usando o preço do Custeio.",
-          "Congelar custo e preço no momento da emissão (snapshot).",
+          "Registrar custo e preço no momento da emissão.",
           "Conectar a venda à execução, gerando planejamento na aprovação.",
         ],
       },
@@ -352,7 +372,7 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
       {
         titulo: "Boas práticas",
         itens: [
-          "Confira o snapshot antes de enviar — ele é o que vale para o cliente.",
+          "Confira a proposta antes de enviar — o preço registrado é o que vale para o cliente.",
           "Garanta que os parâmetros econômicos estejam atualizados antes de emitir em lote.",
         ],
       },
@@ -414,7 +434,7 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
         titulo: "Boas práticas",
         itens: [
           "Revise os parâmetros antes de emitir orçamentos em lote.",
-          "Lembre-se: mudanças aqui afetam novos orçamentos, não os já emitidos (que têm snapshot).",
+          "Lembre-se: mudanças aqui afetam novos orçamentos, não as propostas já emitidas.",
           "Documente o motivo de alterações relevantes — elas ficam na Auditoria.",
         ],
       },
@@ -449,14 +469,31 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
         ],
       },
       {
+        titulo: "Insumos, lotes e planilha",
+        itens: [
+          "Na ficha do insumo, 'Lotes em estoque' mostra cada lote com seu número, validade e saldo.",
+          "'+ Entrada' registra um lote novo com o número do lote do fabricante; 'Saída' retira perda, quebra, vencido, descarte ou uso fora de plano.",
+          "'Planilha' (no topo de cada cadastro) baixa a lista em Excel; a importação fica em 'Todos os cadastros'.",
+        ],
+      },
+      {
+        titulo: "Técnicos e salário",
+        itens: [
+          "Salário e custo-hora de cada técnico só aparecem para quem tem a permissão 'Ver remuneração da equipe'.",
+          "Padrão: gestor e administrador. Para mudar: Governança → Privilégios (por papel) ou Usuários → Editar (por pessoa).",
+          "Sem a permissão, o valor aparece mascarado; nome, horas e dedicação continuam visíveis.",
+        ],
+      },
+      {
         titulo: "Boas práticas",
         itens: [
           "Evite duplicar fornecedores, insumos ou clientes — isso polui relatórios.",
           "Mantenha as políticas de reposição dos insumos atualizadas para a sugestão de compra funcionar.",
+          "Confira Cadastros → Qualidade dos cadastros: lista o que falta e pode distorcer custo ou compra.",
         ],
       },
     ],
-    termos: ["cadastro", "projeto", "cliente", "fornecedor", "equipamento", "técnico", "local", "overhead"],
+    termos: ["cadastro", "projeto", "cliente", "fornecedor", "equipamento", "técnico", "local", "overhead", "salário", "remuneração", "lote", "planilha", "excel", "importar"],
   },
 
   // ───────────────────────────── Governança ────────────────────────────
@@ -534,13 +571,21 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
       {
         titulo: "Como usar",
         itens: [
-          "Crie o usuário e atribua a categoria adequada à função dele.",
-          "Use os três pontinhos para editar permissões, fazer upload de assinatura, resetar senha inicial ou apagar.",
-          "Confira a tabela de permissões abaixo da lista de usuários.",
+          "Crie o usuário e atribua a categoria adequada à função dele; ele entra com senha provisória e troca no primeiro acesso.",
+          "Use os três pontinhos para editar permissões, enviar a assinatura, alterar a senha, suspender ou excluir.",
+          "Confira a tabela de permissões abaixo da lista de usuários; o padrão de cada papel também pode ser editado em Governança → Privilégios.",
+        ],
+      },
+      {
+        titulo: "Permissões que merecem atenção",
+        itens: [
+          "'Ver remuneração da equipe': mostra salário e custo-hora dos técnicos. Padrão: gestor e administrador.",
+          "'Editar análises': criar, duplicar, inativar e alterar análises. Padrão: coordenador ou acima.",
+          "Ajuste individual (Usuários → Editar) vale acima do padrão do papel.",
         ],
       },
     ],
-    termos: ["usuário", "categoria", "permissão", "perfil", "acesso", "assinatura", "rls"],
+    termos: ["usuário", "categoria", "permissão", "perfil", "acesso", "assinatura", "privilégios", "remuneração", "salário"],
   },
 
   // ─────────────────────────────── Geral ───────────────────────────────
@@ -550,27 +595,26 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
     grupo: "Geral",
     resumo: "Como circular pelo app com rapidez e produtividade.",
     intro:
-      "Algumas ferramentas atravessam todo o app e ajudam você a trabalhar mais rápido: o menu lateral agrupado por área, a busca de comandos (Command Palette), os filtros das tabelas e o tema claro/escuro. Dominar esses recursos reduz cliques e torna o uso diário muito mais fluido.",
+      "Algumas ferramentas atravessam todo o app e ajudam você a trabalhar mais rápido: o menu lateral agrupado por área, a busca rápida (Ctrl K), os filtros das tabelas e o tema claro/escuro.",
     secoes: [
       {
         titulo: "Recursos de navegação",
         itens: [
           "Menu lateral: acessa os módulos, organizados por área (Operação, Suprimentos, etc.).",
-          "Command Palette: busca de comandos para navegar rápido pelo teclado.",
+          "Busca rápida: Ctrl K (ou a lupa no celular) encontra qualquer tela, como Inventário, Etiquetas ou Parâmetros de custeio.",
           "Tabelas com busca e filtros: encontre registros nas filas sem rolar tudo.",
           "Tema claro/escuro: acompanha o sistema e pode ser alternado.",
         ],
       },
       {
-        titulo: "Dicas de produtividade",
+        titulo: "Ajuda na própria tela",
         itens: [
-          "Use a busca de cada tabela em vez de procurar manualmente.",
-          "Aprenda os atalhos dos módulos mais usados para abrir tudo pelo teclado.",
-          "Esta Central de Ajuda também está acessível pelo botão flutuante de ajuda.",
+          "O '?' ao lado de um título explica aquela parte da tela em poucas linhas.",
+          "O botão de ajuda no canto inferior direito (no celular, o '?' da barra superior) resume a tela atual e leva a esta Central.",
         ],
       },
     ],
-    termos: ["atalho", "command palette", "busca", "tema", "navegação", "menu"],
+    termos: ["atalho", "command palette", "busca", "tema", "navegação", "menu", "ctrl k", "ajuda"],
   },
 ];
 

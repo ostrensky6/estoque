@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HelpTip } from "@/components/common/HelpTip";
 import {
   TriagemResolucaoCard,
   type TriagemPendenteView,
@@ -14,9 +15,9 @@ type SearchParams = {
 function statusMessage(status?: string) {
   switch (status) {
     case "resolvido":
-      return "Triagem resolvida e identificador vinculado.";
+      return "Triagem resolvida e código vinculado.";
     case "insumo_criado":
-      return "Insumo criado por transacao e identificador vinculado.";
+      return "Insumo criado e código vinculado.";
     case "arquivado":
       return "Triagem arquivada.";
     default:
@@ -74,20 +75,22 @@ export default async function ScannerTriagemPage({
     <main className="app-page-container">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">
-            Triagem de codigos desconhecidos
-          </h1>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Resolva leituras pendentes vinculando o codigo a uma entidade existente, criando um
-            insumo minimo por transacao segura ou arquivando a triagem. Nenhum lote recebido ou
-            fluxo operacional e criado aqui.
-          </p>
+          <div className="flex items-center gap-1">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">Triagem de códigos desconhecidos</h1>
+            <HelpTip title="Triagem de códigos">
+              <p>
+                Códigos lidos que o Kontrol não reconheceu. Para cada um: vincule a um insumo, lote ou
+                local já cadastrado, crie um insumo básico ou arquive.
+              </p>
+              <p>Nada aqui dá entrada em estoque nem recebe lote.</p>
+            </HelpTip>
+          </div>
         </div>
         <Link
           href="/scanner/desconhecido"
           className="rounded-md border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/50"
         >
-          Codigo manual
+          Digitar código
         </Link>
       </div>
 

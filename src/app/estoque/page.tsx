@@ -167,8 +167,8 @@ export default async function EstoquePage({
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="flex items-center gap-1 text-xl font-semibold tracking-tight">
-            Estoque
+          <div className="flex items-center gap-1">
+            <h1 className="text-xl font-semibold tracking-tight">Estoque</h1>
             <HelpTip title="Estoque">
               <p>
                 Saldo de cada insumo, alertas de reposição e vencimento e os lotes guardados. O uso
@@ -179,7 +179,7 @@ export default async function EstoquePage({
                 vencido, descarte ou uso fora de plano.
               </p>
             </HelpTip>
-          </h1>
+          </div>
           <DownloadButton href="/cadastros/insumos/export" fileName="insumos.xlsx">
             Planilha de insumos
           </DownloadButton>
@@ -214,8 +214,8 @@ export default async function EstoquePage({
         <section className="mt-8 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div>
-              <h2 className="flex items-center gap-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Custo de estoque vigente
+              <div className="flex items-center gap-1">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Custo de estoque vigente</h2>
                 <HelpTip title="Custo de estoque vigente">
                   <p>
                     Compara o <b>custo padrão</b> do cadastro (usado nas simulações) com o{" "}
@@ -225,7 +225,7 @@ export default async function EstoquePage({
                     Padrão R$ 100, lotes a R$ 120 → variação +20%: revise o custo padrão.
                   </HelpExample>
                 </HelpTip>
-              </h2>
+              </div>
             </div>
             <span className="text-sm tabular-nums text-warning-strong">{custosDivergentes.length} divergência(s)</span>
           </div>
@@ -268,8 +268,8 @@ export default async function EstoquePage({
 
 
         {/* Lotes (rastreabilidade + estados) */}
-        <h2 className="mt-10 flex items-center gap-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Lotes em estoque
+        <div className="mt-10 flex items-center gap-1">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Lotes em estoque</h2>
           <HelpTip title="Estados do lote">
             <HelpLegend
               items={[
@@ -281,7 +281,7 @@ export default async function EstoquePage({
             />
             <p>O uso segue FEFO: o lote que vence antes sai antes.</p>
           </HelpTip>
-        </h2>
+        </div>
         <div className="mt-3">
           <LotesTable rows={loteRows} podeAceitar={podeAceitar} podeGerir={podeGerir} />
         </div>

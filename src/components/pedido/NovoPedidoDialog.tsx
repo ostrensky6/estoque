@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { criarPedidoInterno } from "@/lib/actions/pedidos-internos";
+import { FormComMensagem } from "./FormComMensagem";
 
 type ProjetoOption = {
   id: number;
@@ -41,7 +42,7 @@ export function NovoPedidoDialog({ projetos }: { projetos: ProjetoOption[] }) {
             Registre a demanda inicial do laboratório ou campo. Os itens entram depois, no rascunho.
           </DialogDescription>
         </DialogHeader>
-        <form action={criarPedidoInterno} className="grid gap-5">
+        <FormComMensagem action={criarPedidoInterno} className="grid gap-5">
           <section className="grid gap-3 rounded-lg border border-border p-4 md:grid-cols-12">
             <div className="md:col-span-12">
               <h3 className="text-sm font-semibold">Identificação da demanda</h3>
@@ -128,7 +129,7 @@ export function NovoPedidoDialog({ projetos }: { projetos: ProjetoOption[] }) {
             </DialogClose>
             <Button type="submit">Criar rascunho</Button>
           </DialogFooter>
-        </form>
+        </FormComMensagem>
       </DialogContent>
     </Dialog>
   );

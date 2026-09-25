@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { calcularOrcamentoProjetoLegacy } from "@/lib/project-budget/legacy";
 import { formatCurrency as moeda, formatDate as fmtData } from "@/lib/formatters";
+import { responsavelDoProjeto } from "../_lib/responsavel";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +69,7 @@ export default async function ProjetoHubPage({
 
   const { data: projeto } = await supabase
     .from("projetos")
-    .select("id, nome, cliente_id, coordenador, status, data_inicio, data_fim, descricao")
+    .select("id, nome, cliente_id, responsavel, coordenador, coordenador_nome, status, data_inicio, data_fim, descricao")
     .eq("id", id)
     .single();
 
@@ -215,7 +216,7 @@ export default async function ProjetoHubPage({
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               {cliente?.nome ? `Cliente: ${cliente.nome}` : "Sem cliente vinculado"}
-              {projeto.coordenador ? ` · Coordenador: ${projeto.coordenador}` : ""}
+              {responsavelDoProjeto(projeto) ? ` · Responsável: ${responsavelDoProjeto(projeto)}` : ""}
               {projeto.data_inicio || projeto.data_fim
                 ? ` · ${fmtData(projeto.data_inicio)} → ${fmtData(projeto.data_fim)}`
                 : ""}

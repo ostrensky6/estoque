@@ -3,6 +3,7 @@ import {
   ValorEntrada,
   ValorCalculado,
 } from "@/components/common/ValorFinanceiro";
+import { HelpExample, HelpFormula, HelpTip } from "@/components/common/HelpTip";
 
 /**
  * Etapa "Parâmetros Econômicos" dentro do fluxo do orçamento (plano §6.5).
@@ -29,10 +30,10 @@ export type ParametroAplicadoView = {
 
 const pct = (v: number) => `${v.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
 
-function Bloco({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+function Bloco({ titulo, ajuda, children }: { titulo: string; ajuda?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="rounded-md border border-border bg-muted/50/60 p-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</p>
+    <div className="rounded-md border border-border bg-muted/40 p-3">
+      <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{titulo}{ajuda}</p>
       <div className="mt-2 space-y-1.5">{children}</div>
     </div>
   );
@@ -96,7 +97,16 @@ export function PainelParametrosEconomicos({
         </Bloco>
 
         {/* Bloco 2 — parâmetros aplicados (percentual = entrada/azul, R$ = calculado) */}
-        <Bloco titulo="Parâmetros aplicados · gross-up">
+        <Bloco
+          titulo="Parâmetros aplicados · gross-up"
+          ajuda={
+            <HelpTip title="Gross-up">
+              <p>Os percentuais incidem sobre o <b>preço final</b>. O preço de tabela do laboratório é só referência e não entra na conta.</p>
+              <HelpFormula>total = (custo lab. + custo projeto) ÷ (1 − Σ%)</HelpFormula>
+              <HelpExample>Custo R$ 1.000 e 25% de parâmetros → R$ 1.000 ÷ 0,75 = R$ 1.333,33.</HelpExample>
+            </HelpTip>
+          }
+        >
           {parametros.length === 0 ? (
             <p className="text-xs text-muted-foreground">Nenhum parâmetro aplicado.</p>
           ) : (
@@ -138,13 +148,6 @@ export function PainelParametrosEconomicos({
           ))}
         </div>
       )}
-
-      <p className="mt-3 text-[11px] leading-5 text-muted-foreground/80">
-        Total final = (custo laboratório técnico + custo projeto direto) / (1 − Σ
-        parâmetros). O preço laboratorial já formado é apenas referência e não
-        entra no fechamento. Percentuais são entrada; valores em R$ e o total são
-        calculados pelo servidor.
-      </p>
     </div>
   );
 }

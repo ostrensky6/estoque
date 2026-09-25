@@ -72,8 +72,8 @@ export function AjusteInventarioButton({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 text-left">
           <div className="absolute inset-0 bg-black/40" onClick={() => !pending && fechar()} />
           <div className="relative w-full max-w-md rounded-xl bg-card p-5 shadow-xl">
-            <h3 className="flex items-center gap-1 text-base font-semibold">
-              {embalagemFechada ? "Entrada de lote" : "Entrada de inventário"}
+            <div className="flex items-center gap-1">
+              <h3 className="text-base font-semibold">{embalagemFechada ? "Entrada de lote" : "Entrada de inventário"}</h3>
               <HelpTip title="Quando usar esta entrada">
                 <p>
                   Para contagem, doação ou correção de inventário. Material comprado deve ser recebido
@@ -88,7 +88,7 @@ export function AjusteInventarioButton({
                   Doação de 2 kits → quantidade 2, motivo “doação” e o número do lote impresso no kit.
                 </HelpExample>
               </HelpTip>
-            </h3>
+            </div>
             {(especificacao || unidade) && (
               <p className="mt-1 text-xs text-muted-foreground">
                 {especificacao}

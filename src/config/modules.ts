@@ -78,7 +78,7 @@ export const APP_MODULES: AppModule[] = [
     desc: "análises, receitas e custo técnico",
     icon: "Activity",
     accent: "brand",
-    activePaths: ["/operacao", "/analises", "/insumos", "/custeio"],
+    activePaths: ["/operacao", "/analises", "/insumos", "/custeio", "/parametros"],
     children: [
       {
         href: "/analises",
@@ -102,6 +102,14 @@ export const APP_MODULES: AppModule[] = [
         shortcut: "C",
         showInTopNav: false,
       },
+      {
+        href: "/parametros",
+        label: "Parâmetros de custeio",
+        desc: "margem, impostos, taxas e fundos do preço",
+        icon: "Percent",
+        showInTopNav: false,
+        minRole: "gestor",
+      },
     ],
   },
   {
@@ -119,6 +127,8 @@ export const APP_MODULES: AppModule[] = [
       "/compras",
       "/recebimento",
       "/notificacoes",
+      "/etiquetas",
+      "/scanner",
     ],
     children: [
       {
@@ -173,6 +183,26 @@ export const APP_MODULES: AppModule[] = [
         icon: "Wrench",
         showInTopNav: false,
       },
+      {
+        href: "/estoque/inventario",
+        label: "Inventário",
+        desc: "contagem por local e lote, com ajuste de divergências",
+        icon: "ClipboardCheck",
+      },
+      {
+        href: "/etiquetas",
+        label: "Etiquetas",
+        desc: "etiquetas com QR code para lotes e equipamentos",
+        icon: "Tag",
+        showInTopNav: false,
+      },
+      {
+        href: "/scanner/triagem",
+        label: "Códigos não reconhecidos",
+        desc: "triagem de códigos lidos que ainda não têm cadastro",
+        icon: "ScanLine",
+        showInTopNav: false,
+      },
     ],
   },
   {
@@ -182,7 +212,7 @@ export const APP_MODULES: AppModule[] = [
     desc: "propostas, parâmetros e histórico",
     icon: "FileText",
     accent: "amber",
-    activePaths: ["/orcamento"],
+    activePaths: ["/orcamento", "/projetos"],
     children: [
       {
         href: "/orcamento",
@@ -208,6 +238,13 @@ export const APP_MODULES: AppModule[] = [
         label: "Histórico de orçamentos",
         desc: "consulta de versões concluídas",
         icon: "History",
+      },
+      {
+        href: "/projetos",
+        label: "Visão por projeto",
+        desc: "orçamentos, planejamentos e compras de cada projeto",
+        icon: "FolderKanban",
+        showInTopNav: false,
       },
       {
         href: "/orcamento/fundos",

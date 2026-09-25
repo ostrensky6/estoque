@@ -238,6 +238,7 @@ export async function salvarPermissoesCategoria(_prev: FormState, formData: Form
 
     if (error) return { ok: false, message: error.message };
     revalidatePath("/usuarios");
+    revalidatePath("/governanca/privilegios");
     return { ok: true, message: "Permissões da categoria atualizadas." };
   } catch (error) {
     return { ok: false, message: mensagemErroAcao(error) };

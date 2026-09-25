@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { salvarAcompanhamentoFundos } from "@/lib/actions/orcamento-fundos";
 import { temPapel } from "@/lib/auth/roles";
 import { formatCurrency as brl, formatDate, formatPercent } from "@/lib/formatters";
@@ -184,10 +185,20 @@ export default async function FundosPage() {
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Fundos e taxas</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Acompanhamento financeiro de orçamentos aprovados: recebimentos, impostos, incubação, baixas e saldos de fundos.
-            </p>
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Fundos e taxas</h1>
+              <HelpTip title="Fundos e taxas">
+                <p>Acompanha as propostas aprovadas: quanto o cliente já pagou e quanto disso vai para impostos, incubação, reserva e investimento.</p>
+                <HelpLegend
+                  items={[
+                    { tom: "info", rotulo: "Liberado", texto: "Previsto × % já recebido do cliente." },
+                    { tom: "atencao", rotulo: "Executado", texto: "O que já foi pago ou gasto (lançado aqui)." },
+                    { tom: "ok", rotulo: "Saldo", texto: "Liberado − executado." },
+                  ]}
+                />
+                <HelpExample>Reserva prevista R$ 1.000; cliente pagou 50% → liberado R$ 500; gasto R$ 200 → saldo R$ 300.</HelpExample>
+              </HelpTip>
+            </div>
           </div>
           <Link href="/orcamento/historico" className="rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted">
             Histórico de orçamentos
@@ -220,10 +231,13 @@ export default async function FundosPage() {
 
         <section className="mt-6 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div className="border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold">Acompanhamento por orçamento final</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Informe os recebimentos e a execução financeira para liberar os saldos na mesma proporção do pagamento recebido.
-            </p>
+            <div className="flex items-center gap-1">
+              <h2 className="text-sm font-semibold">Acompanhamento por orçamento final</h2>
+              <HelpTip title="Lançamentos">
+                <p>Informe o valor recebido e o que já foi pago ou gasto. Os saldos são liberados na mesma proporção do pagamento recebido.</p>
+                <p>Saldo manual: use só para corrigir um saldo, sempre com motivo.</p>
+              </HelpTip>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-[1480px] w-full text-sm">
@@ -314,7 +328,7 @@ export default async function FundosPage() {
                 {linhas.length === 0 && (
                   <tr>
                     <td colSpan={11} className="px-3 py-6 text-center text-sm text-muted-foreground/80">
-                      Nenhum orçamento aprovado para acompanhar. Classifique uma versão final como Aprovado no Histórico de orçamentos.
+                      Nenhuma proposta aprovada. Classifique uma versão como Aprovada no Histórico.
                     </td>
                   </tr>
                 )}
@@ -323,7 +337,7 @@ export default async function FundosPage() {
           </div>
           {!podeEditar && (
             <div className="border-t border-border bg-muted/50 px-4 py-3 text-xs text-muted-foreground">
-              Seu papel atual permite consultar fundos, mas lançamentos financeiros exigem perfil Gestor ou Administrador.
+              Somente consulta: lançamentos exigem perfil Gestor ou Administrador.
             </div>
           )}
         </section>

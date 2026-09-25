@@ -202,7 +202,7 @@ async function mudarStatus({
   return { ok: true, message: "Etapa atualizada." };
 }
 
-export async function criarPedidoInterno(formData: FormData) {
+export async function criarPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
   const u = await usuarioAtual();
   const titulo = texto(formData, "titulo") ?? "Pedido interno sem título";
   const projeto_id = numero(formData, "projeto_id");
@@ -252,9 +252,10 @@ export async function criarPedidoInterno(formData: FormData) {
     data = retry.data;
     error = retry.error;
   }
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Não foi possível criar o pedido interno.");
+  if (error) return { ok: false, message: `Não foi possível criar o pedido: ${error.message}` };
+  if (!data) return { ok: false, message: "Não foi possível criar o pedido interno." };
   await registrarEvento("pedido_interno", data.id, null, "rascunho", "Demanda inicial registrada.");
+  revalidatePath("/pedido");
   redirect(`/pedido/${data.id}`);
 }
 
@@ -373,11 +374,11 @@ export async function gerarPedidosReposicaoEstoque(
   );
 }
 
-export async function atualizarPedidoInterno(formData: FormData) {
+export async function atualizarPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
   const pedidoId = numero(formData, "pedido_interno_id");
-  if (!pedidoId) return;
+  if (!pedidoId) return { ok: false, message: "Pedido não informado." };
   const titulo = texto(formData, "titulo");
-  if (!titulo) return;
+  if (!titulo) return { ok: false, message: "Informe a demanda (título do pedido)." };
 
   const supabase = await createClientUntyped();
   const projeto_id = numero(formData, "projeto_id");
@@ -415,15 +416,18 @@ export async function atualizarPedidoInterno(formData: FormData) {
     const retry = await supabase.from("pedidos_internos").update(legado).eq("id", pedidoId);
     error = retry.error;
   }
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, message: `Não foi possível salvar: ${error.message}` };
   revalidatePath(`/pedido/${pedidoId}`);
   revalidatePath("/pedido");
+  return { ok: true, message: "Pedido atualizado." };
 }
 
-export async function excluirPedidoInterno(formData: FormData) {
-  if (!(await temPapel("coordenador"))) return;
+export async function excluirPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!(await temPapel("coordenador"))) {
+    return { ok: false, message: "Sem permissão — excluir rascunho requer papel coordenador ou superior." };
+  }
   const pedidoId = numero(formData, "pedido_interno_id");
-  if (!pedidoId) return;
+  if (!pedidoId) return { ok: false, message: "Pedido não informado." };
 
   const supabase = await createClient();
   const { data: pedido } = await supabase
@@ -432,19 +436,24 @@ export async function excluirPedidoInterno(formData: FormData) {
     .eq("id", pedidoId)
     .single();
   if (!pedido || pedido.status !== "rascunho" || pedido.pedido_compra_id) {
-    throw new Error("Exclusão definitiva só é permitida para rascunhos sem compra formal. Use cancelamento para processos iniciados.");
+    return {
+      ok: false,
+      message: "Só é possível excluir rascunhos sem compra formal. Para pedidos em andamento, use Cancelar.",
+    };
   }
   const { error } = await supabase.from("pedidos_internos").delete().eq("id", pedidoId);
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, message: `Não foi possível excluir: ${error.message}` };
   revalidatePath("/pedido");
   redirect("/pedido");
 }
 
-export async function adicionarItemPedidoInterno(formData: FormData) {
+export async function adicionarItemPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
   const pedido_interno_id = numero(formData, "pedido_interno_id");
   const especificacao = texto(formData, "especificacao");
   const quantidade = numero(formData, "quantidade");
-  if (!pedido_interno_id || !especificacao || !quantidade || quantidade <= 0) return;
+  if (!pedido_interno_id || !especificacao || !quantidade || quantidade <= 0) {
+    return { ok: false, message: "Informe a especificação e uma quantidade maior que zero." };
+  }
 
   const supabase = await createClient();
   const { data: pedido } = await supabase
@@ -452,7 +461,9 @@ export async function adicionarItemPedidoInterno(formData: FormData) {
     .select("status")
     .eq("id", pedido_interno_id)
     .single();
-  if (!pedido || !["rascunho", "ajuste_solicitante", "ajuste_compras"].includes(pedido.status)) return;
+  if (!pedido || !["rascunho", "ajuste_solicitante", "ajuste_compras"].includes(pedido.status)) {
+    return { ok: false, message: "Itens só podem ser incluídos enquanto o pedido está em rascunho ou em ajuste." };
+  }
 
   const { error } = await supabase.from("pedidos_internos_itens").insert({
     pedido_interno_id,
@@ -467,8 +478,9 @@ export async function adicionarItemPedidoInterno(formData: FormData) {
     fornecedor_sugerido: texto(formData, "fornecedor_sugerido"),
     observacao: texto(formData, "observacao"),
   });
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, message: `Não foi possível adicionar o item: ${error.message}` };
   revalidatePath(`/pedido/${pedido_interno_id}`);
+  return { ok: true, message: "Item adicionado." };
 }
 
 export async function editarItemPedidoInterno(formData: FormData) {
@@ -506,19 +518,27 @@ export async function editarItemPedidoInterno(formData: FormData) {
   revalidatePath(`/pedido/${pedido_interno_id}`);
 }
 
-export async function removerItemPedidoInterno(formData: FormData) {
+export async function removerItemPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
   const itemId = numero(formData, "item_id");
   const pedidoId = numero(formData, "pedido_interno_id");
-  if (!itemId || !pedidoId) return;
+  if (!itemId || !pedidoId) return { ok: false, message: "Item não informado." };
   const supabase = await createClient();
   const { data: pedido } = await supabase
     .from("pedidos_internos")
     .select("status")
     .eq("id", pedidoId)
     .single();
-  if (!pedido || !(await podeMexerItens(pedido.status))) return;
-  await supabase.from("pedidos_internos_itens").delete().eq("id", itemId).eq("pedido_interno_id", pedidoId);
+  if (!pedido || !(await podeMexerItens(pedido.status))) {
+    return { ok: false, message: "Nesta etapa do pedido, remover itens exige papel coordenador (ou o pedido já foi encerrado)." };
+  }
+  const { error } = await supabase
+    .from("pedidos_internos_itens")
+    .delete()
+    .eq("id", itemId)
+    .eq("pedido_interno_id", pedidoId);
+  if (error) return { ok: false, message: `Não foi possível remover o item: ${error.message}` };
   revalidatePath(`/pedido/${pedidoId}`);
+  return { ok: true, message: "Item removido." };
 }
 
 export async function enviarParaValidacao(_prev: FormState, formData: FormData): Promise<FormState> {

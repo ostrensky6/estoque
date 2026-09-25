@@ -28,10 +28,11 @@ export function PageHeader({
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="flex items-center gap-1 text-xl font-semibold tracking-tight text-foreground">
-              {title}
+            {/* o "?" fica fora do h1 para não entrar no nome acessível do título */}
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
               {help}
-            </h1>
+            </div>
             {meta}
           </div>
           {description && (

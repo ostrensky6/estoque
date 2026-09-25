@@ -115,11 +115,14 @@ beforeEach(() => {
 
 async function emitir(
   operacaoId = "22222222-2222-4222-8222-222222222222",
+  confirmarSemParametros = true,
 ) {
   const fd = new FormData();
   fd.set("demanda_id", "7");
   fd.set("validade_dias", "30");
   fd.set("operacao_id", operacaoId);
+  // Fixture "apenas análises" não tem parâmetros (Σ% = 0): exige confirmação.
+  if (confirmarSemParametros) fd.set("confirmar_sem_parametros", "sim");
   return demandasActions.emitirOrcamentoFinalDaDemanda(fd);
 }
 
@@ -248,5 +251,21 @@ describe("emissão transacional", () => {
     state.orcamentos = [{ ...orcamentoRevisado, id: 5 }, { ...orcamentoRevisado, id: 6 }];
     await expect(emitir()).rejects.toThrow(/erro_emissao=/);
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("sem parâmetros econômicos, só emite com confirmação explícita", async () => {
+    await expect(emitir(undefined, false)).rejects.toThrow(/erro_emissao=.*custo%20t%C3%A9cnico/);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("ignora módulos cancelados nos totais e no snapshot", async () => {
+    state.orcamentos = [
+      { ...orcamentoRevisado },
+      { ...orcamentoRevisado, id: 6, status: "cancelado", status_operacional: "cancelado" },
+    ];
+    await expect(emitir()).rejects.toThrow("NEXT_REDIRECT:/orcamento/demandas/7?etapa=final");
+    const args = rpcCall(0)[1] as { p_total_laboratorio_custo: number; p_snapshot: { orcamentos_analises: unknown[] } };
+    expect(args.p_total_laboratorio_custo).toBe(100);
+    expect(args.p_snapshot.orcamentos_analises).toHaveLength(1);
   });
 });

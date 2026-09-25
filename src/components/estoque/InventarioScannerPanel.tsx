@@ -116,7 +116,7 @@ export function InventarioScannerPanel({
   function resolverScanner(codigo: string) {
     const codigoLimpo = codigo.trim();
     if (!codigoLimpo) {
-      setResultadoScanner({ ok: false, message: "Informe um codigo para resolver." });
+      setResultadoScanner({ ok: false, message: "Informe um código para resolver." });
       return;
     }
 
@@ -145,7 +145,7 @@ export function InventarioScannerPanel({
       setCameraMessage(
         error instanceof Error
           ? error.message
-          : "Nao foi possivel acessar a camera. Use a entrada manual.",
+          : "Não foi possível acessar a câmera. Digite o código.",
       );
     }
   }
@@ -174,10 +174,10 @@ export function InventarioScannerPanel({
         </h2>
         <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
           {cameraStatus === "ativa"
-            ? "Camera ativa"
+            ? "Câmera ativa"
             : cameraStatus === "iniciando"
-              ? "Iniciando camera"
-              : "Manual disponivel"}
+              ? "Iniciando câmera"
+              : "Digitação disponível"}
         </span>
       </div>
 
@@ -198,7 +198,7 @@ export function InventarioScannerPanel({
               ) : (
                 <Camera className="h-3.5 w-3.5" />
               )}
-              Usar camera
+              Usar câmera
             </button>
             <button
               type="button"
@@ -206,7 +206,7 @@ export function InventarioScannerPanel({
               disabled={cameraStatus === "parada" || submitPending}
               className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
             >
-              Parar camera
+              Parar câmera
             </button>
           </div>
 
@@ -224,7 +224,7 @@ export function InventarioScannerPanel({
                 value={codigoScanner}
                 onChange={(event) => setCodigoScanner(event.target.value)}
                 className={`${inp} mt-0 pl-8`}
-                placeholder="/s/local/1, /s/lote/123 ou codigo interno"
+                placeholder="Etiqueta do local ou do lote"
               />
             </div>
             <button

@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { HelpTip } from "@/components/common/HelpTip";
 import { QrCode } from "@/components/common/QrCode";
+import { PrintButton } from "@/components/orcamento/PrintButton";
+import { origemPublicaKontrol } from "@/lib/scanner/origem";
 import { gerarUrlCurtaKontrol } from "@/lib/scanner/urls";
 import { createClientUntyped } from "@/lib/supabase/server";
 import { formatDate, formatNumber as fmt } from "@/lib/formatters";
@@ -59,7 +62,7 @@ export default async function EtiquetasPage({
   const params = await searchParams;
   const tipo = filtroTipo(params.tipo);
   const id = idFiltro(params.id);
-  const supabase = await createClientUntyped();
+  const [supabase, origem] = await Promise.all([createClientUntyped(), origemPublicaKontrol()]);
 
   const carregarLotes = tipo === "todos" || tipo === "lotes";
   const carregarEquipamentos = tipo === "todos" || tipo === "equipamentos";
@@ -69,7 +72,7 @@ export default async function EtiquetasPage({
       ? supabase
           .from("lotes_estoque")
           .select("id, codigo_lote, validade, quantidade_atual, status, insumos(especificacao, unidade)")
-          .neq("status", "consumido")
+          .not("status", "in", "(consumido,descartado)")
           .order("id", { ascending: true })
       : Promise.resolve({ data: [] }),
     carregarEquipamentos
@@ -102,16 +105,18 @@ export default async function EtiquetasPage({
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Estoque · Identificação interna
             </p>
-            <h1 className="mt-1 text-xl font-semibold tracking-tight">
-              Etiquetas internas
-            </h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Impressão simples de QR interno para lotes e unidades patrimoniais. Esta página é somente leitura.
-            </p>
+            <div className="mt-1 flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Etiquetas internas</h1>
+              <HelpTip title="Etiquetas internas">
+                <p>
+                  Etiquetas com QR para os lotes em estoque e para os aparelhos do laboratório. Imprima,
+                  recorte e cole na embalagem ou no equipamento; a câmera do celular abre a ficha direto.
+                </p>
+                <p>Lotes consumidos ou descartados não aparecem.</p>
+              </HelpTip>
+            </div>
           </div>
-          <span className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-            Use Ctrl+P para imprimir
-          </span>
+          <PrintButton />
         </div>
 
         <div className="no-print mt-6 flex flex-wrap gap-2 text-sm">
@@ -132,7 +137,7 @@ export default async function EtiquetasPage({
         <section className="label-grid mt-6 grid gap-4 md:grid-cols-2 print:mt-0">
           {lotes.map((lote) => {
             const insumo = asOne(lote.insumos);
-            const url = gerarUrlCurtaKontrol("lote", lote.id);
+            const url = gerarUrlCurtaKontrol("lote", lote.id, origem);
             return (
               <LabelShell key={`lote-${lote.id}`}>
                 <div className="flex gap-3">
@@ -148,7 +153,6 @@ export default async function EtiquetasPage({
                       <div><dt className="inline text-muted-foreground">Validade: </dt><dd className="inline">{formatDate(lote.validade)}</dd></div>
                       <div><dt className="inline text-muted-foreground">Saldo: </dt><dd className="inline">{fmt(lote.quantidade_atual)} {insumo?.unidade ?? ""}</dd></div>
                     </dl>
-                    <p className="mt-2 break-all font-mono text-[11px] text-muted-foreground">{url}</p>
                     <Link href={`/etiquetas?tipo=lotes&id=${lote.id}`} className="no-print mt-2 inline-block text-xs font-medium text-brand-700 hover:underline">
                       Imprimir somente esta
                     </Link>
@@ -160,7 +164,7 @@ export default async function EtiquetasPage({
 
           {equipamentos.map((unidade) => {
             const equipamento = asOne(unidade.equipamentos);
-            const url = gerarUrlCurtaKontrol("equipamento_unidade", unidade.id);
+            const url = gerarUrlCurtaKontrol("equipamento_unidade", unidade.id, origem);
             return (
               <LabelShell key={`equipamento-${unidade.id}`}>
                 <div className="flex gap-3">
@@ -175,7 +179,6 @@ export default async function EtiquetasPage({
                       <div><dt className="inline text-muted-foreground">Patrimônio: </dt><dd className="inline font-mono">{unidade.codigo_patrimonio ?? "—"}</dd></div>
                       <div><dt className="inline text-muted-foreground">Série: </dt><dd className="inline font-mono">{unidade.numero_serie ?? "—"}</dd></div>
                     </dl>
-                    <p className="mt-2 break-all font-mono text-[11px] text-muted-foreground">{url}</p>
                     <Link href={`/etiquetas?tipo=equipamentos&id=${unidade.id}`} className="no-print mt-2 inline-block text-xs font-medium text-brand-700 hover:underline">
                       Imprimir somente esta
                     </Link>

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { gargalo, horasBancadaPorAmostra, type Etapa } from "@/lib/costing/engine";
 import { calcularTodas } from "@/lib/costing/loader";
@@ -41,7 +40,6 @@ type ConsultaIssue = {
 
 const card =
   "rounded-lg border border-border bg-card p-4 shadow-sm";
-const subtle = "text-sm text-muted-foreground";
 
 function statusTextualIndicaRevisao(status: string | null) {
   return /experimental|experimento|revis|avali|pend|todo/i.test(status ?? "");
@@ -164,8 +162,8 @@ export default async function AnalisesPage() {
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="flex items-center gap-1 text-xl font-semibold tracking-tight">
-            Análises
+          <div className="flex items-center gap-1">
+            <h1 className="text-xl font-semibold tracking-tight">Análises</h1>
             <HelpTip title="Catálogo de análises">
               <p>
                 Cada análise tem uma receita: etapas, materiais e equipamentos. É dela que saem a
@@ -176,7 +174,7 @@ export default async function AnalisesPage() {
                 duplicar ou excluir. Análises já usadas não podem ser excluídas: inative-as na ficha.
               </p>
             </HelpTip>
-          </h1>
+          </div>
           {podeEditar && <NovaAnaliseButton analises={opcoes} />}
         </div>
 

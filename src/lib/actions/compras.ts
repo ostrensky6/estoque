@@ -39,7 +39,7 @@ function dataPrevistaPorPrazo(prazoDias: number | null): string | null {
   return new Date(Date.now() + prazoDias * 86400000).toISOString().slice(0, 10);
 }
 
-export async function criarPedido(formData: FormData) {
+export async function criarPedido(_prev: FormState, formData: FormData): Promise<FormState> {
   const u = await usuarioAtual();
   const fornecedor_id = formData.get("fornecedor_id")
     ? Number(formData.get("fornecedor_id"))
@@ -52,7 +52,8 @@ export async function criarPedido(formData: FormData) {
     .insert({ fornecedor_id, projeto, projeto_id, solicitante: u?.email ?? null, status: "solicitado" })
     .select("id")
     .single();
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, message: `Não foi possível criar a solicitação: ${error.message}` };
+  revalidatePath("/compras");
   redirect(`/compras/${data.id}`);
 }
 
@@ -179,30 +180,44 @@ export async function comprarFaltasDoPlano(formData: FormData) {
   redirect(`/pedido/${pedido.id}`);
 }
 
-export async function adicionarItemPedido(formData: FormData) {
+export async function adicionarItemPedido(_prev: FormState, formData: FormData): Promise<FormState> {
   const pedido_id = Number(formData.get("pedido_id"));
   const insumo_id = Number(formData.get("insumo_id"));
   const quantidade = Number(formData.get("quantidade"));
   const custo = formData.get("custo_unitario_estimado")
     ? Number(formData.get("custo_unitario_estimado"))
     : null;
-  if (!pedido_id || !insumo_id || !(quantidade > 0)) return;
+  if (!pedido_id || !insumo_id || !(quantidade > 0)) {
+    return { ok: false, message: "Escolha o insumo e informe uma quantidade maior que zero." };
+  }
   const supabase = await createClient();
-  await supabase.from("pedidos_compra_itens").insert({
+  const { error } = await supabase.from("pedidos_compra_itens").insert({
     pedido_id,
     insumo_id,
     quantidade,
     custo_unitario_estimado: custo,
   });
+  if (error) return { ok: false, message: `Não foi possível adicionar o item: ${error.message}` };
   revalidatePath(`/compras/${pedido_id}`);
+  return { ok: true, message: "Item adicionado." };
 }
 
-export async function removerItemPedido(formData: FormData) {
+export async function removerItemPedido(_prev: FormState, formData: FormData): Promise<FormState> {
   const id = Number(formData.get("item_id"));
   const pedido_id = Number(formData.get("pedido_id"));
+  if (!id) return { ok: false, message: "Item não informado." };
   const supabase = await createClient();
-  await supabase.from("pedidos_compra_itens").delete().eq("id", id);
+  const { error } = await supabase.from("pedidos_compra_itens").delete().eq("id", id);
+  if (error) return { ok: false, message: `Não foi possível remover o item: ${error.message}` };
   revalidatePath(`/compras/${pedido_id}`);
+  return { ok: true, message: "Item removido." };
+}
+
+function revalidarPedidoCompra(pedidoId: number) {
+  revalidatePath(`/compras/${pedidoId}`);
+  revalidatePath("/compras");
+  revalidatePath("/recebimento");
+  revalidatePath("/suprimentos");
 }
 
 export async function aprovarPedido(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -249,7 +264,7 @@ export async function aprovarPedido(_prev: FormState, formData: FormData): Promi
     p_data_prevista_entrega: prevista ?? undefined,
   });
   if (error) return { ok: false, message: error.message };
-  revalidatePath(`/compras/${pedido_id}`);
+  revalidarPedidoCompra(pedido_id);
   return { ok: true, message: "Pedido aprovado." };
 }
 
@@ -263,7 +278,7 @@ export async function marcarEnviado(_prev: FormState, formData: FormData): Promi
     p_observacao: "Pedido enviado ao fornecedor.",
   });
   if (error) return { ok: false, message: error.message };
-  revalidatePath(`/compras/${pedido_id}`);
+  revalidarPedidoCompra(pedido_id);
   return { ok: true, message: "Pedido marcado como enviado." };
 }
 
@@ -277,18 +292,18 @@ export async function cancelarPedido(_prev: FormState, formData: FormData): Prom
     p_observacao: "Cancelamento administrativo da compra.",
   });
   if (error) return { ok: false, message: error.message };
-  revalidatePath(`/compras/${pedido_id}`);
+  revalidarPedidoCompra(pedido_id);
   return { ok: true, message: "Pedido cancelado." };
 }
 
 /** Recebe um item do pedido: cria lote em quarentena (FEFO) e vincula. */
-export async function receberItemPedido(formData: FormData) {
-  if (!(await temPapel("coordenador"))) return;
+export async function receberItemPedido(formData: FormData): Promise<FormState> {
+  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const item_id = Number(formData.get("item_id"));
   const operacaoId = String(formData.get("operacao_id") ?? "").trim();
   if (!UUID_RECEBIMENTO.test(operacaoId)) {
-    throw new Error("Identificador da operação de recebimento inválido.");
+    return { ok: false, message: "Identificador da operação de recebimento inválido." };
   }
   const validade = (formData.get("validade") as string) || null;
   const codigo = (formData.get("codigo") as string) || null;
@@ -307,7 +322,7 @@ export async function receberItemPedido(formData: FormData) {
     .single();
   const insumo = item?.insumos as { categoria_compra: string | null } | null | undefined;
   if (insumo?.categoria_compra === "critico" && !validade) {
-    throw new Error(MSG_VALIDADE_CRITICO);
+    return { ok: false, message: MSG_VALIDADE_CRITICO };
   }
 
   const { error } = await supabase.rpc("receber_item_pedido_compra" as never, {
@@ -319,8 +334,12 @@ export async function receberItemPedido(formData: FormData) {
     p_codigo: codigo ?? undefined,
     p_responsavel: responsavel ?? undefined,
   } as never);
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, message: error.message };
 
   revalidatePath(`/compras/${pedido_id}`);
+  revalidatePath("/compras");
+  revalidatePath("/recebimento");
+  revalidatePath("/suprimentos");
   revalidatePath("/estoque");
+  return { ok: true, message: "Item recebido. O lote entrou em quarentena." };
 }

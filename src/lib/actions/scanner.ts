@@ -30,7 +30,7 @@ const TABELAS_ENTIDADE: Record<EntidadeScanner, string> = {
 };
 
 const resolverSchema = z.object({
-  codigo: z.string().trim().min(1, "Codigo obrigatorio."),
+  codigo: z.string().trim().min(1, "Código obrigatório."),
 });
 
 type ResultadoScan = "encontrado" | "nao_encontrado" | "erro";
@@ -349,7 +349,7 @@ export async function resolverCodigoRecebimentoInterno(
 ): Promise<ResultadoScannerRecebimento> {
   const parsed = resolverSchema.safeParse({ codigo: codigoRaw });
   if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Codigo invalido." };
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Código inválido." };
   }
 
   const { codigo } = parsed.data;
@@ -366,7 +366,7 @@ export async function resolverCodigoRecebimentoInterno(
       encontrado: false,
       codigo,
       triagemUrl: `/scanner/desconhecido?codigo=${encodeURIComponent(codigo)}`,
-      message: "Codigo nao encontrado. Encaminhe para triagem antes de receber.",
+      message: "Código não encontrado. Encaminhe para triagem antes de receber.",
     };
   }
 
@@ -389,8 +389,8 @@ export async function resolverCodigoRecebimentoInterno(
       triagemUrl: `/scanner/desconhecido?codigo=${encodeURIComponent(codigo)}`,
       message:
         resolvido.tipo === "insumo" || resolvido.tipo === "lote"
-          ? "Entidade escaneada nao esta disponivel para recebimento."
-          : "Este codigo nao aponta para insumo ou lote recebivel.",
+          ? "O item escaneado não está disponível para recebimento."
+          : "Este código não corresponde a um insumo ou lote que possa ser recebido.",
     };
   }
 
@@ -411,7 +411,7 @@ export async function resolverCodigoInventario(
 ): Promise<ResultadoScannerInventario> {
   const parsed = resolverSchema.safeParse({ codigo: codigoRaw });
   if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Codigo invalido." };
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Código inválido." };
   }
 
   const { codigo } = parsed.data;
@@ -428,7 +428,7 @@ export async function resolverCodigoInventario(
       encontrado: false,
       codigo,
       triagemUrl: `/scanner/desconhecido?codigo=${encodeURIComponent(codigo)}`,
-      message: "Codigo nao encontrado. Encaminhe para triagem antes de contar.",
+      message: "Código não encontrado. Encaminhe para triagem antes de contar.",
     };
   }
 
@@ -451,8 +451,8 @@ export async function resolverCodigoInventario(
       triagemUrl: `/scanner/desconhecido?codigo=${encodeURIComponent(codigo)}`,
       message:
         resolvido.tipo === "local" || resolvido.tipo === "lote"
-          ? "Entidade escaneada nao esta disponivel para inventario."
-          : "Este codigo nao aponta para local ou lote contavel.",
+          ? "O item escaneado não está disponível para inventário."
+          : "Este código não corresponde a um local ou lote contável.",
     };
   }
 
@@ -473,7 +473,7 @@ export async function resolverCodigoPlanejamento(
 ): Promise<ResultadoScannerPlanejamento> {
   const parsed = resolverSchema.safeParse({ codigo: codigoRaw });
   if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Codigo invalido." };
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Código inválido." };
   }
 
   const { codigo } = parsed.data;
@@ -490,7 +490,7 @@ export async function resolverCodigoPlanejamento(
       encontrado: false,
       codigo,
       triagemUrl: `/scanner/desconhecido?codigo=${encodeURIComponent(codigo)}`,
-      message: "Codigo nao encontrado. Encaminhe para triagem antes da baixa.",
+      message: "Código não encontrado. Encaminhe para triagem antes da baixa.",
     };
   }
 
@@ -513,8 +513,8 @@ export async function resolverCodigoPlanejamento(
       triagemUrl: `/scanner/desconhecido?codigo=${encodeURIComponent(codigo)}`,
       message:
         resolvido.tipo === "lote"
-          ? "Lote escaneado nao esta disponivel para conferencia."
-          : "Este codigo nao aponta para um lote fisico.",
+          ? "O lote escaneado não está disponível para conferência."
+          : "Este código não corresponde a um lote físico.",
     };
   }
 
@@ -535,7 +535,7 @@ export async function resolverCodigoEscaneado(
     codigo: texto(formData, "codigo") || texto(formData, "valor_lido"),
   });
   if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Codigo invalido." };
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Código inválido." };
   }
 
   const { codigo } = parsed.data;

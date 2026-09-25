@@ -236,8 +236,8 @@ export default async function CadastroPage({
       <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Cadastros", href: "/cadastros" }, { label: cfg.titulo }]} />
 
-        <h1 className="mt-6 flex items-center gap-1 text-xl font-semibold tracking-tight">
-          {cfg.titulo}
+        <div className="mt-6 flex items-center gap-1">
+          <h1 className="text-xl font-semibold tracking-tight">{cfg.titulo}</h1>
           <HelpTip title={cfg.titulo}>
             <p>{cfg.subtitulo}</p>
             {remuneracaoOculta && (
@@ -247,7 +247,7 @@ export default async function CadastroPage({
               </p>
             )}
           </HelpTip>
-        </h1>
+        </div>
 
         <div className="mt-6">
           <CrudShell

@@ -12,7 +12,7 @@ import type { EntidadeTipo } from "@/lib/scanner/identificadores";
 import type { FormState } from "./cadastros";
 
 const scanEventoSchema = z.object({
-  codigo: z.string().trim().min(1, "Codigo obrigatorio."),
+  codigo: z.string().trim().min(1, "Código obrigatório."),
   formato: z.string().trim().min(1).nullable().optional(),
   entidade_tipo: z.string().trim().min(1).nullable().optional(),
   entidade_id: z.number().int().positive().nullable().optional(),
@@ -54,7 +54,7 @@ export async function registrarScanEvento(
 ): Promise<FormState> {
   const entidadeTipo = textoOuNull(formData, "entidade_tipo");
   if (entidadeTipo && !isEntidadeTipo(entidadeTipo)) {
-    return { ok: false, message: "Tipo de entidade invalido." };
+    return { ok: false, message: "Tipo de item inválido." };
   }
 
   const codigo = texto(formData, "codigo") || texto(formData, "valor_lido");
@@ -70,7 +70,7 @@ export async function registrarScanEvento(
   });
 
   if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Evento invalido." };
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Evento inválido." };
   }
 
   const data = parsed.data;

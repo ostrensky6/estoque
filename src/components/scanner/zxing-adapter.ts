@@ -9,7 +9,7 @@ export async function iniciarLeitorCamera(
   onCodigoLido: (codigo: string) => void,
 ): Promise<ScannerCameraControls> {
   if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error("Camera indisponivel neste navegador.");
+    throw new Error("Câmera indisponível neste navegador.");
   }
 
   const { BrowserMultiFormatReader } = await import("@zxing/browser");

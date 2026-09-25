@@ -21,7 +21,8 @@ import {
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { Combobox } from "@/components/ui/combobox";
-import { formatCurrency, formatNumber as fmt } from "@/lib/formatters";
+import { HelpFormula, HelpLegend, HelpTip } from "@/components/common/HelpTip";
+import { formatCurrency, formatDate, formatNumber as fmt } from "@/lib/formatters";
 import {
   loteSugeridoFefo,
   type LoteConferencia,
@@ -82,7 +83,8 @@ export default async function PlanoDetalhe({
 
   const [{ data: itens }, { data: analises }, { data: reservas }, { data: projetos }, { data: margemRealRows }] = await Promise.all([
     supabase.from("planejamento_itens").select("id, codigo_analise, n_amostras, n_controles, repeticoes, perda_percentual").eq("planejamento_id", planId).order("id"),
-    supabase.from("analises").select("codigo, nome").order("codigo"),
+    // Só análises ativas podem entrar em um plano novo; itens antigos continuam listados.
+    supabase.from("analises").select("codigo, nome").eq("ativo", true).order("codigo"),
     consultarReservasPlano(supabaseUntyped, planId),
     supabase.from("projetos").select("id, nome").order("nome"),
     supabase.from("v_margem_real_planejamento").select("*").eq("planejamento_id", planId).limit(1),
@@ -272,16 +274,25 @@ export default async function PlanoDetalhe({
       <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Planejamento", href: "/planejamento" }, { label: plano.nome ?? `Plano #${planId}` }]} />
         <div className="mt-2 flex items-center justify-between">
-          <h1 className="text-xl font-semibold tracking-tight">{plano.nome}</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-xl font-semibold tracking-tight">{plano.nome}</h1>
+            <HelpTip title="Planejamento de execução">
+              <p>
+                Aqui se organiza a execução: projeto, período, análises, lotes de estoque
+                reservados, faltas e compras.
+              </p>
+              <p>
+                Pode nascer de um orçamento, mas é independente dele: o que vale para reservar,
+                comprar e dar baixa é o que está neste plano.
+              </p>
+            </HelpTip>
+          </div>
           <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
             {statusLabel}
           </span>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Planejamento executivo independente do orçamento: projeto, período,
-          estoque físico, reservas de lote, faltas e compras.
-        </p>
-        <nav className="sticky top-0 z-10 mt-4 overflow-x-auto border-y border-border bg-background/95 py-2 backdrop-blur" aria-label="Etapas do planejamento">
+        {/* no celular fica logo abaixo da barra superior fixa (57px), em vez de passar por baixo dela */}
+        <nav className="sticky top-[57px] z-10 mt-4 md:top-0 overflow-x-auto border-y border-border bg-background/95 py-2 backdrop-blur" aria-label="Etapas do planejamento">
           <div className="flex min-w-max gap-2">
             {[
               ["#contexto", "Resumo", statusLabel],
@@ -299,27 +310,46 @@ export default async function PlanoDetalhe({
           </div>
         </nav>
         {!contextoCompleto && (
-          <p className="mt-3 rounded-lg border border-warning-strong/30 bg-warning-soft px-4 py-2 text-sm text-warning-strong">
-            Informe projeto e período previsto antes de reservar insumos. O orçamento pode ser origem, mas a execução nasce aqui.
+          <p className="mt-3 flex items-center gap-1 rounded-lg border border-warning-strong/30 bg-warning-soft px-4 py-2 text-sm text-warning-strong">
+            Informe projeto e período previsto antes de reservar insumos.
+            <HelpTip title="Por que informar projeto e período">
+              <p>
+                A reserva de lotes e de equipamentos usa o projeto e as datas deste plano. Sem eles,
+                não há como saber para quando separar o material.
+              </p>
+            </HelpTip>
           </p>
         )}
         {baixaPendente && (
-          <p className="mt-3 rounded-lg border border-warning-strong/30 bg-warning-soft px-4 py-2 text-sm text-warning-strong">
-            Insumos reservados, mas a baixa definitiva ainda não foi feita. Use Iniciar quando a análise entrar em execução.
+          <p className="mt-3 flex items-center gap-1 rounded-lg border border-warning-strong/30 bg-warning-soft px-4 py-2 text-sm text-warning-strong">
+            Insumos reservados, ainda sem baixa.
+            <HelpTip title="Reserva × baixa">
+              <p>
+                A reserva só separa os lotes. A baixa (saída definitiva do estoque) acontece quando
+                você clica em <b>Iniciar</b>, no momento em que a análise entra em execução.
+              </p>
+            </HelpTip>
           </p>
         )}
         {plano.data_alvo && (
-          <p className="mt-1 text-sm text-muted-foreground">Data alvo: {plano.data_alvo}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Data alvo: {formatDate(plano.data_alvo)}</p>
         )}
 
         {margemReal && (
           <section id="margem" className="mt-4 scroll-mt-24 rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold">Margem prevista × realizada</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  A realização usa somente as baixas por lote deste plano; mão de obra, equipamentos e overhead ainda não possuem apontamento por execução.
-                </p>
+                <div className="flex items-center gap-1">
+                  <h2 className="text-sm font-semibold">Margem prevista × realizada</h2>
+                  <HelpTip title="Margem realizada (parcial)">
+                    <p>
+                      O realizado considera só os <b>insumos baixados</b> por lote neste plano. Mão de
+                      obra, equipamentos e overhead ainda não são apontados por execução.
+                    </p>
+                    <HelpFormula>margem parcial = receita orçada − insumos baixados</HelpFormula>
+                  </HelpTip>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">Parcial: considera só os insumos baixados.</p>
               </div>
               <Link href={`/orcamento/${margemReal.orcamento_id}`} className="text-xs font-medium text-primary hover:underline">
                 Abrir orçamento de origem
@@ -342,10 +372,22 @@ export default async function PlanoDetalhe({
         <section id="capacidade" className="mt-4 scroll-mt-24 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold">Capacidade e equipamentos do plano</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                As unidades abaixo vêm da receita das análises. A reserva é bloqueada se houver manutenção, calibração vencida ou sobreposição de agenda.
-              </p>
+              <div className="flex items-center gap-1">
+                <h2 className="text-sm font-semibold">Capacidade e equipamentos do plano</h2>
+                <HelpTip title="Capacidade e equipamentos">
+                  <p>
+                    Os equipamentos vêm da ficha técnica de cada análise. O prazo projetado divide
+                    as amostras planejadas pela capacidade por dia.
+                  </p>
+                  <HelpLegend
+                    items={[
+                      { tom: "info", rotulo: "disponível", texto: "pode ser reservado para o período." },
+                      { tom: "atencao", rotulo: "agenda ocupada", texto: "já reservado por outro plano." },
+                      { tom: "critico", rotulo: "bloqueado", texto: "em manutenção, calibração vencida ou inativo." },
+                    ]}
+                  />
+                </HelpTip>
+              </div>
             </div>
             <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
               {codigosPlano.length} análise(s) · {unidadesEquipamento?.length ?? 0} unidade(s) candidata(s)
@@ -421,12 +463,15 @@ export default async function PlanoDetalhe({
         <section id="contexto" className="mt-6 scroll-mt-24 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Contexto operacional
-              </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Estes dados comandam reserva, compra e baixa. Orçamento fica apenas como origem auditável.
-              </p>
+              <div className="flex items-center gap-1">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Contexto operacional</h2>
+                <HelpTip title="Contexto operacional">
+                  <p>
+                    Projeto, datas e responsável deste plano definem para quando reservar, comprar e
+                    dar baixa. O orçamento de origem fica só como referência.
+                  </p>
+                </HelpTip>
+              </div>
             </div>
             <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
               <span>Planejado por: <b className="text-foreground">{planoOperacional.planejado_por ?? "—"}</b></span>
@@ -563,8 +608,14 @@ export default async function PlanoDetalhe({
                 Demanda de insumos {temFalta && <span className="text-warning-strong">· há faltas</span>}
               </h2>
               {temFalta && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Faltas não viram compra direta: elas abrem um pedido interno para seguir validação, compras e recebimento.
+                <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  Faltas viram pedido interno, não compra direta.
+                  <HelpTip title="O que acontece com as faltas">
+                    <p>
+                      <b>Gerar pedido interno</b> cria um pedido com os itens em falta. Ele segue o
+                      caminho normal: validação, compra e recebimento no estoque.
+                    </p>
+                  </HelpTip>
                 </p>
               )}
             </div>

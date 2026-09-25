@@ -41,6 +41,7 @@ export async function cancelarVersaoFinal(formData: FormData) {
     p_motivo: motivo,
   });
   if (error) throw new Error(error.message);
+  revalidatePath(`/orcamento/final/${id}`);
   revalidatePath(historicoPath);
   revalidatePath("/orcamento");
 }

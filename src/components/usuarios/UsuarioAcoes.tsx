@@ -176,7 +176,7 @@ function AssinaturaDialog({
         <DialogHeader>
           <DialogTitle>Upload da assinatura</DialogTitle>
           <DialogDescription>
-            Envie a assinatura PNG de {row.nome}. O app remove fundo claro e usa a assinatura automaticamente na proposta emitida por esse usuário.
+            Imagem PNG da assinatura de {row.nome}. O fundo claro é removido e ela entra nas propostas emitidas por esse usuário.
           </DialogDescription>
         </DialogHeader>
         <AssinaturaUsuarioForm
@@ -260,7 +260,7 @@ function AlterarSenhaDialog({
         <DialogHeader>
           <DialogTitle>Alterar senha</DialogTitle>
           <DialogDescription>
-            Defina uma nova senha para {row.email}. A senha não é exibida nem armazenada pelo Kontrol.
+            Nova senha para {row.email}. Ela não fica visível para ninguém.
           </DialogDescription>
         </DialogHeader>
         <form action={action} className="space-y-4">

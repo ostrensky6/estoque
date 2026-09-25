@@ -190,5 +190,21 @@ describe("excluirUsuario", () => {
     const payload = upsert.mock.calls[0]?.[0] as { permissoes: Record<string, boolean> };
     expect(Object.keys(payload.permissoes).length).toBeGreaterThan(0);
     expect(Object.values(payload.permissoes).every((enabled) => enabled === false)).toBe(true);
+    // a matriz de Privilégios lê a mesma tabela: precisa ser revalidada junto
+    expect(revalidatePath).toHaveBeenCalledWith("/usuarios");
+    expect(revalidatePath).toHaveBeenCalledWith("/governanca/privilegios");
+  });
+
+  it("mantem a permissao de remuneracao ao salvar a categoria (nao some do jsonb)", async () => {
+    const formData = new FormData();
+    formData.set("papel", "gestor");
+    formData.set("permissoes_presentes", "1");
+    formData.append("permissoes", "tecnicos.remuneracao.ver");
+    const { salvarPermissoesCategoria } = await import("./usuarios");
+
+    await salvarPermissoesCategoria({ ok: false }, formData);
+
+    const payload = upsert.mock.calls[0]?.[0] as { permissoes: Record<string, boolean> };
+    expect(payload.permissoes["tecnicos.remuneracao.ver"]).toBe(true);
   });
 });

@@ -43,13 +43,13 @@ export function destinoScanner(tipo: EntidadeScanner, id: number) {
     case "lote":
       return `/estoque/lotes/${id}`;
     case "insumo":
-      return `/cadastros/insumos?scan=${id}`;
+      return `/cadastros/insumos?focus=${id}`;
     case "equipamento":
-      return `/cadastros/equipamentos?scan=${id}`;
+      return `/cadastros/equipamentos?focus=${id}`;
     case "equipamento_unidade":
-      return `/estoque/equipamentos?tab=unidades&scan=${id}`;
+      return `/estoque/equipamentos?tab=unidades&focus=${id}`;
     case "local":
-      return `/cadastros/locais?scan=${id}`;
+      return `/cadastros/locais?focus=${id}`;
   }
 }
 

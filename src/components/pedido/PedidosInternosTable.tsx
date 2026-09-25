@@ -16,8 +16,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { HelpTip } from "@/components/common/HelpTip";
 import { excluirPedidoInterno } from "@/lib/actions/pedidos-internos";
 import { pedidoInternoStatus } from "@/lib/pedido/status";
+import { FormComMensagem } from "./FormComMensagem";
 import { PedidoItensQuickView, type PedidoItemView } from "./PedidoItensQuickView";
 
 export type PedidoInternoRow = {
@@ -63,11 +65,16 @@ function ExcluirPedido({ row }: { row: PedidoInternoRow }) {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Excluir rascunho {row.numero}?</DialogTitle>
-          <DialogDescription>
-            Esta ação remove apenas rascunhos que ainda não entraram no fluxo operacional. Pedidos em andamento devem
-            ser cancelados com motivo.
-          </DialogDescription>
+          <DialogTitle className="flex items-center gap-1">
+            Excluir rascunho {row.numero}?
+            <HelpTip title="Excluir ou cancelar?">
+              <p>
+                Excluir só vale para rascunhos que ainda não entraram no fluxo. Pedidos em andamento
+                devem ser cancelados, informando o motivo, para manter o histórico.
+              </p>
+            </HelpTip>
+          </DialogTitle>
+          <DialogDescription>O rascunho será apagado e não poderá ser recuperado.</DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <DialogClose asChild>
@@ -78,7 +85,7 @@ function ExcluirPedido({ row }: { row: PedidoInternoRow }) {
               Cancelar
             </button>
           </DialogClose>
-          <form action={excluirPedidoInterno}>
+          <FormComMensagem action={excluirPedidoInterno} className="flex flex-col items-end gap-1">
             <input type="hidden" name="pedido_interno_id" value={row.id} />
             <button
               type="submit"
@@ -86,7 +93,7 @@ function ExcluirPedido({ row }: { row: PedidoInternoRow }) {
             >
               Excluir rascunho
             </button>
-          </form>
+          </FormComMensagem>
         </DialogFooter>
       </DialogContent>
     </Dialog>

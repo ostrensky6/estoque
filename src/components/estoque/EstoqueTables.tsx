@@ -258,8 +258,8 @@ export function SaldoTable({
 }) {
   return (
     <div>
-      <h2 className="mb-2 flex items-center gap-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        Saldo por insumo
+      <div className="mb-2 flex items-center gap-1">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Saldo por insumo</h2>
         <HelpTip title="Como ler o saldo">
           <p>
             <b>Em mãos</b> soma os lotes liberados. <b>Reservado</b> já está prometido a planos.{" "}
@@ -274,7 +274,7 @@ export function SaldoTable({
             10 em mãos, 4 reservados → 6 disponíveis. Consumo de 0,5/dia → cobertura de 12 dias.
           </HelpExample>
         </HelpTip>
-      </h2>
+      </div>
       <DataTable
         data={rows}
         columns={saldoColumns(entradaInicialInsumoId)}

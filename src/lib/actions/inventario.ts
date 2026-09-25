@@ -70,7 +70,7 @@ export async function criarCicloInventario(
   const usuario = await usuarioAtual();
   const supabase = await createClientUntyped();
   const { error } = await supabase.from("inventario_ciclos").insert({
-    nome: parsed.data.nome || `Inventário ${new Date().toISOString().slice(0, 10)}`,
+    nome: parsed.data.nome || `Inventário ${new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo" }).format(new Date())}`,
     local_id: parsed.data.local_id,
     criado_por: usuario?.email ?? usuario?.id ?? null,
   });

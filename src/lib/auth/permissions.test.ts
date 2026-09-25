@@ -49,6 +49,16 @@ describe("permissoes reconciliadas", () => {
     ]));
   });
 
+  it("remuneracao da equipe: padrao gestor e admin, nunca tecnico ou coordenador", () => {
+    const keys = PERMISSOES.map((permissao) => permissao.key);
+    expect(keys).toContain("tecnicos.remuneracao.ver");
+    expect(defaultPermissionsForRole("gestor")).toContain("tecnicos.remuneracao.ver");
+    expect(defaultPermissionsForRole("admin")).toContain("tecnicos.remuneracao.ver");
+    expect(defaultPermissionsForRole("coordenador")).not.toContain("tecnicos.remuneracao.ver");
+    expect(defaultPermissionsForRole("tecnico")).not.toContain("tecnicos.remuneracao.ver");
+    expect(normalizePermissions("tecnico", { "tecnicos.remuneracao.ver": true })["tecnicos.remuneracao.ver"]).toBe(true);
+  });
+
   it("forca permissoes completas para formulario de admin", () => {
     const formData = new FormData();
     formData.append("permissoes", "analises.ver");

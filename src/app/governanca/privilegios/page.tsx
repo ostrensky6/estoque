@@ -1,3 +1,4 @@
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 import { PrivilegiosMatriz } from "@/components/governanca/PrivilegiosMatriz";
 import { obterMatrizPrivilegios } from "@/lib/actions/privilegios";
 
@@ -17,10 +18,20 @@ export default async function PrivilegiosPage() {
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
-        <h1 className="text-xl font-semibold tracking-tight">Privilégios</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Matriz granular de Governança restaurada a partir do histórico e reconciliada com os papéis atuais do Kontrol.
-        </p>
+        <div className="flex items-center gap-1">
+          <h1 className="text-xl font-semibold tracking-tight">Privilégios</h1>
+          <HelpTip title="Privilégios">
+            <p>
+              O que cada papel (técnico, coordenador, gestor, administrador) pode ver e fazer. O
+              administrador sempre tem tudo.
+            </p>
+            <HelpExample>
+              &quot;Ver remuneração da equipe&quot; vem ligado só para gestor e administrador; ligue
+              para outro papel se ele precisar ver o salário dos técnicos.
+            </HelpExample>
+          </HelpTip>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">O que cada papel pode ver e fazer.</p>
 
         <div className="mt-6">
           <PrivilegiosMatriz permissoesPorCategoria={permissoesPorCategoria} />

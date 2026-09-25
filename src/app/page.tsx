@@ -2,7 +2,8 @@ import Link from "next/link";
 import { ArrowRight, Bell, ClipboardList, PackageSearch, ShoppingCart, TestTube2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ExecutiveCharts } from "@/components/dashboard/ExecutiveCharts";
-import { formatCompactCurrency, formatNumber } from "@/lib/formatters";
+import { formatCompactCurrency, formatDate, formatNumber } from "@/lib/formatters";
+import { HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { PageShell } from "@/components/app/PageShell";
 import { PageHeader } from "@/components/app/PageHeader";
 import { SectionCard } from "@/components/app/SectionCard";
@@ -97,16 +98,32 @@ function AcaoRapida({
 function JornadaCard({
   titulo,
   subtitulo,
+  ajuda,
   badge,
   passos,
 }: {
   titulo: string;
   subtitulo: string;
+  ajuda?: React.ReactNode;
   badge: React.ReactNode;
   passos: Array<{ titulo: string; desc: string; href: string }>;
 }) {
   return (
-    <SectionCard title={titulo} description={subtitulo} actions={badge} contentClassName="grid gap-2">
+    <SectionCard
+      title={
+        ajuda ? (
+          <span className="flex items-center gap-1">
+            {titulo}
+            <HelpTip title={titulo}>{ajuda}</HelpTip>
+          </span>
+        ) : (
+          titulo
+        )
+      }
+      description={subtitulo}
+      actions={badge}
+      contentClassName="grid gap-2"
+    >
       {passos.map((p, i) => (
         <Link
           key={p.href}
@@ -245,7 +262,22 @@ export default async function Home() {
     <PageShell>
       <PageHeader
         title="Painel de decisão operacional"
-        description="Orçamento, planejamento, estoque e compras no mesmo fluxo de decisão. Este painel mostra o que precisa de compra, aceite, baixa ou revisão antes de virar problema operacional."
+        description="O que precisa de compra, aceite, baixa ou revisão hoje."
+        help={
+          <HelpTip title="Painel de decisão">
+            <p>
+              Junta orçamento, planejamento, estoque e compras numa só tela, para que você veja o
+              que resolver antes que vire problema na bancada.
+            </p>
+            <HelpLegend
+              items={[
+                { tom: "critico", rotulo: "Crítico", texto: "vencido ou sem saldo disponível." },
+                { tom: "atencao", rotulo: "Atenção", texto: "abaixo do ponto de reposição ou vencendo." },
+                { tom: "info", rotulo: "Em andamento", texto: "compras abertas ou lotes em quarentena." },
+              ]}
+            />
+          </HelpTip>
+        }
         meta={<StatusBadge status={statusGeralTom} label={statusGeral} />}
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -283,12 +315,12 @@ export default async function Home() {
         />
       </section>
 
-      <section className="flex flex-wrap gap-3" aria-label="Acoes rapidas">
+      <section className="flex flex-wrap gap-3" aria-label="Ações rápidas">
         <AcaoRapida href="/orcamento/demandas/nova" titulo="Novo orçamento" desc="Montar análises e preço" icon={TestTube2} />
         <AcaoRapida href="/planejamento" titulo="Planejar campanha" desc="Reservas e consumo" icon={ClipboardList} />
         <AcaoRapida href="/estoque" titulo="Revisar estoque" desc="Saldos, lotes e validade" icon={PackageSearch} />
-        <AcaoRapida href="/compras" titulo="Abrir compras" desc="Reposicao e recebimento" icon={ShoppingCart} />
-        <AcaoRapida href="/notificacoes" titulo="Notificações" desc="Pendencias in-app" icon={Bell} />
+        <AcaoRapida href="/compras" titulo="Abrir compras" desc="Reposição e recebimento" icon={ShoppingCart} />
+        <AcaoRapida href="/notificacoes" titulo="Notificações" desc="Avisos não lidos" icon={Bell} />
       </section>
 
       <section aria-label="Indicadores de estoque" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -344,7 +376,7 @@ export default async function Home() {
           <StatCard
             label="Margem média"
             value={`${formatNumber(dashboard?.margem_media_pct)}%`}
-            detail="orçamentos com snapshot de preço"
+            detail="orçamentos com preço registrado"
           />
         </div>
         <div className="mt-4">
@@ -355,19 +387,31 @@ export default async function Home() {
       <section className="grid gap-4 lg:grid-cols-2" aria-label="Jornadas">
         <JornadaCard
           titulo="Orçamento"
-          subtitulo="Da solicitação do cliente ao preço final, com análises, custos diretos, overhead e fatores comerciais documentados."
+          subtitulo="Do pedido do cliente à proposta emitida."
+          ajuda={
+            <p>
+              O preço sai das análises escolhidas: custos diretos (reagentes, equipamento e pessoal),
+              overhead e fatores comerciais, tudo registrado na proposta.
+            </p>
+          }
           badge={<Badge variant="muted">{nAnalises ?? 0} análises ativas</Badge>}
           passos={[
-            { href: "/orcamento/demandas", titulo: "Demandas/Propostas", desc: "Registre a entrada comercial antes do orçamento formal." },
-            { href: "/orcamento", titulo: "Análises/Lab.", desc: "Monte demandas, vincule análises e calcule custos e preços." },
+            { href: "/orcamento/demandas", titulo: "Orçamentos em aberto", desc: "Registre o pedido do cliente e acompanhe os orçamentos não finalizados." },
+            { href: "/orcamento", titulo: "Painel de orçamentos", desc: "Veja o funil e os valores dos orçamentos." },
             { href: "/orcamento/projetos", titulo: "Projetos", desc: "Inclua rubricas, custos próprios e cronograma do projeto." },
             { href: "/analises", titulo: "Análises", desc: "Revise capacidade, tempos, equipamentos e materiais por protocolo." },
-            { href: "/orcamento/revisao", titulo: "Proposta final", desc: "Ajuste parâmetros econômicos e revise o dashboard antes da emissão." },
+            { href: "/orcamento/revisao", titulo: "Proposta final", desc: "Ajuste parâmetros econômicos e revise antes de emitir." },
           ]}
         />
         <JornadaCard
           titulo="Estoque"
-          subtitulo="Do planejamento à reposição: calcula demanda, reserva insumos, baixa por FEFO e aciona compras quando o saldo fica insuficiente."
+          subtitulo="Do planejamento à reposição."
+          ajuda={
+            <p>
+              O plano calcula quanto de cada insumo será usado, reserva os lotes, dá baixa pelo lote
+              que vence antes e gera pedido de compra quando o saldo não basta.
+            </p>
+          }
           badge={<StatusBadge status={statusGeralTom} label={statusGeral} />}
           passos={[
             { href: "/planejamento", titulo: "Planejamento", desc: "Calcule consumo por campanha e reserve material antes da execução." },
@@ -390,7 +434,7 @@ export default async function Home() {
           vazio="Nenhum lote vencido ou vencendo dentro da janela."
           itens={[...alertasVencidos, ...alertasSemValidade, ...alertasVencimento].slice(0, 5).map((a) => ({
             titulo: a.especificacao ?? `Insumo #${a.insumo_id}`,
-            meta: `${a.tipo === "vencido" ? "vencido" : a.tipo === "sem_validade" ? "sem validade cadastrada" : "vence em breve"}${a.validade ? ` · ${a.validade}` : ""} · saldo ${formatNumber(a.valor)}`,
+            meta: `${a.tipo === "vencido" ? "vencido" : a.tipo === "sem_validade" ? "sem validade cadastrada" : "vence em breve"}${a.validade ? ` · ${formatDate(a.validade)}` : ""} · saldo ${formatNumber(a.valor)}`,
           }))}
         />
         <ListaProblemas
@@ -399,7 +443,7 @@ export default async function Home() {
           vazio="Nenhum pedido aberto no ciclo de compras."
           itens={pedidos.slice(0, 5).map((p) => ({
             titulo: `Pedido #${p.id}`,
-            meta: `${p.status}${p.data_solicitacao ? ` · ${p.data_solicitacao}` : ""}${p.projeto ? ` · ${p.projeto}` : ""}`,
+            meta: `${p.status}${p.data_solicitacao ? ` · ${formatDate(p.data_solicitacao)}` : ""}${p.projeto ? ` · ${p.projeto}` : ""}`,
           }))}
         />
         <ListaProblemas
@@ -414,15 +458,25 @@ export default async function Home() {
       </section>
 
       <SectionCard
-        title="Base de controle"
-        description="Cadastros, permissões e auditoria sustentam os dois fluxos: sem isso, custo, estoque e compra perdem rastreabilidade."
+        title={
+          <span className="flex items-center gap-1">
+            Base de controle
+            <HelpTip title="Base de controle">
+              <p>
+                Cadastros, permissões e auditoria sustentam orçamento e estoque. Sem eles, custo,
+                saldo e compra perdem a rastreabilidade.
+              </p>
+            </HelpTip>
+          </span>
+        }
+        description="Cadastros, qualidade dos dados, auditoria e usuários."
         actions={<Badge variant="muted">governança</Badge>}
         contentClassName="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
       >
         {[
           ["Cadastros", "/cadastros", "Insumos, equipamentos, técnicos, fornecedores, locais e parâmetros."],
-          ["Qualidade", "/cadastros/qualidade", "Pendências de receita, custo, unidade, lote, fornecedor e oferta antes da operação."],
-          ["Auditoria", "/auditoria", "Trilha de alterações para saldo, lote, compra, orçamento e cadastros."],
+          ["Qualidade", "/cadastros/qualidade", "O que falta nos cadastros e distorce custo ou compra."],
+          ["Auditoria", "/auditoria", "Quem alterou o quê, e quando."],
           ["Usuários", "/usuarios", "Papéis de técnico, coordenador, gestor e administrador."],
         ].map(([titulo, href, desc]) => (
           <Link

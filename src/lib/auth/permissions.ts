@@ -40,6 +40,7 @@ export type PermissaoUsuario =
   | "projetos.ver"
   | "projetos.editar"
   | "cadastros.ver"
+  | "tecnicos.remuneracao.ver"
   | "backups.gerenciar"
   | "privilegios.gerenciar"
   | "configuracoes.ver";
@@ -266,6 +267,12 @@ export const PERMISSOES: Array<{
     descricao: "Manter clientes, insumos e parâmetros mestres.",
   },
   {
+    key: "tecnicos.remuneracao.ver",
+    modulo: "Cadastros",
+    label: "Ver remuneração da equipe",
+    descricao: "Ver salário e custo-hora de cada técnico. Sem ela, o valor aparece mascarado.",
+  },
+  {
     key: "auditoria.visualizar",
     modulo: "Governança",
     label: "Ver auditoria",
@@ -375,6 +382,7 @@ const DEFAULT_PERMISSIONS_BY_ROLE: Record<PapelUsuario, PermissaoUsuario[]> = {
     "projetos.editar",
     "cadastros.ver",
     "cadastros.editar",
+    "tecnicos.remuneracao.ver",
     "auditoria.visualizar",
     "configuracoes.ver",
   ],

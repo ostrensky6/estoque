@@ -29,10 +29,11 @@ export async function carregarTecnicos(
   const { data, error } = await supabase.rpc("listar_tecnicos");
   if (!error) {
     return {
-      rows: ((data ?? []) as Linha[]).map(({ remuneracao_visivel: _visivel, ...linha }) => ({
-        ...linha,
-        valor_mes: null,
-      })),
+      rows: ((data ?? []) as Linha[]).map((linha) => {
+        const copia: Linha = { ...linha, valor_mes: null };
+        delete copia.remuneracao_visivel;
+        return copia;
+      }),
       remuneracaoVisivel: false,
     };
   }
