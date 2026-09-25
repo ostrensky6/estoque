@@ -21,6 +21,7 @@ export type ComboOption = { value: string; label: string; hint?: string };
  * Com `creatable`, permite escolher um valor novo digitado (ex.: grupo_escolha).
  */
 export function Combobox({
+  id,
   name,
   options,
   defaultValue = "",
@@ -30,6 +31,8 @@ export function Combobox({
   creatable = false,
   className,
 }: {
+  /** id do botão, para `<label htmlFor>`. */
+  id?: string;
   name: string;
   options: ComboOption[];
   defaultValue?: string;
@@ -64,6 +67,7 @@ export function Combobox({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
+            id={id}
             type="button"
             aria-haspopup="listbox"
             aria-expanded={open}
