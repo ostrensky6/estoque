@@ -14,7 +14,7 @@ function mensagemTriagem(status?: string) {
     return "Triagem registrada como pendente.";
   }
   if (status === "existente") {
-    return "Ja existe uma triagem pendente para este codigo.";
+    return "Já existe uma triagem pendente para este código.";
   }
   return null;
 }

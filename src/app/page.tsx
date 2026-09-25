@@ -2,7 +2,10 @@ import Link from "next/link";
 import { ArrowRight, Bell, ClipboardList, PackageSearch, ShoppingCart, TestTube2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ExecutiveCharts } from "@/components/dashboard/ExecutiveCharts";
-import { formatCompactCurrency, formatNumber } from "@/lib/formatters";
+import { formatCompactCurrency, formatDate, formatNumber } from "@/lib/formatters";
+import { papelAtual } from "@/lib/auth/roles";
+import { permiteMinRole, type Role } from "@/config/modules";
+import { statusInfo } from "@/components/app/status";
 import { PageShell } from "@/components/app/PageShell";
 import { PageHeader } from "@/components/app/PageHeader";
 import { SectionCard } from "@/components/app/SectionCard";
@@ -143,8 +146,8 @@ function ListaProblemas({
     <SectionCard
       title={titulo}
       actions={
-        <Link href={href} className="text-xs font-semibold text-primary hover:underline">
-          abrir
+        <Link href={href} aria-label={`Ver todos: ${titulo}`} className="text-xs font-semibold text-primary hover:underline">
+          Ver todos
         </Link>
       }
       contentClassName="p-3 sm:p-3"
@@ -169,6 +172,7 @@ function ListaProblemas({
 
 export default async function Home() {
   const supabase = await createClient();
+  const papelPromise = papelAtual();
   const [
     { count: nAnalises },
     { data: alertasRaw },
@@ -196,6 +200,7 @@ export default async function Home() {
       .limit(5),
   ]);
 
+  const papel = await papelPromise;
   const alertas = (alertasRaw ?? []) as AlertaEstoque[];
   const saldo = (saldoRaw ?? []) as EstoqueSaldo[];
   const pedidos = (pedidosRaw ?? []) as PedidoCompra[];
@@ -236,9 +241,9 @@ export default async function Home() {
         : "ativo";
   const statusGeral =
     alertas.length > 0
-      ? `${alertas.length} alertas ativos`
+      ? `${alertas.length} ${alertas.length === 1 ? "alerta ativo" : "alertas ativos"}`
       : pedidos.length > 0
-        ? `${pedidos.length} compras em andamento`
+        ? `${pedidos.length} ${pedidos.length === 1 ? "compra em andamento" : "compras em andamento"}`
         : "estoque sem alertas";
 
   return (
@@ -283,12 +288,12 @@ export default async function Home() {
         />
       </section>
 
-      <section className="flex flex-wrap gap-3" aria-label="Acoes rapidas">
+      <section className="flex flex-wrap gap-3" aria-label="Ações rápidas">
         <AcaoRapida href="/orcamento/demandas/nova" titulo="Novo orçamento" desc="Montar análises e preço" icon={TestTube2} />
         <AcaoRapida href="/planejamento" titulo="Planejar campanha" desc="Reservas e consumo" icon={ClipboardList} />
         <AcaoRapida href="/estoque" titulo="Revisar estoque" desc="Saldos, lotes e validade" icon={PackageSearch} />
-        <AcaoRapida href="/compras" titulo="Abrir compras" desc="Reposicao e recebimento" icon={ShoppingCart} />
-        <AcaoRapida href="/notificacoes" titulo="Notificações" desc="Pendencias in-app" icon={Bell} />
+        <AcaoRapida href="/compras" titulo="Abrir compras" desc="Reposição e recebimento" icon={ShoppingCart} />
+        <AcaoRapida href="/notificacoes" titulo="Notificações" desc="Pendências" icon={Bell} />
       </section>
 
       <section aria-label="Indicadores de estoque" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -358,11 +363,10 @@ export default async function Home() {
           subtitulo="Da solicitação do cliente ao preço final, com análises, custos diretos, overhead e fatores comerciais documentados."
           badge={<Badge variant="muted">{nAnalises ?? 0} análises ativas</Badge>}
           passos={[
-            { href: "/orcamento/demandas", titulo: "Demandas/Propostas", desc: "Registre a entrada comercial antes do orçamento formal." },
-            { href: "/orcamento", titulo: "Análises/Lab.", desc: "Monte demandas, vincule análises e calcule custos e preços." },
-            { href: "/orcamento/projetos", titulo: "Projetos", desc: "Inclua rubricas, custos próprios e cronograma do projeto." },
+            { href: "/orcamento/demandas/nova", titulo: "Novo orçamento", desc: "Cliente, amostras e análises em um só formulário." },
+            { href: "/orcamento/demandas", titulo: "Orçamentos em andamento", desc: "Custos, revisão e emissão da proposta final." },
             { href: "/analises", titulo: "Análises", desc: "Revise capacidade, tempos, equipamentos e materiais por protocolo." },
-            { href: "/orcamento/revisao", titulo: "Proposta final", desc: "Ajuste parâmetros econômicos e revise o dashboard antes da emissão." },
+            { href: "/orcamento/historico", titulo: "Histórico", desc: "Propostas emitidas, aprovadas ou encerradas." },
           ]}
         />
         <JornadaCard
@@ -390,7 +394,7 @@ export default async function Home() {
           vazio="Nenhum lote vencido ou vencendo dentro da janela."
           itens={[...alertasVencidos, ...alertasSemValidade, ...alertasVencimento].slice(0, 5).map((a) => ({
             titulo: a.especificacao ?? `Insumo #${a.insumo_id}`,
-            meta: `${a.tipo === "vencido" ? "vencido" : a.tipo === "sem_validade" ? "sem validade cadastrada" : "vence em breve"}${a.validade ? ` · ${a.validade}` : ""} · saldo ${formatNumber(a.valor)}`,
+            meta: `${a.tipo === "vencido" ? "vencido" : a.tipo === "sem_validade" ? "sem validade cadastrada" : "vence em breve"}${a.validade ? ` · ${formatDate(a.validade)}` : ""} · saldo ${formatNumber(a.valor)}`,
           }))}
         />
         <ListaProblemas
@@ -399,7 +403,7 @@ export default async function Home() {
           vazio="Nenhum pedido aberto no ciclo de compras."
           itens={pedidos.slice(0, 5).map((p) => ({
             titulo: `Pedido #${p.id}`,
-            meta: `${p.status}${p.data_solicitacao ? ` · ${p.data_solicitacao}` : ""}${p.projeto ? ` · ${p.projeto}` : ""}`,
+            meta: `${statusInfo(p.status).label}${p.data_solicitacao ? ` · ${formatDate(p.data_solicitacao)}` : ""}${p.projeto ? ` · ${p.projeto}` : ""}`,
           }))}
         />
         <ListaProblemas
@@ -419,12 +423,16 @@ export default async function Home() {
         actions={<Badge variant="muted">governança</Badge>}
         contentClassName="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
       >
-        {[
-          ["Cadastros", "/cadastros", "Insumos, equipamentos, técnicos, fornecedores, locais e parâmetros."],
-          ["Qualidade", "/cadastros/qualidade", "Pendências de receita, custo, unidade, lote, fornecedor e oferta antes da operação."],
-          ["Auditoria", "/auditoria", "Trilha de alterações para saldo, lote, compra, orçamento e cadastros."],
-          ["Usuários", "/usuarios", "Papéis de técnico, coordenador, gestor e administrador."],
-        ].map(([titulo, href, desc]) => (
+        {(
+          [
+            ["Cadastros", "/cadastros", "Insumos, equipamentos, técnicos, fornecedores, locais e parâmetros."],
+            ["Qualidade", "/cadastros/qualidade", "Pendências de receita, custo, unidade, lote, fornecedor e oferta antes da operação."],
+            ["Auditoria", "/auditoria", "Trilha de alterações para saldo, lote, compra, orçamento e cadastros.", "gestor"],
+            ["Usuários", "/usuarios", "Papéis de técnico, coordenador, gestor e administrador.", "admin"],
+          ] as Array<[string, string, string, Role?]>
+        )
+          .filter(([, , , minRole]) => permiteMinRole({ papel }, minRole))
+          .map(([titulo, href, desc]) => (
           <Link
             key={href}
             href={href}

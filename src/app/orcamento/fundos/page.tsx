@@ -313,8 +313,8 @@ export default async function FundosPage() {
                 ))}
                 {linhas.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="px-3 py-6 text-center text-sm text-muted-foreground/80">
-                      Nenhum orçamento aprovado para acompanhar. Classifique uma versão final como Aprovado no Histórico de orçamentos.
+                    <td colSpan={11} className="px-3 py-6 text-left text-sm text-muted-foreground/80">
+                      <p className="sticky left-3 inline-block max-w-md">Nenhum orçamento aprovado para acompanhar. Classifique uma versão final como Aprovado no Histórico de orçamentos.</p>
                     </td>
                   </tr>
                 )}

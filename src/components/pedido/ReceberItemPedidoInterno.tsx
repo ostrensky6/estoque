@@ -97,7 +97,7 @@ export function ReceberItemPedidoInterno({
   function resolverScanner(codigo: string) {
     const codigoLimpo = codigo.trim();
     if (!codigoLimpo) {
-      setResultadoScanner({ ok: false, message: "Informe um codigo para resolver." });
+      setResultadoScanner({ ok: false, message: "Informe um código para resolver." });
       return;
     }
 
@@ -126,7 +126,7 @@ export function ReceberItemPedidoInterno({
       setCameraMessage(
         error instanceof Error
           ? error.message
-          : "Nao foi possivel acessar a camera. Use a entrada manual.",
+          : "Não foi possível acessar a câmera. Use a entrada manual.",
       );
     }
   }
@@ -184,10 +184,10 @@ export function ReceberItemPedidoInterno({
                 </h4>
                 <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
                   {cameraStatus === "ativa"
-                    ? "Camera ativa"
+                    ? "Câmera ativa"
                     : cameraStatus === "iniciando"
-                      ? "Iniciando camera"
-                      : "Manual disponivel"}
+                      ? "Iniciando câmera"
+                      : "Manual disponível"}
                 </span>
               </div>
 
@@ -233,7 +233,7 @@ export function ReceberItemPedidoInterno({
                     value={codigoScanner}
                     onChange={(event) => setCodigoScanner(event.target.value)}
                     className={`${scanInput} pl-8`}
-                    placeholder="KONTROL:INS:123, /s/lote/123 ou codigo do fornecedor"
+                    placeholder="KONTROL:INS:123, /s/lote/123 ou código do fornecedor"
                   />
                 </div>
                 <button

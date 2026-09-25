@@ -124,8 +124,8 @@ function CollapsedSidebar({
       <Link
         href="/"
         className="flex h-14 w-full items-center justify-center border-b border-border/70"
-        title="Inicio"
-        aria-label="Inicio"
+        title="Início"
+        aria-label="Início"
       >
         <span className="h-9 w-9 overflow-hidden">
           <KontrolLogo

@@ -92,7 +92,6 @@ export const APP_MODULES: AppModule[] = [
         label: "Insumos por análise",
         desc: "reagentes, controles e perdas",
         icon: "TestTube2",
-        showInTopNav: false,
       },
       {
         href: "/custeio",
@@ -100,7 +99,6 @@ export const APP_MODULES: AppModule[] = [
         desc: "custo técnico, overhead e preço base",
         icon: "Calculator",
         shortcut: "C",
-        showInTopNav: false,
       },
     ],
   },
@@ -178,18 +176,12 @@ export const APP_MODULES: AppModule[] = [
   {
     id: "orcamentos",
     label: "Orçamentos",
-    href: "/orcamento",
+    href: "/orcamento/demandas",
     desc: "propostas, parâmetros e histórico",
     icon: "FileText",
     accent: "amber",
     activePaths: ["/orcamento"],
     children: [
-      {
-        href: "/orcamento",
-        label: "Dashboard",
-        desc: "dashboard consolidado e funil de orçamentos",
-        icon: "LayoutGrid",
-      },
       {
         href: "/orcamento/demandas",
         label: "Orçamentos não finalizados",
@@ -310,6 +302,20 @@ export function getModulesForProfile(perfil: NavigationProfile) {
 
 export function getModuleForProfile(moduleId: AppModuleId, perfil: NavigationProfile) {
   return getModulesForProfile(perfil).find((module) => module.id === moduleId) ?? null;
+}
+
+/**
+ * Aba ativa da barra do módulo: o item cujo href é o prefixo mais longo da rota
+ * atual. Evita duas abas ativas quando um href é prefixo de outro
+ * (ex.: /estoque e /estoque/controle).
+ */
+export function hrefAtivoNaBarra(items: Pick<ModuleChild, "href">[], pathname: string) {
+  let melhor: string | null = null;
+  for (const { href } of items) {
+    const casa = pathname === href || pathname.startsWith(href + "/");
+    if (casa && (melhor === null || href.length > melhor.length)) melhor = href;
+  }
+  return melhor;
 }
 
 export function moduleIsActive(module: Pick<AppModule, "activePaths">, pathname: string) {

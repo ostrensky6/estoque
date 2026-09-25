@@ -77,7 +77,7 @@ export function RecalcularOrcamentoForm({
         }}
         className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-muted"
       >
-        Aplicar e recalcular
+        Recalcular preços
       </button>
 
       {aberto && (
@@ -164,7 +164,7 @@ export function RecalcularOrcamentoForm({
                   disabled={pending}
                   className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
                 >
-                  {pending ? "Recalculando…" : "Aplicar e recalcular"}
+                  {pending ? "Recalculando…" : "Recalcular"}
                 </button>
               </div>
             </form>

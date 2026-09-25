@@ -136,7 +136,7 @@ export function TriagemResolucaoCard({
             Criar novo insumo
           </h2>
           <label className="grid gap-1 text-sm">
-            <span className="font-medium text-foreground">Especificacao</span>
+            <span className="font-medium text-foreground">Especificação</span>
             <input
               name="especificacao"
               className="h-9 rounded-md border border-border bg-card px-2 text-sm"

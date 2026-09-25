@@ -16,7 +16,7 @@ function statusMessage(status?: string) {
     case "resolvido":
       return "Triagem resolvida e identificador vinculado.";
     case "insumo_criado":
-      return "Insumo criado por transacao e identificador vinculado.";
+      return "Insumo criado por transação e identificador vinculado.";
     case "arquivado":
       return "Triagem arquivada.";
     default:

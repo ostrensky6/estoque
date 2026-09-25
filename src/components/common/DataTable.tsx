@@ -161,6 +161,7 @@ export function DataTable<TData>({
   });
 
   const totalFiltrado = table.getFilteredRowModel().rows.length;
+  const semLinhas = table.getRowModel().rows.length === 0;
   const temFiltro = globalFilter !== "" || columnFilters.length > 0;
   const { pageIndex } = table.getState().pagination;
   const pageCount = table.getPageCount();
@@ -225,7 +226,12 @@ export function DataTable<TData>({
         </Button>
       </div>
 
-      <div className="mt-4 hidden overflow-x-auto rounded-lg border border-border bg-card shadow-sm md:block">
+      <div
+        className={cn(
+          "mt-4 hidden overflow-x-auto border border-border bg-card shadow-sm md:block",
+          semLinhas ? "rounded-t-lg border-b-0" : "rounded-lg",
+        )}
+      >
         <Table className={cn(compact && "text-xs")}>
           <TableHeader className="bg-muted/60">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -295,26 +301,22 @@ export function DataTable<TData>({
                 })}
               </TableRow>
             ))}
-            {table.getRowModel().rows.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="py-6 text-center text-muted-foreground"
-                >
-                  <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      <Search className="h-4 w-4" aria-hidden="true" />
-                    </div>
-                    <p className="font-medium text-foreground">{emptyTitle}</p>
-                    <p className="text-sm">{emptyText}</p>
-                    {emptyAction}
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
           </TableBody>
         </Table>
       </div>
+      {/* Fora da área rolável: em tabelas largas a mensagem centralizada ficava cortada. */}
+      {semLinhas && (
+        <div className="hidden rounded-b-lg border border-t-0 border-border bg-card px-4 py-6 text-center text-muted-foreground shadow-sm md:block">
+          <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <Search className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <p className="font-medium text-foreground">{emptyTitle}</p>
+            <p className="text-sm">{emptyText}</p>
+            {emptyAction}
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 grid gap-3 md:hidden">
         {table.getRowModel().rows.map((row) => (

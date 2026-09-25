@@ -65,7 +65,7 @@ type StatusLogEquipamento = {
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   operacional: { label: "Operacional", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
-  em_manutencao: { label: "Em manutencao", cls: "bg-warning-soft text-warning-strong" },
+  em_manutencao: { label: "Em manutenção", cls: "bg-warning-soft text-warning-strong" },
   calibracao_pendente: { label: "Calibracao pendente", cls: "bg-info-soft text-info-strong" },
   calibracao_vencida: { label: "Calibracao vencida", cls: "bg-danger-soft text-danger-strong" },
   reservado: { label: "Reservado", cls: "bg-muted text-foreground" },

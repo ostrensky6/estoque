@@ -68,7 +68,7 @@ export function ScannerModal() {
       setCameraMessage(
         error instanceof Error
           ? error.message
-          : "Nao foi possivel acessar a camera. Use a entrada manual.",
+          : "Não foi possível acessar a câmera. Use a entrada manual.",
       );
     }
   }
@@ -89,7 +89,7 @@ export function ScannerModal() {
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Escanear codigo</DialogTitle>
+            <DialogTitle>Escanear código</DialogTitle>
             <DialogDescription>
               Leia um QR interno do Kontrol ou cole um codigo manualmente.
             </DialogDescription>
@@ -129,10 +129,10 @@ export function ScannerModal() {
               </Button>
               <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                 {cameraStatus === "ativa"
-                  ? "Camera ativa"
+                  ? "Câmera ativa"
                   : cameraStatus === "iniciando"
-                    ? "Iniciando camera"
-                    : "Entrada manual disponivel"}
+                    ? "Iniciando câmera"
+                    : "Entrada manual disponível"}
               </span>
             </div>
 

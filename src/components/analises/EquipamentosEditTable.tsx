@@ -73,10 +73,10 @@ export function EquipamentosEditTable({
                 <th className={th}>Peso</th>
                 <th className={th}>Qtd.</th>
                 <th className={th}>Custo unit.</th>
-                <th className={th}>Vida util</th>
-                <th className={th}>Manutencao</th>
-                <th className={th}>Disponivel</th>
-                <th className={th}>Acoes</th>
+                <th className={th}>Vida útil</th>
+                <th className={th}>Manutenção</th>
+                <th className={th}>Disponível</th>
+                <th className={th}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -147,7 +147,7 @@ function EquipamentoRow({
       </td>
       <td className={td}>{equipamento.vida_util_anos ? `${fmt(equipamento.vida_util_anos)} anos` : "-"}</td>
       <td className={td}>{manutencao}</td>
-      <td className={td}>{equipamento.possui ? "Sim" : "Nao informado"}</td>
+      <td className={td}>{equipamento.possui ? "Sim" : "Não informado"}</td>
       <td className={`${td} whitespace-nowrap`}>
         <div className="flex justify-center gap-1">
           {!editing ? (

@@ -109,7 +109,7 @@ export function SideNav({
 
   if (collapsed) {
     return (
-      <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Navegacao compacta">
+      <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Navegação compacta">
         <ul className="space-y-1">
           {groups.map((g) => {
             const ativo = grupoAtivo(g);
@@ -146,7 +146,7 @@ export function SideNav({
   }
 
   return (
-    <nav className="flex-1 overflow-y-auto px-3 py-3" aria-label="Navegacao principal">
+    <nav className="flex-1 overflow-y-auto px-3 py-3" aria-label="Navegação principal">
       {groups.map((g) => {
         const GrupoIcone = g.icon ? NAV_ICONS[g.icon] : Activity;
         const temLinkAtivo = grupoAtivo(g);

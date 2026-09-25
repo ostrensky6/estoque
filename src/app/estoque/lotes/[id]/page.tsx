@@ -75,7 +75,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
 
   const codigoEtiqueta = lote.codigo_lote || `LOTE-${lote.id}`;
   const qrUrl = gerarUrlCurtaKontrol("lote", lote.id as number);
-  const nomeCurto = ins?.especificacao ?? ins?.nome_item ?? "Lote sem descricao";
+  const nomeCurto = ins?.especificacao ?? ins?.nome_item ?? "Lote sem descrição";
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
@@ -116,7 +116,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
                   <dd className="font-mono text-foreground">{lote.id}</dd>
                 </div>
                 <div>
-                  <dt className="uppercase tracking-wide text-muted-foreground/80">Codigo do lote</dt>
+                  <dt className="uppercase tracking-wide text-muted-foreground/80">Código do lote</dt>
                   <dd className="font-mono text-foreground">{codigoEtiqueta}</dd>
                 </div>
                 <div>

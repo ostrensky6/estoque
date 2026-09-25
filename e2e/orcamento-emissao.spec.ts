@@ -13,6 +13,9 @@ test("emissão configurada salva proposta final no histórico", async ({ page })
   const emitir = page.getByRole("button", { name: "Emitir versão final" });
   await expect(emitir).toBeEnabled();
   await emitir.click();
+  const confirmacao = page.getByRole("dialog", { name: "Emitir versão final?" });
+  await expect(confirmacao).toBeVisible();
+  await confirmacao.getByRole("button", { name: "Emitir", exact: true }).click();
 
   await expect(page).toHaveURL(/\/orcamento\/demandas\/1\?etapa=final/);
   await expect(page.getByRole("link", { name: /Abrir versão emitida \(OF-2026-0001-v\d+\)/ })).toBeVisible();

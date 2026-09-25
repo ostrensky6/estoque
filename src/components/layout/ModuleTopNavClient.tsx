@@ -5,13 +5,8 @@ import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { NAV_ICONS } from "@/components/layout/SideNav";
-import type { AppModule, ModuleChild } from "@/config/modules";
+import { hrefAtivoNaBarra, type AppModule, type ModuleChild } from "@/config/modules";
 import { cn } from "@/lib/utils";
-
-function childIsActive(child: ModuleChild, pathname: string, exactActiveHref?: string) {
-  if (exactActiveHref) return child.href === exactActiveHref;
-  return pathname === child.href || pathname.startsWith(child.href + "/");
-}
 
 export function ModuleTopNavClient({
   appModule,
@@ -21,16 +16,16 @@ export function ModuleTopNavClient({
   items: ModuleChild[];
 }) {
   const pathname = usePathname();
-  const exactActiveHref = items.find((child) => child.href === pathname)?.href;
+  const hrefAtivo = hrefAtivoNaBarra(items, pathname);
 
   return (
     <nav
-      aria-label={`Navegacao de ${appModule.label}`}
+      aria-label={`Navegação de ${appModule.label}`}
       className="border-b border-border bg-card/90 py-2 backdrop-blur"
     >
       <div className="app-topnav-container flex gap-2 overflow-x-auto">
         {items.map((child) => {
-          const ativo = childIsActive(child, pathname, exactActiveHref);
+          const ativo = child.href === hrefAtivo;
           const Icon = child.icon ? NAV_ICONS[child.icon] : undefined;
           return (
             <Button

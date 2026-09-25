@@ -4,10 +4,24 @@ import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { aprovarPedido, marcarEnviado, cancelarPedido } from "@/lib/actions/compras";
 import type { FormState } from "@/lib/actions/cadastros";
+import { ConfirmSubmitButton } from "@/components/common/ConfirmSubmitButton";
 
 type Action = (prev: FormState, fd: FormData) => Promise<FormState>;
+type Confirmacao = { titulo: string; mensagem: string; confirmLabel: string };
 
-function Botao({ pedidoId, action, label, cls }: { pedidoId: number; action: Action; label: string; cls: string }) {
+function Botao({
+  pedidoId,
+  action,
+  label,
+  cls,
+  confirmacao,
+}: {
+  pedidoId: number;
+  action: Action;
+  label: string;
+  cls: string;
+  confirmacao?: Confirmacao;
+}) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, { ok: false });
   useEffect(() => {
@@ -17,12 +31,21 @@ function Botao({ pedidoId, action, label, cls }: { pedidoId: number; action: Act
     <div className="flex flex-col gap-1">
       <form action={formAction}>
         <input type="hidden" name="pedido_id" value={pedidoId} />
-        <button disabled={pending} className={cls}>
-          {pending ? "…" : label}
-        </button>
+        {confirmacao ? (
+          <ConfirmSubmitButton className={cls} destrutivo {...confirmacao}>
+            {label}
+          </ConfirmSubmitButton>
+        ) : (
+          <button disabled={pending} className={cls}>
+            {pending ? "…" : label}
+          </button>
+        )}
       </form>
       {state.message && (
-        <p className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-400" : "text-danger-strong"}`}>
+        <p
+          role={state.ok ? "status" : "alert"}
+          className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-400" : "text-danger-strong"}`}
+        >
           {state.message}
         </p>
       )}
@@ -58,7 +81,12 @@ export function PedidoAcoes({
           cls="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50" />
       )}
       <Botao pedidoId={pedidoId} action={cancelarPedido} label="Cancelar pedido"
-        cls="rounded-md border border-input px-4 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50" />
+        cls="rounded-md border border-input px-4 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
+        confirmacao={{
+          titulo: `Cancelar o pedido #${pedidoId}?`,
+          mensagem: "O pedido sai do ciclo de compras e não pode ser reaberto. O histórico é preservado.",
+          confirmLabel: "Cancelar pedido",
+        }} />
     </div>
   );
 }

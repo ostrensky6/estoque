@@ -369,8 +369,8 @@ export default async function HistoricoOrcamentosPage({
               })}
               {versoes.length === 0 && (
                 <tr>
-                  <td colSpan={18} className="px-3 py-6 text-center text-muted-foreground/80">
-                    Nenhuma versão final encontrada para os filtros atuais.
+                  <td colSpan={18} className="px-3 py-6 text-left text-muted-foreground/80">
+                    <p className="sticky left-3 inline-block">Nenhuma versão final encontrada para os filtros atuais.</p>
                   </td>
                 </tr>
               )}

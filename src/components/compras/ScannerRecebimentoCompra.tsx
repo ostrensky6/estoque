@@ -77,7 +77,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
 
     if (item.insumoId && resultado.insumoId !== item.insumoId) {
       setAplicacaoMessage(
-        `Codigo aponta para o insumo #${resultado.insumoId}, mas este item do pedido e do insumo #${item.insumoId}.`,
+        `Código aponta para o insumo #${resultado.insumoId}, mas este item do pedido é do insumo #${item.insumoId}.`,
       );
       return;
     }
@@ -85,17 +85,17 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
     if (resultado.tipo === "lote") {
       if (resultado.loteCodigo) setCodigoLote(resultado.loteCodigo);
       if (resultado.validade) setValidade(resultado.validade);
-      setAplicacaoMessage("Lote compativel identificado. Confira os campos antes de confirmar.");
+      setAplicacaoMessage("Lote compatível identificado. Confira os campos antes de confirmar.");
       return;
     }
 
-    setAplicacaoMessage("Insumo compativel identificado. Confira quantidade, validade e codigo do lote.");
+    setAplicacaoMessage("Insumo compatível identificado. Confira quantidade, validade e código do lote.");
   }
 
   function resolverScanner(codigo: string) {
     const codigoLimpo = codigo.trim();
     if (!codigoLimpo) {
-      setResultadoScanner({ ok: false, message: "Informe um codigo para resolver." });
+      setResultadoScanner({ ok: false, message: "Informe um código para resolver." });
       return;
     }
 
@@ -124,7 +124,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
       setCameraMessage(
         error instanceof Error
           ? error.message
-          : "Nao foi possivel acessar a camera. Use a entrada manual.",
+          : "Não foi possível acessar a câmera. Use a entrada manual.",
       );
     }
   }
@@ -139,7 +139,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
         setAberto(false);
         router.refresh();
       } catch (error) {
-        setErroRecebimento(error instanceof Error ? error.message : "Nao foi possivel receber o item.");
+        setErroRecebimento(error instanceof Error ? error.message : "Não foi possível receber o item.");
       }
     });
   }
@@ -186,10 +186,10 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                 </h4>
                 <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
                   {cameraStatus === "ativa"
-                    ? "Camera ativa"
+                    ? "Câmera ativa"
                     : cameraStatus === "iniciando"
-                      ? "Iniciando camera"
-                      : "Manual disponivel"}
+                      ? "Iniciando câmera"
+                      : "Manual disponível"}
                 </span>
               </div>
 
@@ -235,7 +235,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                     value={codigoScanner}
                     onChange={(event) => setCodigoScanner(event.target.value)}
                     className={`${scanInput} pl-8`}
-                    placeholder="KONTROL:INS:123, /s/lote/123 ou codigo do fornecedor"
+                    placeholder="KONTROL:INS:123, /s/lote/123 ou código do fornecedor"
                   />
                 </div>
                 <button
@@ -252,7 +252,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
               {resultadoScanner && (
                 <div
                   className={`mt-3 rounded-md px-3 py-2 text-xs ${
-                    resultadoScanner.ok && resultadoScanner.encontrado && !aplicacaoMessage?.startsWith("Codigo aponta")
+                    resultadoScanner.ok && resultadoScanner.encontrado && !aplicacaoMessage?.startsWith("Código aponta")
                       ? "bg-brand-50 text-brand-800 dark:bg-brand-950/30 dark:text-brand-300"
                       : "bg-warning-soft text-warning-strong"
                   }`}
@@ -300,7 +300,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                 />
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-muted-foreground">Codigo do lote</label>
+                <label className="block text-xs font-medium text-muted-foreground">Código do lote</label>
                 <input
                   name="codigo"
                   type="text"

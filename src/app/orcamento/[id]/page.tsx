@@ -8,6 +8,7 @@ import { PrintButton } from "@/components/orcamento/PrintButton";
 import { FluxoProposta } from "@/components/orcamento/FluxoProposta";
 import { RecalcularOrcamentoForm } from "@/components/orcamento/RecalcularOrcamentoForm";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
+import { ConfirmSubmitButton } from "@/components/common/ConfirmSubmitButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import {
   salvarCabecalho,
@@ -652,12 +653,17 @@ export default async function OrcamentoDetalhe({
                 </select>
               </div>
               <div className="flex items-end">
-                <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
+                <ConfirmSubmitButton
+                  className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500"
+                  titulo="Marcar custos como revisados?"
+                  mensagem="Os custos laboratoriais ficam congelados para a proposta final. Depois disso, a edição direta fica bloqueada."
+                  confirmLabel="Marcar revisado"
+                >
                   Marcar revisado
-                </button>
+                </ConfirmSubmitButton>
               </div>
               <p className="sm:col-span-3 text-xs leading-5 text-muted-foreground">
-                Esta ação preserva o snapshot laboratorial e transforma o módulo em revisado; depois disso, a edição direta fica bloqueada.
+                Depois de revisado, a edição direta fica bloqueada.
               </p>
             </form>
           )}
@@ -666,7 +672,7 @@ export default async function OrcamentoDetalhe({
         <section id="historico-laboratorio" className="no-print mt-6 scroll-mt-24 rounded-xl border border-border bg-card p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Linha do tempo</h2>
           <p className="mt-1 mb-3 text-xs text-muted-foreground">
-            Transições de status registradas (salve mudando o status acima para gerar eventos).
+            Mudanças de status aparecem aqui.
           </p>
           <Timeline eventos={eventos} />
         </section>

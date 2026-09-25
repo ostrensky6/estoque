@@ -15,7 +15,9 @@ import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal } from "@/lib/orcamento/orcamento-final";
 import { PainelParametrosEconomicos } from "@/components/orcamento/PainelParametrosEconomicos";
 import { SalvarDemandaForm } from "@/components/orcamento/SalvarDemandaForm";
-import { formatCurrency as brl, formatDateTime } from "@/lib/formatters";
+import { ConfirmSubmitButton } from "@/components/common/ConfirmSubmitButton";
+import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
+import { statusInfo } from "@/components/app/status";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
 import { montarEtapasProposta, ORDEM_ETAPAS, type EtapaId } from "@/lib/orcamento/etapas-proposta";
 import {
@@ -279,7 +281,7 @@ export default async function DemandaDetalhe({
       etapa: "Demanda",
       obrigatoria: true,
       status: completudeDemanda.completa ? "Completo" : "Pendente",
-      pendencia: completudeDemanda.completa ? "concluida" : completudeDemanda.pendencias.join("; "),
+      pendencia: completudeDemanda.completa ? "Concluída" : completudeDemanda.pendencias.join("; "),
       acao: `/orcamento/demandas/${demandaId}?etapa=demanda`,
     },
     {
@@ -307,7 +309,7 @@ export default async function DemandaDetalhe({
       etapa: "Final",
       obrigatoria: true,
       status: orcamentoFinal.pronto ? "Pronto" : "Bloqueado",
-      pendencia: orcamentoFinal.pendencias.length > 0 ? orcamentoFinal.pendencias.join("; ") : "pronto para emissao",
+      pendencia: orcamentoFinal.pendencias.length > 0 ? orcamentoFinal.pendencias.join("; ") : "Pronto para emissão",
       acao: `/orcamento/demandas/${demandaId}?etapa=final`,
     },
   ];
@@ -455,6 +457,8 @@ export default async function DemandaDetalhe({
                 demandaId={demandaId}
                 acaoCriar={gerarOrcamentoProjetoDaDemanda}
                 hrefBase="/orcamento/projetos"
+                hrefAbrir={`/orcamento/demandas/${demandaId}?etapa=projeto`}
+                rotuloAbrir="Ver custos do projeto"
               />
             </div>
           </div>
@@ -468,7 +472,7 @@ export default async function DemandaDetalhe({
                 </Link>
               ))}
               {orcamentosProjeto.map((o) => (
-                <Link key={o.id} href={`/orcamento/projetos/${o.id}`} className="block rounded-md bg-muted/50 px-3 py-2 hover:bg-muted">
+                <Link key={o.id} href={`/orcamento/demandas/${demandaId}?etapa=projeto`} className="block rounded-md bg-muted/50 px-3 py-2 hover:bg-muted">
                   Projeto #{o.id} · {o.status} · {(o.orcamento_projeto_custos?.length ?? 0) + (o.orcamento_projeto_analises?.length ?? 0)} item(ns)
                 </Link>
               ))}
@@ -498,7 +502,7 @@ export default async function DemandaDetalhe({
               </p>
             </div>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusClasse(moduloAnalises.status)}`}>
-              {exigeAnalises ? `${moduloAnalises.label} · ${moduloAnalises.faltante}% faltante` : "Nao se aplica"}
+              {exigeAnalises ? `${moduloAnalises.label} · ${moduloAnalises.faltante}% faltante` : "Não se aplica"}
             </span>
           </div>
 
@@ -552,7 +556,7 @@ export default async function DemandaDetalhe({
               </p>
             </div>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusClasse(moduloProjeto.status)}`}>
-              {exigeProjeto ? `${moduloProjeto.label} · ${moduloProjeto.faltante}% faltante` : "Nao se aplica"}
+              {exigeProjeto ? `${moduloProjeto.label} · ${moduloProjeto.faltante}% faltante` : "Não se aplica"}
             </span>
           </div>
 
@@ -562,6 +566,10 @@ export default async function DemandaDetalhe({
             </div>
           ) : (
             <>
+              <p role="note" className="mt-4 rounded-md border border-warning-strong/30 bg-warning-soft px-3 py-2 text-xs leading-5 text-warning-strong">
+                A edição de custos de projeto (rubricas, pessoal, viagens e anexos) está indisponível nesta versão.
+                Os valores abaixo são os já registrados e continuam entrando na proposta final.
+              </p>
               <div className="mt-4 grid gap-3 md:grid-cols-4">
                 <Info titulo="Orçamentos" texto={String(orcamentosProjeto.length)} />
                 <Info titulo="Itens/justificativas" texto={String(itensProjeto)} />
@@ -569,18 +577,15 @@ export default async function DemandaDetalhe({
                 <Info titulo="Análises no projeto" texto={brl(totalProjetoAnalises)} />
               </div>
               <TabelaSimples
-                colunas={["Projeto", "Status", "Data", "Custos", "Análises", "Justificativa", "Ação"]}
+                colunas={["Projeto", "Status", "Data", "Custos", "Análises", "Justificativa"]}
                 vazio="Nenhum orçamento de projeto gerado."
                 linhas={orcamentosProjeto.map((orcamento) => [
                   orcamento.titulo || `#${orcamento.id}`,
-                  orcamento.status,
-                  orcamento.data_orcamento ?? "—",
+                  statusInfo(orcamento.status).label,
+                  orcamento.data_orcamento ? formatDate(orcamento.data_orcamento) : "—",
                   String(orcamento.orcamento_projeto_custos?.length ?? 0),
                   String(orcamento.orcamento_projeto_analises?.length ?? 0),
                   orcamento.projeto_sem_custo_justificativa ? "sim" : "não",
-                  <Link key={orcamento.id} href={`/orcamento/projetos/${orcamento.id}`} className="font-medium text-primary hover:underline">
-                    Abrir
-                  </Link>,
                 ])}
               />
             </>
@@ -679,15 +684,28 @@ export default async function DemandaDetalhe({
                     <label className="block text-[10px] uppercase tracking-wide text-muted-foreground">Validade (dias)</label>
                     <input {...hydrationSafe} name="validade_dias" type="number" min="1" step="1" defaultValue="30" className={`${inp} mt-1 w-24`} disabled={!podeEmitir} />
                   </div>
-                  <button
+                  <ConfirmSubmitButton
                     className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground dark:disabled:bg-muted"
                     disabled={!podeEmitir}
+                    titulo="Emitir versão final?"
+                    mensagem={`Proposta nº ${demanda.id}, total ${brl(orcamentoFinal.totalFinal)}. A versão emitida recebe um número e não pode ser alterada depois.`}
+                    confirmLabel="Emitir"
                   >
                     Emitir versão final
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
               </div>
             </div>
+            {!podeEmitir && (
+              <p className="mt-2 text-right text-xs text-warning-strong">
+                Emissão bloqueada:{" "}
+                {(() => {
+                  const n = orcamentoFinal.pendencias.length + (temCustoZeroSemJustificativa ? 1 : 0);
+                  return `${n} ${n === 1 ? "pendência" : "pendências"}`;
+                })()}{" "}
+                — <a href="#bloqueios-emissao" className="font-medium underline">ver</a>
+              </p>
+            )}
             {erroEmissao && (
               <p className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-xs text-danger-strong">{erroEmissao}</p>
             )}
@@ -729,7 +747,7 @@ export default async function DemandaDetalhe({
 
           {/* F — Pendências e bloqueios */}
           {(orcamentoFinal.pendencias.length > 0 || temCustoZeroSemJustificativa || !composicaoFinal.reconciliaOk) && (
-            <div className="rounded-lg border border-warning-strong/30 bg-warning-soft p-4">
+            <div id="bloqueios-emissao" className="scroll-mt-24 rounded-lg border border-warning-strong/30 bg-warning-soft p-4">
               <h3 className="text-sm font-semibold text-warning-strong">Pendências e bloqueios</h3>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-warning-strong">
                 {orcamentoFinal.pendencias.map((p) => (
@@ -1036,6 +1054,8 @@ function ModuloAcao({
   demandaId,
   acaoCriar,
   hrefBase,
+  hrefAbrir,
+  rotuloAbrir,
 }: {
   plano: PlanoModulo;
   rotulo: string;
@@ -1043,6 +1063,9 @@ function ModuloAcao({
   demandaId: number;
   acaoCriar: (formData: FormData) => void | Promise<void>;
   hrefBase: string;
+  /** destino alternativo do botão "Abrir" (ex.: etapa da própria demanda) */
+  hrefAbrir?: string;
+  rotuloAbrir?: string;
 }) {
   if (!plano.aplicavel) {
     return (
@@ -1068,10 +1091,10 @@ function ModuloAcao({
   if (plano.acao === "abrir" && plano.moduloId) {
     return (
       <Link
-        href={`${hrefBase}/${plano.moduloId}`}
+        href={hrefAbrir ?? `${hrefBase}/${plano.moduloId}`}
         className="rounded-md border border-input px-3 py-2 text-xs font-medium hover:bg-muted"
       >
-        Abrir orçamento {rotulo}
+        {rotuloAbrir ?? `Abrir orçamento ${rotulo}`}
       </Link>
     );
   }

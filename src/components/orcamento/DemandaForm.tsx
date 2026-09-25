@@ -4,8 +4,17 @@ import { useActionState, useMemo, useState } from "react";
 import type { DemandaFormState } from "@/lib/actions/demandas";
 import { criarDemandaCompleta, salvarDemanda } from "@/lib/actions/demandas";
 import { modalidadeExigeLaboratorio } from "@/lib/orcamento/orcamento-economico";
+import { proximaIdentificacaoGrupo } from "@/lib/orcamento/grupos-amostras";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
 import { Pencil, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type Option = { id: number; nome: string };
 type Demanda = {
@@ -72,6 +81,8 @@ export type AnaliseSelecionadaDemanda = {
 };
 
 const initialState: DemandaFormState = { ok: false };
+/** Itens exibidos no catálogo de uma vez; acima disso, o usuário refina a busca. */
+const LIMITE_CATALOGO = 30;
 const inp = `rounded-md border-2 border-brand-300 bg-card px-3 py-2 text-sm font-medium shadow-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200 dark:border-brand-700 dark:focus:ring-brand-900 ${TOM_ENTRADA}`;
 const inheritedInp = "rounded-md border border-input bg-muted/50 px-3 py-2 text-sm font-medium text-foreground shadow-sm outline-none focus:border-ring focus:ring-2 focus:ring-border";
 const operationalInp = "rounded-md border-2 border-warning-strong/30 bg-warning-soft px-3 py-2 text-sm font-semibold text-warning-strong shadow-sm outline-none focus:border-warning-strong focus:ring-2 focus:ring-warning-strong/30";
@@ -129,7 +140,14 @@ export function DemandaForm({
   const mostraDemanda = modo !== "laboratorio";
   const mostraLaboratorio = modo !== "demanda";
   const porCodigo = useMemo(() => new Map(analises.map((analise) => [analise.codigo, analise])), [analises]);
-  const filtradas = useMemo(() => {
+  const [grupoParaRemover, setGrupoParaRemover] = useState<string | null>(null);
+  const removerGrupo = (grupoKey: string) => {
+    setGrupos((atuais) => (atuais.length > 1 ? atuais.filter((item) => item.key !== grupoKey) : atuais));
+    setSelecionadas((atuais) => atuais.filter((item) => item.grupoKey !== grupoKey));
+    setSeletorAberto((atual) => (atual === grupoKey ? null : atual));
+    setGrupoParaRemover(null);
+  };
+  const { filtradas, totalEncontradas } = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     const base = termo
           ? analises.filter((analise) =>
@@ -138,7 +156,7 @@ export function DemandaForm({
             .some((valor) => String(valor).toLowerCase().includes(termo)),
         )
       : analises;
-    return base.slice(0, 30);
+    return { filtradas: base.slice(0, LIMITE_CATALOGO), totalEncontradas: base.length };
   }, [analises, busca]);
 
   const toggleAnalise = (grupoKey: string, codigo: string) => {
@@ -338,9 +356,8 @@ export function DemandaForm({
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold">Amostras a processar</h3>
           <button type="button" onClick={() => {
-            const proximo = grupos.length + 1;
             const key = `grupo-novo-${Date.now()}`;
-            setGrupos((atuais) => [...atuais, { key, identificacao: `Grupo ${String.fromCharCode(64 + proximo)}`, tipo_matriz: "", quantidade_amostras: 1, unidade: "amostras", observacao: null }]);
+            setGrupos((atuais) => [...atuais, { key, identificacao: proximaIdentificacaoGrupo(atuais.map((g) => g.identificacao)), tipo_matriz: "", quantidade_amostras: 1, unidade: "amostras", observacao: null }]);
             setGrupoAtivo(key);
             setSeletorAberto(key);
           }} className="rounded-md border border-input px-3 py-2 text-xs font-medium hover:bg-muted">Adicionar tipo de amostra</button>
@@ -359,6 +376,20 @@ export function DemandaForm({
               <div><label className={lbl}>Quantidade</label><input name="grupo_quantidade" type="number" min="1" step="1" value={grupo.quantidade_amostras} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, quantidade_amostras: Number(event.target.value) || 1 } : item))} className={`${operationalInp} mt-1 w-full`} /></div>
               <div><label className={lbl}>Unidade</label><input name="grupo_unidade" value={grupo.unidade} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, unidade: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
               <div className="sm:col-span-5"><label className={lbl}>Observação</label><input name="grupo_observacao" value={grupo.observacao ?? ""} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, observacao: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
+              {grupos.length > 1 && (
+                <div className="sm:col-span-5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selecionadasDoGrupo.length === 0) removerGrupo(grupo.key);
+                      else setGrupoParaRemover(grupo.key);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-danger-strong hover:bg-danger-soft"
+                  >
+                    <Trash2 aria-hidden className="h-3.5 w-3.5" /> Remover grupo
+                  </button>
+                </div>
+              )}
               <div className="sm:col-span-5 rounded-md border border-border bg-card p-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -406,8 +437,8 @@ export function DemandaForm({
                                 />
                               </td>
                               <td className="text-right">
-                                <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-danger-strong hover:text-danger-strong" title="Remover análise">
-                                  <Trash2 className="h-4 w-4 inline" />
+                                <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-danger-strong hover:text-danger-strong" title="Remover análise" aria-label={`Remover análise ${item.codigo}`}>
+                                  <Trash2 aria-hidden className="h-4 w-4 inline" />
                                 </button>
                               </td>
                             </tr>
@@ -421,8 +452,13 @@ export function DemandaForm({
                 )}
                 {seletorAberto === grupo.key && (
                   <div className="mt-3 rounded-md border border-brand-200 bg-brand-50/40 p-3 dark:border-brand-900 dark:bg-brand-950/20">
-                    <input value={busca} onChange={(event) => setBusca(event.target.value)} placeholder="Buscar por código, nome ou método" className={`${inp} w-full`} />
-                    <div tabIndex={0} aria-label="Catálogo de análises filtradas" className="mt-3 max-h-[56rem] overflow-y-auto rounded-md border border-border bg-card">
+                    <input value={busca} onChange={(event) => setBusca(event.target.value)} placeholder="Buscar por código, nome ou método" aria-label="Buscar análises" className={`${inp} w-full`} />
+                    {totalEncontradas > filtradas.length && (
+                      <p role="status" className="mt-2 text-xs text-muted-foreground">
+                        Mostrando {filtradas.length} de {totalEncontradas}. Refine a busca para ver as demais.
+                      </p>
+                    )}
+                    <div tabIndex={0} aria-label="Catálogo de análises filtradas" className="mt-3 max-h-[24rem] overflow-y-auto rounded-md border border-border bg-card">
                       {filtradas.length === 0 ? (
                         <p className="px-3 py-4 text-xs text-muted-foreground">
                           {analises.length === 0 ? "Não existem análises ativas cadastradas ou você não possui permissão para visualizar este catálogo." : "Nenhuma análise corresponde à busca ou à matriz informada."}
@@ -503,11 +539,12 @@ export function DemandaForm({
                           }}
                           className="text-muted-foreground hover:text-foreground"
                           title="Editar análises do grupo"
+                          aria-label={`Editar análises do ${grupo?.identificacao ?? "grupo"}`}
                         >
-                          <Pencil className="h-4 w-4 inline" />
+                          <Pencil aria-hidden className="h-4 w-4 inline" />
                         </button>
-                        <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-danger-strong hover:text-danger-strong" title="Remover análise">
-                          <Trash2 className="h-4 w-4 inline" />
+                        <button type="button" onClick={() => toggleAnalise(item.grupoKey, item.codigo)} className="text-danger-strong hover:text-danger-strong" title="Remover análise" aria-label={`Remover análise ${item.codigo}`}>
+                          <Trash2 aria-hidden className="h-4 w-4 inline" />
                         </button>
                       </td>
                     </tr>
@@ -565,6 +602,29 @@ export function DemandaForm({
         </button>
         {state.errors?.descricao ? <a href="#descricao" className="text-sm font-medium text-danger-strong">Corrigir descrição</a> : null}
       </div>
+
+      <Dialog open={grupoParaRemover !== null} onOpenChange={(aberto) => { if (!aberto) setGrupoParaRemover(null); }}>
+        <DialogContent className="max-w-sm text-left" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Remover {grupos.find((g) => g.key === grupoParaRemover)?.identificacao ?? "grupo"}?</DialogTitle>
+            <DialogDescription>
+              As {selecionadas.filter((item) => item.grupoKey === grupoParaRemover).length} análise(s) deste grupo também saem do orçamento. A remoção só é gravada ao salvar.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button type="button" onClick={() => setGrupoParaRemover(null)} className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => grupoParaRemover && removerGrupo(grupoParaRemover)}
+              className="rounded-md bg-destructive px-4 py-1.5 text-sm font-medium text-white hover:bg-destructive/90"
+            >
+              Remover grupo
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }
