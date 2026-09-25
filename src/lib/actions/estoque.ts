@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "./cadastros";
 import { usuarioAtual } from "@/lib/auth/roles";
+import { MOTIVOS_BAIXA, montarMotivoBaixa, normalizarModelo } from "@/lib/estoque/baixa";
 
 const schema = z.object({
   insumo_id: z.preprocess((v) => Number(v), z.number().int().positive()),
@@ -247,6 +249,158 @@ export async function baixarManualLote(
   revalidatePath("/estoque");
   revalidatePath(`/estoque/lotes/${parsed.data.lote_id}`);
   return { ok: true, message: "Baixa manual registrada." };
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const darBaixaSchema = z
+  .object({
+    lote_id: z.preprocess((v) => Number(v), z.number().int().positive()),
+    quantidade: z.preprocess(
+      (v) => (v === "" || v == null ? undefined : Number(String(v).replace(",", "."))),
+      z
+        .number({ error: "Informe a quantidade" })
+        .refine((n) => Number.isFinite(n), "Número inválido")
+        .refine((n) => n > 0, "Deve ser maior que zero"),
+    ),
+    quantidade_esperada: z.preprocess(
+      (v) => (v === "" || v == null ? null : Number(v)),
+      z.number().nullable(),
+    ),
+    motivo_tipo: z.preprocess(
+      (v) => (v == null ? "" : String(v)),
+      z.enum(MOTIVOS_BAIXA, { error: "Selecione o motivo" }),
+    ),
+    motivo_detalhe: z.preprocess((v) => (v == null ? "" : String(v).trim()), z.string()),
+    operacao_id: z.preprocess(
+      (v) => (typeof v === "string" && UUID_RE.test(v) ? v : crypto.randomUUID()),
+      z.string(),
+    ),
+  })
+  .superRefine((dados, ctx) => {
+    if (dados.motivo_tipo === "Outro" && dados.motivo_detalhe.length < 3) {
+      ctx.addIssue({ code: "custom", path: ["motivo_detalhe"], message: "Descreva o motivo" });
+    }
+  });
+
+type DadosBaixa = z.infer<typeof darBaixaSchema>;
+
+function lerBaixa(formData: FormData) {
+  return darBaixaSchema.safeParse({
+    lote_id: formData.get("lote_id"),
+    quantidade: formData.get("quantidade"),
+    quantidade_esperada: formData.get("quantidade_esperada"),
+    motivo_tipo: formData.get("motivo_tipo"),
+    motivo_detalhe: formData.get("motivo_detalhe"),
+    operacao_id: formData.get("operacao_id"),
+  });
+}
+
+function mensagemErro(error: unknown, padrao: string) {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
+  }
+  return padrao;
+}
+
+function revalidarBaixa(loteId: number) {
+  revalidatePath("/estoque");
+  revalidatePath("/estoque/controle");
+  revalidatePath(`/estoque/lotes/${loteId}`);
+  revalidatePath("/cadastros/insumos");
+}
+
+async function executarBaixaEmbalagens(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  dados: DadosBaixa,
+): Promise<FormState> {
+  if (!Number.isInteger(dados.quantidade)) {
+    return {
+      ok: false,
+      message: "Verifique os campos.",
+      errors: { quantidade: "Use um número inteiro de embalagens" },
+    };
+  }
+  if (dados.quantidade_esperada == null || !Number.isInteger(dados.quantidade_esperada)) {
+    return { ok: false, message: "Saldo do lote desatualizado; recarregue a página e tente novamente." };
+  }
+  const { error } = await supabase.rpc("baixa_manual_embalagens" as never, {
+    p_lote_id: dados.lote_id,
+    p_quantidade: dados.quantidade,
+    p_quantidade_esperada: dados.quantidade_esperada,
+    p_operacao_id: dados.operacao_id,
+    p_motivo: montarMotivoBaixa(dados.motivo_tipo, dados.motivo_detalhe),
+  } as never);
+  if (error) return { ok: false, message: mensagemErro(error, "Não foi possível registrar a baixa.") };
+
+  revalidarBaixa(dados.lote_id);
+  return {
+    ok: true,
+    message: `Baixa registrada: ${dados.quantidade} ${dados.quantidade === 1 ? "embalagem" : "embalagens"}.`,
+  };
+}
+
+/**
+ * Baixa manual de embalagens fechadas (lotes EMBALAGEM_FECHADA): quantidade
+ * inteira, idempotente por operacao_id e com checagem do saldo esperado.
+ * Nunca lança para a UI: devolve { ok, message }.
+ */
+export async function baixarEmbalagens(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = lerBaixa(formData);
+  if (!parsed.success) {
+    return { ok: false, message: "Verifique os campos.", errors: formErrors(parsed.error) };
+  }
+  try {
+    const supabase = await createClient();
+    return await executarBaixaEmbalagens(supabase, parsed.data);
+  } catch (error) {
+    return { ok: false, message: mensagemErro(error, "Não foi possível registrar a baixa.") };
+  }
+}
+
+/**
+ * "Dar baixa" em um lote: escolhe a RPC pelo modelo de quantidade gravado
+ * no lote (embalagens fechadas → baixa_manual_embalagens; legado por volume
+ * → baixa_manual_lote). Motivo obrigatório, sempre registrado na trilha.
+ */
+export async function darBaixaLote(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = lerBaixa(formData);
+  if (!parsed.success) {
+    return { ok: false, message: "Verifique os campos.", errors: formErrors(parsed.error) };
+  }
+  const dados = parsed.data;
+
+  try {
+    const supabase = await createClient();
+    // modelo_quantidade (0109) ainda não está nos tipos gerados.
+    const { data: lote, error: loteError } = await (supabase as unknown as SupabaseClient)
+      .from("lotes_estoque")
+      .select("id, modelo_quantidade")
+      .eq("id", dados.lote_id)
+      .single();
+    if (loteError || !lote) return { ok: false, message: "Lote não encontrado." };
+
+    const modelo = normalizarModelo((lote as { modelo_quantidade?: unknown }).modelo_quantidade);
+    if (modelo === "EMBALAGEM_FECHADA") return await executarBaixaEmbalagens(supabase, dados);
+
+    const { error } = await supabase.rpc("baixa_manual_lote" as never, {
+      p_lote_id: dados.lote_id,
+      p_quantidade: dados.quantidade,
+      p_motivo: montarMotivoBaixa(dados.motivo_tipo, dados.motivo_detalhe),
+    } as never);
+    if (error) return { ok: false, message: mensagemErro(error, "Não foi possível registrar a baixa.") };
+
+    revalidarBaixa(dados.lote_id);
+    return { ok: true, message: "Baixa registrada." };
+  } catch (error) {
+    return { ok: false, message: mensagemErro(error, "Não foi possível registrar a baixa.") };
+  }
 }
 
 /**

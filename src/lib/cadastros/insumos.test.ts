@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { CADASTROS } from "./config";
-import { modeloQuantidadePorInsumo, projetarTotaisInsumos, type LoteInsumo, type LoteModelo } from "./insumos";
+import {
+  modeloQuantidadePorInsumo,
+  projetarQuantidadeInsumos,
+  projetarTotaisInsumos,
+  type LoteInsumo,
+  type LoteModelo,
+} from "./insumos";
 import { workbookColumns } from "./xlsx";
 
 const lote = (overrides: Partial<LoteInsumo> = {}): LoteInsumo => ({
@@ -29,29 +35,41 @@ describe("totais de unidades de insumos", () => {
     expect(insumo).toMatchObject({ unidades_fechadas: 0, unidades_abertas: 0 });
   });
 
-  it("expoe os cabecalhos pedidos no XLSX sem os campos ocultos", () => {
-    const headers = workbookColumns(CADASTROS.insumos, [
-      {
-        id: 1,
-        especificacao: "Item",
-        fabricante: "Marca",
-        unidade: "un",
-        unidades_fechadas: 2,
-        unidades_abertas: 1,
-        tipo_insumo_id: 3,
-        codigo_interno: "INT-1",
-      },
-    ]).map((coluna) => coluna.header);
+  it("expoe no XLSX uma unica coluna de quantidade logo apos Unidade, sem campos ocultos", () => {
+    const [linha] = projetarQuantidadeInsumos(
+      [
+        {
+          id: 1,
+          especificacao: "Item",
+          fabricante: "Marca",
+          unidade: "un",
+          tipo_insumo_id: 3,
+          codigo_interno: "INT-1",
+        },
+      ],
+      [lote({ quantidade_atual: 4 })],
+      "2026-08-04",
+    );
+    const headers = workbookColumns(CADASTROS.insumos, [linha]).map((coluna) => coluna.header);
 
-    expect(headers.slice(1, 6)).toEqual([
+    expect(headers.slice(1, 5)).toEqual([
       "Item específico / SKU",
       "Marca / fabricante",
       "Unidade",
-      "Unidades fechadas (calculado)",
-      "Unidades abertas (calculado)",
+      "Quantidade (embalagens fechadas)",
     ]);
+    expect(headers.filter((header) => /calculado|unidades_(fechadas|abertas)/i.test(header))).toEqual([]);
     expect(headers).not.toContain("Tipo técnico");
     expect(headers).not.toContain("Código interno");
+  });
+
+  it("projeta a quantidade exibida (mesmo calculo da tela) sem expor unidades_*", () => {
+    const [insumo] = projetarQuantidadeInsumos([{ id: 1 }], [
+      lote({ quantidade_atual: 3 }),
+      lote({ quantidade_atual: 1, data_abertura: "2026-08-01" }),
+      lote({ status: "quarentena", quantidade_atual: 9 }),
+    ], "2026-08-04");
+    expect(insumo).toEqual({ id: 1, quantidade: 4 });
   });
 
   it("mostra uma unica coluna Quantidade, calculada e fora do formulario", () => {

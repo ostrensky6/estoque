@@ -209,8 +209,9 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       { key: "especificacao", label: "Item específico / SKU" },
       { key: "fabricante", label: "Marca / fabricante" },
       { key: "unidade", label: "Unidade" },
-      { key: "unidades_fechadas", label: "Unidades fechadas (calculado)", tipo: "number", calculada: true },
-      { key: "unidades_abertas", label: "Unidades abertas (calculado)", tipo: "number", calculada: true },
+      // Só vale para itens novos na importação (estoque inicial); para itens
+      // existentes é informativa — entradas e baixas passam pelo Estoque.
+      { key: "quantidade", label: "Quantidade (embalagens fechadas)", tipo: "number" },
     ],
     campos: [
       {

@@ -5,8 +5,10 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { DataTable, numericSort } from "@/components/common/DataTable";
 import { Badge } from "@/components/ui/badge";
+import { DarBaixaDialog } from "@/components/estoque/DarBaixaDialog";
 import { LoteAcoes } from "@/components/estoque/LoteAcoes";
 import { AjusteInventarioButton } from "@/components/estoque/ReceberLote";
+import type { LoteBaixa, ModeloQuantidadeLote } from "@/lib/estoque/baixa";
 import { formatNumber as fmt } from "@/lib/formatters";
 
 export type SaldoRow = {
@@ -23,6 +25,8 @@ export type SaldoRow = {
   pontoSugerido: number;
   status: "ok" | "repor" | "sem_estoque";
   statusLabel: string;
+  /** lotes do insumo candidatos à baixa (o diálogo escolhe por FEFO) */
+  lotesBaixa: LoteBaixa[];
 };
 
 export type LoteRow = {
@@ -31,7 +35,11 @@ export type LoteRow = {
   unidade: string;
   codigoLote: string;
   validade: string;
+  /** validade efetiva em aaaa-mm-dd (null = sem validade) */
+  validadeIso: string | null;
   quantidadeAtual: number;
+  reservado: number;
+  modeloQuantidade: ModeloQuantidadeLote;
   status: string;
   statusLabel: string;
   vencido: boolean;
@@ -144,12 +152,19 @@ const saldoColumns = (entradaInicialInsumoId?: number): ColumnDef<SaldoRow, unkn
     enableGlobalFilter: false,
     meta: { align: "right" },
     cell: ({ row }) => (
-      <AjusteInventarioButton
-        insumoId={row.original.insumoId}
-        especificacao={row.original.especificacao}
-        unidade={row.original.unidade === "—" ? null : row.original.unidade}
-        abertoInicial={row.original.insumoId === entradaInicialInsumoId}
-      />
+      <span className="inline-flex flex-wrap items-start justify-end gap-1">
+        <AjusteInventarioButton
+          insumoId={row.original.insumoId}
+          especificacao={row.original.especificacao}
+          unidade={row.original.unidade === "—" ? null : row.original.unidade}
+          abertoInicial={row.original.insumoId === entradaInicialInsumoId}
+        />
+        <DarBaixaDialog
+          lotes={row.original.lotesBaixa}
+          unidade={row.original.unidade === "—" ? "" : row.original.unidade}
+          especificacao={row.original.especificacao}
+        />
+      </span>
     ),
   },
 ];
@@ -204,10 +219,15 @@ const lotesColumns = (
     cell: ({ row }) => (
       <LoteAcoes
         loteId={row.original.id}
+        codigoLote={row.original.codigoLote}
         status={row.original.status}
         quantidadeAtual={row.original.quantidadeAtual}
         unidade={row.original.unidade}
         critico={row.original.critico}
+        validade={row.original.validadeIso}
+        vencido={row.original.vencido}
+        reservado={row.original.reservado}
+        modeloQuantidade={row.original.modeloQuantidade}
         estornoDiretoPermitido={row.original.estornoDiretoPermitido}
         podeAceitar={podeAceitar}
         podeGerir={podeGerir}

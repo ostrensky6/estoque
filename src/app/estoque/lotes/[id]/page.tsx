@@ -6,6 +6,8 @@ import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { QrCode } from "@/components/common/QrCode";
 import { formatNumber as fmt, formatDate as fdata, formatCurrency } from "@/lib/formatters";
 import { gerarUrlCurtaKontrol } from "@/lib/scanner/urls";
+import { DarBaixaDialog } from "@/components/estoque/DarBaixaDialog";
+import { loteBaixaDeDb, loteVencido, somarReservasPorLote, type LoteDbBaixa } from "@/lib/estoque/baixa";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +48,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
     .single();
   if (!lote) notFound();
 
-  const [{ data: movs }, { data: local }] = await Promise.all([
+  const [{ data: movs }, { data: local }, { data: reservas }] = await Promise.all([
     supabase
       .from("estoque_movimentacoes")
       .select("id, tipo, quantidade, custo_unitario, data, motivo, referencia")
@@ -56,12 +58,23 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
     lote.local_id != null
       ? supabase.from("locais").select("nome").eq("id", lote.local_id).single()
       : Promise.resolve({ data: null }),
+    supabase
+      .from("reservas_estoque")
+      .select("lote_id, quantidade, quantidade_consumida, status")
+      .eq("lote_id", id)
+      .in("status", ["reservado", "parcial"]),
   ]);
 
   const ins = lote.insumos as { especificacao: string | null; nome_item: string | null; unidade: string | null } | null;
-  const unidade = ins?.unidade ?? "";
   const s = LOTE_STATUS[lote.status] ?? { label: lote.status, cls: "bg-muted text-muted-foreground" };
-  const vencido = lote.validade != null && new Date(lote.validade) < new Date();
+  // modelo_quantidade (0109) ainda não está nos tipos gerados.
+  const loteBaixa = loteBaixaDeDb(
+    lote as unknown as LoteDbBaixa,
+    somarReservasPorLote(reservas ?? []),
+  );
+  const unidade = ins?.unidade ?? "";
+  const vencido = loteVencido(loteBaixa.validade);
+  const loteAtivo = ["aceito", "em_uso"].includes(lote.status) && loteBaixa.quantidadeAtual > 0;
 
   // Rastreabilidade reversa: planos que consumiram este lote (referencia 'plano N')
   const planosConsumo = Array.from(
@@ -95,6 +108,23 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{ins?.especificacao ?? ins?.nome_item ?? "—"}</p>
           </div>
+          {loteAtivo && (
+            <div className="flex flex-col items-end gap-1">
+              {vencido ? (
+                <p className="max-w-72 rounded-md bg-danger-soft px-3 py-2 text-xs text-danger-strong">
+                  Lote vencido: não pode receber baixa para uso. Para registrar a perda, descarte o lote
+                  em Estoque → Lotes em estoque.
+                </p>
+              ) : (
+                <DarBaixaDialog
+                  lotes={[loteBaixa]}
+                  unidade={ins?.unidade ?? ""}
+                  especificacao={ins?.especificacao ?? ins?.nome_item ?? undefined}
+                  triggerClassName="inline-flex h-9 items-center rounded-md border border-danger-strong/40 bg-card px-4 text-sm font-medium text-danger-strong shadow-sm hover:bg-danger-soft"
+                />
+              )}
+            </div>
+          )}
         </div>
 
         {/* Etiqueta imprimível com código de barras */}
