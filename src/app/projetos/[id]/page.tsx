@@ -94,7 +94,7 @@ export default async function ProjetoHubPage({
     supabase
       .from("orcamento_projetos")
       .select(
-        "id, titulo, status, data_orcamento, margem_lucro, impostos, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(n_amostras, preco_unitario), orcamento_projeto_custos(rubrica, quantidade, preco_unitario, meses_selecionados)",
+        "id, demanda_id, titulo, status, data_orcamento, margem_lucro, impostos, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(n_amostras, preco_unitario), orcamento_projeto_custos(rubrica, quantidade, preco_unitario, meses_selecionados)",
       )
       .eq("projeto_id", id)
       .order("criado_em", { ascending: false }),
@@ -160,7 +160,7 @@ export default async function ProjetoHubPage({
     });
     return {
       key: `p-${o.id}`,
-      href: `/orcamento/projetos/${o.id}`,
+      href: o.demanda_id != null ? `/orcamento/demandas/${o.demanda_id}?etapa=projeto` : `/orcamento/projetos/${o.id}`,
       titulo: o.titulo ?? `Projeto ${o.id}`,
       tipo: "projeto",
       data: o.data_orcamento ?? "",

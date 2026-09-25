@@ -103,7 +103,7 @@ export default async function ParametrosEconomicosPage() {
     supabase
       .from("orcamento_projetos")
       .select(
-        "id, titulo, status, cliente_nome, data_orcamento, impostos, impostos_legacy, incubacao, reserva, investimentos, lucro, margem_lucro, orcamento_projeto_analises(n_amostras, custo_unitario), orcamento_projeto_custos(rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados)",
+        "id, demanda_id, titulo, status, cliente_nome, data_orcamento, impostos, impostos_legacy, incubacao, reserva, investimentos, lucro, margem_lucro, orcamento_projeto_analises(n_amostras, custo_unitario), orcamento_projeto_custos(rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados)",
       )
       .order("criado_em", { ascending: false })
       .limit(8),
@@ -164,8 +164,11 @@ export default async function ParametrosEconomicosPage() {
         meses_selecionados: item.meses_selecionados,
       })),
     ];
+    const demandaId = (orcamento as unknown as { demanda_id?: number | null }).demanda_id;
     return {
       id: orcamento.id,
+      // Editor de custos fica na etapa de projeto da proposta; o endereço antigo só redireciona.
+      href: demandaId ? `/orcamento/demandas/${demandaId}?etapa=projeto` : `/orcamento/projetos/${orcamento.id}`,
       titulo: orcamento.titulo,
       status: orcamento.status,
       cliente_nome: orcamento.cliente_nome,
@@ -361,7 +364,7 @@ export default async function ParametrosEconomicosPage() {
               {projetosCalculados.map((projeto) => (
                 <tr key={projeto.id}>
                   <td className="px-4 py-3">
-                    <Link href={`/orcamento/projetos/${projeto.id}`} className="font-medium text-brand-700 hover:underline dark:text-brand-300">
+                    <Link href={projeto.href} className="font-medium text-brand-700 hover:underline dark:text-brand-300">
                       #{projeto.id} {projeto.titulo ?? "Sem título"}
                     </Link>
                     <p className="mt-0.5 text-xs text-muted-foreground">{projeto.status ?? "sem status"}</p>

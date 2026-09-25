@@ -16,9 +16,11 @@ test("confirmação de emissão fecha com Esc e devolve o foco ao botão", async
   await expect(emitir).toBeFocused();
 });
 
-test("etapa de projeto não leva mais a um ciclo de redirecionamento", async ({ page }) => {
+test("etapa de projeto mostra o editor sem ciclo de redirecionamento", async ({ page }) => {
   await page.goto("/orcamento/demandas/1?etapa=projeto");
-  await expect(page.getByRole("note").filter({ hasText: "edição de custos de projeto" })).toBeVisible();
+  await expect(page).toHaveURL(/\/orcamento\/demandas\/1\?etapa=projeto/);
+  await expect(page.getByTestId("editor-custos-projeto")).toBeVisible();
+  await expect(page.getByText("indisponível nesta versão")).toHaveCount(0);
   await expect(page.locator('a[href^="/orcamento/projetos/"]')).toHaveCount(0);
 });
 

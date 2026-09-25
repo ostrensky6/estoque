@@ -288,6 +288,7 @@ const baseStore = (): Store => {
   eventos_status: [],
   orcamento_projeto_analises: [],
   orcamento_projeto_custos: [],
+  orcamento_projeto_catalogo: [],
   demanda_analises: [],
   demanda_grupos_amostras: [],
   projetos: [{ id: 1, nome: "Projeto E2E" }],
@@ -568,10 +569,13 @@ const baseStore = (): Store => {
         id: 1,
         orcamento_projeto_id: 1,
         rubrica: "MC",
+        categoria: "materiais",
+        descricao: "Material de coleta",
         quantidade: 1,
         custo_unitario: 500,
         preco_unitario: 500,
         meses_selecionados: [],
+        origem: "manual",
       },
     ];
     // Salário sigiloso (migration 0112). Dedicação 0: o técnico não altera o
@@ -586,7 +590,66 @@ const baseStore = (): Store => {
         percentual_dedicado: 0,
       },
     ];
+
+    // Proposta só de projeto com custos em edição (rascunho): usada pelo editor da
+    // etapa "Custos do projeto" (e2e/orcamento-projeto-editor.spec.ts). A demanda 1
+    // continua com o projeto revisado para a emissão.
+    seed.demandas_propostas.push({
+      id: 2,
+      titulo: "Proposta Demo — Custos de projeto",
+      cliente_id: 1,
+      cliente_nome: "Cliente Demo",
+      modalidade: "projeto",
+      projeto_id: 1,
+      descricao: "Proposta de demonstração para o editor de custos de projeto.",
+      escopo_preliminar: "Campanha de campo com equipe e viagens.",
+      criado_em: "2026-06-22T10:00:00.000Z",
+    });
+    seed.orcamento_projetos.push({
+      id: 2,
+      demanda_id: 2,
+      titulo: "Projeto de campo demo",
+      status: "rascunho",
+      data_orcamento: "2026-06-22",
+      project_months: 18,
+      impostos: 0,
+      margem_lucro: 0,
+      impostos_legacy: 10,
+      incubacao: 5,
+      reserva: 5,
+      investimentos: 5,
+      lucro: 20,
+      travel_inputs: {},
+      projeto_sem_custo_justificativa: null,
+      criado_em: "2026-06-22T10:00:00.000Z",
+    });
+    seed.orcamento_projeto_custos.push({
+      id: 2,
+      orcamento_projeto_id: 2,
+      rubrica: "PE",
+      categoria: "mao_obra",
+      descricao: "Pesquisador bolsista",
+      unidade: "mês",
+      quantidade: 1,
+      custo_unitario: 3000,
+      preco_unitario: 3000,
+      meses_selecionados: [],
+      origem: "manual",
+      etapa: "Equipe",
+    });
+    // Recorte do catálogo importado do app antigo (migration 0012).
     seed.orcamento_projeto_catalogo = [
+      { id: "PE-1", rubrica: "PE", descricao: "Pesquisador sênior", unidade: "mês", preco_unitario: 8000, categoria: "Equipe técnica", ativo: true },
+      { id: "MC-12", rubrica: "MC", descricao: "Alcool", unidade: "L", preco_unitario: 380, categoria: "Geral (coleta)", ativo: true },
+      { id: "MC-30", rubrica: "MC", descricao: "Luvas nitrílicas", unidade: "cx", preco_unitario: 45, categoria: "Geral (coleta)", ativo: true },
+      { id: "MC-99", rubrica: "MC", descricao: "Item arquivado", unidade: "un", preco_unitario: 1, categoria: "Geral", ativo: false },
+      { id: "VD-1", rubrica: "VD", descricao: "Alimentação", unidade: "refeições", preco_unitario: 130, categoria: "Alimentação", ativo: true },
+      { id: "VD-2", rubrica: "VD", descricao: "Hospedagem", unidade: "diárias de hotel", preco_unitario: 250, categoria: "Hospedagem", ativo: true },
+      { id: "VD-3", rubrica: "VD", descricao: "Combustível", unidade: "L", preco_unitario: 7.2, categoria: "Deslocamento", ativo: true },
+      { id: "VD-4", rubrica: "VD", descricao: "Seguro viagem", unidade: "diárias", preco_unitario: 15, categoria: "Outros", ativo: true },
+      { id: "VD-5", rubrica: "VD", descricao: "Aluguel de veículo + taxa de limpeza + seguro", unidade: "diárias", preco_unitario: 390, categoria: "Deslocamento", ativo: true },
+      { id: "VD-6", rubrica: "VD", descricao: "Pedágio", unidade: "un", preco_unitario: 25, categoria: "Deslocamento", ativo: true },
+      // Itens E2E do salário (0112): preço PE sigiloso.
       {
         id: "PE-E2E",
         rubrica: "PE",
@@ -1463,6 +1526,41 @@ function emitirOrcamentoFinalTransacional(args: Row) {
   return { versao_id: id, versao, numero };
 }
 
+// Espelha as transições de public.transicionar_orcamento_projeto (migration 0090).
+const TRANSICOES_ORCAMENTO_PROJETO: Record<string, string[]> = {
+  rascunho: ["enviado", "cancelado"],
+  enviado: ["aprovado", "recusado", "cancelado"],
+  recusado: ["rascunho", "cancelado"],
+  aprovado: ["cancelado"],
+};
+
+function transicionarOrcamentoProjeto(args: Row) {
+  const id = Number(args.p_orcamento_projeto_id);
+  const destino = String(args.p_status_destino);
+  const projeto = (store.orcamento_projetos ?? []).find((row) => Number(row.id) === id);
+  if (!projeto) throw new Error("Orçamento de projeto não encontrado.");
+  const origem = String(projeto.status ?? "rascunho");
+  if (origem === destino) return { status_origem: origem, status_destino: destino, alterado: false };
+  if (!(TRANSICOES_ORCAMENTO_PROJETO[origem] ?? []).includes(destino)) {
+    throw new Error(`Transição de status não permitida: ${origem} -> ${destino}.`);
+  }
+  projeto.status = destino;
+  store.eventos_status = [
+    ...(store.eventos_status ?? []),
+    {
+      id: nextId("eventos_status"),
+      entidade: "orcamento_projeto",
+      entidade_id: id,
+      de_status: origem,
+      para_status: destino,
+      usuario: "admin@example.com",
+      observacao: args.p_observacao ?? null,
+      criado_em: new Date().toISOString(),
+    },
+  ];
+  return { status_origem: origem, status_destino: destino, alterado: true };
+}
+
 export function createMockSupabaseClient(sessao: SessaoMock = {}) {
   return {
     auth: {
@@ -1548,6 +1646,13 @@ export function createMockSupabaseClient(sessao: SessaoMock = {}) {
         }
       }
       if (fn === "emitir_orcamento_final_transacional") return { data: emitirOrcamentoFinalTransacional(args), error: null };
+      if (fn === "transicionar_orcamento_projeto") {
+        try {
+          return { data: transicionarOrcamentoProjeto(args), error: null };
+        } catch (error) {
+          return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
+        }
+      }
       if (fn === "sincronizar_demanda_grupos") {
         try {
           return { data: sincronizarDemandaGrupos(args), error: null };
