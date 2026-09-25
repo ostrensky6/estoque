@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { formatDateTime } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/server";
 import { temPapel, usuarioAtual } from "@/lib/auth/roles";
+import { podeVerSalario } from "@/lib/auth/permissao-efetiva";
+import { mascararAuditoriaSigilosa } from "@/lib/cadastros/salario";
 import { LABEL_PAPEL, PERMISSOES_ORCAMENTO } from "@/lib/orcamento/governanca";
 
 export const dynamic = "force-dynamic";
@@ -107,7 +109,11 @@ export default async function GovernancaOrcamentoPage() {
   ]);
 
   const eventosRecentes = (eventos ?? []) as Evento[];
-  const auditoriaRecente = (auditorias ?? []) as Auditoria[];
+  // Preço PE do catálogo: escondido pela policy da 0112 e mascarado aqui também.
+  const podeVerSalarios = await podeVerSalario();
+  const auditoriaRecente = ((auditorias ?? []) as Auditoria[]).map((item) =>
+    mascararAuditoriaSigilosa(item, podeVerSalarios),
+  );
   const eventosComMotivo = eventosRecentes.filter((evento) => Boolean(evento.observacao?.trim())).length;
   const acoesCriticas = eventosRecentes.filter((evento) =>
     ["cancelado", "alterado", "duplicado"].includes(evento.para_status) || evento.entidade === "orcamento_final",

@@ -8,6 +8,8 @@ import {
   excluirTemplate,
 } from "@/lib/actions/orcamento-projetos";
 import { formatCurrency as brl, formatDate } from "@/lib/formatters";
+import { NOTA_VALOR_MASCARADO, VALOR_MASCARADO } from "@/lib/cadastros/mascara";
+import { precoCatalogoMascarado } from "@/lib/cadastros/salario";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 
@@ -35,7 +37,8 @@ type CatalogoItem = {
   rubrica: string;
   descricao: string;
   unidade: string | null;
-  preco_unitario: number;
+  preco_unitario: number | null;
+  preco_mascarado?: boolean;
   categoria: string | null;
   origem: string;
   ativo: boolean;
@@ -56,19 +59,17 @@ export default async function OrcamentoModelosPage({
 }) {
   const filtros = await searchParams;
   const supabase = await createClient();
-  const [{ data: templates }, { data: catalogo }, { data: projetos }] = await Promise.all([
+  const [{ data: templates }, { data: catalogoCompleto }, { data: projetos }] = await Promise.all([
     supabase
       .from("orcamento_projeto_templates")
       .select("id, nome, descricao, itens, parametros, origem, criado_em")
       .order("criado_em", { ascending: false }),
-    supabase
-      .from("orcamento_projeto_catalogo")
-      .select("id, rubrica, descricao, unidade, preco_unitario, categoria, origem, ativo, valid_from")
-      .order("rubrica")
-      .order("descricao")
-      .limit(300),
+    // Preço de PE (pessoas nominais) vem mascarado (NULL) do banco para quem
+    // não tem "Ver salário dos técnicos" — migration 0112. Já vem ordenado.
+    supabase.rpc("orcamento_projeto_catalogo_listar"),
     supabase.from("projetos").select("id, nome").order("nome").limit(100),
   ]);
+  const catalogo = ((catalogoCompleto ?? []) as CatalogoItem[]).slice(0, 300);
 
   const templatesFiltrados = filtrarTemplates((templates ?? []) as TemplateProjeto[], filtros);
   const catalogoFiltrado = filtrarCatalogo((catalogo ?? []) as CatalogoItem[], filtros);
@@ -254,7 +255,16 @@ export default async function OrcamentoModelosPage({
                     <td className="px-3 py-3">{item.categoria ?? "—"}</td>
                     <td className="px-3 py-3">{item.descricao}</td>
                     <td className="px-3 py-3">{item.unidade ?? "un"}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{brl(Number(item.preco_unitario ?? 0))}</td>
+                    <td className="px-3 py-3 text-right tabular-nums">
+                      {precoCatalogoMascarado(item) ? (
+                        <span title={NOTA_VALOR_MASCARADO}>
+                          {VALOR_MASCARADO}
+                          <span className="sr-only"> — {NOTA_VALOR_MASCARADO}</span>
+                        </span>
+                      ) : (
+                        brl(Number(item.preco_unitario ?? 0))
+                      )}
+                    </td>
                     <td className="px-3 py-3"><Origem origem={item.origem} /></td>
                     <td className="px-3 py-3 text-muted-foreground">{formatDate(item.valid_from)}</td>
                     <td className="px-3 py-3">{item.ativo ? <Badge tom="brand">Sim</Badge> : <Badge tom="zinc">Não</Badge>}</td>

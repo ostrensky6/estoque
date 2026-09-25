@@ -40,6 +40,7 @@ export type PermissaoUsuario =
   | "projetos.ver"
   | "projetos.editar"
   | "cadastros.ver"
+  | "tecnicos.salario.ver"
   | "backups.gerenciar"
   | "privilegios.gerenciar"
   | "configuracoes.ver";
@@ -264,6 +265,14 @@ export const PERMISSOES: Array<{
     modulo: "Cadastros",
     label: "Editar cadastros",
     descricao: "Manter clientes, insumos e parâmetros mestres.",
+  },
+  {
+    // Padrão: somente admin. O banco aplica a mesma regra (migration 0112).
+    key: "tecnicos.salario.ver",
+    modulo: "Cadastros",
+    label: "Ver salário dos técnicos",
+    descricao:
+      "Ver e alterar o salário dos técnicos e os valores de pessoal (PE) do catálogo. Sem ela, o valor aparece como XXX.",
   },
   {
     key: "auditoria.visualizar",

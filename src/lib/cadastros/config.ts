@@ -40,6 +40,11 @@ export type Campo = {
   valorPadrao?: string | number;
   /** inclui o campo nas planilhas XLSX */
   exportar?: boolean;
+  /**
+   * valor sigiloso sem permissão (definido no servidor): o formulário mostra
+   * "XXX" desabilitado e não envia o campo — o valor atual é preservado.
+   */
+  mascarado?: boolean;
 };
 
 export type Coluna = {
@@ -347,7 +352,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
     titulo: "Técnicos",
     singular: "técnico",
     subtitulo:
-      "Pessoal e dedicação. O valor-hora (HH) considera o custo da hora pela dedicação ao laboratório. Entra no custo analítico das análises.",
+      "Pessoal e dedicação. O valor-hora (HH) considera o custo da hora pela dedicação ao laboratório. Entra no custo analítico das análises. O salário só aparece para quem tem a permissão “Ver salário dos técnicos”; os demais veem XXX.",
     rotulo: "nome",
     colunas: [
       { key: "nome", label: "Nome" },

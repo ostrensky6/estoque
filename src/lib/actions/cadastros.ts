@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCadastrosOrdenados, type CadastroConfig, type Campo } from "@/lib/cadastros/config";
 import { TECH_ID_HEADER, TECH_SUFFIX, opcoesParaCampos } from "@/lib/cadastros/xlsx";
+import { lerLinhasCadastro, prepararSalarioTecnico } from "@/lib/cadastros/salario";
+import { podeVerSalario } from "@/lib/auth/permissao-efetiva";
 import { createClientUntyped } from "@/lib/supabase/server";
 
 export type FormState = {
@@ -89,6 +91,16 @@ function addYears(dateText: unknown, years: unknown): string | null {
   if (!Number.isFinite(n) || n <= 0) return null;
   return addDays(dateText, n * 365.2425);
 }
+
+const tecnicosSchema = z.object({
+  nome: reqStr,
+  processo: optStr,
+  valor_mes: reqNum({ min: 0 }),
+  horas_mes_base: reqNum({ min: 1 }),
+  percentual_dedicado: reqNum({ min: 0, max: 100 }),
+});
+/** Sem permissão (ou valor "XXX"): o salário não é validado nem gravado. */
+const tecnicosSemSalarioSchema = tecnicosSchema.omit({ valor_mes: true });
 
 const SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
   clientes: z.object({
@@ -180,13 +192,7 @@ const SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
     observacoes: optStr,
     ativo: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
   }),
-  tecnicos: z.object({
-    nome: reqStr,
-    processo: optStr,
-    valor_mes: reqNum({ min: 0 }),
-    horas_mes_base: reqNum({ min: 1 }),
-    percentual_dedicado: reqNum({ min: 0, max: 100 }),
-  }),
+  tecnicos: tecnicosSchema,
   overhead: z.object({
     item: reqStr,
     custo_mensal: reqNum({ min: 0 }),
@@ -270,6 +276,26 @@ function aplicarPadroesCadastro(slug: string, obj: Record<string, unknown>) {
   return obj;
 }
 
+/**
+ * Técnicos: aplica a regra do salário (ver prepararSalarioTecnico) e escolhe o
+ * schema. Os demais cadastros passam direto.
+ */
+function schemaEObjeto(
+  slug: string,
+  obj: Record<string, unknown>,
+  opcoes: { podeVerSalario: boolean; contexto: "formulario" | "importacao" },
+): { schema: z.ZodType<Record<string, unknown>> | undefined; obj: Record<string, unknown> } {
+  if (slug !== "tecnicos") return { schema: SCHEMAS[slug], obj };
+  const preparado = prepararSalarioTecnico(obj, {
+    podeVer: opcoes.podeVerSalario,
+    contexto: opcoes.contexto,
+  });
+  return {
+    schema: preparado.semSalario ? tecnicosSemSalarioSchema : tecnicosSchema,
+    obj: preparado.obj,
+  };
+}
+
 function errosZod(error: z.ZodError) {
   const errors: Record<string, string> = {};
   for (const issue of error.issues) {
@@ -287,12 +313,15 @@ export async function salvarRegistro(
   const idRaw = formData.get("_id");
   const id = idRaw ? Number(idRaw) : null;
 
-  const schema = SCHEMAS[slug];
   const tabela = TABELAS[slug];
-  if (!schema || !tabela) return { ok: false, message: "Cadastro inválido." };
+  if (!SCHEMAS[slug] || !tabela) return { ok: false, message: "Cadastro inválido." };
 
   // checkbox ausente não vem no FormData
-  const obj = aplicarPadroesCadastro(slug, formToObject(formData));
+  const { schema, obj } = schemaEObjeto(slug, aplicarPadroesCadastro(slug, formToObject(formData)), {
+    podeVerSalario: slug === "tecnicos" ? await podeVerSalario() : false,
+    contexto: "formulario",
+  });
+  if (!schema) return { ok: false, message: "Cadastro inválido." };
 
   const parsed = schema.safeParse(obj);
   if (!parsed.success) {
@@ -566,15 +595,17 @@ async function importarCadastro(
     erros: [],
     naoRemovidosPorVinculo: [],
   };
-  const schema = SCHEMAS[cfg.slug];
   const tabela = TABELAS[cfg.slug];
-  if (!schema || !tabela) {
+  if (!SCHEMAS[cfg.slug] || !tabela) {
     resumo.erros.push("Cadastro sem schema/tabela configurado.");
     return resumo;
   }
 
   const supabase = await createClientUntyped();
-  const { data: existing, error: selectError } = await supabase.from(tabela).select("*").order("id");
+  const podeVerSalarioTecnicos = cfg.slug === "tecnicos" ? await podeVerSalario() : false;
+  const { data: existing, error: selectError } = await lerLinhasCadastro(supabase, tabela, {
+    podeVerSalario: podeVerSalarioTecnicos,
+  });
   if (selectError) {
     resumo.erros.push(selectError.message);
     return resumo;
@@ -589,6 +620,18 @@ async function importarCadastro(
   const naturaisImportados = new Set<string>();
 
   for (const row of importedRows) {
+    // Técnicos: "XXX"/em branco no salário = manter o atual; sem permissão o
+    // salário da planilha é sempre ignorado (o banco rejeitaria a alteração).
+    const { schema, obj } = schemaEObjeto(cfg.slug, row.obj, {
+      podeVerSalario: podeVerSalarioTecnicos,
+      contexto: "importacao",
+    });
+    if (!schema) {
+      resumo.ignorados += 1;
+      resumo.erros.push(`Linha ${row.excelRow}: cadastro sem schema configurado.`);
+      continue;
+    }
+    row.obj = obj;
     const parsed = schema.safeParse(row.obj);
     if (!parsed.success) {
       resumo.ignorados += 1;

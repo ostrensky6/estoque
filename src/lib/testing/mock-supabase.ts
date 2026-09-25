@@ -115,6 +115,7 @@ const MOCK_PERMISSOES_CATEGORIAS = [
       "recebimento.ver": true,
       "projetos.ver": true,
       "cadastros.ver": true,
+      "tecnicos.salario.ver": false,
     },
   },
   {
@@ -146,6 +147,7 @@ const MOCK_PERMISSOES_CATEGORIAS = [
       "projetos.ver": true,
       "projetos.editar": true,
       "cadastros.ver": true,
+      "tecnicos.salario.ver": false,
     },
   },
   {
@@ -183,6 +185,7 @@ const MOCK_PERMISSOES_CATEGORIAS = [
       "projetos.ver": true,
       "projetos.editar": true,
       "cadastros.ver": true,
+      "tecnicos.salario.ver": false,
       "configuracoes.ver": true,
     },
   },
@@ -222,6 +225,7 @@ const MOCK_PERMISSOES_CATEGORIAS = [
       "projetos.ver": true,
       "projetos.editar": true,
       "cadastros.ver": true,
+      "tecnicos.salario.ver": true,
       "backups.gerenciar": true,
       "privilegios.gerenciar": true,
       "configuracoes.ver": true,
@@ -531,6 +535,46 @@ const baseStore = (): Store => {
         meses_selecionados: [],
       },
     ];
+    // Salário sigiloso (migration 0112). Dedicação 0: o técnico não altera o
+    // valor-hora de pessoal usado pelas demais fixtures de custeio/orçamento.
+    seed.tecnicos = [
+      {
+        id: 1,
+        nome: "Técnica E2E",
+        processo: "Laboratório",
+        valor_mes: 8123.45,
+        horas_mes_base: 160,
+        percentual_dedicado: 0,
+      },
+    ];
+    seed.orcamento_projeto_catalogo = [
+      {
+        id: "PE-E2E",
+        rubrica: "PE",
+        descricao: "Pessoa E2E - Pesquisadora",
+        unidade: "mês",
+        preco_unitario: 7654.32,
+        categoria: "Doutora",
+        ativo: true,
+        valid_from: null,
+        origem: "kontrol",
+        criado_em: "2026-06-21T10:00:00.000Z",
+        atualizado_em: "2026-06-21T10:00:00.000Z",
+      },
+      {
+        id: "MC-E2E",
+        rubrica: "MC",
+        descricao: "Material E2E",
+        unidade: "un",
+        preco_unitario: 12.5,
+        categoria: "Geral",
+        ativo: true,
+        valid_from: null,
+        origem: "kontrol",
+        criado_em: "2026-06-21T10:00:00.000Z",
+        atualizado_em: "2026-06-21T10:00:00.000Z",
+      },
+    ];
   }
 
   return seed;
@@ -587,6 +631,88 @@ function withRelations(table: string, row: Row): Row {
   return row;
 }
 
+type MockErro = { message: string; code?: string };
+type MockResultado = { data: unknown; error: MockErro | null };
+
+/**
+ * Sessão simulada. `papel` troca SOMENTE a avaliação de permissão granular
+ * (tem_permissao / salário) — as checagens de papel do app continuam lendo o
+ * perfil admin do mock. Usado pelo E2E via cookie `kontrol_e2e_papel`.
+ */
+export type SessaoMock = { papel?: string };
+
+const MOCK_USER_ID = "user-e2e";
+
+/** Colunas sem SELECT direto para authenticated (migration 0112). */
+const COLUNAS_SIGILOSAS: Record<string, string[]> = {
+  tecnicos: ["valor_mes"],
+  orcamento_projeto_catalogo: ["preco_unitario"],
+};
+
+/** Mesma regra de kontrol_private.tem_permissao_efetiva (0112). */
+function mockTemPermissao(chave: unknown, sessao: SessaoMock): boolean {
+  if (typeof chave !== "string" || !/^[a-z_]+(\.[a-z_]+)+$/.test(chave)) return false;
+  const perfil = (store.perfis ?? []).find((item) => item.id === MOCK_USER_ID);
+  if (!perfil || perfil.suspenso === true) return false;
+  const papel = String(sessao.papel ?? perfil.papel ?? "");
+  if (papel === "admin") return true;
+  if (!["tecnico", "coordenador", "gestor"].includes(papel)) return false;
+  // Com papel simulado, vale só a categoria (perfil individual é do admin).
+  const individuais = sessao.papel ? {} : ((perfil.permissoes ?? {}) as Row);
+  const valor =
+    chave in individuais
+      ? individuais[chave]
+      : ((store.permissoes_categorias ?? []).find((item) => item.papel === papel)?.permissoes as Row | undefined)?.[chave];
+  return valor === true;
+}
+
+function podeVerSalarioMock(sessao: SessaoMock) {
+  return mockTemPermissao("tecnicos.salario.ver", sessao);
+}
+
+/** Emula os triggers de proteção de salário/preço PE da 0112. */
+function violacaoSalario(
+  table: string,
+  op: "insert" | "update",
+  payload: Row | undefined,
+  sessao: SessaoMock,
+  afetadas: Row[] = [],
+): MockErro | null {
+  if (!payload || !COLUNAS_SIGILOSAS[table] || podeVerSalarioMock(sessao)) return null;
+  if (table === "tecnicos" && "valor_mes" in payload) {
+    const alterou =
+      op === "insert"
+        ? Number(payload.valor_mes) !== 0
+        : afetadas.some((row) => Number(row.valor_mes) !== Number(payload.valor_mes));
+    if (alterou) {
+      return { message: "Sem permissão para alterar o salário do técnico (Ver salário dos técnicos).", code: "42501" };
+    }
+  }
+  if (table === "orcamento_projeto_catalogo") {
+    const alterou =
+      op === "insert"
+        ? payload.rubrica === "PE" && Number(payload.preco_unitario ?? 0) !== 0
+        : afetadas.some(
+            (row) =>
+              (row.rubrica === "PE" || payload.rubrica === "PE") &&
+              (("rubrica" in payload && payload.rubrica !== row.rubrica) ||
+                ("preco_unitario" in payload && Number(payload.preco_unitario) !== Number(row.preco_unitario))),
+          );
+    if (alterou) {
+      return { message: "Sem permissão para alterar valores de pessoal (PE) do catálogo.", code: "42501" };
+    }
+  }
+  return null;
+}
+
+function valorHoraPessoalTotalMock() {
+  return (store.tecnicos ?? []).reduce((acc, tecnico) => {
+    const horas = Number(tecnico.horas_mes_base);
+    if (!(horas > 0)) return acc;
+    return acc + ((Number(tecnico.valor_mes) / horas) * Number(tecnico.percentual_dedicado)) / 100;
+  }, 0);
+}
+
 class MockQuery {
   private filters: { column: string; value: unknown }[] = [];
   private neqFilters: { column: string; value: unknown }[] = [];
@@ -595,11 +721,25 @@ class MockQuery {
   private isFilters: { column: string; value: null }[] = [];
   private comparisonFilters: { column: string; operator: "gt" | "gte" | "lt" | "lte"; value: unknown }[] = [];
   private mutation: null | { type: "insert" | "update" | "delete" | "upsert"; payload?: Row | Row[] } = null;
+  private columns: string[] | null = null;
+  private erro: MockErro | null = null;
 
-  constructor(private table: string) {}
+  constructor(
+    private table: string,
+    private sessao: SessaoMock = {},
+  ) {}
 
-  select(_columns?: string) {
-    void _columns;
+  select(columns?: string) {
+    // `select()` sem argumento equivale a "*" no supabase-js.
+    this.columns = (columns ?? "*").split(",").map((coluna) => coluna.trim()).filter(Boolean);
+    const sigilosas = COLUNAS_SIGILOSAS[this.table];
+    if (sigilosas && this.columns.some((coluna) => coluna === "*" || sigilosas.includes(coluna))) {
+      // Emula o privilégio de coluna da migration 0112 (vale até para admin).
+      this.erro = {
+        message: `permission denied for table ${this.table}`,
+        code: "42501",
+      };
+    }
     return this;
   }
 
@@ -668,6 +808,13 @@ class MockQuery {
 
   insert(payload: Row | Row[]) {
     const rows = Array.isArray(payload) ? payload : [payload];
+    for (const row of rows) {
+      const erroSalario = violacaoSalario(this.table, "insert", row, this.sessao);
+      if (erroSalario) {
+        this.erro = erroSalario;
+        return this;
+      }
+    }
     const inserted = rows.map((row) => ({
       id: row.id ?? nextId(this.table),
       criado_em: row.criado_em ?? new Date().toISOString(),
@@ -705,15 +852,24 @@ class MockQuery {
     return this.single();
   }
 
-  then<TResult1 = { data: unknown; error: null }, TResult2 = never>(
-    onfulfilled?: ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+  then<TResult1 = MockResultado, TResult2 = never>(
+    onfulfilled?: ((value: MockResultado) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ) {
     return Promise.resolve(this.execute()).then(onfulfilled, onrejected);
   }
 
-  private execute() {
+  private execute(): MockResultado {
+    if (this.erro) return { data: null, error: this.erro };
     if (this.mutation?.type === "update") {
+      const erroSalario = violacaoSalario(
+        this.table,
+        "update",
+        this.mutation.payload as Row,
+        this.sessao,
+        (store[this.table] ?? []).filter((row) => this.matches(row)),
+      );
+      if (erroSalario) return { data: null, error: erroSalario };
       store[this.table] = (store[this.table] ?? []).map((row) =>
         this.matches(row) ? { ...row, ...(this.mutation?.payload as Row) } : row,
       );
@@ -735,7 +891,17 @@ class MockQuery {
       this.mutation?.type === "insert"
         ? (this.mutation.payload as Row[])
         : (store[this.table] ?? []).filter((row) => this.matches(row));
-    return { data: source.map((row) => withRelations(this.table, row)), error: null };
+    const linhas = source.map((row) => withRelations(this.table, row));
+    // Tabelas com coluna sigilosa: devolve só as colunas pedidas, como o
+    // PostgREST faria (as demais tabelas mantêm o comportamento anterior).
+    if (COLUNAS_SIGILOSAS[this.table] && this.columns) {
+      const colunas = this.columns;
+      return {
+        data: linhas.map((row) => Object.fromEntries(colunas.map((coluna) => [coluna, row[coluna]]))),
+        error: null,
+      };
+    }
+    return { data: linhas, error: null };
   }
 
   private matches(row: Row) {
@@ -1147,13 +1313,41 @@ function emitirOrcamentoFinalTransacional(args: Row) {
   return { versao_id: id, versao, numero };
 }
 
-export function createMockSupabaseClient() {
+export function createMockSupabaseClient(sessao: SessaoMock = {}) {
   return {
     auth: {
-      getUser: async () => ({ data: { user: { id: "user-e2e", email: "admin@example.com" } }, error: null }),
+      getUser: async () => ({ data: { user: { id: MOCK_USER_ID, email: "admin@example.com" } }, error: null }),
     },
-    from: (table: string) => new MockQuery(table),
-    rpc: async (fn: string, args: Row) => {
+    from: (table: string) => new MockQuery(table, sessao),
+    rpc: async (fn: string, args: Row = {}) => {
+      // Permissão efetiva e leituras sigilosas (migration 0112).
+      if (fn === "tem_permissao") return { data: mockTemPermissao(args.p_chave, sessao), error: null };
+      if (fn === "tecnicos_remuneracao") {
+        const pode = podeVerSalarioMock(sessao);
+        return {
+          data: [...(store.tecnicos ?? [])]
+            .sort((a, b) => Number(a.id) - Number(b.id))
+            .map((tecnico) => ({ id: tecnico.id, valor_mes: pode ? tecnico.valor_mes : null })),
+          error: null,
+        };
+      }
+      if (fn === "valor_hora_pessoal_total") return { data: valorHoraPessoalTotalMock(), error: null };
+      if (fn === "orcamento_projeto_catalogo_listar") {
+        const pode = podeVerSalarioMock(sessao);
+        return {
+          data: [...(store.orcamento_projeto_catalogo ?? [])]
+            .sort((a, b) =>
+              String(a.rubrica).localeCompare(String(b.rubrica)) ||
+              String(a.descricao).localeCompare(String(b.descricao)) ||
+              String(a.id).localeCompare(String(b.id)),
+            )
+            .map((item) => {
+              const mascarado = item.rubrica === "PE" && !pode;
+              return { ...item, preco_unitario: mascarado ? null : item.preco_unitario, preco_mascarado: mascarado };
+            }),
+          error: null,
+        };
+      }
       // Cada ramo devolve explicitamente. Antes eles apenas mutavam o
       // estado e caíam no retorno permissivo do final — o que tornava
       // indistinguível "simulado com sucesso" de "não simulado".

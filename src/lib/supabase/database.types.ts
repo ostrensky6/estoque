@@ -4497,6 +4497,23 @@ export type Database = {
         Args: { p_abertura: string; p_fabricante: string }
         Returns: string
       }
+      orcamento_projeto_catalogo_listar: {
+        Args: never
+        Returns: {
+          ativo: boolean
+          atualizado_em: string
+          categoria: string | null
+          criado_em: string
+          descricao: string
+          id: string
+          origem: string
+          preco_mascarado: boolean
+          preco_unitario: number | null
+          rubrica: string
+          unidade: string | null
+          valid_from: string | null
+        }[]
+      }
       papel_minimo: { Args: { p_min: string }; Returns: boolean }
       recalcular_orcamento_transacional: {
         Args: {
@@ -4604,6 +4621,11 @@ export type Database = {
           triagem_id: number
         }[]
       }
+      tecnicos_remuneracao: {
+        Args: never
+        Returns: { id: number; valor_mes: number | null }[]
+      }
+      tem_permissao: { Args: { p_chave: string }; Returns: boolean }
       transicionar_orcamento: {
         Args: {
           p_observacao?: string
@@ -4651,6 +4673,7 @@ export type Database = {
         Args: { p_planejamento_id: number }
         Returns: undefined
       }
+      valor_hora_pessoal_total: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never
