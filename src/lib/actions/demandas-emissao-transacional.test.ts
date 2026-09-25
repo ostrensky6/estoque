@@ -23,6 +23,7 @@ const state = {
   projetos: [] as unknown[],
   inserts: [] as string[],
   updates: [] as string[],
+  parametros: [] as { chave: string; valor: number }[],
 };
 
 const from = vi.fn((table: string) => {
@@ -46,6 +47,10 @@ const from = vi.fn((table: string) => {
       update: () => ({ eq: () => ({ eq: async () => { state.updates.push(table); return { error: null }; } }) }),
       insert: () => { state.inserts.push(table); return { select: () => ({ single: async () => ({ data: { id: 1 } }) }) }; },
     };
+  }
+  if (table === "parametros") {
+    // padrões globais usados quando a proposta não tem projeto nem percentuais próprios (0118)
+    return { select: async () => ({ data: state.parametros, error: null }) };
   }
   if (table === "orcamento_parametros_aplicados") {
     return { insert: async () => { state.inserts.push(table); return { error: null }; } };
@@ -111,6 +116,7 @@ beforeEach(() => {
   state.projetos = [];
   state.inserts = [];
   state.updates = [];
+  state.parametros = [];
 });
 
 async function emitir(
@@ -234,6 +240,25 @@ describe("emissão transacional", () => {
     const args = rpcCall(0)[1] as Record<string, unknown>;
     expect(args.p_total_final).toBe(100);
     expect(args.p_total_laboratorio_custo).toBe(100);
+  });
+
+  it("apenas análises usa os percentuais gravados na proposta (0118)", async () => {
+    state.demanda = { ...demandaCompleta, param_impostos: 0, param_incubacao: 0, param_reserva: 0, param_investimentos: 0, param_lucro: 20 };
+    await expect(emitir(undefined, false)).rejects.toThrow(/NEXT_REDIRECT/);
+    const args = rpcCall(0)[1] as Record<string, unknown>;
+    // 100 / (1 − 20%) = 125
+    expect(args.p_total_final).toBe(125);
+  });
+
+  it("apenas análises sem percentuais gravados usa os padrões de Parâmetros de custeio", async () => {
+    state.parametros = [
+      { chave: "impostos", valor: 10 },
+      { chave: "margem_lucro", valor: 10 },
+    ];
+    await expect(emitir(undefined, false)).rejects.toThrow(/NEXT_REDIRECT/);
+    const args = rpcCall(0)[1] as Record<string, unknown>;
+    // 100 / (1 − 20%) = 125, sem exigir a confirmação de "sem parâmetros"
+    expect(args.p_total_final).toBe(125);
   });
 
   it("falha da RPC retorna erro claro e não confirma emissão", async () => {

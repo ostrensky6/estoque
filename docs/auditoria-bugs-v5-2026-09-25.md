@@ -74,7 +74,7 @@ Legenda: **P0**: dado errado, perda de dado ou tarefa bloqueada; **P1**: alto im
 | P0 | A proposta emitida quebrava quando faltava a instituição, e o formulário novo não gravava instituição, responsável, data de solicitação nem prazo. | Os campos são gravados. A proposta mostra um aviso e usa GIA/UFPR como padrão, em vez de quebrar. |
 | P0 | Fundos mostrava 0 em impostos, incubação, reserva e investimento para toda proposta emitida. | Lê o valor nominal salvo na emissão. Os testes agora usam o formato real. |
 | P0 | O Histórico quebrava para quem está abaixo de coordenador e gravava no banco a cada abertura. | "Vencida" é calculada na leitura; a gravação não derruba mais a tela. |
-| P0 | Proposta "Apenas análises" saía pelo custo técnico, com 0% de impostos e lucro, sem aviso. | A emissão exige uma confirmação explícita. |
+| P0 | Proposta "Apenas análises" saía pelo custo técnico, com 0% de impostos e lucro, sem aviso. | A etapa "Parâmetros" ganhou o editor dos 5 percentuais (impostos, incubação, reserva, investimentos, lucro), com prévia pela mesma engine da emissão. Sem orçamento de projeto, os percentuais ficam na proposta (0118); sem nada salvo, valem os padrões de Parâmetros de custeio. A confirmação só aparece se todos os percentuais forem zero. |
 | P1 | A página pública de aprovação mostrava ao cliente o custo interno, o lucro e a reserva. A marca ATGC era fixa. | O cliente vê só os itens, o total, a validade e as condições. A marca vem da instituição. |
 | P1 | Cancelar a proposta não pedia confirmação; os botões de edição apareciam em módulos travados; exclusões ignoravam erros. | Confirmação, botões ocultos e erros verificados. |
 | P1 | No campo de quantidade do grupo, digitar 5 depois de apagar virava 15, e a quantidade não chegava às análises do grupo. | Corrigido. |
@@ -97,6 +97,7 @@ coordenador e gestor.
 | `0114_permissao_editar_analises.sql` | esta auditoria | Escrita em análises: coordenador+ **ou** `analises.editar`. O rollback está no cabeçalho. |
 | `0115_corrigir_descarte_lote.sql` | esta auditoria | Descarte registra o saldo atual, com custo e categoria; cria `categoria_saida`. Rollback: recriar a função da 0014. |
 | `0116_catalogo_analises_transacional.sql` | esta auditoria | `duplicar_analise` e `excluir_analise_sem_historico`. Rollback: `drop function` das duas. |
+| `0118_parametros_economicos_proposta.sql` | esta auditoria | Percentuais econômicos na própria proposta (colunas `param_*`, soma < 100%). Rollback: `drop column` das cinco colunas novas. |
 | `0117_baixa_lote_vencido.sql` | esta auditoria | Baixa de lote vencido com o motivo "Vencimento"; perdas gravadas como `ajuste`. Rollback: recriar as funções da 0110. |
 
 Até as migrations serem aplicadas, o app degrada com segurança:
@@ -111,8 +112,8 @@ decidir qual modelo vale. Lá os números 0109 e 0110 colidem com os deste branc
 
 - **Custeio.** O valor-hora de pessoal agregado ainda chega ao navegador pelo simulador. Com um único técnico,
   ele equivale ao salário por hora. Para esconder de fato, o simulador precisa calcular no servidor.
-- **Orçamento "Apenas análises".** Ainda não há onde registrar impostos e lucro sem módulo de projeto; por
-  enquanto, só a confirmação de emissão. Depende da migração do orçamento de projetos (protocolo próprio).
+- **Proposta mista (laboratório + projeto).** Os percentuais continuam no orçamento de projeto. Unificar tudo
+  na proposta depende da migração do orçamento de projetos (protocolo próprio).
 - **`ler_orcamento_publico`.** A função devolve o snapshot inteiro ao servidor. A página não o expõe, mas o
   ideal é o banco devolver só campos seguros para o cliente.
 - **Permissões individuais.** `estoque.movimentar`, `estoque.lote.aceitar` e outras ainda não são

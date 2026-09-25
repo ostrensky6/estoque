@@ -18,6 +18,9 @@ import { HelpExample, HelpFormula, HelpTip } from "@/components/common/HelpTip";
 import { PainelParametrosEconomicos } from "@/components/orcamento/PainelParametrosEconomicos";
 import { SalvarDemandaForm } from "@/components/orcamento/SalvarDemandaForm";
 import { EditorCustosProjeto } from "@/components/orcamento/projeto/EditorCustosProjeto";
+import { EditorParametrosProposta } from "@/components/orcamento/EditorParametrosProposta";
+import { temPapel } from "@/lib/auth/roles";
+import { padroesDeParametrosGlobais, resolverParametrosProposta } from "@/lib/orcamento/parametros-proposta";
 import { ConfirmSubmitButton } from "@/components/common/ConfirmSubmitButton";
 import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
@@ -101,10 +104,22 @@ export default async function DemandaDetalhe({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ erro_emissao?: string; etapa?: string; erro_integridade?: string }>;
+  searchParams: Promise<{
+    erro_emissao?: string;
+    etapa?: string;
+    erro_integridade?: string;
+    erro_parametros?: string;
+    parametros_salvos?: string;
+  }>;
 }) {
   const { id } = await params;
-  const { erro_emissao: erroEmissao, etapa: etapaParam, erro_integridade: erroIntegridade } = await searchParams;
+  const {
+    erro_emissao: erroEmissao,
+    etapa: etapaParam,
+    erro_integridade: erroIntegridade,
+    erro_parametros: erroParametros,
+    parametros_salvos: parametrosSalvos,
+  } = await searchParams;
   const demandaId = Number(id);
   const supabase = await createClient();
 
@@ -174,6 +189,13 @@ export default async function DemandaDetalhe({
     pendenciaSemItens: "adicionar ao menos um custo, análise de projeto ou justificativa",
   });
   const projetoReferencia = orcamentosProjeto.at(-1);
+  // com projeto: percentuais do projeto; sem projeto: os da proposta ou os padrões (0118)
+  const { data: parametrosGlobais } = await supabase.from("parametros").select("chave, valor");
+  const parametrosProposta = resolverParametrosProposta({
+    projeto: projetoReferencia,
+    proposta: demanda as Record<string, unknown>,
+    padroes: padroesDeParametrosGlobais(parametrosGlobais),
+  });
   const orcamentoFinal = consolidarOrcamentoFinal({
     laboratorioExigido: exigeAnalises,
     projetoExigido: exigeProjeto,
@@ -194,13 +216,7 @@ export default async function DemandaDetalhe({
         meses_selecionados: [],
       })),
     ],
-    parametrosProjeto: {
-      impostos_legacy: Number(projetoReferencia?.impostos_legacy ?? projetoReferencia?.impostos ?? 0),
-      incubacao: Number(projetoReferencia?.incubacao ?? 0),
-      reserva: Number(projetoReferencia?.reserva ?? 0),
-      investimentos: Number(projetoReferencia?.investimentos ?? 0),
-      lucro: Number(projetoReferencia?.lucro ?? projetoReferencia?.margem_lucro ?? 0),
-    },
+    parametrosProjeto: parametrosProposta.rates,
   });
   const modulosPendentes = [
     moduloAnalises.status === "pendente" ? "preencher custos laboratoriais" : null,
@@ -624,6 +640,17 @@ export default async function DemandaDetalhe({
             totalFinal={orcamentoFinal.totalFinal}
             parametros={orcamentoFinal.parametrosProjeto}
             alertas={orcamentoFinal.alertas}
+          />
+          <EditorParametrosProposta
+            key={JSON.stringify(parametrosProposta.rates)}
+            demandaId={demandaId}
+            custoLaboratorio={orcamentoFinal.totalLaboratorioCusto}
+            custoProjeto={orcamentoFinal.totalProjetoCusto}
+            valores={parametrosProposta.rates}
+            origem={parametrosProposta.origem}
+            erro={erroParametros}
+            salvo={parametrosSalvos === "1"}
+            podeEditar={await temPapel("gestor")}
           />
           <TabelaSimples
             colunas={["Campo", "Como é calculado", "Valor"]}

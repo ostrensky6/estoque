@@ -11,6 +11,7 @@ import { modalidadeExigeLaboratorio, modalidadeExigeProjeto } from "@/lib/orcame
 import { detectarCustosZero } from "@/lib/orcamento/proposta-final";
 import { planejarModulosProposta, type PlanoModulos } from "@/lib/orcamento/garantir-modulos";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
+import { padroesDeParametrosGlobais, resolverParametrosProposta } from "@/lib/orcamento/parametros-proposta";
 import {
   lerAnalisesSelecionadas,
   lerGruposAmostras,
@@ -553,13 +554,12 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
         meses_selecionados: [],
       })),
     ],
-    parametrosProjeto: {
-      impostos_legacy: Number(projetoReferencia?.impostos_legacy ?? projetoReferencia?.impostos ?? 0),
-      incubacao: Number(projetoReferencia?.incubacao ?? 0),
-      reserva: Number(projetoReferencia?.reserva ?? 0),
-      investimentos: Number(projetoReferencia?.investimentos ?? 0),
-      lucro: Number(projetoReferencia?.lucro ?? projetoReferencia?.margem_lucro ?? 0),
-    },
+    // com projeto: percentuais do projeto; sem projeto: os da proposta ou os padrões (0118)
+    parametrosProjeto: resolverParametrosProposta({
+      projeto: projetoReferencia,
+      proposta: demanda as Record<string, unknown>,
+      padroes: padroesDeParametrosGlobais((await supabase.from("parametros").select("chave, valor")).data),
+    }).rates,
   });
 
   if (!consolidado.pronto) {
@@ -726,16 +726,38 @@ export async function salvarParametrosEconomicosDaDemanda(formData: FormData) {
     .limit(1)
     .maybeSingle();
 
-  if (!projeto?.id) {
-    redirect(`${listaPath}/${demandaId}?etapa=final&erro_parametros=${encodeURIComponent("Não foi possível localizar o orçamento para salvar parâmetros.")}`);
+  const soma = Object.values(patch).reduce<number>((total, valor) => total + Math.max(0, Number(valor ?? 0)), 0);
+  if (Object.values(patch).some((valor) => valor != null && valor < 0) || soma >= 100) {
+    redirect(`${listaPath}/${demandaId}?etapa=parametros&erro_parametros=${encodeURIComponent("Use percentuais positivos com soma menor que 100%.")}`);
   }
 
-  const { error } = await supabase.from("orcamento_projetos").update(patch).eq("id", projeto.id);
-  if (error) throw new Error(error.message);
+  // Com orçamento de projeto, os percentuais continuam no projeto; sem ele
+  // (proposta "Apenas análises"), ficam na própria proposta (migration 0118).
+  const { data: gravado, error } = projeto?.id
+    ? await supabase.from("orcamento_projetos").update(patch).eq("id", projeto.id).select("id")
+    : await supabase
+        .from("demandas_propostas")
+        .update({
+          param_impostos: patch.impostos_legacy ?? 0,
+          param_incubacao: patch.incubacao ?? 0,
+          param_reserva: patch.reserva ?? 0,
+          param_investimentos: patch.investimentos ?? 0,
+          param_lucro: patch.lucro ?? 0,
+        } as never)
+        .eq("id", demandaId)
+        .select("id");
+  if (error || !gravado?.length) {
+    const msg = error
+      ? /param_/.test(error.message) && /column|schema cache/i.test(error.message)
+        ? "Parâmetros da proposta ainda não disponíveis no banco (migration 0118 pendente)."
+        : error.message
+      : "Nada foi salvo: seu perfil não tem permissão para alterar esta proposta.";
+    redirect(`${listaPath}/${demandaId}?etapa=parametros&erro_parametros=${encodeURIComponent(msg)}`);
+  }
 
   revalidatePath(listaPath);
   revalidatePath(`${listaPath}/${demandaId}`);
-  redirect(`${listaPath}/${demandaId}?etapa=final`);
+  redirect(`${listaPath}/${demandaId}?etapa=parametros&parametros_salvos=1`);
 }
 
 export async function emitirPropostaCliente(
