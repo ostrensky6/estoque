@@ -81,7 +81,7 @@ export function PainelParametrosEconomicos({
     <div className="mt-4">
       <div className="grid gap-3 lg:grid-cols-3">
         {/* Bloco 1 — base técnica (Política A: custo técnico + custo direto) */}
-        <Bloco titulo="Base técnica">
+        <Bloco titulo="Base de cálculo">
           <Linha rotulo="Custo laboratório (técnico)">
             <ValorCalculado>{brl(custoLaboratorio)}</ValorCalculado>
           </Linha>

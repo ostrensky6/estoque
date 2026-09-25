@@ -144,6 +144,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
             critico={ins?.categoria_compra === "critico"}
             validade={loteBaixa.validade}
             vencido={vencido}
+            rotuloBaixa="Dar baixa"
             reservado={loteBaixa.reservado}
             modeloQuantidade={loteBaixa.modeloQuantidade}
             estornoDiretoPermitido={estornoDiretoPermitido}

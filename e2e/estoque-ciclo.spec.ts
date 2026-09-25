@@ -6,7 +6,7 @@ test("ciclo de estoque: receber lote, aceitar, ajustar consumo e bloquear", asyn
   await page.goto("/estoque");
 
   await page.getByRole("button", { name: "+ Entrada" }).first().click();
-  await expect(page.getByRole("heading", { name: "Entrada de inventário (ajuste)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Entrada de inventário" })).toBeVisible();
   await page.locator('input[name="quantidade"]').fill("25");
   await page.locator('input[name="validade"]').fill("2026-12-31");
   await page.locator('input[name="codigo"]').fill(loteCodigo);

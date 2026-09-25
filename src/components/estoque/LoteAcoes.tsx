@@ -25,7 +25,7 @@ export function LoteAcoes({
   unidade,
   critico,
   validade = null,
-  vencido = false,
+  rotuloBaixa = "Baixa",
   reservado = 0,
   modeloQuantidade = "LEGADO",
   estornoDiretoPermitido = false,
@@ -41,6 +41,8 @@ export function LoteAcoes({
   /** validade efetiva (aaaa-mm-dd) */
   validade?: string | null;
   vencido?: boolean;
+  /** texto do botão de baixa (na página do lote: "Dar baixa") */
+  rotuloBaixa?: string;
   reservado?: number;
   modeloQuantidade?: ModeloQuantidadeLote;
   estornoDiretoPermitido?: boolean;
@@ -137,19 +139,12 @@ export function LoteAcoes({
           Bloquear
         </button>
       )}
-      {loteAtivo && vencido && (
-        <span
-          className="px-2 py-1 text-xs text-danger-strong"
-          title="Lote vencido não pode receber baixa para uso. Descarte o lote (gestor) para registrar a perda."
-        >
-          Vencido: sem baixa
-        </span>
-      )}
-      {loteAtivo && !vencido && (
+      {/* vencido também: o diálogo só aceita o motivo Vencimento (0117) */}
+      {loteAtivo && (
         <DarBaixaDialog
           lotes={[{ id: loteId, codigoLote, validade, quantidadeAtual, reservado, modeloQuantidade, status }]}
           unidade={unidade}
-          triggerLabel="Baixa"
+          triggerLabel={rotuloBaixa}
           triggerClassName={`${btn} text-danger-strong hover:bg-danger-soft`}
         />
       )}
