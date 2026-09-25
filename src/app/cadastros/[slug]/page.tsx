@@ -8,6 +8,12 @@ import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { CrudShell } from "@/components/cadastros/CrudShell";
 import { equipCustoDia } from "@/lib/costing/engine";
 import { modeloQuantidadePorInsumo, projetarQuantidadeInsumos, type LoteInsumo, type LoteModelo } from "@/lib/cadastros/insumos";
+import {
+  camposTecnicosParaUsuario,
+  colunasCalculadasTecnico,
+  lerLinhasCadastro,
+} from "@/lib/cadastros/salario";
+import { podeVerSalario } from "@/lib/auth/permissao-efetiva";
 
 export const dynamic = "force-dynamic";
 
@@ -86,17 +92,8 @@ async function comColunasCalculadas(
         };
       });
     case "tecnicos":
-      return rows.map((r) => {
-        const custoHora =
-          Number(r.horas_mes_base) > 0
-            ? Number(r.valor_mes) / Number(r.horas_mes_base)
-            : 0;
-        return {
-          ...r,
-          custo_hora: custoHora,
-          valor_hh: (custoHora * Number(r.percentual_dedicado)) / 100,
-        };
-      });
+      // salário mascarado ("XXX") ⇒ derivados também mascarados (ver salario.ts)
+      return rows.map(colunasCalculadasTecnico);
     case "insumos":
       return rows.map((r) => ({
         ...r,
@@ -129,10 +126,14 @@ export default async function CadastroPage({
   if (!cfg) notFound();
 
   const supabase = await createClientUntyped();
-  const [{ data: rows }, { data: parametros }] = await Promise.all([
-    supabase.from(cfg.tabela).select("*").order("id"),
+  // Salário: decidido no servidor; sem permissão o valor real nunca é lido
+  // nem serializado para o CrudShell (cliente).
+  const podeVerSalarioTecnicos = slug === "tecnicos" ? await podeVerSalario() : false;
+  const [{ data: rows, error: rowsError }, { data: parametros }] = await Promise.all([
+    lerLinhasCadastro(supabase, cfg.tabela, { podeVerSalario: podeVerSalarioTecnicos }),
     supabase.from("parametros").select("chave, valor").eq("chave", "dias_uteis_ano"),
   ]);
+  if (rowsError && slug === "tecnicos") throw new Error(rowsError.message);
   const diasUteisAno = Number(parametros?.[0]?.valor ?? 222);
 
   let linhas = await comColunasCalculadas(slug, rows ?? [], diasUteisAno);
@@ -163,9 +164,11 @@ export default async function CadastroPage({
       label: String((r as unknown as { nome: string | null }).nome ?? ""),
     }));
   }
-  const campos: Campo[] = cfg.campos.map((c) =>
+  const camposBase: Campo[] = cfg.campos.map((c) =>
     c.opcoesDe ? { ...c, opcoes: opcoesPorFonte[c.opcoesDe] ?? [] } : c,
   );
+  const campos =
+    slug === "tecnicos" ? camposTecnicosParaUsuario(camposBase, podeVerSalarioTecnicos) : camposBase;
 
   if (slug === "insumos") {
     const tipos = opcoesPorFonte["tipo_insumos"] ?? [];

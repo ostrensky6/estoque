@@ -49,6 +49,19 @@ describe("permissoes reconciliadas", () => {
     ]));
   });
 
+  it("salario dos tecnicos: configuravel nas telas e, por padrao, somente admin", () => {
+    const salario = PERMISSOES.find((permissao) => permissao.key === "tecnicos.salario.ver");
+    expect(salario).toMatchObject({ label: "Ver salário dos técnicos", modulo: "Cadastros" });
+
+    expect(normalizePermissions("admin", {})["tecnicos.salario.ver"]).toBe(true);
+    for (const papel of ["tecnico", "coordenador", "gestor"]) {
+      expect(defaultPermissionsForRole(papel)).not.toContain("tecnicos.salario.ver");
+      expect(normalizePermissions(papel, {})["tecnicos.salario.ver"]).toBe(false);
+    }
+    // concessao individual (perfis.permissoes) prevalece sobre o padrao da categoria
+    expect(normalizePermissions("tecnico", { "tecnicos.salario.ver": true })["tecnicos.salario.ver"]).toBe(true);
+  });
+
   it("forca permissoes completas para formulario de admin", () => {
     const formData = new FormData();
     formData.append("permissoes", "analises.ver");

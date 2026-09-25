@@ -7,6 +7,9 @@ import {
   TECH_SUFFIX,
 } from "@/lib/cadastros/importacao";
 import { projetarQuantidadeInsumos, type LoteInsumo } from "@/lib/cadastros/insumos";
+import { VALOR_MASCARADO, estaMascarado } from "@/lib/cadastros/mascara";
+import { lerLinhasCadastro } from "@/lib/cadastros/salario";
+import { podeVerSalario } from "@/lib/auth/permissao-efetiva";
 import { createClientUntyped } from "@/lib/supabase/server";
 
 export { TECH_ID_HEADER, TECH_SUFFIX };
@@ -79,6 +82,7 @@ export async function opcoesParaCampos(
 
 export function valueForCell(value: unknown, campo?: Campo, opcoes?: Map<string, string>) {
   if (value == null || value === "") return null;
+  if (estaMascarado(value)) return VALOR_MASCARADO;
   if (campo?.tipo === "checkbox") return value ? "Sim" : "Não";
   if (campo?.tipo === "select" && opcoes) return opcoes.get(String(value)) ?? value;
   if (campo?.tipo === "date") return dateFromInput(value) ?? value;
@@ -239,8 +243,15 @@ export async function buildCadastrosWorkbook(slug?: string) {
 
   const cadastros = slug ? [CADASTROS[slug]].filter(Boolean) : getCadastrosOrdenados();
   addInstrucoesWorksheet(workbook, cadastros);
+  // Sem permissão, a planilha leva "XXX" no salário (nunca o valor real);
+  // reimportar "XXX" mantém o salário atual.
+  const podeVerSalarioTecnicos = cadastros.some((cfg) => cfg.tabela === "tecnicos")
+    ? await podeVerSalario()
+    : false;
   for (const cfg of cadastros) {
-    const { data, error } = await supabase.from(cfg.tabela).select("*").order("id");
+    const { data, error } = await lerLinhasCadastro(supabase, cfg.tabela, {
+      podeVerSalario: podeVerSalarioTecnicos,
+    });
     if (error) throw new Error(error.message);
     let rows = ((data ?? []) as CadastroRow[]).map((row) => ({ ...row }));
     if (cfg.slug === "insumos") {

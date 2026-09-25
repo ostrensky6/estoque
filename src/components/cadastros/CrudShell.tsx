@@ -5,6 +5,7 @@ import {
   useActionState,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useState,
 } from "react";
@@ -22,7 +23,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp, ChevronsUpDown, MoreHorizontal, Plus, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronsUpDown, Lock, MoreHorizontal, Plus, Search } from "lucide-react";
 import type { Campo, Coluna } from "@/lib/cadastros/config";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,11 +71,14 @@ import {
 import { corrigirQuantidadeEmbalagens } from "@/lib/actions/estoque";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/formatters";
+import { NOTA_VALOR_MASCARADO, VALOR_MASCARADO, estaMascarado } from "@/lib/cadastros/mascara";
 
 type Registro = Record<string, unknown>;
 
 function fmt(value: unknown, tipo?: Coluna["tipo"]) {
   if (value == null || value === "") return "—";
+  // valor sigiloso já mascarado no servidor (ex.: salário sem permissão)
+  if (estaMascarado(value)) return VALOR_MASCARADO;
   switch (tipo) {
     case "currency":
       return formatCurrency(Number(value));
@@ -116,6 +120,10 @@ const larguraClasse: Record<NonNullable<Coluna["largura"]>, string> = {
 const numericSort: SortingFn<Registro> = (a, b, id) => {
   const x = Number(a.getValue(id) ?? 0);
   const y = Number(b.getValue(id) ?? 0);
+  // valores mascarados ("XXX") não têm ordem numérica: ficam juntos no fim
+  if (Number.isNaN(x) || Number.isNaN(y)) {
+    return Number.isNaN(x) === Number.isNaN(y) ? 0 : Number.isNaN(x) ? 1 : -1;
+  }
   return x === y ? 0 : x > y ? 1 : -1;
 };
 
@@ -947,6 +955,33 @@ function CampoInput({
   const span = campo.colSpan === 2 ? "col-span-2" : "col-span-1";
   const valorInicial = valor == null ? campo.valorPadrao : valor;
   const v = valorInicial == null ? "" : String(valorInicial);
+  const idBase = useId();
+
+  if (campo.mascarado) {
+    // Sem permissão: o servidor já trocou o valor por "XXX". O input não tem
+    // `name`, então nada é enviado e o valor atual é preservado no banco.
+    const inputId = `${idBase}-valor`;
+    const notaId = `${idBase}-nota`;
+    return (
+      <div className={span}>
+        <Label htmlFor={inputId} className="block">
+          {campo.label}
+        </Label>
+        <Input
+          id={inputId}
+          value={VALOR_MASCARADO}
+          readOnly
+          disabled
+          aria-describedby={notaId}
+          className="mt-1"
+        />
+        <p id={notaId} className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+          <Lock className="h-3 w-3" aria-hidden="true" />
+          {NOTA_VALOR_MASCARADO}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className={span}>

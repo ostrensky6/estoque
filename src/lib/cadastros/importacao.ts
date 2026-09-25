@@ -15,6 +15,10 @@
 import { createHash } from "node:crypto";
 import type ExcelJS from "exceljs";
 import type { CadastroConfig, Campo } from "@/lib/cadastros/config";
+import { estaMascarado } from "@/lib/cadastros/mascara";
+
+/** Mesmo nome de campo usado em src/lib/cadastros/salario.ts. */
+const CAMPO_SALARIO = "valor_mes";
 
 export const TECH_ID_HEADER = "ID";
 export const TECH_SUFFIX = "__id";
@@ -184,6 +188,8 @@ export function valorParaCampo(
   opcoes?: Map<string, string>,
 ): ResultadoValor {
   if (value == null || value === "") return { ok: true, valor: "" };
+  // Salário exportado mascarado ("XXX") equivale a célula vazia: mantém o atual.
+  if (campo.name === CAMPO_SALARIO && estaMascarado(value)) return { ok: true, valor: "" };
   if (campo.tipo === "checkbox") {
     const normalizado = normalizarChave(value);
     return {

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { calcularTodas } from "@/lib/costing/loader";
+import { precoCatalogoMascarado } from "@/lib/cadastros/salario";
 import { registrarEvento } from "./eventos";
 import {
   calcularQuantidadeViagem,
@@ -328,13 +329,18 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
   if (!id || !catalogoId) return;
 
   const supabase = await createClient();
-  const { data: item, error: itemError } = await supabase
-    .from("orcamento_projeto_catalogo")
-    .select("id, rubrica, descricao, unidade, preco_unitario, categoria")
-    .eq("id", catalogoId)
-    .single();
+  // O preço não é mais legível direto da tabela (migration 0112): a RPC devolve
+  // o catálogo com o preço de PE mascarado para quem não tem permissão.
+  const { data: catalogo, error: itemError } = await supabase.rpc("orcamento_projeto_catalogo_listar");
   if (itemError) throw new Error(itemError.message);
+  const item = (catalogo ?? []).find((linha) => linha.id === catalogoId);
   if (!item) return;
+  if (precoCatalogoMascarado(item)) {
+    // Copiar o valor de PE para o orçamento o revelaria na linha de custo.
+    throw new Error(
+      "Valores de pessoal (PE) do catálogo exigem a permissão “Ver salário dos técnicos”. Lance o custo manualmente ou peça a quem tem a permissão.",
+    );
+  }
 
   await assegurarProjetoEditavel(supabase, id);
   const quantidade = numero(formData, "quantidade", 1);
