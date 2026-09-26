@@ -40,6 +40,8 @@
 --  9. Pedido interno: dados de cada etapa (datas, aprovador, análise
 --     administrativa, modalidade) gravados dentro de RPC
 --     (registrar_etapa_pedido_interno), sem UPDATE direto do app.
+-- 10. EST-4: a retirada do plano (dar_baixa_plano) sai do lote conferido na
+--     bancada quando ele pode cobrir a reserva; senão, do lote reservado.
 --
 -- Não remove tabelas, colunas, dados, RLS nem gatilhos de auditoria.
 -- Funções recriadas por inteiro a partir do pg_get_functiondef vigente (0125).
@@ -53,7 +55,8 @@
 -- backup lógico prévio) de: receber_item_pedido_compra (5, 6 e 7 args),
 -- bloquear_status_direto_pedido_compra, transicionar_pedido_compra,
 -- formalizar_pedido_interno, entrada_inventario, baixa_manual_lote,
--- baixa_manual_embalagens, aceitar_lote, aplicar_ajuste_inventario_contagem e
+-- baixa_manual_embalagens, aceitar_lote, aplicar_ajuste_inventario_contagem,
+-- dar_baixa_plano e
 -- das views v_estoque_saldo, v_estoque_disponivel_unidade, v_alertas_estoque,
 -- v_planejamento_compromissos_estoque e v_previsao_suprimentos; dropar as
 -- funções novas, o gatilho kontrol_item_compra_protecao,
@@ -540,6 +543,8 @@ begin
     raise exception 'operacao_id ja utilizado em outro recebimento.' using errcode = '23505';
   end if;
 
+  -- insert into lotes_estoque ocorre no nucleo privado somente depois
+  -- da verificacao idempotente acima.
   perform set_config('app.pedido_compra_transicao', 'permitida', true);
   v_lote_id := kontrol_private.receber_item_compra_formal(
     p_pedido_id, p_item_id, p_quantidade, p_validade, p_codigo, v_ator,
@@ -2201,6 +2206,275 @@ revoke all on public.v_estoque_saldo, public.v_estoque_disponivel_unidade, publi
   public.v_planejamento_compromissos_estoque, public.v_previsao_suprimentos from anon;
 grant select on public.v_estoque_saldo, public.v_estoque_disponivel_unidade, public.v_alertas_estoque,
   public.v_planejamento_compromissos_estoque, public.v_previsao_suprimentos to authenticated, service_role;
+
+-- =============================================================================
+-- 13. EST-4: a retirada do plano usa o lote conferido na bancada
+-- =============================================================================
+
+create or replace function public.dar_baixa_plano(p_planejamento_id bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  r record;
+  l record;
+  v_plano record;
+  v_short jsonb := '[]'::jsonb;
+  v_validade_apos_abertura date;
+  v_analises text;
+  v_equipamento_id bigint;
+  v_claims jsonb;
+  v_ator text;
+  v_qtd numeric;
+  v_conf record;
+  v_res record;
+  v_ocupado numeric;
+  v_modelo_reservado text;
+begin
+  perform kontrol_private.exigir_permissao('planejamento.executar');
+
+  v_claims := coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb;
+  v_ator := coalesce(nullif(v_claims->>'email', ''), nullif(v_claims->>'sub', ''));
+
+  select status_operacional, data_inicio_prevista, data_fim_prevista
+    into v_plano
+  from public.planejamento
+  where id = p_planejamento_id
+  for update;
+
+  if not found then
+    raise exception 'Planejamento nao encontrado.' using errcode = 'P0002';
+  end if;
+  if v_plano.status_operacional <> 'reservado' then
+    raise exception 'Reserve os insumos antes de iniciar o planejamento.' using errcode = '22023';
+  end if;
+  if not exists (
+    select 1
+    from public.reservas_estoque
+    where planejamento_id = p_planejamento_id
+      and status in ('reservado', 'parcial')
+  ) then
+    raise exception 'O planejamento nao possui reservas ativas para a baixa.' using errcode = '22023';
+  end if;
+
+  perform id
+  from public.reservas_estoque
+  where planejamento_id = p_planejamento_id
+    and status in ('reservado', 'parcial')
+  order by id
+  for update;
+
+  for r in
+    select
+      lote_id,
+      min(insumo_id) as insumo_id,
+      sum(quantidade - coalesce(quantidade_consumida, 0)) as quantidade_pendente
+    from public.reservas_estoque
+    where planejamento_id = p_planejamento_id
+      and status in ('reservado', 'parcial')
+    group by lote_id
+    order by lote_id nulls first
+  loop
+    if r.lote_id is null then
+      v_short := v_short || jsonb_build_object(
+        'insumo_id', r.insumo_id,
+        'falta', r.quantidade_pendente
+      );
+      continue;
+    end if;
+
+    select le.*
+      into l
+    from public.lotes_estoque le
+    where le.id = r.lote_id
+    for update;
+
+    if not found then
+      v_short := v_short || jsonb_build_object(
+        'insumo_id', r.insumo_id,
+        'lote_id', r.lote_id,
+        'falta', r.quantidade_pendente
+      );
+      continue;
+    end if;
+    if l.status not in ('aceito', 'em_uso')
+       or (l.modelo_quantidade = 'EMBALAGEM_FECHADA' and l.status <> 'aceito')
+       or l.quantidade_atual < r.quantidade_pendente
+       or (
+         public.menor_validade(l.validade, l.validade_apos_abertura) is not null
+         and public.menor_validade(l.validade, l.validade_apos_abertura) < current_date
+       ) then
+      v_short := v_short || jsonb_build_object(
+        'insumo_id', r.insumo_id,
+        'lote_id', r.lote_id,
+        'falta', case
+          when l.status not in ('aceito', 'em_uso') then r.quantidade_pendente
+          else greatest(0, r.quantidade_pendente - l.quantidade_atual)
+        end
+      );
+    end if;
+  end loop;
+
+  if jsonb_array_length(v_short) > 0 then
+    raise exception 'Nao e possivel iniciar: existem reservas sem estoque valido suficiente.'
+      using errcode = '22023', detail = v_short::text;
+  end if;
+
+  for v_equipamento_id in
+    select distinct ea.equipamento_id
+    from public.planejamento_itens pi
+    join public.equipamento_analise ea on ea.codigo_analise = pi.codigo_analise
+    where pi.planejamento_id = p_planejamento_id
+  loop
+    if not exists (
+      select 1
+      from public.equipamento_reservas er
+      join public.equipamento_unidades eu on eu.id = er.equipamento_unidade_id
+      where er.planejamento_id = p_planejamento_id
+        and er.status in ('reservado', 'em_uso')
+        and eu.equipamento_id = v_equipamento_id
+        and eu.ativo
+        and eu.status_operacional in ('operacional', 'reservado')
+        and er.data_inicio::date <= v_plano.data_inicio_prevista
+        and er.data_fim::date >= v_plano.data_fim_prevista
+    ) then
+      raise exception 'Equipamento exigido pela analise nao possui reserva operacional valida.'
+        using errcode = '23514';
+    end if;
+  end loop;
+
+  -- EST-4: a retirada sai do lote conferido na bancada (última conferência
+  -- de cada insumo), quando ele é do mesmo modelo, está utilizável e tem
+  -- saldo livre para a reserva; senão continua o lote reservado.
+  for v_conf in
+    select distinct on (c.insumo_id) c.insumo_id, c.lote_id
+    from public.planejamento_lote_conferencias c
+    where c.planejamento_id = p_planejamento_id
+    order by c.insumo_id, c.conferido_em desc, c.id desc
+  loop
+    for v_res in
+      select re.id, re.lote_id, re.quantidade - coalesce(re.quantidade_consumida, 0) as pendente
+      from public.reservas_estoque re
+      where re.planejamento_id = p_planejamento_id
+        and re.insumo_id = v_conf.insumo_id
+        and re.status in ('reservado', 'parcial')
+        and re.lote_id is not null
+        and re.lote_id <> v_conf.lote_id
+      order by re.id
+    loop
+      select le.* into l
+      from public.lotes_estoque le
+      where le.id = v_conf.lote_id
+      for update;
+      exit when not found;
+      select modelo_quantidade into v_modelo_reservado
+      from public.lotes_estoque where id = v_res.lote_id;
+      select coalesce(sum(x.quantidade - coalesce(x.quantidade_consumida, 0)), 0) into v_ocupado
+      from public.reservas_estoque x
+      where x.lote_id = v_conf.lote_id and x.status in ('reservado', 'parcial');
+      if l.insumo_id = v_conf.insumo_id
+         and l.modelo_quantidade = v_modelo_reservado
+         and ((l.modelo_quantidade = 'EMBALAGEM_FECHADA' and l.status = 'aceito')
+           or (l.modelo_quantidade <> 'EMBALAGEM_FECHADA' and l.status in ('aceito', 'em_uso')))
+         and (public.menor_validade(l.validade, l.validade_apos_abertura) is null
+           or public.menor_validade(l.validade, l.validade_apos_abertura) >= current_date)
+         and l.quantidade_atual - v_ocupado >= v_res.pendente then
+        update public.reservas_estoque
+           set lote_id = v_conf.lote_id,
+               observacao = left(coalesce(observacao || ' | ', '')
+                 || 'Retirada do lote conferido #' || v_conf.lote_id || ' (reservado antes no #' || v_res.lote_id || ')', 500)
+         where id = v_res.id;
+      end if;
+    end loop;
+  end loop;
+
+  select string_agg(distinct codigo_analise, ', ' order by codigo_analise)
+    into v_analises
+  from public.planejamento_itens
+  where planejamento_id = p_planejamento_id;
+
+  for r in
+    select *
+    from public.reservas_estoque
+    where planejamento_id = p_planejamento_id
+      and status in ('reservado', 'parcial')
+      and lote_id is not null
+    order by insumo_id, id
+  loop
+    select le.*, i.validade_apos_abertura_dias
+      into l
+    from public.lotes_estoque le
+    join public.insumos i on i.id = le.insumo_id
+    where le.id = r.lote_id;
+
+    v_qtd := r.quantidade - coalesce(r.quantidade_consumida, 0);
+
+    if l.modelo_quantidade = 'EMBALAGEM_FECHADA' then
+      -- Embalagens fechadas saem inteiras; as que ficam continuam fechadas.
+      update public.lotes_estoque
+         set quantidade_atual = quantidade_atual - v_qtd,
+             status = case when quantidade_atual - v_qtd <= 0 then 'consumido' else 'aceito' end
+       where id = r.lote_id;
+    else
+      v_validade_apos_abertura := case
+        when l.validade_apos_abertura is not null then l.validade_apos_abertura
+        when l.validade_apos_abertura_dias is not null and l.validade_apos_abertura_dias > 0
+          then current_date + l.validade_apos_abertura_dias
+        else null
+      end;
+
+      update public.lotes_estoque
+         set quantidade_atual = quantidade_atual - v_qtd,
+             status = case
+               when quantidade_atual - v_qtd <= 0 then 'consumido'
+               else 'em_uso'
+             end,
+             data_abertura = coalesce(data_abertura, current_date),
+             validade_apos_abertura = coalesce(validade_apos_abertura, v_validade_apos_abertura)
+       where id = r.lote_id;
+    end if;
+
+    -- O trigger fn_validar_equipamentos_na_baixa_plano revalida cada saida.
+    insert into public.estoque_movimentacoes(
+      insumo_id, tipo, quantidade, custo_unitario, motivo, referencia, lote_id
+    ) values (
+      r.insumo_id,
+      'saida',
+      v_qtd,
+      l.custo_unitario,
+      case when l.modelo_quantidade = 'EMBALAGEM_FECHADA'
+        then 'baixa analise lote reservado (embalagens fechadas)'
+        else 'baixa analise lote reservado'
+      end,
+      'plano ' || p_planejamento_id || '; analise ' || coalesce(v_analises, '-') ||
+        '; reserva ' || r.id,
+      r.lote_id
+    );
+
+    update public.reservas_estoque
+       set quantidade_consumida = quantidade,
+           status = 'consumido',
+           consumido_em = now(),
+           observacao = coalesce(observacao, 'Consumida por inicio do planejamento')
+     where id = r.id;
+  end loop;
+
+  update public.equipamento_reservas
+     set status = 'em_uso'
+   where planejamento_id = p_planejamento_id
+     and status = 'reservado';
+
+  perform set_config('app.planejamento_transicao', 'permitida', true);
+  update public.planejamento
+     set status_operacional = 'em_execucao',
+         iniciado_em = coalesce(iniciado_em, now()),
+         responsavel = coalesce(responsavel, v_ator)
+   where id = p_planejamento_id;
+
+  return jsonb_build_object('shortfalls', '[]'::jsonb);
+end $function$;
 
 -- ---- Verificação final ------------------------------------------------------
 do $$

@@ -73,7 +73,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
     .single();
   if (!pedido) notFound();
 
-  const [{ data: itens }, { data: insumos }, podeAprovar, podeReceber, podeCancelar, podeSolicitar] = await Promise.all([
+  const [{ data: itens }, { data: insumos }, podeAprovar, podeReceber, podeCancelar, podeSolicitar, { data: locais }] = await Promise.all([
     (supabase.from("pedidos_compra_itens") as unknown as PedidoCompraItensQuery)
       .select("id, quantidade, quantidade_recebida, divergencia_recebimento, custo_unitario_estimado, lote_id, pedido_interno_item_id, insumo_id, quantidade_em, conteudo_embalagem, insumos(especificacao, unidade), pedidos_internos_itens(pedido_interno_id), pedidos_compra_item_recebimentos(id, lote_id, quantidade, codigo_lote, validade, responsavel, recebido_em)")
       .eq("pedido_id", pedidoId)
@@ -83,6 +83,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
     pode("compras.receber"),
     pode("compras.cancelar"),
     pode("compras.solicitar"),
+    supabase.from("locais").select("id, nome").order("nome"),
   ]);
 
   const eventos = await listarEventos("pedido_compra", pedidoId);
@@ -98,10 +99,10 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
-        <Breadcrumbs items={[{ label: "Compras", href: "/compras" }, { label: `Pedido #${pedido.id}` }]} />
+        <Breadcrumbs items={[{ label: "Compras", href: "/compras" }, { label: `Compra #${pedido.id}` }]} />
         <div className="mt-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold tracking-tight">Pedido #{pedido.id}</h1>
+            <h1 className="text-xl font-semibold tracking-tight">Compra #{pedido.id}</h1>
             <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
               {STATUS[pedido.status] ?? pedido.status}
             </span>
@@ -137,7 +138,8 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                           O item pode chegar <b>em partes</b>. Cada entrega vira um lote em quarentena,
                           listado aqui com número, validade e responsável.
                         </p>
-                        <p>O pedido só fica como Recebido quando todos os itens chegam.</p>
+                        <p>A compra só fica como Recebida quando todos os itens chegam.</p>
+                        <p>Para desfazer uma entrega registrada por engano, abra o lote e use <b>Estornar recebimento</b>.</p>
                       </HelpTip>
                     </span>
                   </th>
@@ -179,7 +181,10 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                               <span className="mt-1 w-full space-y-0.5 text-left text-[10px] text-muted-foreground">
                                 {recebimentos.map((recebimento) => (
                                   <span key={recebimento.id} className="block">
-                                    Lote {recebimento.codigo_lote ?? `#${recebimento.lote_id}`} · {rotuloQuantidadeItem(it, ins?.unidade, recebimento.quantidade)}
+                                    <Link href={`/estoque/lotes/${recebimento.lote_id}`} className="text-primary hover:underline">
+                                      Lote {recebimento.codigo_lote ?? `#${recebimento.lote_id}`}
+                                    </Link>{" "}
+                                    · {rotuloQuantidadeItem(it, ins?.unidade, recebimento.quantidade)}
                                     {recebimento.validade ? ` · val. ${formatDate(recebimento.validade)}` : ""}
                                     {recebimento.responsavel ? ` · ${recebimento.responsavel}` : ""}
                                     {` · ${formatDateTime(recebimento.recebido_em)}`}
@@ -214,6 +219,10 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                                 emFrascos: emFrascos(it),
                                 conteudoEmbalagem: it.conteudo_embalagem == null ? null : Number(it.conteudo_embalagem),
                               }}
+                              locais={((locais ?? []) as { id: number; nome: string | null }[]).map((local) => ({
+                                id: Number(local.id),
+                                nome: local.nome ?? `Local #${local.id}`,
+                              }))}
                             />
                           )}
                         </td>

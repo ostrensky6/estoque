@@ -8,7 +8,8 @@ import {
   type LoteBaixa,
   type LoteDbBaixa,
 } from "@/lib/estoque/baixa";
-import { formatCurrency, formatDate, formatPercent } from "@/lib/formatters";
+import Link from "next/link";
+import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/formatters";
 import { DownloadButton } from "@/components/common/DownloadButton";
 import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import {
@@ -31,6 +32,7 @@ const LOTE_STATUS: Record<string, string> = {
 
 type LoteEstoqueDb = LoteDbBaixa & {
   insumo_id: number;
+  conteudo_embalagem_snapshot?: number | null;
   insumos: { especificacao: string | null; unidade: string | null; categoria_compra: string | null } | null;
 };
 
@@ -41,6 +43,8 @@ type Alerta = {
   validade: string | null;
   valor: number | null;
   referencia: number | null;
+  /** lote do alerta (vencimento, vencido, sem validade); null nos alertas por insumo */
+  lote_id: number | null;
 };
 
 type CustoEstoque = {
@@ -86,7 +90,7 @@ export default async function EstoquePage({
     supabase.from("v_alertas_estoque").select("*"),
     supabaseSemTipos
       .from("lotes_estoque")
-      .select("id, insumo_id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status, modelo_quantidade, insumos(especificacao, unidade, categoria_compra)")
+      .select("id, insumo_id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status, modelo_quantidade, conteudo_embalagem_snapshot, insumos(especificacao, unidade, categoria_compra)")
       .not("status", "in", "(consumido,descartado)")
       .order("validade", { nullsFirst: false }),
     supabase.from("v_previsao_suprimentos").select("*"),
@@ -143,7 +147,10 @@ export default async function EstoquePage({
     return {
       insumoId: s.insumo_id as number,
       especificacao: s.especificacao ?? "—",
-      unidade: s.unidade ?? "—",
+      // Saldo de insumo contado em frascos é em frascos (EST2-5).
+      unidade: s.unidade_saldo ?? s.unidade ?? "—",
+      unidadeFisica: s.unidade ?? "",
+      embalagemFechada: s.modelo_quantidade === "EMBALAGEM_FECHADA",
       emMaos,
       emQuarentena: Number(s.em_quarentena ?? 0),
       reservado: Number(s.reservado ?? 0),
@@ -153,7 +160,7 @@ export default async function EstoquePage({
       diasCobertura: prev?.dias_cobertura == null ? null : Number(prev.dias_cobertura),
       pontoSugerido,
       status,
-      statusLabel: status === "repor" ? "Repor" : status === "sem_estoque" ? "Sem estoque" : "OK",
+      statusLabel: status === "repor" ? "Repor" : status === "sem_estoque" ? "Sem estoque" : "Em dia",
       lotesBaixa: lotesBaixaPorInsumo.get(Number(s.insumo_id)) ?? [],
     };
   });
@@ -164,7 +171,10 @@ export default async function EstoquePage({
     return {
       id: l.id,
       especificacao: ins?.especificacao ?? "—",
-      unidade: ins?.unidade ?? "",
+      unidade:
+        baixa.modeloQuantidade === "EMBALAGEM_FECHADA"
+          ? `frasco(s)${l.conteudo_embalagem_snapshot ? ` de ${formatNumber(l.conteudo_embalagem_snapshot)} ${ins?.unidade ?? ""}`.trimEnd() : ""}`
+          : ins?.unidade ?? "",
       codigoLote: l.codigo_lote ?? "—",
       validade: baixa.validade ? formatDate(baixa.validade) : "—",
       validadeIso: baixa.validade,
@@ -210,7 +220,7 @@ export default async function EstoquePage({
               items={[
                 { tom: "atencao", rotulo: "Repor", texto: "o disponível chegou ao ponto de reposição" },
                 { tom: "atencao", rotulo: "Vence em breve", texto: "lote perto do fim da validade" },
-                { tom: "critico", rotulo: "Vencido", texto: "só pode sair com o motivo Vencimento" },
+                { tom: "critico", rotulo: "Vencido", texto: "só pode sair com o motivo Vencimento; a reserva do lote é liberada" },
                 { tom: "critico", rotulo: "Sem validade", texto: "lote de insumo crítico sem data de validade" },
                 { tom: "info", rotulo: "Quarentena", texto: "lote recebido, aguardando aceite" },
               ]}
@@ -237,7 +247,15 @@ export default async function EstoquePage({
                 {porTipo[t].slice(0, 4).map((a, i) => (
                   <li key={i} className="truncate" title={a.especificacao ?? ""}>
                     {a.especificacao}
-                    {a.validade ? ` · vence ${formatDate(a.validade)}` : ""}
+                    {a.validade ? ` · ${t === "vencido" ? "venceu" : "vence"} ${formatDate(a.validade)}` : ""}
+                    {a.lote_id ? (
+                      <>
+                        {" · "}
+                        <Link href={`/estoque/lotes/${a.lote_id}`} className="font-medium text-primary hover:underline">
+                          {t === "vencido" ? "Baixar por vencimento" : "Ver lote"}
+                        </Link>
+                      </>
+                    ) : null}
                   </li>
                 ))}
                 {porTipo[t].length === 0 && <li className="text-muted-foreground/80">Nenhum</li>}

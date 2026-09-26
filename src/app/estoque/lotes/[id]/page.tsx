@@ -8,6 +8,7 @@ import { QrCode } from "@/components/common/QrCode";
 import { formatNumber as fmt, formatDate as fdata, formatCurrency } from "@/lib/formatters";
 import { LoteAcoes } from "@/components/estoque/LoteAcoes";
 import { pode } from "@/lib/auth/permissao-efetiva";
+import { usuarioAtual } from "@/lib/auth/roles";
 import { origemPublicaKontrol } from "@/lib/scanner/origem";
 import { gerarUrlCurtaKontrol } from "@/lib/scanner/urls";
 import { loteBaixaDeDb, loteVencido, somarReservasPorLote, type LoteDbBaixa } from "@/lib/estoque/baixa";
@@ -62,6 +63,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
     origem,
     vinculoCompra,
     vinculoInterno,
+    usuario,
   ] = await Promise.all([
     supabase
       .from("estoque_movimentacoes")
@@ -84,6 +86,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
     origemPublicaKontrol(),
     supabase.from("pedidos_compra_item_recebimentos").select("lote_id").eq("lote_id", id).limit(1),
     supabase.from("pedidos_internos_item_recebimentos").select("lote_id").eq("lote_id", id).limit(1),
+    usuarioAtual(),
   ]);
 
   const ins = lote.insumos as {
@@ -98,6 +101,17 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
     !vinculoInterno.error &&
     (vinculoCompra.data ?? []).length === 0 &&
     (vinculoInterno.data ?? []).length === 0;
+  // Lote de compra/pedido interno ainda sem consumo: estorno bilateral (EST-2).
+  const estornoRecebimento =
+    !estornoDiretoPermitido &&
+    Number(lote.quantidade_atual ?? 0) === Number(lote.quantidade_inicial ?? 0) &&
+    Number(lote.quantidade_atual ?? 0) > 0;
+  // Dupla conferência: quem registrou a chegada não aceita o próprio lote (admin isento).
+  const recebidoPorId = (lote as unknown as { recebido_por_id?: string | null }).recebido_por_id ?? null;
+  const aceiteBloqueadoMotivo =
+    usuario && recebidoPorId && recebidoPorId === usuario.id && usuario.papel !== "admin"
+      ? "Você registrou a chegada deste lote; o aceite fica com outra pessoa."
+      : null;
   // Lote de embalagens fechadas conta frascos, não a unidade física (0109/0123).
   const loteModelo = lote as unknown as {
     modelo_quantidade?: string | null;
@@ -160,6 +174,8 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
             reservado={loteBaixa.reservado}
             modeloQuantidade={loteBaixa.modeloQuantidade}
             estornoDiretoPermitido={estornoDiretoPermitido}
+            estornoRecebimento={estornoRecebimento}
+            aceiteBloqueadoMotivo={aceiteBloqueadoMotivo}
             podeAceitar={podeAceitar}
             podeGerir={podeGerir}
             podeCorrigir={podeCorrigir}

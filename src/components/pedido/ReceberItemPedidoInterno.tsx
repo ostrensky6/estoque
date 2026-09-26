@@ -30,6 +30,8 @@ export type ItemRecebivel = {
   insumoId: number | null;
   fornecedorSugerido: string | null;
   orcamentoPrevio: number | null;
+  /** item pedido em frascos (0123): recebe frascos inteiros */
+  emFrascos?: boolean;
 };
 
 export function ReceberItemPedidoInterno({
@@ -46,6 +48,7 @@ export function ReceberItemPedidoInterno({
   const [recebimentoPending, startRecebimentoTransition] = useTransition();
   const [scanPending, startScanTransition] = useTransition();
   const [insumoId, setInsumoId] = useState(item.insumoId ? String(item.insumoId) : "");
+  const emFrascos = item.emFrascos ?? /^frasco/i.test((item.unidade ?? "").trim());
   const [codigoLote, setCodigoLote] = useState("");
   const [validade, setValidade] = useState("");
   const [codigoScanner, setCodigoScanner] = useState("");
@@ -302,22 +305,29 @@ export function ReceberItemPedidoInterno({
               </div>
 
               <div className="col-span-1">
-                <label className="block text-xs font-medium text-muted-foreground">
-                  Quantidade <span className="text-danger-strong">*</span>
+                <label className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                  {emFrascos ? "Frascos recebidos" : "Quantidade"} <span className="text-danger-strong">*</span>
+                  {emFrascos && (
+                    <HelpTip title="Frascos recebidos">
+                      <p>Conte frascos fechados, não o volume.</p>
+                    </HelpTip>
+                  )}
                 </label>
                 <input
                   name="quantidade"
                   type="number"
-                  step="any"
-                  min="0.000001"
+                  step={emFrascos ? "1" : "any"}
+                  min={emFrascos ? "1" : "0.000001"}
                   max={saldoPendente || item.quantidade}
                   defaultValue={saldoPendente || item.quantidade}
                   className={inp}
                 />
               </div>
               <div className="col-span-1">
-                <label className="block text-xs font-medium text-muted-foreground">Unidade</label>
-                <input name="unidade" defaultValue={item.unidade ?? ""} className={inp} />
+                <span className="block text-xs font-medium text-muted-foreground">Unidade</span>
+                <p className={`${inp} bg-muted/40 text-muted-foreground`} aria-live="off">
+                  {item.unidade || "conforme o pedido"}
+                </p>
               </div>
               <div className="col-span-1">
                 <label className="block text-xs font-medium text-muted-foreground">Validade</label>

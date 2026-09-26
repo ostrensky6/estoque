@@ -300,7 +300,7 @@ export function PedidoItemCamposAssistidos({
         <datalist id={ids.fornecedores}>{fornecedorOptions.map((value) => <option key={value} value={value} />)}</datalist>
       </div>
       <div className={span.orcamento}>
-        <label htmlFor={ids.orcamento} className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Orçamento prévio un.</label>
+        <label htmlFor={ids.orcamento} className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Preço estimado (un.)</label>
         <input
           id={ids.orcamento}
           name="orcamento_previo"

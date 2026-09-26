@@ -369,6 +369,45 @@ begin
   end if;
 end $$;
 
+-- ---- EST-4: retirada sai do lote conferido ---------------------------------
+reset role;
+do $$
+declare
+  v_frasco bigint := current_setting('t0127.frasco')::bigint;
+  v_plano bigint;
+  v_a bigint;
+  v_b bigint;
+begin
+  insert into public.planejamento (nome) values ('TS-0127 plano conferido') returning id into v_plano;
+  insert into public.lotes_estoque (insumo_id, codigo_lote, quantidade_inicial, quantidade_atual, status, validade,
+    modelo_quantidade, unidade_fisica_snapshot, conteudo_embalagem_snapshot, unidade_consumo_snapshot, fator_conversao_snapshot)
+  values (v_frasco, 'TS-0127-FEFO', 3, 3, 'aceito', current_date + 30, 'EMBALAGEM_FECHADA', 'mL', 100, 'µL', 1000)
+  returning id into v_a;
+  insert into public.lotes_estoque (insumo_id, codigo_lote, quantidade_inicial, quantidade_atual, status, validade,
+    modelo_quantidade, unidade_fisica_snapshot, conteudo_embalagem_snapshot, unidade_consumo_snapshot, fator_conversao_snapshot)
+  values (v_frasco, 'TS-0127-BANCADA', 3, 3, 'aceito', current_date + 90, 'EMBALAGEM_FECHADA', 'mL', 100, 'µL', 1000)
+  returning id into v_b;
+  insert into public.reservas_estoque (planejamento_id, insumo_id, lote_id, quantidade, status)
+  values (v_plano, v_frasco, v_a, 1, 'reservado');
+  insert into public.planejamento_lote_conferencias (planejamento_id, insumo_id, lote_id, quantidade_prevista, quantidade_conferida, status, justificativa)
+  values (v_plano, v_frasco, v_b, 1, 1, 'excecao_fefo', 'frasco aberto na bancada');
+  perform set_config('app.planejamento_transicao', 'permitida', true);
+  update public.planejamento set status_operacional = 'reservado', reserva_desatualizada = false where id = v_plano;
+  perform set_config('t0127.plano_conf', v_plano::text, true);
+end $$;
+set local role authenticated;
+select pg_temp.como('tecnico');
+do $$
+declare
+  v_plano bigint := current_setting('t0127.plano_conf')::bigint;
+begin
+  perform public.dar_baixa_plano(v_plano);
+  if (select quantidade_atual from public.lotes_estoque where codigo_lote = 'TS-0127-BANCADA') <> 2
+     or (select quantidade_atual from public.lotes_estoque where codigo_lote = 'TS-0127-FEFO') <> 3 then
+    raise exception '0127: retirada deveria sair do lote conferido, nao do reservado';
+  end if;
+end $$;
+
 -- ---- PER2-7: ajuste de inventário exige a caixinha -------------------------
 do $$
 begin

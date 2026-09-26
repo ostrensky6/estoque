@@ -31,7 +31,14 @@ export type ItemCompraRecebivel = {
   conteudoEmbalagem?: number | null;
 };
 
-export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }) {
+export function ScannerRecebimentoCompra({
+  item,
+  locais = [],
+}: {
+  item: ItemCompraRecebivel;
+  /** onde o lote vai ficar guardado (opcional, CAD2-8) */
+  locais?: { id: number; nome: string }[];
+}) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<ScannerCameraControls | null>(null);
@@ -319,8 +326,12 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
               </div>
               {item.emFrascos && (
                 <div className="col-span-2">
-                  <label className="block text-xs font-medium text-muted-foreground">
+                  <label className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
                     Volume de cada frasco ({item.unidade ?? "unidade do cadastro"})
+                    <HelpTip title="Volume do frasco">
+                      <p>Preencha só se o frasco veio diferente do cadastro.</p>
+                      <p>O volume vale só para este lote; a compra continua com o volume pedido.</p>
+                    </HelpTip>
                   </label>
                   <input
                     name="conteudo_embalagem"
@@ -331,6 +342,17 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                     className={inp}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">Altere só se a embalagem chegou diferente do cadastro.</p>
+                </div>
+              )}
+              {locais.length > 0 && (
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-muted-foreground">Local de guarda (opcional)</label>
+                  <select name="local_id" defaultValue="" className={inp}>
+                    <option value="">Definir depois</option>
+                    {locais.map((local) => (
+                      <option key={local.id} value={local.id}>{local.nome}</option>
+                    ))}
+                  </select>
                 </div>
               )}
               <div className="col-span-2">
@@ -363,7 +385,7 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                   className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-500 disabled:opacity-50"
                 >
                   {recebimentoPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  Confirmar recebimento
+                  {recebimentoPending ? "Registrando…" : "Confirmar recebimento"}
                 </button>
               </div>
             </form>

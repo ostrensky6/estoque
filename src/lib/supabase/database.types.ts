@@ -4060,6 +4060,7 @@ export type Database = {
         Row: {
           especificacao: string | null
           insumo_id: number | null
+          lote_id: number | null
           referencia: number | null
           tipo: string | null
           validade: string | null
@@ -4168,12 +4169,14 @@ export type Database = {
           estoque_seguranca: number | null
           insumo_id: number | null
           lead_time_dias: number | null
+          modelo_quantidade: string | null
           nome_item: string | null
           ponto_reposicao: number | null
           reservado: number | null
           tipo_insumo: string | null
           tipo_insumo_id: number | null
           unidade: string | null
+          unidade_saldo: string | null
           vencido: number | null
         }
         Relationships: [
@@ -4325,6 +4328,7 @@ export type Database = {
           quantidade_comprometida: number | null
           status_operacional: string | null
           unidade: string | null
+          unidade_quantidade: string | null
         }
         Relationships: [
           {
@@ -4422,10 +4426,20 @@ export type Database = {
         Args: { p_nome: string; p_token: string }
         Returns: Json
       }
-      baixa_manual_lote: {
-        Args: { p_lote_id: number; p_motivo: string; p_quantidade: number }
-        Returns: undefined
-      }
+      baixa_manual_lote:
+        | {
+            Args: { p_lote_id: number; p_motivo: string; p_quantidade: number }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_lote_id: number
+              p_motivo: string
+              p_operacao_id: string
+              p_quantidade: number
+            }
+            Returns: Json
+          }
       bloquear_lote: {
         Args: { p_lote_id: number; p_motivo: string }
         Returns: undefined
@@ -4445,6 +4459,10 @@ export type Database = {
       concluir_planejamento: {
         Args: { p_planejamento_id: number }
         Returns: undefined
+      }
+      criar_pedido_faltas_planejamento: {
+        Args: { p_itens: Json; p_planejamento_id: number }
+        Returns: Json
       }
       criar_pedido_reposicao_estoque: {
         Args: {
@@ -4488,18 +4506,33 @@ export type Database = {
         }
         Returns: Json
       }
-      entrada_inventario: {
-        Args: {
-          p_codigo?: string
-          p_custo?: number
-          p_fornecedor?: string
-          p_insumo_id: number
-          p_motivo?: string
-          p_quantidade: number
-          p_validade?: string
-        }
-        Returns: number
-      }
+      entrada_inventario:
+        | {
+            Args: {
+              p_codigo?: string
+              p_custo?: number
+              p_fornecedor?: string
+              p_insumo_id: number
+              p_motivo?: string
+              p_quantidade: number
+              p_validade?: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_codigo?: string
+              p_custo?: number
+              p_fornecedor?: string
+              p_insumo_id: number
+              p_local_id?: number
+              p_motivo?: string
+              p_operacao_id: string
+              p_quantidade: number
+              p_validade?: string
+            }
+            Returns: Json
+          }
       estornar_recebimento_item_pedido_interno: {
         Args: {
           p_item_id: number
@@ -4508,6 +4541,10 @@ export type Database = {
           p_recebimento_id?: number
         }
         Returns: undefined
+      }
+      estornar_recebimento_do_lote: {
+        Args: { p_lote_id: number; p_motivo: string }
+        Returns: Json
       }
       estornar_recebimento_lote: {
         Args: { p_lote_id: number; p_motivo?: string }
@@ -4585,6 +4622,20 @@ export type Database = {
             }
             Returns: number
           }
+        | {
+            Args: {
+              p_codigo?: string
+              p_conteudo_embalagem?: number
+              p_item_id: number
+              p_local_id?: number
+              p_operacao_id: string
+              p_pedido_id: number
+              p_quantidade?: number
+              p_responsavel?: string
+              p_validade?: string
+            }
+            Returns: number
+          }
       receber_item_pedido_interno: {
         Args: {
           p_codigo?: string
@@ -4613,6 +4664,17 @@ export type Database = {
           p_validade?: string
         }
         Returns: number
+      }
+      registrar_etapa_pedido_interno: {
+        Args: {
+          p_dados?: Json
+          p_decisao: string
+          p_etapa: string
+          p_observacao?: string
+          p_pedido_id: number
+          p_status_destino: string
+        }
+        Returns: Json
       }
       registrar_modalidade_pedido_interno: {
         Args: {
