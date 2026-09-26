@@ -47,6 +47,9 @@ jobs:
       - name: Validar permissões (a caixinha manda)
         run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/permissoes_0124.sql
 
+      - name: Validar item de pedido interno e travas da reposição
+        run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/pedido_interno_itens_0125.sql
+
   check:
     runs-on: ubuntu-latest
     steps:
