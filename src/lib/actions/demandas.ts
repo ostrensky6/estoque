@@ -160,12 +160,20 @@ async function executarCriacaoDemanda(formData: FormData): Promise<string | null
     p_analises: analises,
   } as never);
 
-  if (error) return `Não foi possível criar o orçamento: ${error.message}`;
+  if (error) return `Não foi possível criar o orçamento: ${mensagemGruposDemanda(error)}`;
   const demandaId = (data as { demanda_id?: number } | null)?.demanda_id;
   if (!demandaId) return "O banco não confirmou a criação do orçamento. Nada foi salvo.";
 
   revalidatePath(listaPath);
   redirect(`${listaPath}/${demandaId}`);
+}
+
+/** Recusa ao gravar orçamento com grupos: a matriz do grupo precisa estar cadastrada. */
+function mensagemGruposDemanda(error: { code?: string | null; message: string }) {
+  if (error.code === "23503" && /tipo_matriz/.test(error.message)) {
+    return "o tipo/matriz de um grupo não está cadastrado. Escolha uma matriz da lista.";
+  }
+  return mensagemDoBanco(error);
 }
 
 export async function criarDemandaCompleta(
@@ -253,8 +261,8 @@ export async function salvarDemanda(
   } as never);
 
   if (error) {
-    if (retornaEstado) return { ok: false, message: error.message };
-    throw new Error(error.message);
+    if (retornaEstado) return { ok: false, message: mensagemGruposDemanda(error) };
+    throw new Error(mensagemGruposDemanda(error));
   }
   // A RPC é SECURITY INVOKER: sob RLS negada, o UPDATE interno não acha a
   // linha e a função levanta P0002. Ainda assim, retorno vazio não é sucesso.

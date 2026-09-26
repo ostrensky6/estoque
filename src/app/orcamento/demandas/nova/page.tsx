@@ -21,6 +21,7 @@ export default async function NovaDemandaPage() {
     { data: insumosAnalises },
     { data: saldoEstoque },
     { breakdowns },
+    { data: matrizes },
   ] = await Promise.all([
     supabase.from("clientes").select("id, nome").eq("ativo", true).order("nome"),
     supabase.from("projetos").select("id, nome").order("nome"),
@@ -52,6 +53,8 @@ export default async function NovaDemandaPage() {
       .from("v_estoque_saldo")
       .select("insumo_id, disponivel"),
     calcularTodas(),
+    // A matriz do grupo referencia o cadastro (FK): só códigos cadastrados.
+    supabase.from("matrizes_amostras").select("codigo, nome").eq("ativo", true).order("nome"),
   ]);
 
   const quantidadeBase = 1;
@@ -166,6 +169,7 @@ export default async function NovaDemandaPage() {
             analises={analisesFormulario}
             gruposAmostras={gruposAmostras}
             analisesSelecionadas={[]}
+            matrizes={(matrizes ?? []) as { codigo: string; nome: string }[]}
             modo="completo"
           />
         </section>

@@ -99,6 +99,7 @@ export function DemandaForm({
   analises,
   gruposAmostras,
   analisesSelecionadas,
+  matrizes = [],
   modo = "completo",
 }: {
   demanda: Demanda;
@@ -107,6 +108,8 @@ export function DemandaForm({
   analises: AnaliseCatalogoDemanda[];
   gruposAmostras: GrupoAmostraDemanda[];
   analisesSelecionadas: AnaliseSelecionadaDemanda[];
+  /** Matrizes cadastradas; o grupo só aceita um código desta lista (FK). */
+  matrizes?: { codigo: string; nome: string }[];
   modo?: "completo" | "demanda" | "laboratorio";
 }) {
   const action: (state: DemandaFormState, formData: FormData) => Promise<DemandaFormState> =
@@ -375,7 +378,15 @@ export function DemandaForm({
                   preservando o vínculo de demanda_analises.grupo_amostra_id */}
               <input type="hidden" name="grupo_id" value={grupo.id ?? ""} />
               <div><label className={lbl}>Grupo</label><input name="grupo_identificacao" value={grupo.identificacao} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, identificacao: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
-              <div className="sm:col-span-2"><label className={lbl}>Tipo/matriz</label><input name="grupo_tipo_matriz" value={grupo.tipo_matriz ?? ""} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, tipo_matriz: event.target.value } : item))} className={`${inp} mt-1 w-full`} /></div>
+              <div className="sm:col-span-2"><label htmlFor={`matriz-${grupo.key}`} className={lbl}>Tipo/matriz</label>{matrizes.length > 0 ? (
+                <select id={`matriz-${grupo.key}`} name="grupo_tipo_matriz" value={grupo.tipo_matriz ?? ""} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, tipo_matriz: event.target.value } : item))} className={`${inp} mt-1 w-full`}>
+                  <option value="">Selecione…</option>
+                  {grupo.tipo_matriz && !matrizes.some((m) => m.codigo === grupo.tipo_matriz) && <option value={grupo.tipo_matriz}>{grupo.tipo_matriz}</option>}
+                  {matrizes.map((m) => <option key={m.codigo} value={m.codigo}>{m.nome}</option>)}
+                </select>
+              ) : (
+                <input id={`matriz-${grupo.key}`} name="grupo_tipo_matriz" value={grupo.tipo_matriz ?? ""} onChange={(event) => setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, tipo_matriz: event.target.value } : item))} className={`${inp} mt-1 w-full`} />
+              )}</div>
               <div><label className={lbl}>Quantidade</label><input name="grupo_quantidade" type="number" min="1" step="1" required value={grupo.quantidade_amostras} onChange={(event) => {
                 const quantidade = lerQuantidade(event.target.value);
                 setGrupos((atuais) => atuais.map((item) => item.key === grupo.key ? { ...item, quantidade_amostras: quantidade } : item));
