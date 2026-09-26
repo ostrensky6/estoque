@@ -11,7 +11,7 @@
 
 ## Codigo
 
-- Repositorio: https://github.com/ostrensky6/estoque
+- Repositorio: https://github.com/ostrensky6/kontrol
 - Conta GitHub: `ostrensky6`
 - Branch de producao: `main`
 - Baseline estavel pos-auditoria: `efa20f15205ea3d12b7bd9b0f72444d27561173a`
