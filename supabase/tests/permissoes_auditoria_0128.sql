@@ -56,9 +56,12 @@ begin
 
   -- CAD2-3: tabelas com chave diferente de id
   insert into public.analises (codigo, nome) values ('TS-0128-AN', 'Analise TS-0128');
-  update public.parametros set descricao = coalesce(descricao, '') || ' ' where chave = 'dias_uteis_ano';
+  -- O CI parte de banco sem seed: o parâmetro de teste é criado aqui.
+  insert into public.parametros (chave, valor, descricao) values ('ts_0128_param', 1, 'TS-0128')
+  on conflict (chave) do nothing;
+  update public.parametros set descricao = coalesce(descricao, '') || ' ' where chave = 'ts_0128_param';
   if not exists (select 1 from public.auditoria where tabela = 'analises' and registro_id = 'TS-0128-AN' and acao = 'insert')
-     or not exists (select 1 from public.auditoria where tabela = 'parametros' and registro_id = 'dias_uteis_ano' and acao = 'update') then
+     or not exists (select 1 from public.auditoria where tabela = 'parametros' and registro_id = 'ts_0128_param' and acao = 'update') then
     raise exception '0128: analises/parametros sem auditoria pela chave';
   end if;
   insert into public.equipamentos (nome) values ('TS-0128 Equipamento');
