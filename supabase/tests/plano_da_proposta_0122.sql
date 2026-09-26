@@ -14,11 +14,9 @@ declare
   v_item_b bigint;
   v_analises text[];
 begin
-  select array_agg(codigo order by codigo) into v_analises
-  from (select codigo from public.analises order by codigo limit 2) a;
-  if coalesce(array_length(v_analises, 1), 0) < 2 then
-    raise exception '0122: o teste precisa de duas analises cadastradas';
-  end if;
+  -- não depende do seed: o CI cria o banco sem dados
+  insert into public.analises (codigo, nome_simplificado) values ('TS-0122-A', 'TS 0122 A'), ('TS-0122-B', 'TS 0122 B');
+  v_analises := array['TS-0122-A', 'TS-0122-B'];
 
   insert into auth.users(instance_id, id, aud, role, email, created_at, updated_at)
   values ('00000000-0000-0000-0000-000000000000', v_uid, 'authenticated', 'authenticated',
