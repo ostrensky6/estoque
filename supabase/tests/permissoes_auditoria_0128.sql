@@ -405,17 +405,24 @@ begin
      or coalesce((select orcamentos_rascunho from public.v_dashboard_executivo), 0) <> 0 then
     raise exception '0128: painel mostra orcamentos a quem nao tem Orcamentos: Visualizar';
   end if;
-  if (select count(*) from public.v_alertas_estoque) < 0 then
-    raise exception 'inalcancavel';
-  end if;
 end $$;
 
 select pg_temp.entrar('coordenador');
 do $$
+declare
+  v_view text;
 begin
   if coalesce((select orcamentos_enviados from public.v_dashboard_executivo), 0) < 1 then
     raise exception '0128: coordenador deveria ver o orcamento enviado no painel';
   end if;
+  -- todas as views com security_invoker continuam legiveis por quem tem acesso
+  foreach v_view in array array[
+    'v_dashboard_executivo', 'v_margem_real_planejamento', 'v_custo_real_consumo',
+    'v_custo_estoque_vigente', 'v_alertas_estoque', 'v_estoque_saldo_tipo',
+    'v_insumo_analise_pendencias', 'v_minhas_notificacoes'
+  ] loop
+    execute format('select count(*) from public.%I', v_view);
+  end loop;
 end $$;
 
 reset role;
