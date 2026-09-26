@@ -331,7 +331,7 @@ export default async function PedidoInternoDetalhe({
       .order("id"),
     supabase
       .from("insumos")
-      .select("id, especificacao, nome_item, categoria_compra, unidade, unidade_consumo, fabricante, codigo_fabricante, custo_unitario, quantidade_embalagem, tipo_insumos(nome), fornecedores(nome)")
+      .select("id, especificacao, nome_item, categoria_compra, unidade, unidade_consumo, fabricante, codigo_fabricante, custo_unitario, quantidade_embalagem, tipo_insumos(nome), fornecedores!insumos_fornecedor_id_fkey(nome)")
       .order("especificacao"),
     supabase
       .from("pedidos_internos_itens")

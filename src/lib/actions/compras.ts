@@ -93,7 +93,7 @@ export async function comprarFaltasDoPlano(_prev: EstadoAcao, formData: FormData
 
   const { data: insumos } = await supabase
     .from("insumos")
-    .select("id, custo_unitario, fornecedores(nome)")
+    .select("id, custo_unitario, fornecedores!insumos_fornecedor_id_fkey(nome)")
     .in("id", faltas.map((f) => f.insumo_id));
   const infoMap = new Map((insumos ?? []).map((i) => [i.id, i]));
 
@@ -211,7 +211,7 @@ export async function aprovarPedido(_prev: FormState, formData: FormData): Promi
       .single(),
     supabase
       .from("pedidos_compra_itens")
-      .select("insumos(lead_time_dias, fornecedores(prazo_medio_dias))")
+      .select("insumos(lead_time_dias, fornecedores!insumos_fornecedor_id_fkey(prazo_medio_dias))")
       .eq("pedido_id", pedido_id),
   ]);
 
