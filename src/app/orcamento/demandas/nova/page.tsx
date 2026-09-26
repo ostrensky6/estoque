@@ -37,6 +37,9 @@ export default async function NovaDemandaPage() {
     (supabase as never as { from: (table: string) => { select: (columns: string) => Promise<{ data: Array<{
       codigo_analise: string;
       especificacao_insumo: string | null;
+      nome_etapa: string | null;
+      nome_atividade: string | null;
+      grupo_escolha: string | null;
       unidade: string | null;
       quantidade_por_amostra: number | null;
       modo_cobranca: string | null;
@@ -45,7 +48,7 @@ export default async function NovaDemandaPage() {
       insumos: { custo_unitario?: number | null } | null;
     }> | null }> } })
       .from("insumo_analise")
-      .select("codigo_analise, especificacao_insumo, unidade, quantidade_por_amostra, modo_cobranca, status_vinculo_insumo, insumo_id, insumos(custo_unitario)"),
+      .select("codigo_analise, nome_etapa, nome_atividade, especificacao_insumo, grupo_escolha, unidade, quantidade_por_amostra, modo_cobranca, status_vinculo_insumo, insumo_id, insumos(custo_unitario)"),
     (supabase as never as { from: (table: string) => { select: (columns: string) => Promise<{ data: Array<{ insumo_id: number; disponivel?: number | null }> | null }> } })
       .from("v_estoque_saldo")
       .select("insumo_id, disponivel"),

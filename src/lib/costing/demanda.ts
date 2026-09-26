@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { gargalo, insumosSelecionados, type Etapa, type InsumoLinha } from "./engine";
+import { consumoInsumo, gargalo, insumosSelecionados, type Etapa, type InsumoLinha } from "./engine";
 
 export type DemandaLinha = {
   insumo_id: number;
@@ -102,11 +102,7 @@ export async function computarDemandaPlano(
 
     for (const l of insumosSelecionados(linhas)) {
       if (l.insumo_id == null) continue;
-      const q = num(l.quantidade_por_amostra);
-      const qty =
-        l.modo_cobranca === "por_execucao"
-          ? q * (lote > 0 ? Math.ceil(n / lote) : 1)
-          : q * n;
+      const qty = consumoInsumo(l, n, lote > 0 ? Math.ceil(n / lote) : 1);
       const cur = agg.get(l.insumo_id) ?? {
         especificacao: l.especificacao_insumo ?? "",
         demanda: 0,
