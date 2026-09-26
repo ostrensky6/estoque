@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { DownloadButton } from "@/components/common/DownloadButton";
-import { HelpLegend, HelpTip } from "@/components/common/HelpTip";
+import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import {
   atualizarOrcamentosFinaisVencidos,
@@ -184,10 +184,10 @@ export default async function HistoricoOrcamentosPage({
           <div>
             <div className="flex items-center gap-1">
               <h1 className="text-xl font-semibold tracking-tight">Histórico de Orçamentos</h1>
-              <HelpTip title="Histórico de Orçamentos">
+              <HelpTip title="Histórico de orçamentos">
                 <p>
-                  Consulta das versões já fechadas. Cada versão final guarda os custos, parâmetros e
-                  valores do momento da emissão; mudanças posteriores nos cadastros não a alteram.
+                  Versões de proposta já emitidas. Cada versão guarda os <b>custos, parâmetros e valores
+                  do dia da emissão</b>; mudanças posteriores nos cadastros não a alteram.
                 </p>
               </HelpTip>
             </div>
@@ -297,14 +297,14 @@ export default async function HistoricoOrcamentosPage({
                     <HelpTip title="Status da proposta">
                       <HelpLegend
                         items={[
-                          { tom: "info", rotulo: "Emitida", texto: "Documento gerado; ainda sem retorno do cliente." },
-                          { tom: "ok", rotulo: "Aprovada", texto: "O cliente aceitou a proposta." },
-                          { tom: "atencao", rotulo: "Vencida", texto: "Passou da validade sem resposta." },
-                          { tom: "critico", rotulo: "Cancelada", texto: "Deixou de valer; o registro fica no histórico." },
-                          { tom: "neutro", rotulo: "Substituída", texto: "Uma versão mais nova tomou o lugar." },
+                          { tom: "info", rotulo: "Emitida", texto: "documento gerado, ainda sem retorno do cliente." },
+                          { tom: "ok", rotulo: "Aprovada", texto: "o cliente aceitou a proposta." },
+                          { tom: "atencao", rotulo: "Vencida", texto: "passou da validade sem resposta." },
+                          { tom: "critico", rotulo: "Recusada", texto: "recusada pelo cliente ou cancelada; o registro fica no histórico." },
+                          { tom: "neutro", rotulo: "Substituída", texto: "uma versão mais nova tomou o lugar." },
                         ]}
                       />
-                      <p>“Revisado” nos módulos é só a conferência técnica interna; não significa proposta emitida nem aprovada.</p>
+                      <p>Use <b>Classificar</b> para registrar o retorno do cliente.</p>
                     </HelpTip>
                   </span>
                 </th>
@@ -312,10 +312,25 @@ export default async function HistoricoOrcamentosPage({
                 <th className="px-3 py-3 text-right">Custo projeto</th>
                 <th className="px-3 py-3 text-right">Subtotal custos</th>
                 <th className="px-3 py-3 text-right">Taxas/impostos</th>
-                <th className="px-3 py-3 text-right">Margem/lucro</th>
+                <th className="px-3 py-3 text-right">
+                  <span className="inline-flex items-center gap-1">
+                    Margem/lucro
+                    <HelpTip title="Valores dos parâmetros">
+                      <p>As colunas <b>Taxas/impostos</b>, <b>Margem/lucro</b> e <b>Fundos/equip.</b> somam, em R$, os parâmetros de cada proposta: impostos e incubação; lucro; reserva e investimentos.</p>
+                    </HelpTip>
+                  </span>
+                </th>
                 <th className="px-3 py-3 text-right">Fundos/equip.</th>
                 <th className="px-3 py-3 text-right">Preço final</th>
-                <th className="px-3 py-3 text-right">Delta</th>
+                <th className="px-3 py-3 text-right">
+                  <span className="inline-flex items-center gap-1">
+                    Delta
+                    <HelpTip title="Delta" align="end">
+                      <p>Diferença do preço final em relação à <b>versão anterior</b> da mesma proposta, em R$ e em %.</p>
+                      <HelpExample>v1 de R$ 10.000 e v2 de R$ 11.000 → +R$ 1.000 (+10%).</HelpExample>
+                    </HelpTip>
+                  </span>
+                </th>
                 <th className="px-3 py-3 text-right">Ações</th>
               </tr>
             </thead>

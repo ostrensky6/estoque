@@ -47,8 +47,8 @@ export function CriarUsuarioForm() {
         Entra com senha provisória e troca no primeiro acesso.
         <HelpTip title="Novo usuário">
           <p>
-            A conta é criada já com acesso e uma senha provisória. No primeiro login, o sistema
-            obriga a definir uma senha definitiva.
+            A conta é criada com acesso e uma <b>senha provisória</b>. No primeiro login, a pessoa
+            define a senha definitiva.
           </p>
           <p>As permissões iniciais são as da categoria escolhida; ajuste depois em Editar.</p>
         </HelpTip>

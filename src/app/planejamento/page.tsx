@@ -2,6 +2,7 @@ import { createClientUntyped } from "@/lib/supabase/server";
 import { criarPlano } from "@/lib/actions/planejamento";
 import { PlanosTable, type PlanoRow } from "@/components/planejamento/PlanosTable";
 import { temPapel } from "@/lib/auth/roles";
+import { HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { avaliarGestaoPlano } from "@/lib/planejamento/gestao";
 
 export const dynamic = "force-dynamic";
@@ -103,10 +104,26 @@ export default async function PlanejamentoPage({
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
-        <h1 className="text-xl font-semibold tracking-tight">Planejamento</h1>
+        <div className="flex items-center gap-1">
+          <h1 className="text-xl font-semibold tracking-tight">Planejamento</h1>
+          <HelpTip title="Planejamento">
+            <p>
+              Cada plano organiza a execução das análises: projeto, período, <b>reserva de lotes</b>,
+              pedidos para o que falta e a baixa no estoque.
+            </p>
+            <HelpLegend
+              items={[
+                { tom: "atencao", rotulo: "Rascunho", texto: "ainda sem reserva de insumos." },
+                { tom: "info", rotulo: "Reservado", texto: "lotes separados, ainda sem baixa." },
+                { tom: "info", rotulo: "Em execução", texto: "iniciado; os lotes reservados já foram baixados." },
+                { tom: "ok", rotulo: "Concluído", texto: "execução encerrada." },
+                { tom: "neutro", rotulo: "Liberado", texto: "reservas desfeitas ou plano cancelado." },
+              ]}
+            />
+          </HelpTip>
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Planejamento executivo de estoque: vincule projeto, período, análises,
-          reservas de lote, compras por falta e baixa operacional.
+          Vincule projeto, período e análises; reserve lotes e peça o que faltar.
         </p>
         {planoExcluido && (
           <p role="status" className="mt-3 rounded-lg border border-brand-300 bg-brand-50 px-4 py-2 text-sm text-brand-800 dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-300">

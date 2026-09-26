@@ -113,17 +113,17 @@ function JornadaCard({
 }) {
   return (
     <SectionCard
-      title={
+      title={titulo}
+      description={
         ajuda ? (
           <span className="flex items-center gap-1">
-            {titulo}
-            <HelpTip title={titulo}>{ajuda}</HelpTip>
+            {subtitulo}
+            <HelpTip title={`Jornada de ${titulo.toLowerCase()}`}>{ajuda}</HelpTip>
           </span>
         ) : (
-          titulo
+          subtitulo
         )
       }
-      description={subtitulo}
       actions={badge}
       contentClassName="grid gap-2"
     >
@@ -271,8 +271,8 @@ export default async function Home() {
         help={
           <HelpTip title="Painel de decisão">
             <p>
-              Junta orçamento, planejamento, estoque e compras numa só tela, para que você veja o
-              que resolver antes que vire problema na bancada.
+              Junta orçamento, planejamento, estoque e compras numa só tela, para você ver{" "}
+              <b>o que resolver</b> antes que vire problema na bancada.
             </p>
             <HelpLegend
               items={[
@@ -395,8 +395,8 @@ export default async function Home() {
           subtitulo="Do pedido do cliente à proposta emitida."
           ajuda={
             <p>
-              O preço sai das análises escolhidas: custos diretos (reagentes, equipamento e pessoal),
-              overhead e fatores comerciais, tudo registrado na proposta.
+              O preço sai das análises escolhidas: <b>custos diretos</b> (reagentes, equipamento e
+              pessoal), overhead e fatores comerciais. Tudo fica registrado na proposta.
             </p>
           }
           badge={<Badge variant="muted">{nAnalises ?? 0} análises ativas</Badge>}
@@ -412,8 +412,8 @@ export default async function Home() {
           subtitulo="Do planejamento à reposição."
           ajuda={
             <p>
-              O plano calcula quanto de cada insumo será usado, reserva os lotes, dá baixa pelo lote
-              que vence antes e gera pedido de compra quando o saldo não basta.
+              O plano calcula quanto de cada insumo será usado e <b>reserva os lotes</b>. A baixa
+              segue o lote que vence primeiro, e a falta de saldo gera pedido de compra.
             </p>
           }
           badge={<StatusBadge status={statusGeralTom} label={statusGeral} />}
@@ -462,18 +462,18 @@ export default async function Home() {
       </section>
 
       <SectionCard
-        title={
+        title="Base de controle"
+        description={
           <span className="flex items-center gap-1">
-            Base de controle
+            Cadastros, qualidade dos dados, auditoria e usuários.
             <HelpTip title="Base de controle">
               <p>
                 Cadastros, permissões e auditoria sustentam orçamento e estoque. Sem eles, custo,
-                saldo e compra perdem a rastreabilidade.
+                saldo e compra perdem a <b>rastreabilidade</b>.
               </p>
             </HelpTip>
           </span>
         }
-        description="Cadastros, qualidade dos dados, auditoria e usuários."
         actions={<Badge variant="muted">governança</Badge>}
         contentClassName="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
       >

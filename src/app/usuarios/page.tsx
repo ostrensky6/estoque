@@ -5,6 +5,7 @@ import { buildPermissoesPorCategoria } from "@/lib/auth/permission-categories";
 import { CriarUsuarioForm } from "@/components/usuarios/CriarUsuarioForm";
 import { PermissoesCategoriasTable } from "@/components/usuarios/PermissoesCategoriasTable";
 import { UsuariosTable, type UsuarioRow } from "@/components/usuarios/UsuariosTable";
+import { HelpTip } from "@/components/common/HelpTip";
 
 export const dynamic = "force-dynamic";
 
@@ -68,10 +69,18 @@ export default async function UsuariosPage() {
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
-        <h1 className="text-xl font-semibold tracking-tight">Usuários e permissões</h1>
+        <div className="flex items-center gap-1">
+          <h1 className="text-xl font-semibold tracking-tight">Usuários e permissões</h1>
+          <HelpTip title="Usuários e permissões">
+            <p>
+              Cada usuário tem uma <b>categoria</b> (técnico, coordenador, gestor ou administrador) que
+              define suas permissões padrão.
+            </p>
+            <p>Em Editar, dá para ajustar as permissões de uma pessoa sem mudar a categoria.</p>
+          </HelpTip>
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Cadastre acessos, mantenha pré-aprovados, assinaturas e permissões por categoria.
-          Técnico, coordenador, gestor e administrador têm matrizes editáveis por usuário.
+          Acessos, pré-aprovados, assinaturas e permissões por categoria.
         </p>
 
         <CriarUsuarioForm />

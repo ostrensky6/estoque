@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 import { formatCurrency as brl } from "@/lib/formatters";
 import { anosDoProjeto, subtotalCusto } from "@/lib/project-budget/editor";
 import { FormAcao } from "./FormAcao";
@@ -115,8 +116,12 @@ export function GradeMesesPessoal({
             ))}
           </span>
         ))}
-        <p className="text-xs text-muted-foreground">
-          Projeto com {mesesProjeto} {mesesProjeto === 1 ? "mês" : "meses"}. Total = meses marcados × valor mensal.
+        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+          Projeto com {mesesProjeto} {mesesProjeto === 1 ? "mês" : "meses"}.
+          <HelpTip title="Meses do pessoal">
+            <p>Marque os meses em que cada profissional atua; <b>M1</b> é o primeiro mês do projeto. O total da linha é <b>meses marcados × valor mensal</b>.</p>
+            <HelpExample>6 meses marcados × R$ 4.000 = R$ 24.000.</HelpExample>
+          </HelpTip>
         </p>
         {editavel && (
           <div className="flex flex-wrap items-center gap-2">

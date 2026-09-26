@@ -109,10 +109,12 @@ export default async function EtiquetasPage({
               <h1 className="text-xl font-semibold tracking-tight">Etiquetas internas</h1>
               <HelpTip title="Etiquetas internas">
                 <p>
-                  Etiquetas com QR para os lotes em estoque e para os aparelhos do laboratório. Imprima,
-                  recorte e cole na embalagem ou no equipamento; a câmera do celular abre a ficha direto.
+                  Etiquetas com QR para os lotes em estoque e para os aparelhos do laboratório.{" "}
+                  <b>Imprima, recorte e cole</b> na embalagem ou no equipamento.
                 </p>
-                <p>Lotes consumidos ou descartados não aparecem.</p>
+                <p>
+                  A câmera do celular abre a ficha direto. Lotes consumidos ou descartados não aparecem.
+                </p>
               </HelpTip>
             </div>
           </div>

@@ -121,13 +121,13 @@ export function CusteioAmostrasChart({
         <div>
           <div className="flex items-center gap-1">
             <h2 className="text-lg font-semibold text-foreground dark:text-white">Custo por número de amostras</h2>
-            <HelpTip title="Como ler o gráfico">
+            <HelpTip title="Custo por número de amostras">
               <p>
-                Cada linha é uma análise. Os <b>degraus</b> aparecem quando o número de amostras
-                passa do lote e é preciso abrir mais uma corrida.
+                Cada linha é uma análise. Os <b>degraus</b> aparecem quando as amostras passam do
+                lote e é preciso abrir mais uma corrida.
               </p>
               <p>
-                A curva usa só o custo técnico, <b>sem margem e impostos</b>. Em &quot;Custo por
+                A curva usa só o custo técnico, <b>sem margem nem impostos</b>. Em &quot;Custo por
                 amostra&quot;, o valor cai conforme mais amostras dividem a mesma corrida.
               </p>
               {analisesSelecionadas.length > 0 && (
@@ -145,7 +145,7 @@ export function CusteioAmostrasChart({
                 </ul>
               )}
               <HelpExample>
-                Lote de 12: da 12ª para a 13ª amostra o custo total sobe um degrau (nova corrida).
+                Lote de 12: da 12ª para a 13ª amostra, o custo total sobe um degrau (nova corrida).
               </HelpExample>
             </HelpTip>
           </div>

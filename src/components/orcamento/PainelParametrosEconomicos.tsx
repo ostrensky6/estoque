@@ -101,9 +101,9 @@ export function PainelParametrosEconomicos({
           titulo="Parâmetros aplicados · gross-up"
           ajuda={
             <HelpTip title="Gross-up">
-              <p>Os percentuais incidem sobre o <b>preço final</b>. O preço de tabela do laboratório é só referência e não entra na conta.</p>
-              <HelpFormula>total = (custo lab. + custo projeto) ÷ (1 − Σ%)</HelpFormula>
-              <HelpExample>Custo R$ 1.000 e 25% de parâmetros → R$ 1.000 ÷ 0,75 = R$ 1.333,33.</HelpExample>
+              <p>Os percentuais incidem sobre o <b>preço final</b>, e não sobre o custo. O preço de tabela do laboratório é só referência e não entra na conta.</p>
+              <HelpFormula>total = subtotal técnico ÷ (1 − soma dos %)</HelpFormula>
+              <HelpExample>Custo de R$ 1.000 com 16,33% de impostos e 20% de lucro (soma 36,33%) → R$ 1.000 ÷ 0,6367 = R$ 1.570,60.</HelpExample>
             </HelpTip>
           }
         >

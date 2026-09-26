@@ -34,8 +34,8 @@ export function PermissoesCategoriasTable({ permissoesPorCategoria }: { permisso
             <h2 className="text-sm font-semibold">Tabela de permissões por categoria</h2>
             <HelpTip title="Permissões por categoria">
               <p>
-                É o padrão aplicado a quem entra em cada categoria. Para um usuário específico, use
-                <b> Editar</b> na linha dele: o ajuste individual vale acima do padrão.
+                Padrão aplicado a quem está em cada categoria. Para uma pessoa específica, use{" "}
+                <b>Editar</b> na linha dela: o ajuste individual vale acima do padrão.
               </p>
             </HelpTip>
           </div>

@@ -135,8 +135,8 @@ export default async function RecebimentoPage() {
               <h1 className="text-xl font-semibold tracking-tight">Recebimento</h1>
               <HelpTip title="Recebimento">
                 <p>
-                  Tudo o que está para chegar, de pedidos internos e de compras. Cada entrega vira um lote em
-                  quarentena; o que faltar continua na fila até chegar tudo.
+                  Tudo o que está para chegar, de pedidos internos e de compras. Cada entrega vira um{" "}
+                  <b>lote em quarentena</b>; o que faltar continua na fila até chegar tudo.
                 </p>
                 <HelpExample>Pedido de 10 caixas, chegaram 6: recebe 6 agora e 4 ficam pendentes.</HelpExample>
               </HelpTip>

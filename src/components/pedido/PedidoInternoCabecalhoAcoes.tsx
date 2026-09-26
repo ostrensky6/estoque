@@ -147,15 +147,15 @@ export function PedidoInternoCabecalhoAcoes({
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-1">
-                Excluir rascunho {numero}?
+              <div className="flex items-center gap-1">
+                <DialogTitle>Excluir rascunho {numero}?</DialogTitle>
                 <HelpTip title="Excluir ou cancelar?">
                   <p>
-                    Excluir só vale para rascunhos que ainda não entraram no fluxo. Pedidos em andamento
-                    devem ser cancelados, informando o motivo, para manter o histórico.
+                    Excluir só vale para <b>rascunhos</b> que ainda não entraram no fluxo. Pedidos em
+                    andamento devem ser <b>cancelados</b>, com motivo, para manter o histórico.
                   </p>
                 </HelpTip>
-              </DialogTitle>
+              </div>
               <DialogDescription>
                 O pedido <b>{titulo}</b> será apagado e não poderá ser recuperado.
               </DialogDescription>

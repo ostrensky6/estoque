@@ -227,11 +227,14 @@ function Kpi({ label, value, detail, href, tone }: { label: string; value: numbe
   );
 }
 
-function Section({ id, title, action, children }: { id: string; title: string; action?: React.ReactNode; children: React.ReactNode }) {
+function Section({ id, title, action, help, children }: { id: string; title: string; action?: React.ReactNode; help?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section id={id} className="border-t border-border py-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+        <div className="flex items-center gap-1">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+          {help}
+        </div>
         {action}
       </div>
       <div className="mt-4">{children}</div>
@@ -397,9 +400,10 @@ export default async function SuprimentosPage() {
               <h1 className="text-xl font-semibold tracking-tight">Suprimentos</h1>
               <HelpTip title="Suprimentos">
                 <p>
-                  Visão geral do material do laboratório: o que está reservado para planos, pedidos e compras
-                  em andamento, o que está chegando, lotes em quarentena e de onde veio cada lote.
+                  Painel de todo o ciclo do material: <b>reservas</b> dos planos, pedidos e compras em
+                  andamento, o que está chegando e os lotes em quarentena.
                 </p>
+                <p>Clique em um indicador para ir direto à seção correspondente.</p>
               </HelpTip>
             </div>
           </div>
@@ -453,7 +457,19 @@ export default async function SuprimentosPage() {
           </div>
         </Section>
 
-        <Section id="planejamentos" title="Planejamentos e reservas" action={<Link href="/planejamento" className="text-sm font-medium text-primary hover:underline">Abrir planejamento</Link>}>
+        <Section
+          id="planejamentos"
+          title="Planejamentos e reservas"
+          help={
+            <HelpTip title="Reserva de lotes">
+              <p>
+                Reservar separa lotes do estoque para um plano de análise. O material reservado deixa
+                de contar como <b>disponível</b> para outros usos.
+              </p>
+              <p>Reserva parcial indica que faltou estoque para o plano inteiro.</p>
+            </HelpTip>
+          }
+          action={<Link href="/planejamento" className="text-sm font-medium text-primary hover:underline">Abrir planejamento</Link>}>
           {planejamentos.length ? (
             <TableShell>
               <table className="w-full text-sm">
@@ -709,7 +725,18 @@ export default async function SuprimentosPage() {
           ) : <Empty>Sem notificações não lidas.</Empty>}
         </Section>
 
-        <Section id="rastreabilidade" title="Rastreabilidade">
+        <Section
+          id="rastreabilidade"
+          title="Rastreabilidade"
+          help={
+            <HelpTip title="Rastreabilidade">
+              <p>
+                Liga cada pedido interno à <b>compra formal</b> e aos lotes que entraram no estoque, para
+                saber de onde veio cada material.
+              </p>
+            </HelpTip>
+          }
+        >
           {rastreabilidade.length ? (
             <TableShell>
               <table className="w-full text-sm">

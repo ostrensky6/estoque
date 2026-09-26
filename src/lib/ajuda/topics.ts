@@ -36,7 +36,7 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
     href: "/analises",
     resumo: "Catálogo técnico das análises: finalidade, matriz e método.",
     intro:
-      "O módulo de Análises é o catálogo central de tudo o que o laboratório oferece. Cada análise cadastrada aqui vira a base para o cálculo de custo, para o planejamento de demanda e para os orçamentos. Manter este catálogo correto e completo é o primeiro passo para que todo o restante do sistema produza números confiáveis.",
+      "O módulo de Análises é o catálogo central de tudo o que o laboratório oferece. Cada análise cadastrada aqui vira a base para o cálculo de custo, para o planejamento e para os orçamentos. Manter este catálogo correto e completo é o primeiro passo para que todo o restante do sistema produza números confiáveis.",
     secoes: [
       {
         titulo: "Para que serve",
@@ -75,7 +75,7 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
     href: "/insumos",
     resumo: "Reagentes, controles e perdas que compõem cada análise.",
     intro:
-      "Aqui você define a 'receita' de cada análise: quais reagentes e materiais ela consome, em que quantidade, quantos controles entram e qual a perda esperada. Essa composição é o que permite ao Custeio calcular o custo técnico real e ao Planejamento prever a demanda de estoque com precisão.",
+      "Aqui você define a 'receita' de cada análise: quais reagentes e materiais ela consome, em que quantidade, quantos controles entram e qual a perda esperada. Essa composição é o que permite ao Custeio calcular o custo técnico real e ao Planejamento prever o consumo de estoque com precisão.",
     secoes: [
       {
         titulo: "Para que serve",
@@ -168,12 +168,13 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
         ],
       },
       {
-        titulo: "Saída avulsa (Saída)",
+        titulo: "Baixa avulsa (Dar baixa)",
         itens: [
-          "Use para material que sai fora de um plano: perda, quebra, vencido, descarte ou uso avulso.",
-          "Onde: Estoque → 'Saída' na linha do insumo, ou 'Saída' nas ações de um lote específico.",
-          "Sem escolher o lote, a saída sai do lote que vence antes (FEFO); escolhendo o lote, sai só dele.",
-          "Toda saída pede o motivo e fica registrada na Auditoria.",
+          "Use para material que sai fora de um plano: consumo em análise, perda ou quebra, vencimento ou outro motivo.",
+          "Onde: Estoque → 'Dar baixa' na linha do insumo, ou nas ações de um lote específico.",
+          "Sem escolher o lote, a baixa sai do lote que vence antes (FEFO); escolhendo o lote, sai só dele.",
+          "Lote vencido só pode sair com o motivo Vencimento.",
+          "Toda baixa pede o motivo e fica no histórico do lote.",
         ],
       },
       {
@@ -193,21 +194,21 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
         ],
       },
     ],
-    termos: ["saldo", "lote", "validade", "quarentena", "fefo", "reposição", "rastreio", "entrada", "saída", "baixa avulsa", "perda", "quebra", "descarte", "vencido", "número do lote", "planilha", "excel", "importar"],
+    termos: ["saldo", "lote", "validade", "quarentena", "fefo", "reposição", "rastreio", "entrada", "saída", "dar baixa", "baixa avulsa", "perda", "quebra", "descarte", "vencido", "número do lote", "planilha", "excel", "importar"],
   },
   {
     id: "planejamento",
     titulo: "Planejamento",
     grupo: "Suprimentos",
     href: "/planejamento",
-    resumo: "Demanda, reservas e consumo previsto de insumos.",
+    resumo: "Consumo previsto, reservas e faltas de insumos.",
     intro:
-      "O Planejamento projeta a demanda de insumos a partir das análises que você pretende executar. Com base no número de amostras, controles e repetições, o sistema calcula o consumo previsto, cria reservas no estoque e ajuda a antecipar compras — evitando tanto a falta quanto o excesso.",
+      "O Planejamento projeta o consumo de insumos a partir das análises que você pretende executar. Com base no número de amostras, controles e repetições, o sistema calcula o consumo previsto, cria reservas no estoque e ajuda a antecipar compras — evitando tanto a falta quanto o excesso.",
     secoes: [
       {
         titulo: "Para que serve",
         itens: [
-          "Transformar um conjunto de análises previstas em demanda concreta de insumos.",
+          "Transformar um conjunto de análises previstas em consumo concreto de insumos.",
           "Reservar estoque para o que está planejado, evitando consumo conflitante.",
           "Antecipar compras com base no consumo previsto.",
         ],
@@ -237,9 +238,9 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
     titulo: "Pedido",
     grupo: "Suprimentos",
     href: "/pedido",
-    resumo: "Demandas internas para compra, antes da compra formal.",
+    resumo: "Pedidos internos de compra, antes da compra formal.",
     intro:
-      "O módulo Pedido é a porta de entrada das demandas internas de compra do laboratório. É onde a equipe registra o que precisa (materiais ou serviços), antes de virar uma compra formal. Cada pedido tem numeração própria, passa por validação e segue um fluxo de etapas até ser encaminhado para a compra de fato.",
+      "O módulo Pedido é a porta de entrada dos pedidos internos de compra do laboratório. É onde a equipe registra o que precisa (materiais ou serviços), antes de virar uma compra formal. Cada pedido tem numeração própria, passa por validação e segue um fluxo de etapas até ser encaminhado para a compra de fato.",
     secoes: [
       {
         titulo: "Para que serve",
@@ -252,7 +253,7 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
       {
         titulo: "Criando e consultando",
         itens: [
-          "Preencha a demanda inicial (título, projeto, urgência, fonte provável e justificativa) e clique em 'Novo pedido'.",
+          "Clique em 'Novo pedido' e preencha título, projeto, urgência, fonte provável e justificativa.",
           "Na lista, o botão 'Itens (N)' abre um resumo rápido do que está sendo solicitado, sem precisar abrir o pedido.",
           "A coluna 'Nº' mostra o número sequencial do pedido; clique para abrir o detalhe completo.",
         ],
@@ -386,7 +387,7 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
     href: "/orcamento/demandas",
     resumo: "Custos próprios do projeto por rubrica, dentro da proposta.",
     intro:
-      "Os custos de projeto são uma etapa do orçamento: abra o orçamento em Demandas/Propostas e vá para a etapa \"Custos do projeto\". Lá você lança os itens por rubrica (PE Pessoal, MC Material de consumo, MP Material permanente, ST Serviços de terceiros, VD Viagens e diárias, OU Outros), marca os meses do pessoal, informa as viagens e inclui análises laboratoriais dentro do projeto. Os valores são custo técnico; os parâmetros econômicos entram na etapa seguinte.",
+      "Os custos de projeto são uma etapa do orçamento: abra o orçamento em Orçamentos não finalizados e vá para a etapa \"Custos do projeto\". Lá você lança os itens por rubrica (PE Pessoal, MC Material de consumo, MP Material permanente, ST Serviços de terceiros, VD Viagens e diárias, OU Outros), marca os meses do pessoal, informa as viagens e inclui análises laboratoriais dentro do projeto. Os valores são custo técnico; os parâmetros econômicos entram na etapa seguinte.",
     secoes: [
       {
         titulo: "Para que serve",
@@ -399,7 +400,7 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
       {
         titulo: "Passo a passo",
         itens: [
-          "Em Demandas/Propostas, abra o orçamento e vá para a etapa \"Custos do projeto\". Se ainda não houver custos de projeto, use \"Criar orçamento de projeto\".",
+          "Em Orçamentos não finalizados, abra o orçamento e vá para a etapa \"Custos do projeto\". Se ainda não houver custos de projeto, use \"Criar orçamento de projeto\".",
           "Em cada rubrica, adicione itens do catálogo (com busca) ou manuais; edite e remova pela própria linha.",
           "No Pessoal, marque os meses na grade (paginada por ano) e clique em \"Salvar meses\". Em Viagens, preencha as entradas e clique em \"Salvar e recalcular\".",
           "Um coordenador (ou superior) usa \"Concluir revisão dos custos\": os custos ficam travados e a proposta libera parâmetros e emissão.",
@@ -458,7 +459,7 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
         itens: [
           "Projetos e clientes que aparecem em pedidos e orçamentos.",
           "Insumos e suas políticas de reposição, usados por estoque e custeio.",
-          "Equipamentos, fornecedores, técnicos, locais e taxas de overhead.",
+          "Equipamentos, fornecedores, técnicos, locais e custos fixos (overhead), como a incubação UFPR mensal.",
         ],
       },
       {
@@ -473,7 +474,7 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
         titulo: "Insumos, lotes e planilha",
         itens: [
           "Na ficha do insumo, 'Lotes em estoque' mostra cada lote com seu número, validade e saldo.",
-          "'+ Entrada' registra um lote novo com o número do lote do fabricante; 'Saída' retira perda, quebra, vencido, descarte ou uso fora de plano.",
+          "'+ Entrada' registra um lote novo com o número do lote do fabricante; 'Dar baixa' retira material com motivo (consumo, perda ou quebra, vencimento).",
           "'Planilha' (no topo de cada cadastro) baixa a lista em Excel; a importação fica em 'Todos os cadastros'.",
         ],
       },

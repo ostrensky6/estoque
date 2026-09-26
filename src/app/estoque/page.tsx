@@ -186,12 +186,12 @@ export default async function EstoquePage({
             <h1 className="text-xl font-semibold tracking-tight">Estoque</h1>
             <HelpTip title="Estoque">
               <p>
-                Saldo de cada insumo, alertas de reposição e vencimento e os lotes guardados. O uso
-                segue FEFO: o lote que vence antes sai antes.
+                Saldo de cada insumo, alertas e os lotes guardados. O uso segue <b>FEFO</b>: o lote
+                que vence primeiro sai primeiro.
               </p>
               <p>
-                <b>+ Entrada</b> registra material recebido. <b>Saída</b> retira perda, quebra,
-                vencido, descarte ou uso fora de plano.
+                <b>+ Entrada</b> registra um lote com o número do fabricante. <b>Dar baixa</b> retira
+                material com motivo (consumo, perda, vencimento ou outro).
               </p>
             </HelpTip>
           </div>
@@ -201,7 +201,25 @@ export default async function EstoquePage({
         </div>
 
         {/* Alertas */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-6 flex items-center gap-1">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Alertas</h2>
+          <HelpTip title="Alertas do estoque">
+            <HelpLegend
+              items={[
+                { tom: "atencao", rotulo: "Repor", texto: "o disponível chegou ao ponto de reposição" },
+                { tom: "atencao", rotulo: "Vence em breve", texto: "lote perto do fim da validade" },
+                { tom: "critico", rotulo: "Vencido", texto: "só pode sair com o motivo Vencimento" },
+                { tom: "critico", rotulo: "Sem validade", texto: "lote de insumo crítico sem data de validade" },
+                { tom: "info", rotulo: "Quarentena", texto: "lote recebido, aguardando aceite" },
+              ]}
+            />
+            <p>
+              O número de cada cartão é a <b>quantidade de alertas</b>; abaixo aparecem os primeiros
+              itens.
+            </p>
+          </HelpTip>
+        </div>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {(["reposicao", "vencimento", "vencido", "sem_validade", "quarentena"] as const).map((t) => (
             <div
               key={t}
@@ -231,13 +249,13 @@ export default async function EstoquePage({
             <div>
               <div className="flex items-center gap-1">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Custo de estoque vigente</h2>
-                <HelpTip title="Custo de estoque vigente">
+                <HelpTip title="Custo padrão × custo médio">
                   <p>
-                    Compara o <b>custo padrão</b> do cadastro (usado nas simulações) com o{" "}
-                    <b>custo médio</b> dos lotes liberados. Cada consumo guarda o custo real do lote.
+                    O <b>custo padrão</b> vem do cadastro e é usado nas simulações. O <b>custo médio</b>{" "}
+                    é o preço real dos lotes liberados. A lista mostra só os insumos em que os dois divergem.
                   </p>
                   <HelpExample>
-                    Padrão R$ 100, lotes a R$ 120 → variação +20%: revise o custo padrão.
+                    Padrão R$ 100, lotes a R$ 120 → variação de +20%: revise o custo padrão.
                   </HelpExample>
                 </HelpTip>
               </div>
@@ -288,13 +306,15 @@ export default async function EstoquePage({
           <HelpTip title="Estados do lote">
             <HelpLegend
               items={[
-                { tom: "atencao", rotulo: "Quarentena", texto: "recebido, aguardando conferência; ainda não pode ser usado" },
+                { tom: "atencao", rotulo: "Quarentena", texto: "recebido, aguardando aceite; ainda não pode ser usado" },
                 { tom: "info", rotulo: "Aceito", texto: "liberado para uso" },
                 { tom: "info", rotulo: "Em uso", texto: "embalagem aberta; vale a validade após abertura" },
                 { tom: "critico", rotulo: "Bloqueado", texto: "retido (recall, não conformidade); não sai para uso" },
               ]}
             />
-            <p>O uso segue FEFO: o lote que vence antes sai antes.</p>
+            <p>
+              Clique no número do lote para ver a etiqueta e o <b>histórico</b> de movimentações.
+            </p>
           </HelpTip>
         </div>
         <div className="mt-3">

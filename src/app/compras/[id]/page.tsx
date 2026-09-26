@@ -10,6 +10,7 @@ import { PedidoAcoes } from "@/components/compras/PedidoAcoes";
 import { FormComMensagem } from "@/components/pedido/FormComMensagem";
 import { ScannerRecebimentoCompra } from "@/components/compras/ScannerRecebimentoCompra";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { HelpTip } from "@/components/common/HelpTip";
 import { listarEventos } from "@/lib/actions/eventos";
 import { Timeline } from "@/components/common/Timeline";
 import { formatDate, formatDateTime, formatNumber as fmt, formatCurrency as brl } from "@/lib/formatters";
@@ -122,7 +123,18 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                   <th className="px-4 py-3 text-left">Origem</th>
                   <th className="px-4 py-3 text-right">Qtd</th>
                   <th className="px-4 py-3 text-right">Custo est.</th>
-                  <th className="px-4 py-3 text-center">Recebido</th>
+                  <th className="px-4 py-3 text-center">
+                    <span className="inline-flex items-center gap-1">
+                      Recebido
+                      <HelpTip title="Recebimento do item">
+                        <p>
+                          O item pode chegar <b>em partes</b>. Cada entrega vira um lote em quarentena,
+                          listado aqui com número, validade e responsável.
+                        </p>
+                        <p>O pedido só fica como Recebido quando todos os itens chegam.</p>
+                      </HelpTip>
+                    </span>
+                  </th>
                   {(editavel || recebivel) && <th className="px-4 py-3 text-right">Ação</th>}
                 </tr>
               </thead>

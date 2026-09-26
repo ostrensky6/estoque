@@ -38,7 +38,7 @@ export function ModuleTopNavClient({
                 !ativo && "app-nav-level-2 dark:bg-card dark:hover:bg-primary/10",
               )}
             >
-              <Link href={child.href} aria-current={ativo ? "page" : undefined} title={child.desc}>
+              <Link href={child.href} aria-current={ativo ? "page" : undefined} title={child.desc?.replaceAll("**", "")}>
                 {Icon && <Icon className="h-3.5 w-3.5" />}
                 <span>{child.label}</span>
               </Link>

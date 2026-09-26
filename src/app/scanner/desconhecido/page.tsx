@@ -54,9 +54,10 @@ export default async function CodigoDesconhecidoPage({
         <h1 className="text-xl font-semibold text-foreground">Código não encontrado</h1>
         <HelpTip title="Código não encontrado">
           <p>
-            Nenhum item, lote ou equipamento cadastrado tem este código. Registre uma triagem: alguém
-            confere depois e vincula o código ao cadastro certo, sem criar um cadastro pela metade.
+            Nenhum item, lote ou equipamento cadastrado tem este código. Registre uma{" "}
+            <b>triagem</b>: alguém confere depois e vincula o código ao cadastro certo.
           </p>
+          <p>Assim não se cria um cadastro pela metade.</p>
         </HelpTip>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">Registre uma triagem para conferência posterior.</p>

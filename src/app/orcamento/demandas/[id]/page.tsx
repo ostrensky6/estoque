@@ -379,8 +379,12 @@ export default async function DemandaDetalhe({
               <p className="font-medium">Nº {demanda.id}</p>
               <p className="text-muted-foreground">Status: {rotuloStatusOrcamento(demanda.status)}</p>
               <p className="text-muted-foreground">Prioridade: {demanda.prioridade}</p>
-              <p className={completudeDemanda.completa ? "text-brand-700 dark:text-brand-300" : "text-warning-strong"}>
+              <p className={`flex items-center justify-end gap-1 ${completudeDemanda.completa ? "text-brand-700 dark:text-brand-300" : "text-warning-strong"}`}>
                 {completudeDemanda.completa ? "Demanda pronta" : `${completudeDemanda.faltante}% faltante`}
+                <HelpTip title="Completude dos dados" align="end">
+                  <p>Parte dos <b>dados obrigatórios</b> do orçamento que ainda falta preencher (título, cliente, escopo e, conforme a modalidade, projeto e amostras).</p>
+                  <p>Os módulos de custo só são liberados com <b>0% faltante</b>.</p>
+                </HelpTip>
               </p>
             </div>
           </div>
@@ -509,9 +513,14 @@ export default async function DemandaDetalhe({
         <section id="laboratorio" className={`mt-6 scroll-mt-20 rounded-lg border border-border bg-card p-4 shadow-sm ${passo("laboratorio")}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold">Orçamento laboratorial</h2>
+              <div className="flex items-center gap-1">
+                <h2 className="text-sm font-semibold">Orçamento laboratorial</h2>
+                <HelpTip title="Custo × preço recebidos">
+                  <p>O <b>custo</b> das análises é o que entra na proposta. O <b>preço</b> é o de tabela, mostrado só como referência.</p>
+                </HelpTip>
+              </div>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Tabela operacional dos orçamentos de análises gerados a partir desta demanda.
+                Orçamentos de análises gerados a partir desta demanda.
               </p>
             </div>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusClasse(moduloAnalises.status)}`}>
@@ -562,11 +571,12 @@ export default async function DemandaDetalhe({
 
         <section id="projeto" className={`mt-6 scroll-mt-20 rounded-lg border border-border bg-card p-4 shadow-sm ${passo("projeto")}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
+            <div className="flex items-center gap-1">
               <h2 className="text-sm font-semibold">Custos do projeto</h2>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Rubricas, pessoal por mês, viagens e análises dentro do projeto. Valores em custo técnico; os parâmetros entram na etapa seguinte.
-              </p>
+              <HelpTip title="Custos do projeto">
+                <p>Rubricas, pessoal por mês, viagens e análises do projeto, sempre em <b>custo técnico</b>.</p>
+                <p>Impostos, taxas e lucro entram só na etapa seguinte, de <b>parâmetros econômicos</b>.</p>
+              </HelpTip>
             </div>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusClasse(moduloProjeto.status)}`}>
               {exigeProjeto ? `${moduloProjeto.label} · ${moduloProjeto.faltante}% faltante` : "Não se aplica"}
@@ -740,7 +750,13 @@ export default async function DemandaDetalhe({
 
           {/* B — Resumo executivo */}
           <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-            <h3 className="text-sm font-semibold">Resumo executivo</h3>
+            <div className="flex items-center gap-1">
+              <h3 className="text-sm font-semibold">Resumo executivo</h3>
+              <HelpTip title="Resumo executivo">
+                <p>O <b>subtotal técnico</b> soma os custos do laboratório e do projeto. O <b>total de parâmetros</b> é o que impostos, taxas e lucro acrescentam.</p>
+                <HelpExample>Subtotal de R$ 1.000 + parâmetros de R$ 333,33 = total final de R$ 1.333,33.</HelpExample>
+              </HelpTip>
+            </div>
             <div className={`mt-3 grid gap-3 ${exigeProjeto ? "md:grid-cols-5" : "md:grid-cols-4"}`}>
               <ResumoFinal titulo="Custo laboratório (técnico)" valor={orcamentoFinal.totalLaboratorioCusto} />
               {exigeProjeto && <ResumoFinal titulo="Custo direto projeto" valor={orcamentoFinal.totalProjetoCusto} />}
@@ -755,9 +771,9 @@ export default async function DemandaDetalhe({
             <div className="flex items-center gap-1">
               <h3 className="text-sm font-semibold">Resumo econômico</h3>
               <HelpTip title="Gross-up">
-                <p>Impostos, taxas e lucro são percentuais do <b>preço final</b>, não do custo. Por isso o total é calculado “de fora para dentro”.</p>
-                <HelpFormula>total = custo ÷ (1 − Σ%)</HelpFormula>
-                <HelpExample>Custo R$ 1.000 e parâmetros somando 25% → R$ 1.000 ÷ 0,75 = R$ 1.333,33.</HelpExample>
+                <p>Impostos, taxas e lucro são percentuais do <b>preço final</b>, não do custo. Por isso o custo é dividido por 1 menos a soma dos percentuais; o resultado dessa conta é o <b>fator de gross-up</b>.</p>
+                <HelpFormula>total = custo ÷ (1 − soma dos %)</HelpFormula>
+                <HelpExample>Custo de R$ 1.000 e parâmetros somando 25%: fator 1 ÷ 0,75 = 1,3333 → total de R$ 1.333,33.</HelpExample>
               </HelpTip>
             </div>
             <div className="mt-3 grid gap-3 md:grid-cols-3">
@@ -805,9 +821,9 @@ export default async function DemandaDetalhe({
               <div className="flex items-center gap-1">
                 <h3 className="text-sm font-semibold">Composição da proposta</h3>
                 <HelpTip title="Valor comercial">
-                  <p>O total final é repartido entre os itens na proporção do custo técnico de cada um; a soma sempre fecha com o total.</p>
+                  <p>O total final é repartido entre os itens conforme a <b>participação</b> de cada um no custo técnico. A soma das linhas sempre fecha com o total.</p>
                   <HelpFormula>valor comercial = total final × participação</HelpFormula>
-                  <HelpExample>Item com 30% do custo e total R$ 1.500 → R$ 450.</HelpExample>
+                  <HelpExample>Item com 30% do custo e total de R$ 1.500 → R$ 450.</HelpExample>
                 </HelpTip>
               </div>
               <span className={`text-[11px] ${composicaoFinal.reconciliaOk ? "text-muted-foreground/80" : "font-medium text-warning-strong"}`}>
@@ -841,8 +857,8 @@ export default async function DemandaDetalhe({
               <p className="flex items-center gap-1 text-xs text-muted-foreground">
                 Só o custo técnico entra no total.
                 <HelpTip title="Custo técnico × preço de referência">
-                  <p>O <b>custo técnico</b> (insumos, horas, overhead) é a base da proposta. O <b>preço de referência</b> da tabela de análises aparece só para comparação.</p>
-                  <HelpExample>Custo R$ 80 e preço de tabela R$ 120: a proposta parte dos R$ 80 e soma os parâmetros.</HelpExample>
+                  <p>O <b>custo técnico</b> (insumos, horas e overhead) é a base da proposta. O <b>preço de referência</b> da tabela de análises aparece só para comparação.</p>
+                  <HelpExample>Custo de R$ 80 e preço de tabela de R$ 120: a proposta parte dos R$ 80 e acrescenta os parâmetros.</HelpExample>
                 </HelpTip>
               </p>
               {exigeAnalises && (
@@ -893,7 +909,7 @@ export default async function DemandaDetalhe({
               <div className="flex items-center gap-1">
                 <h3 className="text-sm font-semibold">Histórico de versões</h3>
                 <HelpTip title="Versões emitidas">
-                  <p>Cada versão guarda os valores do dia da emissão. Mudanças posteriores em custos ou parâmetros não alteram versões já emitidas.</p>
+                  <p>Cada versão guarda os <b>valores do dia da emissão</b>. Mudanças posteriores em custos ou parâmetros não alteram versões já emitidas.</p>
                 </HelpTip>
               </div>
               <span className="text-xs text-muted-foreground/80">{versoesFinais?.length ?? 0} versão(ões)</span>
@@ -969,7 +985,7 @@ export default async function DemandaDetalhe({
               <label className={`${lbl} flex items-center gap-1`}>
                 Instituição emissora
                 <HelpTip title="Instituição emissora">
-                  <p>Define o cabeçalho, o logotipo e o responsável da proposta impressa e exportada.</p>
+                  <p>Define o <b>cabeçalho</b>, o logotipo e o responsável da proposta impressa e exportada.</p>
                   <HelpExample>Digite “GIA / UFPR” ou “ATGC”.</HelpExample>
                 </HelpTip>
               </label>
@@ -1051,7 +1067,7 @@ export default async function DemandaDetalhe({
             <div className="flex items-center gap-1">
               <h2 className="text-sm font-semibold">Histórico e auditoria</h2>
               <HelpTip title="Histórico e auditoria">
-                <p>Todos os registros ligados a este orçamento: módulos de custo (inclusive cancelados) e propostas emitidas.</p>
+                <p>Todos os registros ligados a este orçamento: módulos de custo, <b>inclusive os cancelados</b>, e propostas emitidas.</p>
               </HelpTip>
             </div>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">

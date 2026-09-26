@@ -12,6 +12,7 @@ import {
 } from "@/lib/actions/estoque";
 import type { FormState } from "@/lib/actions/cadastros";
 import { DarBaixaDialog } from "@/components/estoque/DarBaixaDialog";
+import { HelpTip } from "@/components/common/HelpTip";
 import type { ModeloQuantidadeLote } from "@/lib/estoque/baixa";
 
 type Acao = (fd: FormData) => Promise<{ ok: boolean; message?: string }>;
@@ -176,24 +177,43 @@ export function LoteAcoes({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 text-left">
           <div className="absolute inset-0 bg-black/40" onClick={() => !pending && setModal(null)} />
           <div className="relative w-full max-w-sm rounded-xl bg-card p-5 shadow-xl">
-            <h3 className="text-base font-semibold">
-              {modal === "aceitar"
-                ? "Aceitar lote"
-                : modal === "estornar"
-                  ? "Estornar entrada"
-                : modal === "bloquear"
-                ? "Bloquear lote"
-                : modal === "descartar"
-                  ? "Descartar lote"
-                  : "Ajustar saldo"}
-            </h3>
+            <div className="flex items-center gap-1">
+              <h3 className="text-base font-semibold">
+                {modal === "aceitar"
+                  ? "Aceitar lote"
+                  : modal === "estornar"
+                    ? "Estornar entrada"
+                  : modal === "bloquear"
+                  ? "Bloquear lote"
+                  : modal === "descartar"
+                    ? "Descartar lote"
+                    : "Ajustar saldo"}
+              </h3>
+              {modal === "estornar" && (
+                <HelpTip title="Estorno de entrada">
+                  <p>
+                    Corrige uma entrada lançada por engano <b>sem apagar o histórico</b>: um movimento
+                    compensatório zera o saldo do lote.
+                  </p>
+                  <p>Só aparece para lotes em quarentena que não vieram de um pedido.</p>
+                </HelpTip>
+              )}
+              {modal === "ajuste" && (
+                <HelpTip title="Ajuste de saldo">
+                  <p>
+                    Use quando a contagem física não bate com o sistema. O novo saldo substitui o
+                    atual e a <b>diferença</b> fica registrada com o motivo.
+                  </p>
+                </HelpTip>
+              )}
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {modal === "aceitar"
                 ? critico
                   ? "Material crítico precisa de responsável e critério de aceite antes de ficar disponível."
                   : "Registre a liberação do lote para uso."
                 : modal === "estornar"
-                  ? "Corrige o lançamento sem editar nem excluir o histórico. O lote será zerado e receberá um movimento compensatório."
+                  ? "O saldo do lote será zerado; o histórico é mantido."
                 : modal === "bloquear"
                 ? "Informe o motivo do bloqueio (não conformidade, recall, investigação…)."
                 : modal === "descartar"

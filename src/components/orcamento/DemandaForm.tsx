@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { HelpExample, HelpTip } from "@/components/common/HelpTip";
+import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 
 type Option = { id: number; nome: string };
 type Demanda = {
@@ -329,7 +329,7 @@ export function DemandaForm({
             <label className={`${lbl} flex items-center gap-1`}>
               Instituição emissora
               <HelpTip title="Instituição emissora">
-                <p>Define o cabeçalho, o logotipo e o responsável da proposta impressa e exportada.</p>
+                <p>Define o <b>cabeçalho</b>, o logotipo e o responsável da proposta impressa e exportada.</p>
                 <HelpExample>Digite “GIA / UFPR” ou “ATGC”.</HelpExample>
               </HelpTip>
             </label>
@@ -362,7 +362,13 @@ export function DemandaForm({
       {mostraLaboratorio && exigeAnalises && (
       <section className="rounded-md border border-border p-3">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold">Amostras a processar</h3>
+          <div className="flex items-center gap-1">
+            <h3 className="text-sm font-semibold">Amostras a processar</h3>
+            <HelpTip title="Grupos de amostras">
+              <p>Separe as amostras em <b>grupos</b> por tipo ou matriz, cada um com suas análises. A quantidade do grupo vale para todas as análises dele, salvo se você mudar na linha.</p>
+              <HelpExample>Grupo A: 20 amostras de solo com qPCR e 16S. Grupo B: 5 amostras de água só com qPCR.</HelpExample>
+            </HelpTip>
+          </div>
           <button type="button" onClick={() => {
             const key = `grupo-novo-${Date.now()}`;
             setGrupos((atuais) => [...atuais, { key, identificacao: proximaIdentificacaoGrupo(atuais.map((g) => g.identificacao)), tipo_matriz: "", quantidade_amostras: 1, unidade: "amostras", observacao: null }]);
@@ -507,7 +513,19 @@ export function DemandaForm({
         <section id="analises-solicitadas" className="rounded-md border border-border p-3">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h3 className="text-sm font-semibold">Análises por grupo de amostra</h3>
+              <div className="flex items-center gap-1">
+                <h3 className="text-sm font-semibold">Análises por grupo de amostra</h3>
+                <HelpTip title="Previsão por análise">
+                  <p><b>Lotes previstos</b> é o número de corridas necessárias, conforme o lote de cada análise. O sistema ainda <b>não verifica a matriz</b>: confirme tecnicamente se cada análise serve para a amostra.</p>
+                  <HelpLegend
+                    items={[
+                      { tom: "info", rotulo: "Disponível", texto: "custo da análise já calculado; insumos cadastrados (Mapeados)." },
+                      { tom: "atencao", rotulo: "Pendente", texto: "falta custo calculado ou há reagente sem cadastro no estoque." },
+                    ]}
+                  />
+                  <HelpExample>30 amostras e lote de 12 → 3 lotes previstos.</HelpExample>
+                </HelpTip>
+              </div>
               <p className="mt-1 text-xs text-muted-foreground">Resumo consolidado das análises selecionadas nos grupos acima. {analises.length} análise(s) oficial(is) disponível(is).</p>
             </div>
           </div>
@@ -518,7 +536,7 @@ export function DemandaForm({
             <ResumoLaboratorio titulo="Pendências" valor={`${pendentesCusteio}`} detalhe={pendentesCusteio > 0 ? "custeio pendente" : "custeio disponível"} />
           </div>
           <div className="mt-3 rounded-md border border-warning-strong/30 bg-warning-soft px-3 py-2 text-xs text-warning-strong">
-            Compatibilidade por matriz ainda não possui relação oficial no banco. A matriz da demanda é informativa; confirme tecnicamente antes de emitir.
+            Confirme tecnicamente se cada análise serve para a matriz antes de emitir.
           </div>
           <div tabIndex={0} aria-label="Resumo de análises por grupo" className="mt-3 overflow-x-auto">
             <table className="min-w-full divide-y divide-border text-sm">
@@ -657,8 +675,8 @@ function CamposDemandaLeitura({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-1">
           <h3 className="text-sm font-semibold">Dados completos da demanda</h3>
-          <HelpTip title="Somente leitura">
-            <p>Estes dados vêm da primeira etapa e aparecem aqui só para conferência. Para alterar, volte à etapa de dados do orçamento.</p>
+          <HelpTip title="Dados somente leitura">
+            <p>Estes dados vêm da primeira etapa e aparecem aqui <b>só para conferência</b>. Para alterar, volte à etapa de dados do orçamento.</p>
           </HelpTip>
         </div>
         <Selo texto="Leitura" />

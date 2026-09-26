@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { HelpExample, HelpFormula, HelpTip } from "@/components/common/HelpTip";
+import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { salvarParametrosEconomicosDaDemanda } from "@/lib/actions/demandas";
@@ -64,25 +64,25 @@ export function EditorParametrosProposta({
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/50 px-3 py-2">
         <div className="flex items-center gap-1">
           <h3 className="text-sm font-semibold">Impostos, taxas e lucro</h3>
-          <HelpTip title="Como o preço é formado">
+          <HelpTip title="Impostos, taxas e lucro">
             <p>
-              Os percentuais incidem sobre o preço final (“por dentro”): o custo é dividido por 1 menos a
-              soma dos percentuais. A soma precisa ficar abaixo de 100%.
+              Percentuais aplicados sobre o <b>preço final</b> desta proposta. A soma precisa ficar abaixo
+              de 100%.
             </p>
-            <HelpFormula>preço = custo ÷ (1 − soma%)</HelpFormula>
+            <p>
+              A <b>taxa de incubação (UFPR)</b> incide sobre o valor dos serviços <b>sem os impostos</b>.
+              A mensalidade fixa da incubação é custo fixo e fica em Cadastros → Overhead.
+            </p>
             <HelpExample>
-              Custo R$ 1.000 com 16,33% de impostos e 20% de lucro (soma 36,33%) → preço R$ 1.570,60.
+              Nota de R$ 10.000 com 16,33% de impostos: 2% de R$ 8.367 = R$ 167,34 de incubação.
             </HelpExample>
-            <p>
-              <b>Taxa de incubação (UFPR)</b>: percentual da UFPR sobre o valor dos serviços de cada nota fiscal,
-              <b> sem os impostos</b> (padrão 2%, em Parâmetros de custeio). Ex.: nota de R$ 10.000 com 16,33% de
-              impostos → 2% de R$ 8.367 = R$ 167,34. O <b>valor fixo mensal</b> da incubação é custo fixo:
-              fica em Cadastros → Overhead e já entra no custo das análises.
-            </p>
-            <p>
-              Sem orçamento de projeto, os valores ficam gravados nesta proposta; com projeto, no próprio
-              projeto.
-            </p>
+            <HelpLegend
+              items={[
+                { tom: "info", rotulo: "Do projeto", texto: "gravados no orçamento de projeto." },
+                { tom: "ok", rotulo: "Nesta proposta", texto: "gravados nesta proposta." },
+                { tom: "atencao", rotulo: "Padrão", texto: "vindos de Parâmetros de custeio; ainda não salvos." },
+              ]}
+            />
           </HelpTip>
         </div>
         <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${ORIGEM[origem].cls}`}>

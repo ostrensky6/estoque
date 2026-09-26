@@ -61,7 +61,7 @@ export const HELP: Array<{ match: (path: string) => boolean; content: HelpConten
       description: "Saldo, lotes, validade e reposição de cada insumo.",
       checks: [
         "+ Entrada registra um lote recebido, com o número do lote do fabricante e a validade.",
-        "Saída retira material fora de plano: perda, quebra, vencido, descarte ou uso avulso. Sai pelo lote que vence antes.",
+        "Dar baixa retira material com motivo (consumo, perda ou quebra, vencimento). Sai pelo lote que vence antes.",
         "Lote novo entra em quarentena: aceite-o antes de usar.",
         "Planilha de insumos baixa a lista completa (também em Cadastros → Insumos → Planilha).",
       ],

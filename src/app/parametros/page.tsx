@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ParametrosForm } from "@/components/parametros/ParametrosForm";
-import { HelpFormula, HelpTip } from "@/components/common/HelpTip";
+import { HelpTip } from "@/components/common/HelpTip";
 
 export const dynamic = "force-dynamic";
 
@@ -18,11 +18,13 @@ export default async function ParametrosPage() {
           <h1 className="text-xl font-semibold tracking-tight">Parâmetros de custeio</h1>
           <HelpTip title="Parâmetros de custeio">
             <p>
-              Valores que valem para o laboratório inteiro. Os <b>fatores de preço</b> (margem,
-              impostos, taxas e fundos) transformam o custo em preço de venda.
+              Valores que valem para o <b>laboratório inteiro</b>: fatores de preço e bases de
+              rateio usadas no custeio, no estoque e nos alertas.
             </p>
-            <p>Ao salvar, o custeio e os novos orçamentos passam a usar os novos valores na hora.</p>
-            <HelpFormula>preço = custo × (1 + soma dos fatores)</HelpFormula>
+            <p>
+              A <b>taxa de incubação (UFPR)</b> daqui é o padrão das novas propostas. A mensalidade
+              fixa da incubação é custo fixo e fica em Cadastros → Overhead.
+            </p>
           </HelpTip>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">

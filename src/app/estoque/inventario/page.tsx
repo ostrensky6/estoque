@@ -99,10 +99,14 @@ export default async function InventarioPage() {
               <h1 className="text-xl font-semibold tracking-tight">Inventário cíclico</h1>
               <HelpTip title="Inventário cíclico">
                 <p>
-                  Conferência física do estoque: abra uma campanha, leia o local e o lote, digite quanto
-                  há de fato. Se a contagem diferir do sistema, justifique antes de ajustar o saldo.
+                  Conferência física do estoque, organizada em <b>campanhas</b> (por exemplo, uma por
+                  semana ou por local).
                 </p>
-                <HelpExample>Sistema diz 12, você contou 10: diferença −2, ajuste só com justificativa.</HelpExample>
+                <p>
+                  A contagem não muda o saldo sozinha: a diferença fica registrada e o saldo só é
+                  corrigido quando um gestor clica em <b>Aplicar ajuste</b>.
+                </p>
+                <HelpExample>Sistema diz 12, você contou 10: diferença −2, com justificativa.</HelpExample>
               </HelpTip>
             </div>
           </div>

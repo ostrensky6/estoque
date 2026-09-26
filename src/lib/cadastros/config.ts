@@ -80,7 +80,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
     titulo: "Clientes",
     singular: "cliente",
     subtitulo:
-      "Cadastro de clientes. Vinculados aos orçamentos e, através dos projetos, aos planejamentos e compras.",
+      "Quem contrata o laboratório. Cada cliente se liga às **propostas** e, pelos projetos, aos planejamentos e compras.",
     rotulo: "nome",
     colunas: [
       { key: "nome", label: "Cliente" },
@@ -111,7 +111,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
     titulo: "Projetos",
     singular: "projeto",
     subtitulo:
-      "Trabalhos do laboratório. Cada projeto pertence a um cliente e amarra orçamentos, planejamentos e compras relacionados.",
+      "Trabalhos do laboratório. Cada projeto pertence a um **cliente** e reúne orçamentos, planejamentos e compras.",
     rotulo: "nome",
     colunas: [
       { key: "nome", label: "Projeto" },
@@ -150,7 +150,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
     titulo: "Equipamentos",
     singular: "equipamento",
     subtitulo:
-      "Inventário de equipamentos. O custo/dia usa depreciação linear pela vida útil + manutenção, rateado pelos dias úteis/ano. Alterações recalculam o custeio e os orçamentos.",
+      "Equipamentos do laboratório. O **custo/dia** soma a depreciação pela vida útil e a manutenção, dividido pelos dias úteis do ano.",
     rotulo: "nome",
     colunas: [
       { key: "nome", label: "Equipamento" },
@@ -168,12 +168,12 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       { name: "quantidade", label: "Quantidade", tipo: "number", obrigatorio: true, min: 0, step: "1", grupo: "Aquisição e valor" },
       { name: "custo_unitario", label: "Custo unitário (R$)", tipo: "currency", obrigatorio: true, min: 0 },
       { name: "data_aquisicao", label: "Data de aquisição", tipo: "date" },
-      { name: "vida_util_anos", label: "Vida útil (anos)", tipo: "number", min: 0, step: "0.5", ajuda: "Anos até o equipamento ser totalmente depreciado; o custo é distribuído igualmente por ano.", exemplo: "Equipamento de R$ 100.000 com vida útil de 10 anos → R$ 10.000 por ano." },
+      { name: "vida_util_anos", label: "Vida útil (anos)", tipo: "number", min: 0, step: "0.5", ajuda: "Anos até o equipamento ser totalmente **depreciado**; o valor é dividido igualmente entre eles.", exemplo: "Equipamento de R$ 100.000 com vida útil de 10 anos → R$ 10.000 por ano." },
       {
         name: "data_validade",
         label: "Data de validade / fim da vida útil",
         tipo: "date",
-        ajuda: "Calculada por data de aquisição + vida útil quando esses campos estiverem preenchidos.",
+        ajuda: "Calculada somando a **vida útil** à data de aquisição, quando os dois estiverem preenchidos.",
       },
 
       {
@@ -183,8 +183,8 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         min: 0,
         max: 1,
         step: "0.01",
-        ajuda: "Percentual do valor do equipamento gasto com manutenção por ano.",
-        exemplo: "Equipamento de R$ 100.000 com 5% → R$ 5.000 por ano de manutenção.",
+        ajuda: "Parte do valor do equipamento gasta com manutenção por ano, em fração: **0,05 = 5%**.",
+        exemplo: "Equipamento de R$ 100.000 com 0,05 → R$ 5.000 por ano de manutenção.",
         grupo: "Manutenção",
       },
       {
@@ -192,7 +192,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         label: "Manutenção anual fixa (R$)",
         tipo: "currency",
         min: 0,
-        ajuda: "Valor anual de um contrato de manutenção. Quando preenchido, substitui o percentual acima.",
+        ajuda: "Valor anual de um contrato de manutenção. Quando preenchido, **substitui** a fração acima.",
       },
     ],
   },
@@ -203,7 +203,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
     titulo: "Insumos",
     singular: "insumo",
     subtitulo:
-      "Catálogo completo de reagentes e consumíveis: marca, embalagem, fornecedor, compra, política de estoque e armazenamento. O custo unitário é derivado do valor e da quantidade da embalagem.",
+      "Catálogo de reagentes e consumíveis, com embalagem, fornecedor, reposição e armazenamento. O **custo unitário** é o valor da embalagem dividido pela quantidade.",
     rotulo: "especificacao",
     colunas: [
       { key: "especificacao", label: "Item específico / SKU", largura: "lg" },
@@ -229,16 +229,25 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         tipo: "select",
         opcoesDe: "tipo_insumos",
         grupo: "Identificação",
-        ajuda: "Agrupa itens específicos equivalentes para cálculo, análise e relatórios.",
+        ajuda: "Nome padronizado que **agrupa itens equivalentes** (outra marca ou embalagem) nos cálculos e relatórios.",
         exportar: false,
       },
       { name: "nome_item", label: "Categoria curta", tipo: "text", placeholder: "Ladder, Beads, Kit Illumina…" },
-      { name: "especificacao", label: "Item específico / SKU", tipo: "text", obrigatorio: true, colSpan: 2, ajuda: "Identificador operacional para compra, estoque, lote e rastreabilidade." },
+      { name: "especificacao", label: "Item específico / SKU", tipo: "text", obrigatorio: true, colSpan: 2, ajuda: "Nome exato do item comprado (marca e apresentação). É ele que aparece na compra, no estoque e nos **lotes**." },
       { name: "fabricante", label: "Marca / fabricante", tipo: "text", placeholder: "Qiagen, Illumina, KASVI…" },
       { name: "codigo_fabricante", label: "Código do fabricante", tipo: "text", placeholder: "Catálogo / part number" },
       { name: "codigo_interno", label: "Código interno", tipo: "text", exportar: false },
 
-      { name: "custo_total_embalagem", label: "Valor da embalagem (R$)", tipo: "currency", obrigatorio: true, min: 0, grupo: "Embalagem e custo" },
+      {
+        name: "custo_total_embalagem",
+        label: "Valor da embalagem (R$)",
+        tipo: "currency",
+        obrigatorio: true,
+        min: 0,
+        grupo: "Embalagem e custo",
+        ajuda: "Preço de uma embalagem fechada. O **custo unitário** é este valor dividido pela quantidade na embalagem.",
+        exemplo: "R$ 500 por frasco de 100 mL → R$ 5,00 por mL.",
+      },
       { name: "quantidade_embalagem", label: "Quantidade na embalagem", tipo: "number", obrigatorio: true, min: 0 },
       { name: "unidade", label: "Unidade", tipo: "text", placeholder: "uL, reações, un, mL…" },
       {
@@ -246,7 +255,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         label: "Unidade de consumo",
         tipo: "text",
         placeholder: "uL, reações, un, mL…",
-        ajuda: "Unidade usada nas receitas das análises e no consumo do estoque. Pode ser igual à da embalagem.",
+        ajuda: "Unidade usada nas **receitas** das análises e no consumo do estoque. Pode ser igual à da embalagem.",
         exemplo: "Embalagem em mL, receita em µL → unidade de consumo: µL.",
       },
       {
@@ -257,8 +266,8 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         min: 0.000001,
         step: "0.000001",
         valorPadrao: 1,
-        ajuda: "Quantas unidades de consumo cabem em 1 unidade da embalagem. Use 1 quando as unidades forem iguais.",
-        exemplo: "Embalagem em mL e consumo em µL → 1 mL = 1000 µL → fator 1000.",
+        ajuda: "Quantas unidades de consumo cabem em **1 unidade da embalagem**. Use 1 quando as unidades forem iguais.",
+        exemplo: "Embalagem em mL e consumo em µL → 1 mL = 1000 µL → fator **1000**.",
       },
 
       { name: "data_aquisicao", label: "Data da última compra", tipo: "date", grupo: "Compra e fornecedor" },
@@ -273,14 +282,21 @@ export const CADASTROS: Record<string, CadastroConfig> = {
           { value: "operacional", label: "Operacional" },
           { value: "eventual", label: "Eventual" },
         ],
-        ajuda: "Crítico recebe destaque nas sugestões de compra.",
+        ajuda: "**Crítico** ganha destaque nas sugestões de compra. Ao aceitar um lote crítico, é preciso informar responsável e critério de aceite.",
       },
       { name: "quantidade_minima_compra", label: "Quantidade mínima de compra", tipo: "number", min: 0 },
       { name: "prazo_entrega_max_dias", label: "Prazo de entrega máx. (dias)", tipo: "number", min: 0 },
 
-      { name: "ponto_reposicao", label: "Ponto de reposição", tipo: "number", min: 0, ajuda: "Quando o saldo disponível chega a este número, o insumo entra nas sugestões de compra.", exemplo: "Ponto de reposição 2: com 2 frascos ou menos, o sistema sugere comprar.", grupo: "Estoque e reposição" },
-      { name: "estoque_seguranca", label: "Estoque de segurança", tipo: "number", min: 0 },
-      { name: "lead_time_dias", label: "Lead time (dias)", tipo: "number", min: 0, ajuda: "Dias entre fazer o pedido e o insumo chegar ao laboratório. Usado para antecipar a compra." },
+      { name: "ponto_reposicao", label: "Ponto de reposição", tipo: "number", min: 0, ajuda: "Quando o **disponível** chega a este número, o insumo aparece como Repor e entra nas sugestões de compra.", exemplo: "Ponto de reposição 2: com 2 frascos ou menos, o sistema sugere comprar.", grupo: "Estoque e reposição" },
+      {
+        name: "estoque_seguranca",
+        label: "Estoque de segurança",
+        tipo: "number",
+        min: 0,
+        ajuda: "Margem para imprevistos (atraso, consumo maior). Entra no **ponto sugerido** junto com o consumo durante o lead time.",
+        exemplo: "Consumo de 2/dia, lead time de 10 dias e segurança 5 → ponto sugerido 25.",
+      },
+      { name: "lead_time_dias", label: "Lead time (dias)", tipo: "number", min: 0, ajuda: "Dias entre fazer o pedido e o insumo chegar. Usado para **antecipar a compra**; se ficar vazio, vale o prazo médio do fornecedor." },
 
       { name: "data_fabricacao", label: "Data de fabricação", tipo: "date", grupo: "Validade" },
       {
@@ -288,14 +304,14 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         label: "Validade após fabricação/aquisição (dias)",
         tipo: "number",
         min: 0,
-        ajuda: "Se a data de validade ficar vazia, ela é calculada somando estes dias à fabricação (ou à última compra).",
+        ajuda: "Se a data de validade ficar vazia, ela é **calculada** somando estes dias à fabricação (ou à última compra).",
         exemplo: "Fabricado em 01/09/2026 + 180 dias → validade 28/02/2027.",
       },
       {
         name: "data_validade",
         label: "Data de validade",
         tipo: "date",
-        ajuda: "Informe a data impressa na embalagem. Se ficar vazia, é calculada pela validade em dias.",
+        ajuda: "Data **impressa na embalagem**. Se ficar vazia, é calculada pela validade em dias.",
       },
       {
         name: "condicao_armazenamento",
@@ -310,7 +326,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
         label: "Validade após abertura (dias)",
         tipo: "number",
         min: 0,
-        ajuda: "Prazo de uso depois que a embalagem é aberta. Vale a data que vencer primeiro: a do lote ou a da abertura.",
+        ajuda: "Prazo de uso depois que a embalagem é aberta. Vale a data que **vencer primeiro**: a do lote ou a da abertura.",
         exemplo: "Aberto em 10/09 com 30 dias → usar até 10/10, mesmo que o lote vença depois.",
       },
       { name: "sds_url", label: "Ficha de segurança (URL do SDS)", tipo: "text", colSpan: 2 },
@@ -323,7 +339,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
     titulo: "Tipos técnicos",
     singular: "tipo técnico",
     subtitulo:
-      "Cadastro normalizado para cálculo, análise e padronização. Cada tipo técnico pode agrupar vários itens específicos/SKUs de compra, estoque e rastreabilidade.",
+      "Nomes padronizados usados nos cálculos e relatórios. Cada tipo técnico **agrupa itens equivalentes** do catálogo de insumos (marcas ou embalagens diferentes).",
     rotulo: "nome",
     colunas: [
       { key: "nome", label: "Tipo técnico" },
@@ -346,7 +362,6 @@ export const CADASTROS: Record<string, CadastroConfig> = {
           { value: "servico", label: "Serviço" },
           { value: "insumo", label: "Insumo" },
         ],
-        ajuda: "Classe usada em análises e relatórios.",
       },
       { name: "ativo", label: "Ativo", tipo: "checkbox", padraoLigado: true },
       { name: "unidade_referencia", label: "Unidade de referência", tipo: "text", placeholder: "uL, mL, un, reação…" },
@@ -361,7 +376,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
     titulo: "Técnicos",
     singular: "técnico",
     subtitulo:
-      "Pessoal e dedicação. O valor-hora (HH) considera o custo da hora pela dedicação ao laboratório. Entra no custo analítico das análises. O salário só aparece para quem tem a permissão “Ver salário dos técnicos”; os demais veem XXX.",
+      "Equipe do laboratório e sua dedicação. O **valor HH** (custo da hora × % dedicado) entra no custo das análises.",
     rotulo: "nome",
     colunas: [
       { key: "nome", label: "Nome" },
@@ -385,8 +400,17 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       },
 
       { name: "valor_mes", label: "Valor mensal (R$)", tipo: "currency", obrigatorio: true, min: 0, grupo: "Custo e dedicação" },
-      { name: "horas_mes_base", label: "Horas/mês base", tipo: "number", obrigatorio: true, min: 1, ajuda: "Horas de trabalho por mês usadas para calcular o custo da hora.", exemplo: "44 h semanais ≈ 176 h/mês." },
-      { name: "percentual_dedicado", label: "% dedicado ao laboratório", tipo: "percent", obrigatorio: true, min: 0, max: 100 },
+      { name: "horas_mes_base", label: "Horas/mês base", tipo: "number", obrigatorio: true, min: 1, ajuda: "Horas de trabalho por mês usadas para calcular o **custo da hora**.", exemplo: "44 h por semana ≈ 176 h/mês." },
+      {
+        name: "percentual_dedicado",
+        label: "% dedicado ao laboratório",
+        tipo: "percent",
+        obrigatorio: true,
+        min: 0,
+        max: 100,
+        ajuda: "Parte do tempo do técnico dedicada ao laboratório. O **valor HH** é o custo da hora multiplicado por este percentual.",
+        exemplo: "R$ 8.800/mês ÷ 176 h = R$ 50/h; com 50% dedicado → valor HH de R$ 25.",
+      },
     ],
   },
 
@@ -396,7 +420,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
     titulo: "Fornecedores",
     singular: "fornecedor",
     subtitulo:
-      "Cadastro completo de fornecedores: identificação fiscal, contato, endereço e prazos. Usados nos insumos, nos pedidos de compra e no cálculo do ponto de reposição.",
+      "Empresas que vendem ao laboratório, com dados fiscais, contato e prazos. Usados nos insumos, nas compras e no **ponto de reposição**.",
     rotulo: "nome",
     colunas: [
       { key: "nome", label: "Fornecedor" },
@@ -419,7 +443,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
       { name: "endereco", label: "Endereço", tipo: "text", colSpan: 2, grupo: "Endereço" },
 
       { name: "catalogo_padrao", label: "Catálogo padrão", tipo: "text", grupo: "Compras e prazos" },
-      { name: "prazo_medio_dias", label: "Prazo médio (dias)", tipo: "number", min: 0 },
+      { name: "prazo_medio_dias", label: "Prazo médio (dias)", tipo: "number", min: 0, ajuda: "Tempo usual entre o pedido e a entrega. Vale como **lead time** dos insumos deste fornecedor que não têm um próprio." },
       { name: "prazo_max_dias", label: "Prazo máximo (dias)", tipo: "number", min: 0 },
 
       { name: "observacoes", label: "Observações", tipo: "textarea", colSpan: 2, grupo: "Observações" },
@@ -432,7 +456,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
     titulo: "Locais",
     singular: "local",
     subtitulo:
-      "Locais físicos de armazenamento, como prédio, sala, freezer, geladeira, gaveta, caixa, rack ou posição.",
+      "Onde o material fica guardado: prédio, sala, freezer, geladeira, gaveta, caixa ou posição. Usados no **inventário** e na localização dos lotes.",
     rotulo: "nome",
     colunas: [
       { key: "nome", label: "Local" },
@@ -472,7 +496,7 @@ export const CADASTROS: Record<string, CadastroConfig> = {
     titulo: "Overhead",
     singular: "item de overhead",
     subtitulo:
-      "Custos fixos rateados por hora de bancada. A parcela compensada define quanto entra no custo das análises.",
+      "Custos fixos mensais (aluguel, energia, incubação UFPR…) rateados por **hora de bancada**. A taxa de incubação em % da proposta fica em Parâmetros de custeio.",
     rotulo: "item",
     colunas: [
       { key: "item", label: "Item" },
@@ -484,8 +508,25 @@ export const CADASTROS: Record<string, CadastroConfig> = {
     campos: [
       { name: "item", label: "Item", tipo: "text", obrigatorio: true, colSpan: 2, grupo: "Identificação" },
       { name: "custo_mensal", label: "Custo mensal (R$)", tipo: "currency", obrigatorio: true, min: 0, grupo: "Rateio" },
-      { name: "percentual_compensada", label: "% compensada", tipo: "percent", obrigatorio: true, min: 0, max: 100 },
-      { name: "horas_bancada_mes", label: "Horas de bancada/mês", tipo: "number", obrigatorio: true, min: 1 },
+      {
+        name: "percentual_compensada",
+        label: "% compensada",
+        tipo: "percent",
+        obrigatorio: true,
+        min: 0,
+        max: 100,
+        ajuda: "Parte deste custo que é **repassada às análises**. O restante não entra no preço.",
+        exemplo: "Aluguel de R$ 5.000 com 50% → R$ 2.500 entram no rateio.",
+      },
+      {
+        name: "horas_bancada_mes",
+        label: "Horas de bancada/mês",
+        tipo: "number",
+        obrigatorio: true,
+        min: 1,
+        ajuda: "Horas de uso da bancada por mês. A parte compensada é **dividida por estas horas** para dar o custo/hora.",
+        exemplo: "R$ 2.500 ÷ 450 h ≈ R$ 5,56 por hora de bancada.",
+      },
     ],
   },
 };

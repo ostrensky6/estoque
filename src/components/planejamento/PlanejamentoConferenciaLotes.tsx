@@ -158,12 +158,9 @@ export function PlanejamentoConferenciaLotes({
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Separar material</h2>
             <HelpTip title="Separar material">
               <p>
-                Escaneie cada lote que você separou para conferir com a reserva do plano. Esta etapa
-                <b> não dá baixa</b> no estoque.
-              </p>
-              <p>
-                A baixa, ao iniciar, consome os lotes <b>reservados</b>. Se o lote físico for outro,
-                justifique aqui e ajuste a reserva antes de iniciar.
+                A baixa acontece ao clicar em <b>Iniciar</b> e consome sempre os lotes{" "}
+                <b>reservados</b>. Se o lote separado for outro, justifique aqui e ajuste a reserva
+                antes de iniciar.
               </p>
             </HelpTip>
           </div>
@@ -281,15 +278,7 @@ export function PlanejamentoConferenciaLotes({
             >
               <p>{validacao?.message ?? resultadoScanner.message}</p>
               {validacao?.status === "excecao_fefo" && (
-                <p className="mt-1 flex items-center gap-1">
-                  A justificativa não troca o lote da baixa.
-                  <HelpTip title="Lote fora da ordem de validade">
-                    <p>
-                      A justificativa só registra por que outro lote foi separado. A baixa continua
-                      consumindo o lote reservado; para trocar, ajuste a reserva antes de iniciar.
-                    </p>
-                  </HelpTip>
-                </p>
+                <p className="mt-1">A justificativa não troca o lote da baixa.</p>
               )}
               {loteEscaneado && (
                 <p className="mt-1 font-medium">
@@ -333,8 +322,9 @@ export function PlanejamentoConferenciaLotes({
                 Justificativa {precisaJustificativa && <span className="text-danger-strong">*</span>}
                 <HelpTip title="Quando justificar">
                   <p>
-                    Só quando o lote separado difere do reservado ou não é o que vence antes. Para
-                    trocar o lote, ajuste a reserva antes da baixa.
+                    Quando o lote separado <b>difere do reservado</b> ou não é o que vence primeiro. A
+                    justificativa só registra o motivo; para trocar o lote, ajuste a reserva antes da
+                    baixa.
                   </p>
                 </HelpTip>
               </label>

@@ -255,8 +255,8 @@ export default async function OrcamentoFinalPage({
                   <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Composição comercial</h2>
                   <span className="no-print">
                     <HelpTip title="Composição comercial">
-                      <p>O total da proposta é dividido entre os itens na proporção do custo técnico de cada um. A soma das linhas sempre fecha com o total.</p>
-                      <HelpExample>Custos R$ 300 e R$ 700, total R$ 1.500 → linhas de R$ 450 (30%) e R$ 1.050 (70%).</HelpExample>
+                      <p>O total da proposta é dividido entre os itens na <b>proporção do custo técnico</b> de cada um. A soma das linhas sempre fecha com o total.</p>
+                      <HelpExample>Custos de R$ 300 e R$ 700, total de R$ 1.500 → linhas de R$ 450 (30%) e R$ 1.050 (70%).</HelpExample>
                     </HelpTip>
                   </span>
                 </div>
@@ -322,7 +322,8 @@ export default async function OrcamentoFinalPage({
               <div className="mt-1 flex items-center gap-1">
                 <h2 className="text-xl font-semibold tracking-tight">Custos, parâmetros e auditoria</h2>
                 <HelpTip title="Modo interno">
-                  <p>Valores congelados no momento da emissão, para conferência da equipe. Esta área não sai na impressão nem vai para o cliente.</p>
+                  <p>Custos, parâmetros e auditoria desta versão, <b>congelados na emissão</b>, para conferência da equipe.</p>
+                  <p>Esta área <b>não é impressa</b> nem enviada ao cliente.</p>
                 </HelpTip>
               </div>
             </div>
@@ -336,7 +337,7 @@ export default async function OrcamentoFinalPage({
                 </button>
               </form>
               <HelpTip title="Duplicar versão">
-                <p>Cria uma nova versão com os mesmos itens e valores, pronta para ajustes. A versão atual continua no histórico.</p>
+                <p>Cria uma <b>nova versão</b> com os mesmos itens e valores, pronta para ajustes. A versão atual continua no histórico.</p>
                 <HelpExample>v1 duplicada → v2 com nova validade; a v1 não é alterada.</HelpExample>
               </HelpTip>
               {versao.status !== "cancelado" && (
@@ -390,7 +391,7 @@ export default async function OrcamentoFinalPage({
                 </div>
               ))}
               {(consolidado.parametrosProjeto ?? []).length === 0 && (
-                <p className="text-sm text-zinc-400">Sem parâmetros de projeto no snapshot.</p>
+                <p className="text-sm text-zinc-400">Sem parâmetros registrados nesta versão.</p>
               )}
             </div>
           </section>

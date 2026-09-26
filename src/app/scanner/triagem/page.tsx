@@ -79,10 +79,10 @@ export default async function ScannerTriagemPage({
             <h1 className="text-xl font-semibold tracking-tight text-foreground">Triagem de códigos desconhecidos</h1>
             <HelpTip title="Triagem de códigos">
               <p>
-                Códigos lidos que o Kontrol não reconheceu. Para cada um: vincule a um insumo, lote ou
-                local já cadastrado, crie um insumo básico ou arquive.
+                Códigos lidos que o Kontrol não reconheceu. Para cada um: <b>vincule</b> a um insumo,
+                lote ou local já cadastrado, crie um insumo básico ou arquive.
               </p>
-              <p>Nada aqui dá entrada em estoque nem recebe lote.</p>
+              <p>Nada aqui dá entrada no estoque nem recebe lote.</p>
             </HelpTip>
           </div>
         </div>

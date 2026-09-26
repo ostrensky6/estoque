@@ -425,12 +425,12 @@ export function CrudShell({
         </Badge>
 
         {slug === "insumos" && (
-          <HelpTip title="Coluna Quantidade" side="bottom">
+          <HelpTip title="Coluna quantidade" side="bottom">
             <p>
               Número de <b>embalagens fechadas</b> em estoque (frascos, pacotes, kits), somando os
               lotes aceitos. Não é o volume de cada embalagem.
             </p>
-            <p>Para corrigir, registrar um lote novo ou dar baixa, abra o insumo.</p>
+            <p>Para corrigir, dar entrada em um lote ou dar baixa, abra o insumo.</p>
           </HelpTip>
         )}
 
@@ -798,8 +798,9 @@ function CadastroDrawer({
                   <HelpTip title="Quantidade em estoque">
                     <p>
                       Conte <b>embalagens fechadas</b> (frascos, pacotes, kits), não o volume de cada
-                      uma. Entra direto no estoque, sem quarentena. Deixe 0 se ainda não houver.
+                      uma. Deixe 0 se ainda não houver.
                     </p>
+                    <p>A quantidade entra direto no estoque, sem quarentena.</p>
                     <HelpExample>
                       3 frascos de 500 mL → informe <b>3</b> (não 1500).
                     </HelpExample>
@@ -830,8 +831,8 @@ function CadastroDrawer({
                   </Label>
                   <HelpTip title="Número do lote">
                     <p>
-                      Código impresso na embalagem pelo fabricante. Liga o estoque à validade (FEFO),
-                      à quarentena e ao rastreio. Vale para a quantidade informada ao lado.
+                      Código que o <b>fabricante</b> imprime na embalagem. Liga a quantidade informada
+                      ao lado à validade e ao rastreio do lote.
                     </p>
                     <HelpExample>
                       Frasco com “LOT 24B1187” → informe <b>24B1187</b>. Sem código? Deixe vazio e o
@@ -907,12 +908,12 @@ function LotesInsumoResumo({
           <h3 className="text-sm font-semibold">Lotes em estoque</h3>
           <HelpTip title="Lotes do insumo">
             <p>
-              Cada entrada vira um lote, com número, validade e saldo próprios. O uso segue FEFO: o
-              lote que vence antes sai antes.
+              Cada entrada vira um lote, com número, validade e saldo próprios. O uso segue{" "}
+              <b>FEFO</b>: o lote que vence primeiro sai primeiro.
             </p>
             <p>
-              <b>+ Entrada</b> registra um lote novo (com o número do fabricante). <b>Dar baixa</b> retira
-              consumo, perda, quebra ou vencimento, com motivo registrado no histórico do lote.
+              <b>+ Entrada</b> registra um lote novo. <b>Dar baixa</b> retira material com motivo,
+              que fica no histórico do lote.
             </p>
           </HelpTip>
         </div>

@@ -105,10 +105,14 @@ export default async function EstoqueControlePage() {
             </p>
             <div className="mt-1 flex items-center gap-1">
               <h1 className="text-xl font-semibold tracking-tight text-foreground">Controle de Estoque</h1>
-              <HelpTip title="Controle de Estoque">
+              <HelpTip title="Controle de estoque">
                 <p>
-                  Saldo de cada insumo, alertas e os lotes guardados, com as ações de cada lote (aceitar,
-                  dar baixa, bloquear, descartar). Toda ação fica registrada com quem fez e quando.
+                  Painel de acompanhamento: veja o estoque <b>por insumo</b>, <b>por lote</b> ou em
+                  gráficos e filtre pelo tipo de alerta.
+                </p>
+                <p>
+                  As ações de cada lote (aceitar, dar baixa, bloquear, descartar) ficam registradas com
+                  quem fez e quando.
                 </p>
               </HelpTip>
             </div>

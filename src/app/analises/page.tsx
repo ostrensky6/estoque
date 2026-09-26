@@ -3,7 +3,7 @@ import { gargalo, horasBancadaPorAmostra, type Etapa } from "@/lib/costing/engin
 import { calcularTodas } from "@/lib/costing/loader";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 import { podeEditarAnalises } from "@/lib/auth/permissao-efetiva";
-import { HelpLegend, HelpTip } from "@/components/common/HelpTip";
+import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import {
   AnaliseLinhaAcoes,
   NovaAnaliseButton,
@@ -166,12 +166,12 @@ export default async function AnalisesPage() {
             <h1 className="text-xl font-semibold tracking-tight">Análises</h1>
             <HelpTip title="Catálogo de análises">
               <p>
-                Cada análise tem uma receita: etapas, materiais e equipamentos. É dela que saem a
+                Cada análise tem uma <b>receita</b> (etapas, materiais e equipamentos). Dela saem a
                 capacidade por dia, o custo e o preço usados nos orçamentos.
               </p>
               <p>
-                Use <b>Nova análise</b> para criar (em branco ou copiando outra) e <b>⋯</b> na linha para
-                duplicar ou excluir. Análises já usadas não podem ser excluídas: inative-as na ficha.
+                Use <b>Nova análise</b> para criar e <b>⋯</b> na linha para duplicar ou excluir.
+                Análises já usadas não podem ser excluídas: inative-as na ficha.
               </p>
             </HelpTip>
           </div>
@@ -192,12 +192,12 @@ export default async function AnalisesPage() {
           <HelpTip title="Situação das análises">
             <HelpLegend
               items={[
-                { tom: "ok", rotulo: "Ofertável", texto: "ativa e disponível para o cliente nas propostas" },
-                { tom: "atencao", rotulo: "Em revisão", texto: "ofertável, mas com status marcado para revisão" },
-                { tom: "info", rotulo: "Ativa", texto: "usada em planos internos, fora da oferta comercial" },
-                { tom: "neutro", rotulo: "Inativa", texto: "fora de uso; histórico preservado, pode ser reativada" },
+                { tom: "ok", rotulo: "Ativa", texto: "pode ser usada em planos e orçamentos." },
+                { tom: "info", rotulo: "Ofertável", texto: "também aparece para o cliente nas propostas." },
+                { tom: "neutro", rotulo: "Inativa", texto: "fora de uso; o histórico é preservado e ela pode ser reativada." },
               ]}
             />
+            <p><b>Em revisão</b> são análises ofertáveis cujo status foi marcado para revisão.</p>
           </HelpTip>
         </div>
         <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -222,7 +222,7 @@ function ConsultaAlert({ issues }: { issues: ConsultaIssue[] }) {
     <section className="mt-6 rounded-lg border border-danger-strong/30 bg-danger-soft p-4 text-sm text-danger-strong">
       <p className="font-medium">Falha ao carregar dados de análises</p>
       <p className="mt-1">
-        Algumas consultas ao Supabase não retornaram corretamente. Nenhum dado sensível foi exibido.
+        Algumas consultas não retornaram corretamente. Nenhum dado sensível foi exibido.
       </p>
       <ul className="mt-3 space-y-1">
         {issues.map((issue) => (
@@ -277,8 +277,23 @@ function AnalisesResumoTable({
               <th className={`${tableHead} text-right`}>Etapas</th>
               <th className={`${tableHead} text-right`}>Insumos</th>
               <th className={`${tableHead} text-right`}>Equip.</th>
-              <th className={`${tableHead} text-right`}>Capacidade</th>
-              <th className={`${tableHead} text-right`}>Preço</th>
+              <th className={`${tableHead} text-right`}>
+                <span className="inline-flex items-center gap-1">
+                  Capacidade
+                  <HelpTip title="Capacidade diária">
+                    <p>Amostras por dia que a análise comporta, definidas pela <b>etapa mais lenta</b> da receita: corridas por dia × amostras por corrida.</p>
+                    <HelpExample>2 corridas por dia × 12 amostras = 24/dia.</HelpExample>
+                  </HelpTip>
+                </span>
+              </th>
+              <th className={`${tableHead} text-right`}>
+                <span className="inline-flex items-center gap-1">
+                  Preço
+                  <HelpTip title="Preço de tabela">
+                    <p>Custo total por amostra com os <b>fatores de preço</b> de Parâmetros de custeio. Nas propostas, serve só como referência.</p>
+                  </HelpTip>
+                </span>
+              </th>
               <th className={tableHead}>Alertas</th>
               <th className={`${tableHead} text-right`}>Ação</th>
             </tr>

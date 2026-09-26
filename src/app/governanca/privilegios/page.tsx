@@ -1,4 +1,4 @@
-import { HelpExample, HelpTip } from "@/components/common/HelpTip";
+import { HelpTip } from "@/components/common/HelpTip";
 import { PrivilegiosMatriz } from "@/components/governanca/PrivilegiosMatriz";
 import { obterMatrizPrivilegios } from "@/lib/actions/privilegios";
 
@@ -22,13 +22,13 @@ export default async function PrivilegiosPage() {
           <h1 className="text-xl font-semibold tracking-tight">Privilégios</h1>
           <HelpTip title="Privilégios">
             <p>
-              O que cada papel (técnico, coordenador, gestor, administrador) pode ver e fazer. O
-              administrador sempre tem tudo.
+              O que cada papel (técnico, coordenador, gestor, administrador) pode ver e fazer. O{" "}
+              <b>administrador</b> sempre tem tudo.
             </p>
-            <HelpExample>
-              &quot;Ver salário dos técnicos&quot; vem ligado só para administrador; ligue
-              para outro papel se ele precisar ver o salário dos técnicos.
-            </HelpExample>
+            <p>
+              Alguns privilégios vêm desligados por padrão, como “Ver salário dos técnicos”, que só o
+              administrador tem.
+            </p>
           </HelpTip>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">O que cada papel pode ver e fazer.</p>

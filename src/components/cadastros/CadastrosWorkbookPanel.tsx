@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { HelpTip } from "@/components/common/HelpTip";
 
 const initialState: ImportCadastrosState = { ok: false };
 const LIMITE_MENSAGENS = 50;
@@ -39,11 +40,17 @@ export function CadastrosWorkbookPanel() {
       <CardHeader className="gap-1">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle>Todos os cadastros</CardTitle>
-            <CardDescription>
-              Baixe a planilha XLSX (uma aba por cadastro e instruções), preencha e importe. A
-              importação só adiciona e atualiza: nada é excluído, e células vazias mantêm o valor atual.
-            </CardDescription>
+            <div className="flex items-center gap-1">
+              <CardTitle>Todos os cadastros</CardTitle>
+              <HelpTip title="Importação por planilha">
+                <p>
+                  A planilha tem uma aba por cadastro e uma aba de instruções. A importação só{" "}
+                  <b>adiciona e atualiza</b>: nada é excluído.
+                </p>
+                <p>Células vazias mantêm o valor atual.</p>
+              </HelpTip>
+            </div>
+            <CardDescription>Baixe a planilha XLSX, preencha e importe de volta.</CardDescription>
           </div>
           <DownloadButton href="/cadastros/export" fileName="todos-os-cadastros.xlsx">
             Baixar XLSX

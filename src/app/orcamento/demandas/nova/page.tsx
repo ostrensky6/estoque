@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { HelpTip } from "@/components/common/HelpTip";
 import {
   DemandaForm,
   type AnaliseCatalogoDemanda,
@@ -143,10 +144,12 @@ export default async function NovaDemandaPage() {
             <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
               Entrada comercial
             </p>
-            <h1 className="mt-1 text-xl font-semibold tracking-tight">Novo Orçamento</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Preencha o orçamento inteiro uma única vez. Estes dados seguem para laboratório, projeto e proposta final.
-            </p>
+            <div className="mt-1 flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Novo Orçamento</h1>
+              <HelpTip title="Novo orçamento">
+                <p>Preencha os dados <b>uma única vez</b>: eles seguem para os custos do laboratório, do projeto e para a proposta final.</p>
+              </HelpTip>
+            </div>
           </div>
           <Link
             href="/orcamento/demandas"

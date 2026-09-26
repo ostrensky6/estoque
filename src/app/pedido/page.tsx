@@ -6,6 +6,7 @@ import { NovoPedidoDialog } from "@/components/pedido/NovoPedidoDialog";
 import { pedidoInternoNumero, pedidoInternoStatus } from "@/lib/pedido/status";
 import { formatCurrency as brl, formatDate } from "@/lib/formatters";
 import { statusInfo } from "@/components/app/status";
+import { HelpTip } from "@/components/common/HelpTip";
 
 const URGENCIA_LABEL: Record<string, string> = {
   baixa: "Baixa",
@@ -178,9 +179,19 @@ export default async function PedidoPage() {
       <main className="app-page-container">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Pedido</h1>
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Pedido</h1>
+              <HelpTip title="Pedido interno">
+                <p>
+                  Solicitação de materiais, serviços ou equipamentos feita pela equipe. Passa pela{" "}
+                  <b>validação do coordenador</b>, pela análise administrativa e pela cotação antes de
+                  virar compra formal.
+                </p>
+                <p>Abra um pedido para ver em que etapa ele está e qual é a próxima ação.</p>
+              </HelpTip>
+            </div>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Demandas internas do GATGF para materiais e serviços antes da compra formal.
+              Pedidos internos do GATGF de materiais e serviços, antes da compra formal.
             </p>
           </div>
           <div className="flex items-center gap-2">

@@ -15,6 +15,7 @@ import {
   type ScannerCameraControls,
 } from "@/components/scanner/zxing-adapter";
 import { calcularDivergenciaInventario } from "@/lib/inventario/contagem";
+import { HelpTip } from "@/components/common/HelpTip";
 import type { FormState } from "@/lib/actions/cadastros";
 
 type StatusCamera = "parada" | "iniciando" | "ativa" | "erro";
@@ -168,10 +169,22 @@ export function InventarioScannerPanel({
   return (
     <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="inline-flex items-center gap-2 text-sm font-semibold">
-          <ScanLine className="h-4 w-4 text-brand-600 dark:text-brand-300" />
-          Contagem por scanner
-        </h2>
+        <div className="flex items-center gap-1">
+          <h2 className="inline-flex items-center gap-2 text-sm font-semibold">
+            <ScanLine className="h-4 w-4 text-brand-600 dark:text-brand-300" />
+            Contagem por scanner
+          </h2>
+          <HelpTip title="Como contar">
+            <p>
+              Leia a etiqueta do <b>local</b> e depois a do <b>lote</b> (ou escolha nas listas) e
+              digite a quantidade encontrada na prateleira.
+            </p>
+            <p>
+              Código não reconhecido vai para a triagem. Se a contagem diferir do sistema, a
+              justificativa é obrigatória.
+            </p>
+          </HelpTip>
+        </div>
         <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
           {cameraStatus === "ativa"
             ? "Câmera ativa"
@@ -351,7 +364,7 @@ export function InventarioScannerPanel({
               }`}
             >
               Divergência: <b>{divergencia.divergencia}</b>
-              {divergencia.temDivergencia ? " · justificativa obrigatoria" : " · sem divergencia"}
+              {divergencia.temDivergencia ? " · justificativa obrigatória" : " · sem divergência"}
             </p>
           )}
 

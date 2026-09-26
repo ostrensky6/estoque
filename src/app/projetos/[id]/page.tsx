@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { HelpTip } from "@/components/common/HelpTip";
 import { PlanoLinhaAcoes } from "@/components/planejamento/PlanoGestao";
 import { temPapel } from "@/lib/auth/roles";
 import { avaliarGestaoPlano } from "@/lib/planejamento/gestao";
@@ -43,10 +44,20 @@ function Badge({ map, status }: { map: Record<string, { label: string; cls: stri
   );
 }
 
-function Kpi({ label, valor, hint }: { label: string; valor: string; hint?: string }) {
+function Kpi({
+  label,
+  valor,
+  hint,
+  ajuda,
+}: {
+  label: string;
+  valor: string;
+  hint?: string;
+  ajuda?: React.ReactNode;
+}) {
   return (
     <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}{ajuda}</p>
       <p className="mt-1 text-xl font-semibold tracking-tight text-foreground">{valor}</p>
       {hint && <p className="mt-0.5 text-xs text-muted-foreground/80">{hint}</p>}
     </div>
@@ -244,8 +255,26 @@ export default async function ProjetoHubPage({
 
         {/* KPIs */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi label="Orçado (aprovado)" valor={moeda(orcadoAprovado)} hint={`${orcLinhas.length} orçamento(s)`} />
-          <Kpi label="Comprometido em compras" valor={moeda(comprometidoCompras)} hint={`${comprasLinhas.length} pedido(s)`} />
+          <Kpi
+            label="Orçado (aprovado)"
+            valor={moeda(orcadoAprovado)}
+            hint={`${orcLinhas.length} orçamento(s)`}
+            ajuda={
+              <HelpTip title="Orçado (aprovado)">
+                <p>Soma dos orçamentos deste projeto com status <b>aprovado</b>. Os que estão em elaboração, recusados ou cancelados não entram.</p>
+              </HelpTip>
+            }
+          />
+          <Kpi
+            label="Comprometido em compras"
+            valor={moeda(comprometidoCompras)}
+            hint={`${comprasLinhas.length} pedido(s)`}
+            ajuda={
+              <HelpTip title="Comprometido em compras">
+                <p>Valor <b>estimado</b> dos pedidos de compra ligados ao projeto, exceto os cancelados.</p>
+              </HelpTip>
+            }
+          />
           <Kpi label="Planejamentos" valor={String(planosLinhas.length)} hint={`${planosLinhas.reduce((a, p) => a + p.amostras, 0)} amostras`} />
           <Kpi label="Demandas" valor={String((demandas ?? []).length)} hint="entradas do projeto" />
         </div>

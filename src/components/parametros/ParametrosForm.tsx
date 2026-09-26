@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { salvarParametros } from "@/lib/actions/parametros";
 import type { FormState } from "@/lib/actions/cadastros";
+import { HelpExample, HelpFormula, HelpTip } from "@/components/common/HelpTip";
 import { formatCurrency as brl, APP_LOCALE } from "@/lib/formatters";
 
 export type Param = {
@@ -130,11 +131,17 @@ export function ParametrosForm({ params }: { params: Param[] }) {
       <input suppressHydrationWarning type="hidden" name="chaves" value={params.map((p) => p.chave).join(",")} />
 
       <section>
-        <h2 className={sec}>Fatores de preço</h2>
-        <p className="mt-1 text-xs text-muted-foreground/80">
-          Aplicados sobre o custo total para chegar ao preço de venda:{" "}
-          <span className="font-medium text-muted-foreground">preço = custo x (1 + soma / 100)</span>.
-        </p>
+        <div className="flex items-center gap-1">
+          <h2 className={sec}>Fatores de preço</h2>
+          <HelpTip title="Fatores de preço">
+            <p>
+              Percentuais somados sobre o <b>custo total</b> para formar o preço de tabela das
+              análises. Nas propostas, os percentuais incidem sobre o preço final (gross-up).
+            </p>
+            <HelpFormula>preço = custo × (1 + soma dos fatores)</HelpFormula>
+            <HelpExample>Custo de R$ 100 e fatores somando 40% → preço de R$ 140.</HelpExample>
+          </HelpTip>
+        </div>
         <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
           {fatores.map((p) => campo(p))}
         </div>

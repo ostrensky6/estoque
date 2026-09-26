@@ -37,15 +37,15 @@ export function GerarPedidoReposicaoButton() {
         </DialogTrigger>
         <DialogContent className="max-w-md" showCloseButton={!pending}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-1">
-              Gerar pedido de reposição?
+            <div className="flex items-center gap-1">
+              <DialogTitle>Gerar pedido de reposição?</DialogTitle>
               <HelpTip title="Pedido de reposição">
                 <p>
-                  O pedido nasce como rascunho. Antes de virar compra, revise os itens, informe o projeto e a
-                  fonte de recurso e envie para validação.
+                  O pedido nasce como <b>rascunho</b>. Antes de virar compra, revise os itens, informe o
+                  projeto e a fonte de recurso e envie para validação.
                 </p>
               </HelpTip>
-            </DialogTitle>
+            </div>
             <DialogDescription>
               Cria um pedido interno em rascunho com os insumos abaixo do ponto de reposição.
             </DialogDescription>

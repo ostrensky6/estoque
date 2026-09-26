@@ -91,7 +91,7 @@ function NovaAnaliseDialog({
                 Código <span className="text-destructive">*</span>
               </Label>
               <HelpTip title="Código da análise">
-                <p>Identificador curto e único, usado em orçamentos e planos. Não pode ser alterado depois.</p>
+                <p>Identificador curto e único, usado em orçamentos e planos. <b>Não pode ser alterado</b> depois.</p>
                 <HelpExample>qPCR_SARS2, Illumina_16S, Sanger</HelpExample>
               </HelpTip>
             </div>
@@ -127,8 +127,8 @@ function NovaAnaliseDialog({
                 <Label htmlFor={`${ids}-origem`}>Começar a partir de</Label>
                 <HelpTip title="Começar a partir de">
                   <p>
-                    Escolha uma análise parecida para copiar etapas, materiais e equipamentos. Depois
-                    ajuste só o que muda.
+                    Escolha uma análise parecida para <b>copiar</b> etapas, materiais e equipamentos.
+                    Depois, ajuste só o que muda.
                   </p>
                 </HelpTip>
               </div>
@@ -303,9 +303,10 @@ export function AnaliseSituacao({
       </form>
       <HelpTip title="Ativa e ofertável">
         <p>
-          <b>Ativa</b>: pode ser usada em planos e orçamentos. <b>Ofertável</b>: aparece para o cliente
-          nas propostas. Inativar também retira da oferta; o histórico é preservado.
+          <b>Ativa</b>: pode ser usada em planos e orçamentos. <b>Ofertável</b>: aparece também para o
+          cliente nas propostas.
         </p>
+        <p>Inativar também retira da oferta; o histórico é preservado.</p>
       </HelpTip>
       {state.message && !state.ok && (
         <p role="alert" className="basis-full rounded-md bg-danger-soft px-3 py-2 text-xs text-danger-strong">

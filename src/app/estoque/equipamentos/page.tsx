@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { QrCode } from "@/components/common/QrCode";
 import { formatDate } from "@/lib/formatters";
-import { HelpExample, HelpTip } from "@/components/common/HelpTip";
+import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { origemPublicaKontrol } from "@/lib/scanner/origem";
 import { gerarUrlCurtaKontrol } from "@/lib/scanner/urls";
 import { createClientUntyped } from "@/lib/supabase/server";
@@ -180,10 +180,13 @@ export default async function EquipamentosPage({
               <h1 className="text-xl font-semibold tracking-tight">Equipamentos físicos</h1>
               <HelpTip title="Equipamentos físicos">
                 <p>
-                  Cada aparelho do laboratório (unidade com patrimônio ou série) e a etiqueta QR dele.
-                  Esta página só consulta: manutenção e mudanças de situação são feitas no cadastro.
+                  Cada aparelho do laboratório (com patrimônio ou número de série) e a etiqueta QR dele.
+                  Escaneie o QR colado no aparelho para abrir a ficha.
                 </p>
-                <p>Escaneie o QR colado no aparelho para abrir direto a ficha dele.</p>
+                <p>
+                  Esta página <b>só consulta</b>: manutenção e mudança de situação são feitas no
+                  cadastro.
+                </p>
               </HelpTip>
             </div>
           </div>
@@ -197,7 +200,7 @@ export default async function EquipamentosPage({
 
         {scanId && (
           <div className="mt-5 rounded-lg border border-info-strong/30 bg-info-soft px-4 py-3 text-sm text-info-strong">
-            Exibindo unidade escaneada #{scanId}. Esta visualização não altera status, manutenção, calibração ou operação.
+            Exibindo a unidade escaneada #{scanId} (somente consulta).
             <Link href="/estoque/equipamentos?tab=unidades" className="ml-2 font-medium underline">
               Ver todas
             </Link>
@@ -214,7 +217,23 @@ export default async function EquipamentosPage({
                 <th className="px-4 py-3 text-left">Série</th>
                 <th className="px-4 py-3 text-left">Fabricante/modelo</th>
                 <th className="px-4 py-3 text-left">Local</th>
-                <th className="px-4 py-3 text-left">Situação</th>
+                <th className="px-4 py-3 text-left">
+                  <span className="inline-flex items-center gap-1">
+                    Situação
+                    <HelpTip title="Situação do equipamento">
+                      <HelpLegend
+                        items={[
+                          { tom: "info", rotulo: "Operacional", texto: "pronto para uso" },
+                          { tom: "atencao", rotulo: "Em manutenção", texto: "fora de uso até concluir o serviço" },
+                          { tom: "info", rotulo: "Calibração pendente", texto: "calibração programada, ainda no prazo" },
+                          { tom: "critico", rotulo: "Calibração vencida", texto: "não usar até recalibrar" },
+                          { tom: "neutro", rotulo: "Reservado", texto: "separado para um uso específico" },
+                          { tom: "neutro", rotulo: "Inativo", texto: "fora de operação ou descartado" },
+                        ]}
+                      />
+                    </HelpTip>
+                  </span>
+                </th>
                 <th className="px-4 py-3 text-left">Etiqueta QR</th>
               </tr>
             </thead>
@@ -299,8 +318,8 @@ export default async function EquipamentosPage({
                 <h2 className="text-lg font-semibold tracking-tight">Operação básica</h2>
                 <HelpTip title="Operação básica">
                   <p>
-                    Resumo de cada aparelho: última manutenção, próxima ação prevista, plano ativo e as
-                    últimas mudanças de situação. Aqui nada é registrado — só consulta.
+                    Resumo de cada aparelho: última manutenção, <b>próxima ação</b> prevista, plano
+                    ativo e as últimas mudanças de situação.
                   </p>
                   <HelpExample>Próxima ação: “calibração · 12/10/2026”.</HelpExample>
                 </HelpTip>

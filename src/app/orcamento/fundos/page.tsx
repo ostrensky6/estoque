@@ -188,15 +188,15 @@ export default async function FundosPage() {
             <div className="flex items-center gap-1">
               <h1 className="text-xl font-semibold tracking-tight">Fundos e taxas</h1>
               <HelpTip title="Fundos e taxas">
-                <p>Acompanha as propostas aprovadas: quanto o cliente já pagou e quanto disso vai para impostos, incubação, reserva e investimento.</p>
+                <p>Acompanha as <b>propostas aprovadas</b>: quanto o cliente já pagou e quanto disso vai para impostos, incubação, reserva e investimento.</p>
                 <HelpLegend
                   items={[
-                    { tom: "info", rotulo: "Liberado", texto: "Previsto × % já recebido do cliente." },
-                    { tom: "atencao", rotulo: "Executado", texto: "O que já foi pago ou gasto (lançado aqui)." },
-                    { tom: "ok", rotulo: "Saldo", texto: "Liberado − executado." },
+                    { tom: "neutro", rotulo: "Liberado", texto: "valor previsto × percentual já recebido do cliente." },
+                    { tom: "neutro", rotulo: "Executado", texto: "o que já foi pago ou gasto, lançado aqui." },
+                    { tom: "neutro", rotulo: "Saldo", texto: "liberado − executado." },
                   ]}
                 />
-                <HelpExample>Reserva prevista R$ 1.000; cliente pagou 50% → liberado R$ 500; gasto R$ 200 → saldo R$ 300.</HelpExample>
+                <HelpExample>Reserva prevista de R$ 1.000 e cliente pagou 50% → liberado R$ 500; gasto de R$ 200 → saldo de R$ 300.</HelpExample>
               </HelpTip>
             </div>
           </div>
@@ -233,9 +233,9 @@ export default async function FundosPage() {
           <div className="border-b border-border px-4 py-3">
             <div className="flex items-center gap-1">
               <h2 className="text-sm font-semibold">Acompanhamento por orçamento final</h2>
-              <HelpTip title="Lançamentos">
-                <p>Informe o valor recebido e o que já foi pago ou gasto. Os saldos são liberados na mesma proporção do pagamento recebido.</p>
-                <p>Saldo manual: use só para corrigir um saldo, sempre com motivo.</p>
+              <HelpTip title="Lançamentos por proposta">
+                <p>Informe o <b>valor recebido</b> e o que já foi pago ou gasto. Os fundos são liberados na mesma proporção do pagamento recebido.</p>
+                <p><b>Saldo reserva</b> e <b>Saldo invest.</b> são ajustes manuais: deixe em branco para usar o saldo calculado e, ao corrigir, informe o motivo.</p>
               </HelpTip>
             </div>
           </div>

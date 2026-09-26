@@ -16,7 +16,7 @@ import { ItemRecebimentoCell } from "@/components/pedido/ItemRecebimentoCell";
 import { PedidoItemEditar } from "@/components/pedido/PedidoItemEditar";
 import { PedidoItemCamposAssistidos, type PedidoItemCatalogo } from "@/components/pedido/PedidoItemCamposAssistidos";
 import { Timeline } from "@/components/common/Timeline";
-import { HelpTip } from "@/components/common/HelpTip";
+import { HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { FormComMensagem } from "@/components/pedido/FormComMensagem";
 import { statusInfo } from "@/components/app/status";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
@@ -498,9 +498,21 @@ export default async function PedidoInternoDetalhe({
 
         <section className="mt-3 rounded-lg border border-border bg-card p-3 shadow-sm">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <div>
+            <div className="flex items-center gap-1">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Etapas do processo</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">Acompanhe onde o pedido está antes de executar a próxima ação.</p>
+              <HelpTip title="Etapas do pedido">
+                <p>
+                  Mostra onde o pedido está. A próxima ação e quem responde por ela aparecem no{" "}
+                  <b>Painel operacional</b>, logo abaixo.
+                </p>
+                <HelpLegend
+                  items={[
+                    { tom: "ok", rotulo: "Verde", texto: "etapa concluída" },
+                    { tom: "atencao", rotulo: "Amarelo", texto: "etapa atual" },
+                    { tom: "neutro", rotulo: "Branco", texto: "etapa futura" },
+                  ]}
+                />
+              </HelpTip>
             </div>
             <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">{statusMeta.label}</span>
           </div>
@@ -544,10 +556,15 @@ export default async function PedidoInternoDetalhe({
         <section className="mt-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Materiais, serviços e equipamentos</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Monte a solicitação antes de enviar para validação.
-              </p>
+              <div className="flex items-center gap-1">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Materiais, serviços e equipamentos</h2>
+                <HelpTip title="Itens do pedido">
+                  <p>
+                    Monte a lista antes de enviar para validação. O valor <b>prévio</b> é uma estimativa;
+                    o preço final vem da cotação.
+                  </p>
+                </HelpTip>
+              </div>
             </div>
             <p className="text-sm text-muted-foreground">Total prévio: <b>{brl(total)}</b></p>
           </div>
@@ -780,8 +797,8 @@ export default async function PedidoInternoDetalhe({
                   </span>
                   <HelpTip title="Quando o recebimento termina">
                     <p>
-                      A etapa de recebimento só fecha quando todos os materiais e equipamentos do pedido
-                      tiverem sido lançados no estoque.
+                      A etapa de recebimento só fecha quando <b>todos</b> os materiais e equipamentos do
+                      pedido forem lançados no estoque.
                     </p>
                   </HelpTip>
                 </span>

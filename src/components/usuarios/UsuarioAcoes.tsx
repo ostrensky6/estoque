@@ -26,6 +26,7 @@ import {
 import { PERMISSOES, PAPEIS, normalizePermissions } from "@/lib/auth/permissions";
 import type { FormState } from "@/lib/actions/cadastros";
 import { AssinaturaUsuarioForm } from "./AssinaturaUsuarioForm";
+import { HelpTip } from "@/components/common/HelpTip";
 import type { UsuarioRow } from "./UsuariosTable";
 
 const initial: FormState = { ok: false, message: "" };
@@ -106,7 +107,15 @@ function EditarDialog({
             </div>
           </div>
           <div className="min-h-0 overflow-y-auto pr-1">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Permissões efetivas</p>
+            <div className="mb-2 flex items-center gap-1">
+              <p className="text-xs font-medium text-muted-foreground">Permissões efetivas</p>
+              <HelpTip title="Permissões efetivas">
+                <p>
+                  O que esta pessoa pode fazer de fato. Parte do padrão da <b>categoria</b>; o que você
+                  marcar ou desmarcar aqui vale só para ela.
+                </p>
+              </HelpTip>
+            </div>
             <div className="space-y-2">
               {GRUPOS_PERMISSOES.map(([modulo, permissoesModulo]) => (
                 <details key={modulo} className="rounded-md border border-border bg-background/50">

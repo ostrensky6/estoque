@@ -323,22 +323,23 @@ export default async function OrcamentoDetalhe({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-1">
                 <h2 className="text-sm font-semibold">Preenchimento interno</h2>
-                <HelpTip title="Custo técnico × preço de referência">
-                  <p>Aqui tudo é <b>custo</b> (insumos, equipamentos, mão de obra, overhead). O preço de tabela fica só como referência; o preço da proposta é formado depois, nos parâmetros econômicos.</p>
-                  <HelpExample>Custo R$ 80 por amostra e preço de tabela R$ 120: a proposta parte dos R$ 80.</HelpExample>
+                <HelpTip title="Custo técnico">
+                  <p>Tudo aqui é <b>custo</b>: insumos, equipamentos, mão de obra e overhead. O preço da proposta só é formado depois, nos parâmetros econômicos.</p>
+                  <p><b>Preço preservado</b> é o preço de tabela das análises, mostrado apenas como referência.</p>
+                  <HelpExample>Custo de R$ 80 por amostra e preço de tabela de R$ 120: a proposta parte dos R$ 80.</HelpExample>
                 </HelpTip>
               </div>
               <span className="flex items-center gap-1">
                 <span className="rounded-full bg-card px-2.5 py-1 text-xs font-medium text-foreground ring-1 ring-border">
                   {rotuloStatusModulo(statusOperacional)}
                 </span>
-                <HelpTip title="Status técnico × comercial" align="end">
+                <HelpTip title="Status dos custos" align="end">
+                  <p>Indica a etapa da <b>conferência técnica</b> destes custos, não a situação da proposta.</p>
                   <HelpLegend
                     items={[
-                      { tom: "atencao", rotulo: "Preenchido", texto: "Há análises, mas falta a conferência técnica." },
-                      { tom: "info", rotulo: "Revisado", texto: "Custos conferidos; o módulo fica travado. Ainda não é proposta." },
-                      { tom: "neutro", rotulo: "Emitida", texto: "Proposta gerada para o cliente, na etapa final." },
-                      { tom: "ok", rotulo: "Aprovada", texto: "O cliente aceitou a proposta." },
+                      { tom: "neutro", rotulo: "Pendente", texto: "Nenhuma análise incluída ainda." },
+                      { tom: "neutro", rotulo: "Preenchido", texto: "Há análises, mas falta a revisão técnica." },
+                      { tom: "neutro", rotulo: "Revisado", texto: "Custos conferidos e travados para a proposta." },
                     ]}
                   />
                 </HelpTip>
@@ -376,14 +377,29 @@ export default async function OrcamentoDetalhe({
                 <tr>
                   <th className="px-3 py-2 text-left">Análise</th>
                   <th className="px-3 py-2 text-left">Matriz</th>
-                  <th className="px-3 py-2">Lote</th>
+                  <th className="px-3 py-2">
+                    <span className="inline-flex items-center gap-1">
+                      Lote
+                      <HelpTip title="Lote da análise" className="no-print">
+                        <p>Quantas amostras cabem em <b>uma corrida</b>. Itens cobrados por corrida, como controles, são divididos entre elas.</p>
+                        <HelpExample>Controle de R$ 60 por corrida e lote de 12: R$ 5 por amostra.</HelpExample>
+                      </HelpTip>
+                    </span>
+                  </th>
                   <th className="px-3 py-2">Amostras</th>
                   <th className="px-3 py-2 no-print">Reagentes</th>
                   <th className="px-3 py-2">Equip.</th>
                   <th className="px-3 py-2">Mão obra</th>
                   <th className="px-3 py-2">Overhead</th>
                   <th className="px-3 py-2">Custo</th>
-                  <th className="px-3 py-2 text-left">Origem</th>
+                  <th className="px-3 py-2 text-left">
+                    <span className="inline-flex items-center gap-1">
+                      Origem
+                      <HelpTip title="Origem do valor" align="end" className="no-print">
+                        <p><b>Gravado no item</b>: valor guardado quando a análise foi incluída. <b>Custeio atual</b>: calculado agora pela receita da análise.</p>
+                      </HelpTip>
+                    </span>
+                  </th>
                   <th className="px-3 py-2 no-print"></th>
                 </tr>
               </thead>
@@ -456,7 +472,7 @@ export default async function OrcamentoDetalhe({
               <div className="flex items-center gap-1">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Composição técnica por bloco</h2>
                 <HelpTip title="Overhead técnico">
-                  <p>Custos indiretos do laboratório (limpeza, energia, gestão) distribuídos pelas horas de bancada de cada amostra.</p>
+                  <p>São os <b>custos indiretos</b> do laboratório (limpeza, energia, gestão), repartidos pelas <b>horas de bancada</b> de cada amostra.</p>
                   <HelpExample>0,5 h por amostra × R$ 40/h de overhead = R$ 20 por amostra.</HelpExample>
                 </HelpTip>
               </div>
@@ -505,8 +521,8 @@ export default async function OrcamentoDetalhe({
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="flex items-center gap-1">
               <h2 className="text-sm font-semibold">Catálogo de análises laboratoriais</h2>
-              <HelpTip title="Catálogo">
-                <p>Todas as análises ativas aparecem aqui; só as incluídas entram no subtotal técnico.</p>
+              <HelpTip title="Catálogo de análises">
+                <p>Lista todas as análises ativas. Use <b>Incluir</b> para levar uma análise a este orçamento; só as incluídas entram no subtotal de custo.</p>
               </HelpTip>
             </div>
             <span className="text-xs text-muted-foreground/80">
@@ -530,8 +546,8 @@ export default async function OrcamentoDetalhe({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-center gap-1">
                 <h2 className="text-sm font-semibold">Dados comerciais herdados</h2>
-                <HelpTip title="Dados herdados">
-                  <p>Cliente, documento e contato vêm dos dados do orçamento. A proposta emitida guarda uma cópia própria desses dados.</p>
+                <HelpTip title="Dados comerciais herdados">
+                  <p>Cliente, documento e contato vêm dos <b>dados do orçamento</b>; altere-os por lá. A proposta emitida guarda uma cópia própria desses dados.</p>
                 </HelpTip>
               </div>
               <Link
@@ -683,7 +699,7 @@ export default async function OrcamentoDetalhe({
                   Marcar revisado
                 </ConfirmSubmitButton>
                 <HelpTip title="Marcar revisado" align="end">
-                  <p>Congela os custos atuais deste módulo. Depois disso, análises e quantidades não podem mais ser alteradas aqui.</p>
+                  <p><b>Congela</b> os custos atuais para a proposta. Depois disso, análises e quantidades não podem mais ser alteradas aqui.</p>
                 </HelpTip>
               </div>
             </form>
@@ -786,7 +802,14 @@ function TabelaCatalogoAnalises({
             <th className="px-3 py-2 text-left">Nome</th>
             <th className="px-3 py-2">Lote</th>
             <th className="px-3 py-2">Custo unit.</th>
-            <th className="px-3 py-2">Composição</th>
+            <th className="px-3 py-2">
+              <span className="inline-flex items-center gap-1">
+                Composição
+                <HelpTip title="Composição do custo">
+                  <p>Custo de uma amostra dividido por bloco: <b>R</b> reagentes, <b>E</b> equipamentos, <b>P</b> pessoal e <b>O</b> overhead.</p>
+                </HelpTip>
+              </span>
+            </th>
             <th className="px-3 py-2">Amostras</th>
             <th className="px-3 py-2">Subtotal</th>
             <th className="px-3 py-2"></th>

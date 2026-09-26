@@ -94,7 +94,8 @@ export default async function OrcamentoModelosPage({
             <div className="mt-2 flex items-center gap-1">
               <h1 className="text-xl font-semibold tracking-tight">Modelos e catálogo</h1>
               <HelpTip title="Modelos e catálogo">
-                <p>Modelos de projeto, catálogo institucional, parâmetros padrão e registros importados do sistema anterior.</p>
+                <p>Base reutilizável para montar orçamentos de projeto: <b>modelos</b> com itens prontos, o <b>catálogo institucional</b> de custos por rubrica e os parâmetros padrão.</p>
+                <p>Nada é apagado: itens fora de uso são arquivados e continuam no histórico.</p>
               </HelpTip>
             </div>
           </div>
@@ -316,10 +317,12 @@ export default async function OrcamentoModelosPage({
         </section>
 
         <section id="importados" className="mt-6 scroll-mt-8 rounded-lg border border-border bg-card p-4 shadow-sm">
-          <h2 className="text-sm font-semibold">Importados do app antigo</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            A origem antiga aparece como procedência auditável. O uso operacional continua sendo catálogo institucional.
-          </p>
+          <div className="flex items-center gap-1">
+            <h2 className="text-sm font-semibold">Importados do app antigo</h2>
+            <HelpTip title="Importados do app antigo">
+              <p>Itens trazidos do sistema anterior de orçamento. A origem fica registrada para <b>auditoria</b>; no dia a dia, use o <b>catálogo institucional</b>.</p>
+            </HelpTip>
+          </div>
           <div className="mt-3 grid gap-3 md:grid-cols-4">
             {rubricas.map((rubrica) => {
               const itens = ((catalogo ?? []) as CatalogoItem[]).filter((item) => item.origem === "orcamento_projetos_antigo" && item.rubrica === rubrica);

@@ -12,6 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import type { CurvaCustoAmostrasPonto } from "@/lib/costing/engine";
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 import { formatCompactCurrency, formatCurrency, formatNumber } from "@/lib/formatters";
 
 type TooltipPayload = {
@@ -62,7 +63,14 @@ export function CustoAnaliseChart({
     <div className="mt-5 border-t border-border pt-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold">Custo por número de amostras</h3>
+          <div className="flex items-center gap-1">
+            <h3 className="text-sm font-semibold">Custo por número de amostras</h3>
+            <HelpTip title="Ciclo e média">
+              <p><b>Ciclo</b>: custo por amostra dentro do ciclo em curso; sobe quando um novo ciclo começa com poucas amostras. <b>Média</b>: custo por amostra considerando o pedido inteiro.</p>
+              <p>As linhas verticais tracejadas marcam o fim de cada ciclo, conforme a capacidade.</p>
+              <HelpExample>Capacidade de 24: a 25ª amostra abre um novo ciclo e o custo do ciclo sobe.</HelpExample>
+            </HelpTip>
+          </div>
           <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
             <span className="rounded-md border border-border/70 bg-muted/35 px-2 py-1">
               Capacidade {formatNumber(capacidade)} amostras/ciclo

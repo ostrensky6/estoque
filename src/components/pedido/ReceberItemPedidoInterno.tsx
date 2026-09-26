@@ -164,11 +164,11 @@ export function ReceberItemPedidoInterno({
           <div className="relative max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-card p-5 shadow-xl">
             <div className="flex items-center gap-1">
               <h3 className="text-base font-semibold">Receber item</h3>
-              <HelpTip title="Receber item">
+              <HelpTip title="Recebimento do item">
                 <p>
-                  Ao confirmar, a quantidade entra no estoque como um lote do insumo escolhido. Se chegou só
-                  uma parte, o item continua pendente até completar o pedido.
+                  Ao confirmar, a quantidade entra no estoque como um <b>lote</b> do insumo escolhido.
                 </p>
+                <p>Se chegou só uma parte, o item continua pendente até completar o pedido.</p>
               </HelpTip>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">

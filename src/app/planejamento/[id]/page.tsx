@@ -18,7 +18,7 @@ import {
   type PlanoConferenciaRegistro,
 } from "@/components/planejamento/PlanejamentoConferenciaLotes";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
-import { HelpFormula, HelpLegend, HelpTip } from "@/components/common/HelpTip";
+import { HelpExample, HelpFormula, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { formatCurrency, formatDate, formatNumber as fmt } from "@/lib/formatters";
 import { avaliarGestaoPlano, MENSAGEM_RESERVA_DESATUALIZADA } from "@/lib/planejamento/gestao";
 import {
@@ -295,12 +295,12 @@ export default async function PlanoDetalhe({
               <h1 className="text-xl font-semibold tracking-tight">{plano.nome}</h1>
               <HelpTip title="Planejamento de execução">
                 <p>
-                  Aqui se organiza a execução: projeto, período, análises, lotes de estoque
-                  reservados, faltas e compras.
+                  Organiza a execução: projeto, período, análises, lotes reservados, faltas e
+                  compras.
                 </p>
                 <p>
-                  Pode nascer de um orçamento, mas é independente dele: o que vale para reservar,
-                  comprar e dar baixa é o que está neste plano.
+                  Pode nascer de um orçamento, mas é <b>independente</b> dele: o que vale para
+                  reservar, comprar e dar baixa é o que está <b>neste plano</b>.
                 </p>
               </HelpTip>
             </div>
@@ -347,10 +347,10 @@ export default async function PlanoDetalhe({
         {!contextoCompleto && (
           <p className="mt-3 flex items-center gap-1 rounded-lg border border-warning-strong/30 bg-warning-soft px-4 py-2 text-sm text-warning-strong">
             Informe projeto e período previsto antes de reservar insumos.
-            <HelpTip title="Por que informar projeto e período">
+            <HelpTip title="Projeto e período">
               <p>
-                A reserva de lotes e de equipamentos usa o projeto e as datas deste plano. Sem eles,
-                não há como saber para quando separar o material.
+                A reserva de lotes e de equipamentos usa o <b>projeto e as datas</b> deste plano. Sem
+                eles, não há como saber para quando separar o material.
               </p>
             </HelpTip>
           </p>
@@ -365,8 +365,8 @@ export default async function PlanoDetalhe({
             Insumos reservados, ainda sem baixa.
             <HelpTip title="Reserva × baixa">
               <p>
-                A reserva só separa os lotes. A baixa (saída definitiva do estoque) acontece quando
-                você clica em <b>Iniciar</b>, no momento em que a análise entra em execução.
+                A <b>reserva</b> só separa os lotes. A <b>baixa</b>, saída definitiva do estoque,
+                acontece ao clicar em <b>Iniciar</b>, quando a análise entra em execução.
               </p>
             </HelpTip>
           </p>
@@ -383,13 +383,13 @@ export default async function PlanoDetalhe({
                   <h2 className="text-sm font-semibold">Margem prevista × realizada</h2>
                   <HelpTip title="Margem realizada (parcial)">
                     <p>
-                      O realizado considera só os <b>insumos baixados</b> por lote neste plano. Mão de
-                      obra, equipamentos e overhead ainda não são apontados por execução.
+                      O realizado considera só os <b>insumos baixados</b> neste plano. Mão de obra,
+                      equipamentos e overhead ainda não são apontados por execução.
                     </p>
                     <HelpFormula>margem parcial = receita orçada − insumos baixados</HelpFormula>
+                    <HelpExample>Receita de R$ 10.000 e R$ 2.500 em insumos baixados → margem parcial de R$ 7.500 (75%).</HelpExample>
                   </HelpTip>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">Parcial: considera só os insumos baixados.</p>
               </div>
               <Link href={`/orcamento/${margemReal.orcamento_id}`} className="text-xs font-medium text-primary hover:underline">
                 Abrir orçamento de origem
@@ -416,16 +416,17 @@ export default async function PlanoDetalhe({
                 <h2 className="text-sm font-semibold">Capacidade e equipamentos do plano</h2>
                 <HelpTip title="Capacidade e equipamentos">
                   <p>
-                    Os equipamentos vêm da ficha técnica de cada análise. O prazo projetado divide
-                    as amostras planejadas pela capacidade por dia.
+                    Os equipamentos vêm da ficha técnica de cada análise. O <b>prazo projetado</b>
+                    divide as amostras planejadas pela capacidade por dia.
                   </p>
                   <HelpLegend
                     items={[
-                      { tom: "info", rotulo: "disponível", texto: "pode ser reservado para o período." },
+                      { tom: "info", rotulo: "disponível", texto: "pode ser reservado para o período (ou já está reservado neste plano)." },
                       { tom: "atencao", rotulo: "agenda ocupada", texto: "já reservado por outro plano." },
-                      { tom: "critico", rotulo: "bloqueado", texto: "em manutenção, calibração vencida ou inativo." },
+                      { tom: "critico", rotulo: "bloqueado", texto: "em manutenção, com calibração vencida ou inativo." },
                     ]}
                   />
+                  <HelpExample>48 amostras planejadas e capacidade de 24/dia → 2 dias.</HelpExample>
                 </HelpTip>
               </div>
             </div>
@@ -507,8 +508,8 @@ export default async function PlanoDetalhe({
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Contexto operacional</h2>
                 <HelpTip title="Contexto operacional">
                   <p>
-                    Projeto, datas e responsável deste plano definem para quando reservar, comprar e
-                    dar baixa. O orçamento de origem fica só como referência.
+                    Projeto, datas e responsável deste plano definem <b>para quando</b> reservar,
+                    comprar e dar baixa. O orçamento de origem fica só como referência.
                   </p>
                 </HelpTip>
               </div>
@@ -540,9 +541,18 @@ export default async function PlanoDetalhe({
 
         {/* itens do plano */}
         <section id="analises" className="mt-8 scroll-mt-24">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Análises do plano
-          </h2>
+          <div className="flex items-center gap-1">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Análises do plano
+            </h2>
+            <HelpTip title="Quantidade planejada">
+              <p>
+                O consumo de insumos e o prazo usam as amostras mais os controles, multiplicados
+                pelas <b>repetições</b> e acrescidos do <b>% de perda</b>.
+              </p>
+              <HelpExample>(10 amostras + 2 controles) × 2 repetições + 10% de perda = 26,4.</HelpExample>
+            </HelpTip>
+          </div>
           <PlanoItensEditor
             planId={planId}
             itens={(itens ?? []).map((item) => ({
@@ -574,6 +584,7 @@ export default async function PlanoDetalhe({
                       <b>Gerar pedido interno</b> cria um pedido com os itens em falta. Ele segue o
                       caminho normal: validação, compra e recebimento no estoque.
                     </p>
+                    <p>A <b>Qtd. pedido</b> arredonda a falta para a embalagem ou a compra mínima do insumo.</p>
                   </HelpTip>
                 </p>
               )}

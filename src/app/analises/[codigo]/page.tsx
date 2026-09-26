@@ -13,6 +13,7 @@ import {
 } from "@/lib/costing/engine";
 import { calcularTodas } from "@/lib/costing/loader";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { HelpExample, HelpFormula, HelpTip } from "@/components/common/HelpTip";
 import { CustoAnaliseChart } from "@/components/analises/CustoAnaliseChart";
 import {
   EquipamentosEditTable,
@@ -318,9 +319,28 @@ export default async function AnaliseDetalhe({
           <section className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             <Stat label="Execuções/dia" value={g.execucoesDia > 0 ? formatNumber(g.execucoesDia) : "-"} compact />
             <Stat label="Amostras/exec." value={g.amostrasPorExecucao > 0 ? formatNumber(g.amostrasPorExecucao) : "-"} compact />
-            <Stat label="Bancada/amostra" value={tempoBancada > 0 ? `${formatNumber(tempoBancada)} h` : "-"} compact />
+            <Stat
+              label="Bancada/amostra"
+              value={tempoBancada > 0 ? `${formatNumber(tempoBancada)} h` : "-"}
+              compact
+              ajuda={
+                <HelpTip title="Bancada por amostra">
+                  <p>Horas de <b>trabalho manual</b> por amostra: horas de bancada de uma corrida ÷ amostras por corrida.</p>
+                  <HelpExample>3 h por corrida e 12 amostras por corrida → 0,25 h por amostra.</HelpExample>
+                </HelpTip>
+              }
+            />
             <Stat label="Prazo lab." value={prazoLaboratorio > 0 ? `${prazoLaboratorio} dias` : "-"} compact />
-            <Stat label="Prazo total" value={prazoTotal > 0 ? `${prazoTotal} dias` : "-"} compact />
+            <Stat
+              label="Prazo total"
+              value={prazoTotal > 0 ? `${prazoTotal} dias` : "-"}
+              compact
+              ajuda={
+                <HelpTip title="Prazo total">
+                  <p>Dia em que termina a <b>última etapa</b>, contando o laboratório e a pós-análise (bioinformática).</p>
+                </HelpTip>
+              }
+            />
             <Stat label="Materiais" value={String(materiaisT.length)} compact />
             <Stat label="Equipamentos" value={String(equipamentosT.length)} compact />
             <Stat label="Custo total" value={custo ? formatCurrency(custo.custoTotal) : "-"} compact />
@@ -329,7 +349,17 @@ export default async function AnaliseDetalhe({
         )}
 
         {activeView === "ficha-tecnica" && (
-        <Section title="Ficha técnica" description="Tempos, capacidade e etapas editáveis da análise selecionada.">
+        <Section
+          title="Ficha técnica"
+          description="Tempos, capacidade e etapas editáveis da análise selecionada."
+          help={
+            <HelpTip title="Ficha técnica">
+              <p><b>Exec/dia</b> é o número de corridas por dia e <b>Amostras/exec.</b>, quantas amostras cabem em cada corrida. Os menores valores entre as etapas definem a capacidade e o lote da análise.</p>
+              <p><b>Bancada h</b> são as horas de trabalho manual por corrida; divididas pelo lote, formam o custo de pessoal e o overhead de cada amostra.</p>
+              <HelpExample>Etapa A: 4 corridas/dia de 96 amostras; etapa B: 2 corridas/dia de 12 → capacidade de 24 amostras/dia.</HelpExample>
+            </HelpTip>
+          }
+        >
           <EtapasEditTable
             codigo={codigo}
             titulo="Laboratório"
@@ -346,7 +376,17 @@ export default async function AnaliseDetalhe({
         )}
 
         {activeView === "materiais-insumos" && (
-        <Section title="Insumos" description="Materiais técnicos, item de estoque, consumo por amostra e modo de cobrança.">
+        <Section
+          title="Insumos"
+          description="Materiais técnicos, item de estoque, consumo por amostra e modo de cobrança."
+          help={
+            <HelpTip title="Cobrança e grupos">
+              <p><b>Cobrança</b> “por amostra” multiplica o consumo pelo número de amostras; “por execução” cobra o item uma vez por corrida e divide entre as amostras do lote.</p>
+              <p>Linhas com o mesmo <b>Grupo</b> são alternativas: entra só uma, por padrão a mais barata.</p>
+              <HelpExample>Controle de R$ 60 por execução e lote de 12: R$ 5 por amostra.</HelpExample>
+            </HelpTip>
+          }
+        >
           <MateriaisEditTable
             codigo={codigo}
             materiais={materiaisT.map(toMaterialEditRowData)}
@@ -356,7 +396,16 @@ export default async function AnaliseDetalhe({
         )}
 
         {activeView === "equipamentos" && (
-        <Section title="Equipamentos" description="Equipamentos vinculados à receita e parâmetros usados no custo.">
+        <Section
+          title="Equipamentos"
+          description="Equipamentos vinculados à receita e parâmetros usados no custo."
+          help={
+            <HelpTip title="Custo de equipamento">
+              <p>O custo diário de cada equipamento (depreciação pela <b>vida útil</b> mais manutenção anual, ÷ dias úteis do ano) é multiplicado pelo <b>peso</b> e dividido pela capacidade diária da análise.</p>
+              <HelpExample>R$ 50/dia × peso 0,5 ÷ 24 amostras/dia ≈ R$ 1,04 por amostra.</HelpExample>
+            </HelpTip>
+          }
+        >
           <EquipamentosEditTable
             codigo={codigo}
             equipamentos={equipamentosT.map(toEquipamentoEditRowData)}
@@ -366,7 +415,17 @@ export default async function AnaliseDetalhe({
         )}
 
         {activeView === "custeio" && (
-        <Section title="Custo" description="Composição calculada com os custos atuais. Orçamentos já emitidos não mudam.">
+        <Section
+          title="Custo"
+          description="Composição calculada com os custos atuais."
+          help={
+            <HelpTip title="Composição do custo">
+              <p>O <b>custo analítico</b> soma reagentes, equipamento e pessoal; com o overhead, forma o custo total. O preço aplica os <b>fatores</b> de Parâmetros de custeio.</p>
+              <p>Os valores são só exibidos: nada é gravado e orçamentos já emitidos não mudam.</p>
+              <HelpFormula>preço = custo total × (1 + fatores)</HelpFormula>
+            </HelpTip>
+          }
+        >
           {erroCusteio && <p className="text-sm text-warning-strong">Não foi possível carregar o custeio atual.</p>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Reagentes" value={custo ? formatCurrency(custo.reagentes) : "-"} compact />
@@ -387,9 +446,6 @@ export default async function AnaliseDetalhe({
             </p>
           )}
           <CustoAnaliseChart data={curvaCusto} capacidade={curvaCusto[0]?.capacidadeOperacional ?? g.amostrasDia} />
-          <p className="mt-3 text-xs text-muted-foreground">
-            Valores apenas exibidos: nada é gravado e orçamentos antigos não são recalculados.
-          </p>
         </Section>
         )}
 
@@ -573,17 +629,22 @@ function Badge({ children, muted = false }: { children: ReactNode; muted?: boole
 function Section({
   title,
   description,
+  help,
   children,
 }: {
   title: string;
   description?: string;
+  help?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className="mt-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+          <div className="flex items-center gap-1">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+            {help}
+          </div>
           {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
         </div>
       </div>
@@ -592,10 +653,20 @@ function Section({
   );
 }
 
-function Stat({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
+function Stat({
+  label,
+  value,
+  compact = false,
+  ajuda,
+}: {
+  label: string;
+  value: string;
+  compact?: boolean;
+  ajuda?: ReactNode;
+}) {
   return (
     <div className={compact ? "rounded-md border border-border/60 bg-muted/35 px-3 py-2" : panel}>
-      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="flex items-center gap-1 text-[11px] text-muted-foreground">{label}{ajuda}</p>
       <p className="mt-0.5 text-base font-semibold tabular-nums">{value}</p>
     </div>
   );

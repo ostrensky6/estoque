@@ -101,8 +101,8 @@ export default async function QualidadeCadastrosPage() {
               <h1 className="text-xl font-semibold tracking-tight">Qualidade dos cadastros</h1>
               <HelpTip title="Qualidade dos cadastros">
                 <p>
-                  Lista o que falta nos cadastros e pode distorcer custo, planejamento, compra ou
-                  proposta. Corrija aqui antes que o problema chegue à operação.
+                  Lista o que falta nos cadastros e pode <b>distorcer</b> custo, planejamento, compra ou
+                  proposta. Corrija antes que o problema chegue à operação.
                 </p>
                 <HelpExample>
                   Um insumo sem custo entra como R$ 0 no custeio e barateia a análise.

@@ -3,7 +3,7 @@ import { criarPedido } from "@/lib/actions/compras";
 import { ComprasTable, type CompraRow } from "@/components/compras/ComprasTable";
 import { GerarPedidoReposicaoButton } from "@/components/pedido/GerarPedidoReposicaoButton";
 import { FormComMensagem } from "@/components/pedido/FormComMensagem";
-import { HelpTip, HelpExample } from "@/components/common/HelpTip";
+import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { formatDate, formatNumber as fmt } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -75,9 +75,18 @@ export default async function ComprasPage() {
           <h1 className="text-xl font-semibold tracking-tight">Compras</h1>
           <HelpTip title="Compras">
             <p>
-              Caminho de uma compra: solicitação → aprovação → envio ao fornecedor → recebimento. O
-              material recebido entra em quarentena até alguém conferir e aceitar o lote.
+              Cada pedido segue os status abaixo. O material recebido entra em <b>quarentena</b> até
+              alguém conferir e aceitar o lote.
             </p>
+            <HelpLegend
+              items={[
+                { tom: "atencao", rotulo: "Solicitado", texto: "aguardando aprovação" },
+                { tom: "info", rotulo: "Aprovado", texto: "liberado para comprar" },
+                { tom: "info", rotulo: "Enviado", texto: "pedido feito ao fornecedor" },
+                { tom: "info", rotulo: "Recebido", texto: "material entregue e registrado" },
+                { tom: "neutro", rotulo: "Cancelado", texto: "não segue adiante" },
+              ]}
+            />
           </HelpTip>
         </div>
 
@@ -90,8 +99,9 @@ export default async function ComprasPage() {
                   <h2 className="text-sm font-semibold text-warning-strong">Sugestões de reposição ({Math.max(sugestoes.length, sugestoesHistoricas.length)})</h2>
                   <HelpTip title="Sugestões de reposição">
                     <p>
-                      Itens que estão acabando. A quantidade sugerida considera o ponto de reposição, o
-                      consumo recente, o prazo de entrega do fornecedor e a reserva de segurança.
+                      Itens que chegaram ao ponto de reposição. A <b>quantidade sugerida</b> cobre o
+                      consumo durante o prazo de entrega mais a margem de segurança, descontando o saldo e o que já
+                      está pedido.
                     </p>
                     <HelpExample>“disp. 2 · pedir ~10”: restam 2 e convém pedir cerca de 10.</HelpExample>
                   </HelpTip>
@@ -122,8 +132,8 @@ export default async function ComprasPage() {
                 <h2 className="text-sm font-semibold text-info-strong">Reposição via pedido interno</h2>
                 <HelpTip title="Reposição via pedido interno">
                   <p>
-                    A reposição começa como um pedido interno com os itens em falta. Depois de validado,
-                    ele vira a compra formal e segue para o recebimento.
+                    A reposição começa como um <b>pedido interno</b> com os itens em falta. Depois de
+                    validado, ele vira a compra formal e segue para o recebimento.
                   </p>
                 </HelpTip>
               </div>

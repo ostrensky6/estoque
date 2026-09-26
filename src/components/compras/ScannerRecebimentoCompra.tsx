@@ -178,9 +178,10 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
               <h3 className="text-base font-semibold">Receber item de compra</h3>
               <HelpTip title="Recebimento com leitor">
                 <p>
-                  A leitura do código só preenche ou confere os campos. O item só é recebido quando você
-                  clica em “Confirmar recebimento”; o lote entra em quarentena até ser aceito.
+                  A leitura do código só preenche ou confere os campos. O item é recebido quando você
+                  clica em <b>Confirmar recebimento</b>.
                 </p>
+                <p>O lote entra em quarentena até ser aceito.</p>
               </HelpTip>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">

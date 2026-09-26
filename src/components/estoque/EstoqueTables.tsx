@@ -261,13 +261,13 @@ export function SaldoTable({
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Saldo por insumo</h2>
         <HelpTip title="Como ler o saldo">
           <p>
-            <b>Em mãos</b> soma os lotes liberados. <b>Reservado</b> já está prometido a planos.{" "}
-            <b>Disponível</b> = em mãos − reservado (sem vencidos).
+            <b>Em mãos</b> soma os lotes liberados; a quarentena fica à parte. <b>Disponível</b> é o
+            que sobra depois das reservas dos planos, sem contar vencidos.
           </p>
           <p>
-            <b>Cobertura</b>: quantos dias o disponível dura no ritmo de consumo dos últimos{" "}
-            {janelaDias} dias. <b>Ponto sugerido</b> considera o prazo de entrega e o estoque de
-            segurança.
+            Cobertura é quantos dias o disponível dura no consumo médio dos últimos {janelaDias} dias.
+            Quando o disponível chega ao <b>ponto atual</b>, o insumo vira Repor; o ponto sugerido
+            soma o consumo durante o prazo de entrega e a margem de segurança.
           </p>
           <HelpExample>
             10 em mãos, 4 reservados → 6 disponíveis. Consumo de 0,5/dia → cobertura de 12 dias.

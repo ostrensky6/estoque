@@ -213,8 +213,8 @@ export default async function ParametrosEconomicosPage() {
             <div className="mt-2 flex items-center gap-1">
               <h1 className="text-xl font-semibold tracking-tight">Parâmetros econômicos</h1>
               <HelpTip title="Parâmetros econômicos">
-                <p>Confira custos, percentuais e o impacto no preço antes de recalcular ou emitir propostas. Cada salvamento gera uma nova versão.</p>
-                <p><b>Margem global</b> (aqui) vale como padrão do laboratório; o <b>lucro da proposta</b> é o percentual definido em cada orçamento de projeto.</p>
+                <p>Mostra os percentuais que formam os preços e o <b>impacto</b> de cada um, para conferir antes de recalcular ou emitir propostas. Cada salvamento gera uma nova versão.</p>
+                <p>A <b>margem global</b> é o padrão do laboratório; o lucro de cada proposta é definido na própria proposta ou no orçamento de projeto.</p>
               </HelpTip>
             </div>
           </div>
@@ -228,9 +228,14 @@ export default async function ParametrosEconomicosPage() {
 
         <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className={card}>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Fator econômico total
-            </p>
+            <div className="flex items-center gap-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Fator econômico total
+              </p>
+              <HelpTip title="Fator econômico total">
+                <p>Soma dos <b>fatores de preço</b> do laboratório: margem, impostos, taxas e fundos.</p>
+              </HelpTip>
+            </div>
             <p className="mt-2 text-2xl font-semibold text-brand-700 dark:text-brand-400">
               {pct(fatorTotal)}
             </p>
@@ -244,9 +249,14 @@ export default async function ParametrosEconomicosPage() {
             </p>
           </div>
           <div className={card}>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Impacto laboratório
-            </p>
+            <div className="flex items-center gap-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Impacto laboratório
+              </p>
+              <HelpTip title="Impacto dos parâmetros">
+                <p>Quanto os parâmetros <b>acrescentam ao custo</b>. No laboratório, a conta usa o custo médio do catálogo; no projeto, os orçamentos de projeto recentes.</p>
+              </HelpTip>
+            </div>
             <p className="mt-2 text-2xl font-semibold tabular-nums">
               {brl(impactoTotalLab)}
             </p>
@@ -271,7 +281,14 @@ export default async function ParametrosEconomicosPage() {
             ]}
           />
           <div className={card}>
-            <h2 className="text-sm font-semibold">Fórmula e validação</h2>
+            <div className="flex items-center gap-1">
+              <h2 className="text-sm font-semibold">Fórmula e validação</h2>
+              <HelpTip title="Duas fórmulas de preço">
+                <p><b>Laboratório</b>: o preço de tabela soma os fatores sobre o custo. <b>Projeto</b>: os percentuais incidem sobre o preço final (gross-up), por isso a soma precisa ficar abaixo de 100%.</p>
+                <HelpFormula>projeto: total = custo ÷ (1 − soma dos %)</HelpFormula>
+                <HelpExample>Custo de R$ 1.000 e 25%: laboratório → R$ 1.250; projeto → R$ 1.333,33.</HelpExample>
+              </HelpTip>
+            </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
               <InfoParametro label="Laboratório" value={`Preço = custo x (1 + ${pct(fatorTotal)})`} />
               <InfoParametro label="Projeto" value="Total = custo / (1 - soma dos percentuais)" />
@@ -284,14 +301,7 @@ export default async function ParametrosEconomicosPage() {
                   {projetosInvalidos.length} orçamento(s) de projeto têm gross-up inválido e precisam de revisão antes de emissão.
                 </span>
               ) : (
-                <span className="flex items-center gap-1">
-                  Percentuais válidos nos orçamentos recentes (soma abaixo de 100%).
-                  <HelpTip title="Gross-up">
-                    <p>No projeto, impostos, incubação, reserva, investimentos e lucro incidem sobre o preço final; por isso a soma precisa ficar abaixo de 100%.</p>
-                    <HelpFormula>total = custo ÷ (1 − Σ%)</HelpFormula>
-                    <HelpExample>Custo R$ 1.000 e 25% → R$ 1.333,33.</HelpExample>
-                  </HelpTip>
-                </span>
+                <span>Percentuais válidos nos orçamentos recentes (soma abaixo de 100%).</span>
               )}
             </div>
           </div>
@@ -309,7 +319,7 @@ export default async function ParametrosEconomicosPage() {
             <div className="flex items-center gap-1">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Premissas de orçamento</h2>
               <HelpTip title="Quando as mudanças valem">
-                <p>Alterações valem para novos cálculos. Orçamentos já existentes mantêm os valores gravados até você usar “Recalcular preços”.</p>
+                <p>Alterações valem para <b>novos cálculos</b>. Orçamentos já existentes mantêm os valores gravados até você usar <b>Recalcular preços</b>.</p>
               </HelpTip>
             </div>
           </div>
@@ -405,7 +415,7 @@ export default async function ParametrosEconomicosPage() {
             <div className="flex items-center gap-1">
               <h2 className="text-sm font-semibold">Versões de parâmetros</h2>
               <HelpTip title="Versões de parâmetros">
-                <p>Cada vez que parâmetros globais ou de um projeto são salvos, uma versão é registrada aqui para consulta.</p>
+                <p>Cada vez que parâmetros globais ou de um projeto são salvos, uma <b>nova versão</b> é registrada aqui, com data e origem.</p>
               </HelpTip>
             </div>
           </div>

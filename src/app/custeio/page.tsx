@@ -48,20 +48,15 @@ export default async function CusteioPage() {
           <h1 className="text-xl font-semibold tracking-tight">Custeio por análise</h1>
           <HelpTip title="Como o custo é calculado">
             <p>
-              Cada amostra soma <b>reagentes</b>, <b>equipamento</b> e <b>pessoal</b> (custo
-              analítico). Depois entra o <b>overhead</b> (custos fixos do laboratório por hora de
-              bancada) e, por fim, os fatores de preço.
+              O <b>custo analítico</b> de uma amostra soma reagentes, equipamento e pessoal. Com o{" "}
+              <b>overhead</b> (custos fixos do laboratório por hora de bancada), forma o custo total.
+            </p>
+            <p>
+              O preço de tabela aplica os fatores de preço, que hoje somam {fatoresPct}%
+              {verRemuneracao ? <>; hora de pessoal {brl(valorHoraPessoal)}</> : null}; hora de
+              overhead {brl(custoHoraOverhead)}.
             </p>
             <HelpFormula>preço = custo total × (1 + fatores)</HelpFormula>
-            <p>
-              Hoje os fatores somam <b>{fatoresPct}%</b>
-              {verRemuneracao ? (
-                <>
-                  ; hora de pessoal <b>{brl(valorHoraPessoal)}</b>
-                </>
-              ) : null}
-              ; hora de overhead <b>{brl(custoHoraOverhead)}</b>.
-            </p>
           </HelpTip>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -96,21 +91,18 @@ export default async function CusteioPage() {
 
         <p className="mt-4 flex items-center gap-1 text-xs text-muted-foreground/80">
           Premissas do cálculo em revisão.
-          <HelpTip title="Premissas a validar">
+          <HelpTip title="Premissas do cálculo">
             <p>
-              <b>Lote:</b> por padrão, é o número de amostras que cabem na etapa mais lenta da
-              análise (a que limita a corrida).
+              O <b>lote</b> é o número de amostras que cabem na etapa mais lenta da análise. Itens
+              cobrados por corrida, como controles e calibrações, são divididos entre as amostras do
+              lote.
             </p>
             <p>
-              <b>Itens cobrados por corrida</b> (ex.: controle, calibração) são divididos entre as
-              amostras do lote.
-            </p>
-            <p>
-              <b>Itens alternativos</b> (quando a análise aceita um ou outro reagente): por
-              enquanto entra o mais barato.
+              Quando a análise aceita reagentes alternativos, entra por enquanto o{" "}
+              <b>mais barato</b>.
             </p>
             <HelpExample>
-              Um controle de R$ 60 por corrida, com lote de 12 amostras, soma R$ 5 a cada amostra.
+              Controle de R$ 60 por corrida e lote de 12 amostras: R$ 5 por amostra.
             </HelpExample>
           </HelpTip>
         </p>

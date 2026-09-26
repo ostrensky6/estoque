@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { HelpTip } from "@/components/common/HelpTip";
 import { formatDateTime } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/server";
 import { temPapel, usuarioAtual } from "@/lib/auth/roles";
@@ -127,10 +128,13 @@ export default async function GovernancaOrcamentoPage() {
             <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
               Orçamentos
             </p>
-            <h1 className="text-xl font-semibold tracking-tight">Governança e permissões</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Matriz de papéis, eventos sensíveis e auditoria por campo para reconstruir o caminho de cada valor final.
-            </p>
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Governança e permissões</h1>
+              <HelpTip title="Governança e permissões">
+                <p>Mostra <b>quem pode fazer</b> cada ação sensível do orçamento e o registro de cada mudança, para reconstruir a origem de qualquer valor final.</p>
+                <p><b>Críticas</b> são cancelamentos, alterações, duplicações e ações sobre propostas emitidas; <b>Com motivo</b> são eventos registrados com justificativa.</p>
+              </HelpTip>
+            </div>
           </div>
           <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm shadow-sm">
             <span className="block text-xs text-muted-foreground">Sessão atual</span>

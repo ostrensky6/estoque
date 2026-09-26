@@ -38,6 +38,7 @@ import type { FormState } from "@/lib/actions/cadastros";
 import { LoteAcoes } from "@/components/estoque/LoteAcoes";
 import { DarBaixaDialog } from "@/components/estoque/DarBaixaDialog";
 import type { LoteBaixa, ModeloQuantidadeLote } from "@/lib/estoque/baixa";
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 
 type Notificacao = {
   id: number;
@@ -305,7 +306,7 @@ export function StockControlHub({
             </span>
           </div>
           <p className="mt-2 text-3xl font-bold tracking-tight text-danger-strong">{countSemEstoque}</p>
-          <p className="mt-1 text-xs text-muted-foreground">críticos sem saldo</p>
+          <p className="mt-1 text-xs text-muted-foreground">sem saldo disponível</p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
@@ -339,7 +340,16 @@ export function StockControlHub({
         </div>
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Saúde do Estoque</p>
+            <div className="flex items-center gap-1">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">Saúde do Estoque</p>
+              <HelpTip title="Saúde do estoque">
+                <p>
+                  Percentual de insumos <b>sem nenhum alerta</b>. Cada insumo conta uma vez, na
+                  situação mais grave: vencido, sem estoque, repor, vence em breve ou quarentena.
+                </p>
+                <HelpExample>40 insumos, 30 sem alerta → saúde de 75%.</HelpExample>
+              </HelpTip>
+            </div>
             <span className="rounded-md bg-info-soft p-1 text-info-strong">
               <ShieldAlert className="h-4 w-4" />
             </span>
@@ -444,7 +454,15 @@ export function StockControlHub({
 
               {/* Status Notificações */}
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Estado Administrativo</label>
+                <div className="mb-1 flex items-center gap-1">
+                  <label className="block text-xs font-medium text-muted-foreground">Estado Administrativo</label>
+                  <HelpTip title="Estado administrativo">
+                    <p>
+                      Filtra pelos avisos do sistema ligados ao insumo. <b>Pendentes</b> ainda não foram
+                      tratados; tratadas já foram marcadas em “Tratar alerta”.
+                    </p>
+                  </HelpTip>
+                </div>
                 <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
@@ -811,19 +829,19 @@ export function StockControlHub({
                 <ul className="space-y-3 text-xs text-muted-foreground mt-4 leading-relaxed">
                   <li className="flex items-start gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-danger-strong mt-1.5 shrink-0" />
-                    <span><b>{countSemEstoque} insumos críticos estão totalmente sem saldo disponível</b> no estoque. A abertura imediata de pedidos internos de reposição é recomendada.</span>
+                    <span><b>{countSemEstoque} insumos sem saldo disponível</b>: abra pedidos de reposição.</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-warning-strong mt-1.5 shrink-0" />
-                    <span>Existem <b>{countRepor} insumos abaixo do ponto de reposição</b>, o que pode comprometer reservas e planejamentos operacionais em andamento.</span>
+                    <span><b>{countRepor} insumos abaixo do ponto de reposição</b>: podem faltar para os planos.</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-success-strong mt-1.5 shrink-0" />
-                    <span><b>{countQuarentena} lotes estão aguardando inspeção/aceite técnico</b>. Use a <i>Visão por Lote</i> para liberar os insumos para uso operacional.</span>
+                    <span><b>{countQuarentena} insumos com lotes aguardando aceite</b>: libere em <i>Por Lote</i>.</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-info-strong mt-1.5 shrink-0" />
-                    <span><b>{countOk} reagentes e insumos estão com estoque saudável</b>, satisfazendo a demanda estipulada de segurança.</span>
+                    <span><b>{countOk} insumos sem alertas</b>.</span>
                   </li>
                 </ul>
               </div>

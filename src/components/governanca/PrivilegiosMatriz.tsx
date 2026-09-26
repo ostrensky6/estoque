@@ -45,9 +45,9 @@ export function PrivilegiosMatriz({ permissoesPorCategoria }: { permissoesPorCat
           <h2 className="text-sm font-semibold">Papéis antigos e equivalência atual</h2>
           <HelpTip title="Papéis antigos">
             <p>
-              O Kontrol usa quatro papéis: técnico, coordenador, gestor e administrador. O antigo papel
-              &quot;administrativo&quot; não voltou como papel; o que ele podia fazer virou privilégios
-              que você liga ou desliga na matriz abaixo.
+              O Kontrol usa quatro papéis: técnico, coordenador, gestor e administrador. O antigo
+              papel “administrativo” virou <b>privilégios</b> que você liga ou desliga na matriz
+              abaixo.
             </p>
           </HelpTip>
         </div>
@@ -80,8 +80,8 @@ export function PrivilegiosMatriz({ permissoesPorCategoria }: { permissoesPorCat
               <h2 className="text-sm font-semibold">Privilégios por papel</h2>
               <HelpTip title="Privilégios por papel">
                 <p>
-                  Define o que cada papel pode fazer por padrão. Um usuário específico pode ter ajustes
-                  próprios em <b>Usuários e permissões → Editar</b>, que valem acima do padrão do papel.
+                  Padrão de cada papel. Um usuário pode ter <b>ajustes próprios</b> em Usuários e
+                  permissões → Editar, que valem acima deste padrão.
                 </p>
                 <HelpExample>
                   Ligar &quot;Ver salário dos técnicos&quot; para Coordenador mostra o salário dos

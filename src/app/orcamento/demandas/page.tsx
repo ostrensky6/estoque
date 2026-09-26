@@ -90,9 +90,9 @@ export default async function DemandasPage({
         title="Propostas"
         description="Crie e acompanhe propostas comerciais."
         help={
-          <HelpTip title="Modalidade">
-            <p>Cada orçamento segue um caminho conforme a modalidade: só análises laboratoriais, só projeto, ou projeto com análises.</p>
-            <p>A <b>Proposta</b> é o documento emitido ao final; o orçamento é o processo até ela.</p>
+          <HelpTip title="Propostas">
+            <p>O orçamento é o processo; a <b>proposta</b> é o documento emitido ao final para o cliente.</p>
+            <p>Cada orçamento segue um caminho conforme a <b>modalidade</b>: só análises laboratoriais, só projeto, ou projeto com análises.</p>
           </HelpTip>
         }
       />

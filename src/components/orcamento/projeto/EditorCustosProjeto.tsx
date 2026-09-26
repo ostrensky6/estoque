@@ -31,6 +31,7 @@ import { formatCurrency as brl } from "@/lib/formatters";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { ConfirmSubmitButton } from "@/components/common/ConfirmSubmitButton";
+import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { ExportProjetoButtons } from "@/components/orcamento/ExportProjetoButtons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdicionarDoCatalogo, type ItemCatalogo } from "./AdicionarDoCatalogo";
@@ -468,11 +469,19 @@ export async function EditorCustosProjeto({
               <>
                 {rubrica === "VD" && (
                   <div className="rounded-md border border-border p-3">
-                    <h4 className="text-sm font-semibold">Entradas de viagem</h4>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      Ao salvar, a quantidade das linhas de alimentação, hospedagem, combustível, pedágio, passagem, aluguel de veículo e
-                      seguro é recalculada (substitui ajustes manuais dessas linhas). Os dias extras somam aos dias de campo e às diárias.
-                    </p>
+                    <div className="flex items-center gap-1">
+                      <h4 className="text-sm font-semibold">Entradas de viagem</h4>
+                      <HelpTip title="Entradas de viagem">
+                        <p>Ao salvar, as quantidades de alimentação, hospedagem, combustível, pedágio, passagem, aluguel de veículo e seguro são <b>recalculadas</b> e substituem ajustes manuais dessas linhas. Os <b>dias extras</b> somam aos dias de campo e às diárias.</p>
+                        <HelpExample>2 pessoas e 3 dias de campo → alimentação com quantidade 6.</HelpExample>
+                        <HelpLegend
+                          items={[
+                            { tom: "ok", rotulo: "Calculado", texto: "quantidade igual à das entradas de viagem." },
+                            { tom: "atencao", rotulo: "Ajustado", texto: "quantidade alterada à mão; passe o mouse para ver a calculada." },
+                          ]}
+                        />
+                      </HelpTip>
+                    </div>
                     <FormAcao action={salvarViagensProjeto} sucesso="Entradas de viagem salvas e quantidades recalculadas." aria-label="Entradas de viagem" className="mt-3">
                       {campos}
                       <fieldset disabled={!editavel} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -515,12 +524,14 @@ export async function EditorCustosProjeto({
       {/* Análises laboratoriais dentro do projeto */}
       <div className="rounded-md border border-border p-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h4 className="text-sm font-semibold">Análises dentro do projeto</h4>
+          <div className="flex items-center gap-1">
+            <h4 className="text-sm font-semibold">Análises dentro do projeto</h4>
+            <HelpTip title="Análises dentro do projeto">
+              <p>Entram pelo <b>custo técnico</b> do Custeio, sem o preço de tabela, para que impostos, taxas e lucro incidam <b>uma única vez</b>, nos parâmetros da proposta.</p>
+            </HelpTip>
+          </div>
           <span className="text-xs text-muted-foreground tabular-nums">{brl(totalAnalises)}</span>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Entram pelo custo técnico do Custeio (sem preço), para os parâmetros incidirem uma única vez.
-        </p>
         <div className="mt-3 overflow-x-auto rounded-md border border-border">
           <table className="min-w-full text-sm">
             <caption className="sr-only">Análises dentro do projeto</caption>

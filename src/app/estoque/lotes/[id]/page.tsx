@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Barcode39 } from "@/components/common/Barcode39";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
-import { HelpTip } from "@/components/common/HelpTip";
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 import { QrCode } from "@/components/common/QrCode";
 import { formatNumber as fmt, formatDate as fdata, formatCurrency } from "@/lib/formatters";
 import { LoteAcoes } from "@/components/estoque/LoteAcoes";
@@ -161,9 +161,10 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
                 Etiqueta do lote
                 <HelpTip title="Etiqueta do lote">
                   <p>
-                    Cole a etiqueta na embalagem. Ao ler o QR com a câmera do celular, esta página abre
-                    direto, com as ações do lote. O código de barras serve para leitores de mão.
+                    Cole a etiqueta na embalagem. Lendo o <b>QR</b> com a câmera do celular, esta página
+                    abre direto, com as ações do lote.
                   </p>
+                  <p>O código de barras serve para leitores de mão.</p>
                 </HelpTip>
               </p>
               <p className="mt-1 text-sm font-medium">{nomeCurto}</p>
@@ -199,7 +200,18 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
         </section>
 
         {/* Dados do lote (inclui validade dupla) */}
-        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dados do lote</h2>
+        <div className="mt-8 flex items-center gap-1">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dados do lote</h2>
+          <HelpTip title="Validade do lote">
+            <p>
+              Depois de aberto, o lote passa a ter duas datas. Vale a <b>mais próxima</b> entre a
+              validade do fabricante e a validade após abertura.
+            </p>
+            <HelpExample>
+              Fabricante 30/12, aberto em 01/10 com 30 dias de uso → vale 31/10.
+            </HelpExample>
+          </HelpTip>
+        </div>
         <dl className="mt-3 grid grid-cols-2 gap-4 rounded-lg border border-border bg-card p-4 shadow-sm sm:grid-cols-3">
           <Campo rotulo="Validade (fabricante)" valor={<span className={vencido ? "font-medium text-danger-strong" : ""}>{fdata(lote.validade)}</span>} />
           <Campo rotulo="Data de abertura" valor={fdata(lote.data_abertura)} />
@@ -218,9 +230,17 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
         </dl>
 
         {/* Rastreabilidade reversa */}
-        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Rastreabilidade reversa
-        </h2>
+        <div className="mt-8 flex items-center gap-1">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Rastreabilidade reversa
+          </h2>
+          <HelpTip title="Rastreabilidade reversa">
+            <p>
+              Planos de análise que <b>usaram este lote</b>. Se o lote tiver problema (recall, não
+              conformidade), estes são os resultados a revisar.
+            </p>
+          </HelpTip>
+        </div>
         <div className="mt-3 rounded-lg border border-border bg-card p-4 text-sm shadow-sm">
           {planosConsumo.length === 0 ? (
             <p className="text-muted-foreground/80">Este lote ainda não foi consumido por nenhum plano.</p>
