@@ -1,5 +1,5 @@
 import { createClient, createClientUntyped } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import {
   hojeIso,
   loteBaixaDeDb,
@@ -100,9 +100,11 @@ export default async function EstoquePage({
   ]);
   const lotes = (lotesRaw ?? []) as unknown as LoteEstoqueDb[];
   const reservadoPorLote = somarReservasPorLote(reservasRaw ?? []);
-  const [podeAceitar, podeGerir] = await Promise.all([
-    temPapel("coordenador"),
-    temPapel("gestor"),
+  const [podeAceitar, podeGerir, podeCorrigir, podeBaixar] = await Promise.all([
+    pode("estoque.lote.aceitar"),
+    pode("estoque.descartar_bloquear"),
+    pode("estoque.lote.gerir"),
+    pode("estoque.movimentar"),
   ]);
 
   const al = (alertas ?? []) as Alerta[];
@@ -318,7 +320,13 @@ export default async function EstoquePage({
           </HelpTip>
         </div>
         <div className="mt-3">
-          <LotesTable rows={loteRows} podeAceitar={podeAceitar} podeGerir={podeGerir} />
+          <LotesTable
+            rows={loteRows}
+            podeAceitar={podeAceitar}
+            podeGerir={podeGerir}
+            podeCorrigir={podeCorrigir}
+            podeBaixar={podeBaixar}
+          />
         </div>
       </main>
     </div>

@@ -46,6 +46,7 @@ export default async function UsuariosPage() {
     assinaturaPath: perfil.assinatura_path ?? null,
     assinaturaUrl: perfil.assinatura_url ?? null,
     permissoes: perfil.permissoes ?? {},
+    categorias: permissoesPorCategoria,
   }));
   for (const pre of preAprovados ?? []) {
     const email = String(pre.email ?? "").toLowerCase();
@@ -63,6 +64,7 @@ export default async function UsuariosPage() {
       assinaturaPath: null,
       assinaturaUrl: null,
       permissoes: pre.permissoes ?? {},
+      categorias: permissoesPorCategoria,
     });
   }
 

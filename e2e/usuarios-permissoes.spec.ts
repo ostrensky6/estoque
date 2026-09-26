@@ -13,7 +13,7 @@ test("edição de usuário agrupa permissões e mantém ações acessíveis", as
   await expect(dialog.getByLabel("Nome")).toHaveValue("Admin E2E");
   await expect(dialog.getByLabel("Categoria")).toHaveValue("admin");
   await expect(dialog.locator('input[name="permissoes"]')).toHaveCount(37);
-  await expect(dialog.locator("details")).toHaveCount(6);
+  await expect(dialog.locator("details")).toHaveCount(5); // Cadastros, Operação, Suprimentos, Orçamentos, Governança
   await expect(dialog.getByRole("button", { name: "Salvar" })).toBeVisible();
 
   const box = await dialog.boundingBox();

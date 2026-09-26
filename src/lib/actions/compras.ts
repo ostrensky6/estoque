@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, createClientUntyped } from "@/lib/supabase/server";
-import { temPapel, usuarioAtual } from "@/lib/auth/roles";
+import { usuarioAtual } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
 import { registrarEvento } from "./eventos";
 import type { FormState } from "./cadastros";
@@ -59,7 +60,7 @@ export async function criarPedido(_prev: FormState, formData: FormData): Promise
 
 export async function gerarRascunhosReposicao(_prev: FormState): Promise<FormState> {
   void _prev;
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.solicitar"))) return SEM_PERMISSAO;
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("gerar_reposicao_automatica");
   if (error) return { ok: false, message: error.message };
@@ -158,14 +159,21 @@ export async function comprarFaltasDoPlano(formData: FormData) {
       const regraCompra = minimoCompra
         ? ` Pedido ajustado para ${quantidadePedido} ${unidade} pela quantidade mínima/múltiplo de compra de ${minimoCompra} ${unidade}.`
         : "";
+      const custoUnidade = f.custoUnitario ?? info?.custo_unitario ?? null;
+      // Compra em frascos (unidade oficial do estoque): a falta vem na unidade
+      // física e é arredondada para frascos inteiros.
+      const conteudo = f.quantidadeEmbalagem && f.quantidadeEmbalagem > 0 ? f.quantidadeEmbalagem : null;
+      const frascos = conteudo ? Math.ceil(quantidadePedido / conteudo) : null;
       return {
         pedido_interno_id: pedido.id,
         tipo: "material",
         insumo_id: f.insumo_id,
         especificacao: f.especificacao,
-        quantidade: quantidadePedido,
-        unidade: f.unidade,
-        orcamento_previo: f.custoUnitario ?? info?.custo_unitario ?? null,
+        quantidade: frascos ?? quantidadePedido,
+        unidade: frascos ? `frasco(s) de ${conteudo} ${unidade}`.trim() : f.unidade,
+        quantidade_em: frascos ? "embalagem" : "unidade",
+        conteudo_embalagem: conteudo,
+        orcamento_previo: custoUnidade == null ? null : frascos && conteudo ? custoUnidade * conteudo : custoUnidade,
         fornecedor_sugerido: fornecedor ?? null,
         observacao: `Falta operacional gerada pelo planejamento #${planId}: falta de ${f.falta} ${unidade}.${regraCompra}`,
       };
@@ -191,11 +199,24 @@ export async function adicionarItemPedido(_prev: FormState, formData: FormData):
     return { ok: false, message: "Escolha o insumo e informe uma quantidade maior que zero." };
   }
   const supabase = await createClient();
+  // Compra em frascos: com embalagem cadastrada, a quantidade digitada é de
+  // frascos e o volume de cada um vem do cadastro (ajustável na chegada).
+  const { data: insumo } = await supabase
+    .from("insumos")
+    .select("quantidade_embalagem")
+    .eq("id", insumo_id)
+    .maybeSingle();
+  const conteudo = Number(insumo?.quantidade_embalagem) > 0 ? Number(insumo?.quantidade_embalagem) : null;
+  if (conteudo && !Number.isInteger(quantidade)) {
+    return { ok: false, message: "Informe a quantidade em frascos inteiros." };
+  }
   const { error } = await supabase.from("pedidos_compra_itens").insert({
     pedido_id,
     insumo_id,
     quantidade,
     custo_unitario_estimado: custo,
+    quantidade_em: conteudo ? "embalagem" : "unidade",
+    conteudo_embalagem: conteudo,
   });
   if (error) return { ok: false, message: `Não foi possível adicionar o item: ${error.message}` };
   revalidatePath(`/compras/${pedido_id}`);
@@ -221,7 +242,7 @@ function revalidarPedidoCompra(pedidoId: number) {
 }
 
 export async function aprovarPedido(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.aprovar"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const supabase = await createClient();
 
@@ -269,7 +290,7 @@ export async function aprovarPedido(_prev: FormState, formData: FormData): Promi
 }
 
 export async function marcarEnviado(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.aprovar"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const supabase = await createClient();
   const { error } = await supabase.rpc("transicionar_pedido_compra", {
@@ -283,7 +304,7 @@ export async function marcarEnviado(_prev: FormState, formData: FormData): Promi
 }
 
 export async function cancelarPedido(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.cancelar"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const supabase = await createClient();
   const { error } = await supabase.rpc("transicionar_pedido_compra", {
@@ -301,7 +322,7 @@ export async function encerrarPedidoComPendencia(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.aprovar"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const motivo = String(formData.get("motivo") ?? "").trim();
   if (!motivo) return { ok: false, message: "Informe por que o restante não será recebido." };
@@ -318,7 +339,7 @@ export async function encerrarPedidoComPendencia(
 
 /** Recebe um item do pedido: cria lote em quarentena (FEFO) e vincula. */
 export async function receberItemPedido(formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.receber"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const item_id = Number(formData.get("item_id"));
   const operacaoId = String(formData.get("operacao_id") ?? "").trim();
@@ -343,6 +364,18 @@ export async function receberItemPedido(formData: FormData): Promise<FormState> 
   const insumo = item?.insumos as { categoria_compra: string | null } | null | undefined;
   if (insumo?.categoria_compra === "critico" && !validade) {
     return { ok: false, message: MSG_VALIDADE_CRITICO };
+  }
+
+  // Frasco chegou com volume diferente do cadastro: registra no item antes de
+  // receber, para o lote guardar o volume real.
+  const conteudoInformado = Number(formData.get("conteudo_embalagem"));
+  if (conteudoInformado > 0) {
+    const { error: conteudoErr } = await supabase
+      .from("pedidos_compra_itens")
+      .update({ conteudo_embalagem: conteudoInformado })
+      .eq("id", item_id)
+      .eq("pedido_id", pedido_id);
+    if (conteudoErr) return { ok: false, message: conteudoErr.message };
   }
 
   const { error } = await supabase.rpc("receber_item_pedido_compra" as never, {

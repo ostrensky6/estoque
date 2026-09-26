@@ -4,8 +4,7 @@ import { CusteioAmostrasChart } from "@/components/custeio/CusteioAmostrasChart"
 import { CusteioTable, type CusteioRow } from "@/components/custeio/CusteioTable";
 import { CusteioSimulator } from "@/components/custeio/CusteioSimulator";
 import { HelpExample, HelpFormula, HelpTip } from "@/components/common/HelpTip";
-import { podeVerSalario } from "@/lib/auth/permissao-efetiva";
-import { temPapel } from "@/lib/auth/roles";
+import { podeVerSalario, pode } from "@/lib/auth/permissao-efetiva";
 import { formatCurrency as brl } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +15,7 @@ export default async function CusteioPage() {
   const simulador = await carregarSimuladorCusteio();
   const [verRemuneracao, podeAjustarFatores] = await Promise.all([
     podeVerSalario(),
-    temPapel("gestor"),
+    pode("orcamento.parametros.editar"),
   ]);
   const codigosAtivos = new Set(simulador.analises.map((analise) => analise.codigo));
 

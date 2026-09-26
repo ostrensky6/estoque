@@ -107,36 +107,40 @@ function EncerrarComPendencia({ pedidoId }: { pedidoId: number }) {
 export function PedidoAcoes({
   pedidoId,
   status,
-  podeGerir,
+  podeAprovar,
+  podeCancelar,
   temRecebimento = false,
 }: {
   pedidoId: number;
   status: string;
-  podeGerir: boolean;
+  /** permissão "Aprovar compras": aprovar, enviar e encerrar com pendência */
+  podeAprovar: boolean;
+  /** permissão "Cancelar compras e pedidos" */
+  podeCancelar: boolean;
   /** Já chegou algo: cancelar é recusado; o caminho é encerrar com pendência. */
   temRecebimento?: boolean;
 }) {
   if (status === "recebido" || status === "cancelado") return null;
-  if (!podeGerir)
+  if (!podeAprovar && !podeCancelar)
     return (
       <p className="text-xs text-muted-foreground/80">
-        Aprovação/recebimento exigem papel coordenador ou superior.
+        Aprovar ou cancelar esta compra exige a permissão “Aprovar compras” ou “Cancelar compras e pedidos”.
       </p>
     );
 
   return (
     <div className="flex flex-wrap items-start gap-3">
-      {status === "solicitado" && (
+      {status === "solicitado" && podeAprovar && (
         <Botao pedidoId={pedidoId} action={aprovarPedido} label="Aprovar"
           cls="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50" />
       )}
-      {status === "aprovado" && (
+      {status === "aprovado" && podeAprovar && (
         <Botao pedidoId={pedidoId} action={marcarEnviado} label="Marcar enviado"
           cls="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50" />
       )}
       {temRecebimento ? (
-        <EncerrarComPendencia pedidoId={pedidoId} />
-      ) : (
+        podeAprovar && <EncerrarComPendencia pedidoId={pedidoId} />
+      ) : podeCancelar && (
         <Botao pedidoId={pedidoId} action={cancelarPedido} label="Cancelar pedido"
           cls="rounded-md border border-input px-4 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
           confirmacao={{

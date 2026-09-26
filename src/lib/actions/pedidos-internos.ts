@@ -4,7 +4,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, createClientUntyped } from "@/lib/supabase/server";
-import { temPapel, usuarioAtual } from "@/lib/auth/roles";
+import { usuarioAtual } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { registrarEvento } from "./eventos";
 import {
   PEDIDO_INTERNO_AGUARDANDO_CHEGADA,
@@ -136,11 +137,13 @@ async function podeAprovarComoCoordenadorProjeto(pedidoId: number) {
   const usuarioEmail = u.email?.toLowerCase() ?? null;
   const coordEmail = coord.email?.toLowerCase() ?? null;
   const emailConfere = Boolean(coordEmail && usuarioEmail && coordEmail === usuarioEmail);
-  const coordenadorGlobal = await temPapel("coordenador");
-  const gestorOuAdmin = await temPapel("gestor");
-
-  if (!emailConfere && !coordenadorGlobal && !gestorOuAdmin) {
-    return { ok: false as const, message: "A aprovação exige o coordenador do projeto ou papel coordenador/superior." };
+  // A aprovação exige a permissão (o banco também exige, 0124). Ser o
+  // coordenador do projeto só fica registrado; não substitui a permissão.
+  if (!(await pode("pedido.aprovar"))) {
+    return {
+      ok: false as const,
+      message: "Sem permissão: peça ao administrador a permissão “Aprovar pedidos internos” em Usuários.",
+    };
   }
 
   return {
@@ -162,7 +165,7 @@ const STATUS_ITENS_TERMINAIS = ["cancelado", "compra_concluida"];
 async function podeMexerItens(status: string) {
   if (STATUS_ITENS_TERMINAIS.includes(status)) return false;
   if (STATUS_ITENS_LIVRES.includes(status)) return true;
-  return temPapel("coordenador");
+  return pode("pedido.aprovar");
 }
 
 async function mudarStatus({
@@ -423,7 +426,7 @@ export async function atualizarPedidoInterno(_prev: FormState, formData: FormDat
 }
 
 export async function excluirPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) {
+  if (!(await pode("pedido.aprovar"))) {
     return { ok: false, message: "Sem permissão — excluir rascunho requer papel coordenador ou superior." };
   }
   const pedidoId = numero(formData, "pedido_interno_id");
@@ -599,7 +602,7 @@ export async function validarInformacoes(_prev: FormState, formData: FormData): 
 }
 
 export async function devolverParaSolicitante(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   const comentario = comentarioObrigatorio(formData);
   if (!comentario.ok) return comentario;
   return mudarStatus({
@@ -613,7 +616,7 @@ export async function devolverParaSolicitante(_prev: FormState, formData: FormDa
 }
 
 export async function formalizarPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   const pedidoId = Number(formData.get("pedido_interno_id"));
   const supabase = await createClient();
   const { error } = await supabase.rpc("formalizar_pedido_interno" as never, {
@@ -627,7 +630,7 @@ export async function formalizarPedidoInterno(_prev: FormState, formData: FormDa
 }
 
 export async function registrarAnaliseAdministrativa(formData: FormData) {
-  if (!(await temPapel("coordenador"))) return;
+  if (!(await pode("pedido.aprovar"))) return;
   const pedidoId = Number(formData.get("pedido_interno_id"));
   const observacao = texto(formData, "observacao");
   const fonte_recurso = texto(formData, "fonte_recurso");
@@ -662,7 +665,7 @@ export async function registrarAnaliseAdministrativa(formData: FormData) {
 }
 
 export async function aprovarAnaliseAdministrativa(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   return mudarStatus({
     pedidoId: Number(formData.get("pedido_interno_id")),
     para: "aprovado_compra",
@@ -674,7 +677,7 @@ export async function aprovarAnaliseAdministrativa(_prev: FormState, formData: F
 }
 
 export async function devolverParaCompras(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   const comentario = comentarioObrigatorio(formData);
   if (!comentario.ok) return comentario;
   return mudarStatus({
@@ -688,7 +691,7 @@ export async function devolverParaCompras(_prev: FormState, formData: FormData):
 }
 
 export async function registrarLevantamentoOrcamentos(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   return mudarStatus({
     pedidoId: Number(formData.get("pedido_interno_id")),
     para: "orcamentos",
@@ -701,7 +704,7 @@ export async function registrarLevantamentoOrcamentos(_prev: FormState, formData
 }
 
 export async function marcarOrcamentosRecebidos(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   const pedidoId = Number(formData.get("pedido_interno_id"));
   const supabase = await createClient();
   const { data: anexos } = await supabase
@@ -724,7 +727,7 @@ export async function marcarOrcamentosRecebidos(_prev: FormState, formData: Form
 }
 
 export async function enviarAprovacaoFinal(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   return mudarStatus({
     pedidoId: Number(formData.get("pedido_interno_id")),
     para: "aguardando_aprovacao_final",
@@ -736,7 +739,7 @@ export async function enviarAprovacaoFinal(_prev: FormState, formData: FormData)
 }
 
 export async function aprovarCompraFinal(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   return mudarStatus({
     pedidoId: Number(formData.get("pedido_interno_id")),
     para: "aprovado_para_compra",
@@ -749,7 +752,7 @@ export async function aprovarCompraFinal(_prev: FormState, formData: FormData): 
 }
 
 export async function fecharComFornecedor(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   const u = await usuarioAtual();
   return mudarStatus({
     pedidoId: Number(formData.get("pedido_interno_id")),
@@ -769,7 +772,7 @@ export async function fecharComFornecedor(_prev: FormState, formData: FormData):
 }
 
 export async function encaminharInstituicao(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   const u = await usuarioAtual();
   const modalidade = texto(formData, "modalidade_compra") ?? "fundacao";
   const instituicao = texto(formData, "instituicao_destino");
@@ -800,7 +803,7 @@ export async function encaminharInstituicao(_prev: FormState, formData: FormData
 }
 
 export async function marcarAguardandoPagamentoNf(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   return mudarStatus({
     pedidoId: Number(formData.get("pedido_interno_id")),
     para: "aguardando_pagamento_nf",
@@ -813,7 +816,7 @@ export async function marcarAguardandoPagamentoNf(_prev: FormState, formData: Fo
 }
 
 export async function concluirCompra(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   const pedidoId = Number(formData.get("pedido_interno_id"));
   const supabase = await createClient();
   const { data: anexos } = await supabase
@@ -979,7 +982,7 @@ export async function adicionarAnexoPedidoInterno(formData: FormData) {
   const arquivo = arquivoForm instanceof File && arquivoForm.size > 0 ? arquivoForm : null;
   const titulo = texto(formData, "titulo") ?? (arquivo ? arquivo.name : null);
   if (!pedidoId || !titulo) return;
-  if (!(await temPapel("tecnico"))) throw new Error("Sem permissão para registrar documentos.");
+  if (!((await pode("pedido.criar")) || (await pode("pedido.aprovar")))) throw new Error("Sem permissão para registrar documentos.");
   if (arquivo && arquivo.size > TAMANHO_MAXIMO_ANEXO) {
     throw new Error("O arquivo excede o limite de 15 MB.");
   }
@@ -1047,7 +1050,7 @@ export async function removerAnexoPedidoInterno(formData: FormData) {
   const anexoId = Number(formData.get("anexo_id"));
   const pedidoId = Number(formData.get("pedido_interno_id"));
   if (!anexoId || !pedidoId) return;
-  if (!(await temPapel("tecnico"))) throw new Error("Sem permissão para remover documentos.");
+  if (!((await pode("pedido.criar")) || (await pode("pedido.aprovar")))) throw new Error("Sem permissão para remover documentos.");
   const supabase = await createClient();
   const { data: anexo } = await supabase
     .from("pedidos_internos_anexos")
@@ -1087,7 +1090,7 @@ export async function registrarComunicacaoPedidoInterno(formData: FormData) {
 }
 
 export async function cancelarPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.cancelar"))) return SEM_PERMISSAO;
   const comentario = comentarioObrigatorio(formData);
   if (!comentario.ok) return comentario;
   const pedidoId = Number(formData.get("pedido_interno_id"));

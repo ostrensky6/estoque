@@ -23,12 +23,15 @@ begin
     if not found then raise exception '0121: perfil fixture % ausente', v_papel; end if;
   end loop;
 
+  -- não depende do seed: o CI cria o banco sem dados
+  insert into public.parametros (chave, valor) values ('ts_0121_parametro', 1);
+
   if (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public'
         and p.proname in ('transicionar_orcamento', 'transicionar_orcamento_projeto',
           'transicionar_orcamento_final', 'recalcular_orcamento_transacional',
           'duplicar_orcamento_final_transacional', 'emitir_orcamento_final_transacional')
-        and pg_get_functiondef(p.oid) like '%fn_exige_papel(''coordenador'')%') > 0 then
+        and case when p.prokind = 'f' then pg_get_functiondef(p.oid) end like '%fn_exige_papel(''coordenador'')%') > 0 then
     raise exception '0121: ainda ha RPC de orcamento exigindo so o papel';
   end if;
 end $$;
@@ -45,7 +48,7 @@ begin
   exception when insufficient_privilege then null;
   end;
   begin
-    update public.parametros set valor = valor where chave = 'margem_lucro';
+    update public.parametros set valor = valor where chave = 'ts_0121_parametro';
     if found then raise exception '0121: tecnico sem permissao alterou parametros'; end if;
   end;
 end $$;
@@ -68,7 +71,7 @@ do $$
 begin
   perform kontrol_private.exigir_papel_ou_permissao('coordenador', 'orcamentos.emitir');
   perform kontrol_private.exigir_papel_ou_permissao('coordenador', 'orcamentos.cancelar');
-  update public.parametros set valor = valor where chave = 'margem_lucro';
+  update public.parametros set valor = valor where chave = 'ts_0121_parametro';
   if not found then raise exception '0121: tecnico com permissao nao alterou parametros'; end if;
 end $$;
 

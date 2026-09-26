@@ -1,8 +1,8 @@
 import "server-only";
 
-import { papelAtual, temPapel, type Papel } from "@/lib/auth/roles";
+import { temPapel, type Papel } from "@/lib/auth/roles";
 import { temPermissao } from "@/lib/auth/permissao-efetiva";
-import type { PermissaoUsuario } from "@/lib/auth/permissions";
+import { PERMISSOES, type PermissaoUsuario } from "@/lib/auth/permissions";
 
 export type AcaoOrcamento =
   | "criar_demanda"
@@ -124,7 +124,7 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   },
   {
     acao: "acompanhar_fundos",
-    chave: null,
+    chave: "orcamentos.fundos",
     titulo: "Acompanhar fundos e taxas",
     descricao: "Registrar recebimentos, impostos pagos e execução de fundos de orçamentos emitidos.",
     papelMinimo: "gestor",
@@ -133,7 +133,7 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   },
   {
     acao: "gerir_modelos",
-    chave: null,
+    chave: "orcamentos.modelos",
     titulo: "Gerir modelos e catálogos",
     descricao: "Duplicar, arquivar e manter templates ou catálogo institucional.",
     papelMinimo: "gestor",
@@ -142,7 +142,7 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   },
   {
     acao: "ver_governanca",
-    chave: null,
+    chave: "auditoria.visualizar",
     titulo: "Ver governança",
     descricao: "Consultar matriz de permissões, eventos e alterações por campo.",
     papelMinimo: "gestor",
@@ -157,19 +157,22 @@ export function permissaoOrcamento(acao: AcaoOrcamento) {
   return permissao;
 }
 
-/** Papel mínimo da ação OU a permissão individual correspondente. */
+/**
+ * A caixinha manda (migration 0124): a ação exige a permissão efetiva da
+ * pessoa. O papel só define a marcação inicial da categoria.
+ */
 export async function podeOrcamento(acao: AcaoOrcamento) {
   const permissao = permissaoOrcamento(acao);
-  if (await temPapel(permissao.papelMinimo)) return true;
-  return permissao.chave ? temPermissao(permissao.chave) : false;
+  if (!permissao.chave) return temPapel(permissao.papelMinimo);
+  return temPermissao(permissao.chave);
 }
 
 export async function exigirPapelOrcamento(acao: AcaoOrcamento) {
   if (await podeOrcamento(acao)) return;
 
   const permissao = permissaoOrcamento(acao);
-  const atual = await papelAtual();
+  const rotulo = PERMISSOES.find((item) => item.key === permissao.chave)?.label;
   throw new Error(
-    `Sem permissão para ${permissao.titulo.toLowerCase()}. Papel atual: ${LABEL_PAPEL[atual]}. Exigido: ${LABEL_PAPEL[permissao.papelMinimo]} ou superior${permissao.chave ? ", ou a permissão individual correspondente em Usuários" : ""}.`,
+    `Sem permissão para ${permissao.titulo.toLowerCase()}.${rotulo ? ` Peça ao administrador a permissão “${rotulo}” em Usuários.` : ""}`,
   );
 }

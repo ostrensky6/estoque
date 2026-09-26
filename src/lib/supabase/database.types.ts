@@ -878,6 +878,7 @@ export type Database = {
           quantidade: number
           referencia: string | null
           tipo: string
+          usuario: string | null
         }
         Insert: {
           criado_em?: string
@@ -890,6 +891,7 @@ export type Database = {
           quantidade: number
           referencia?: string | null
           tipo: string
+          usuario?: string | null
         }
         Update: {
           criado_em?: string
@@ -902,6 +904,7 @@ export type Database = {
           quantidade?: number
           referencia?: string | null
           tipo?: string
+          usuario?: string | null
         }
         Relationships: [
           {
@@ -2759,6 +2762,8 @@ export type Database = {
           pedido_interno_item_id: number | null
           quantidade: number
           quantidade_recebida: number | null
+          conteudo_embalagem: number | null
+          quantidade_em: string
         }
         Insert: {
           custo_unitario_estimado?: number | null
@@ -2770,6 +2775,8 @@ export type Database = {
           pedido_interno_item_id?: number | null
           quantidade: number
           quantidade_recebida?: number | null
+          conteudo_embalagem?: number | null
+          quantidade_em?: string | null
         }
         Update: {
           custo_unitario_estimado?: number | null
@@ -2781,6 +2788,8 @@ export type Database = {
           pedido_interno_item_id?: number | null
           quantidade?: number
           quantidade_recebida?: number | null
+          conteudo_embalagem?: number | null
+          quantidade_em?: string | null
         }
         Relationships: [
           {
@@ -3301,6 +3310,8 @@ export type Database = {
           tipo: string
           unidade: string | null
           volume: string | null
+          conteudo_embalagem: number | null
+          quantidade_em: string | null
         }
         Insert: {
           criado_em?: string
@@ -3321,6 +3332,8 @@ export type Database = {
           tipo?: string
           unidade?: string | null
           volume?: string | null
+          conteudo_embalagem?: number | null
+          quantidade_em?: string | null
         }
         Update: {
           criado_em?: string
@@ -3341,6 +3354,8 @@ export type Database = {
           tipo?: string
           unidade?: string | null
           volume?: string | null
+          conteudo_embalagem?: number | null
+          quantidade_em?: string | null
         }
         Relationships: [
           {
@@ -3456,6 +3471,7 @@ export type Database = {
           nome: string | null
           observacao: string | null
           orcamento_id: number | null
+          orcamento_final_versao_id: number | null
           orcamento_projeto_id: number | null
           origem_planejamento: string
           planejado_por: string | null
@@ -3481,6 +3497,7 @@ export type Database = {
           nome?: string | null
           observacao?: string | null
           orcamento_id?: number | null
+          orcamento_final_versao_id?: number | null
           orcamento_projeto_id?: number | null
           origem_planejamento?: string
           planejado_por?: string | null
@@ -3506,6 +3523,7 @@ export type Database = {
           nome?: string | null
           observacao?: string | null
           orcamento_id?: number | null
+          orcamento_final_versao_id?: number | null
           orcamento_projeto_id?: number | null
           origem_planejamento?: string
           planejado_por?: string | null

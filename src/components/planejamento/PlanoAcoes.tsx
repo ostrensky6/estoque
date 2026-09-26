@@ -133,13 +133,13 @@ export function PlanoAcoes({
           <Botao
             planId={planId}
             action={iniciarPlano}
-            label="Iniciar (baixa definitiva)"
+            label="Retirar insumos e iniciar"
             cls="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500 disabled:opacity-50"
             confirmacao={{
-              titulo: "Iniciar e dar baixa?",
+              titulo: "Retirar os insumos e iniciar?",
               mensagem:
-                "Os lotes reservados saem do estoque agora, de uma vez. Não há como desfazer pelo app.",
-              confirmLabel: "Dar baixa e iniciar",
+                "Os frascos reservados saem do estoque agora, em seu nome. O que sobrar não volta ao almoxarifado.",
+              confirmLabel: "Retirar e iniciar",
             }}
           />
         )}

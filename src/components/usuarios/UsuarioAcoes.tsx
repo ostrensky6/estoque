@@ -39,6 +39,20 @@ const GRUPOS_PERMISSOES = Array.from(permissoesPorModulo.entries());
 
 type DialogAberto = "editar" | "assinatura" | "senha" | "apagar" | "pre_aprovar" | null;
 
+function permissoesEfetivasDaLinha(row: UsuarioRow, papel: string) {
+  const base = row.categorias?.[papel] ?? normalizePermissions(papel, {});
+  const excecoes =
+    typeof row.permissoes === "object" && row.permissoes !== null
+      ? (row.permissoes as Record<string, unknown>)
+      : {};
+  return Object.fromEntries(
+    Object.entries(base).map(([chave, valor]) => [
+      chave,
+      papel === "admin" ? true : typeof excecoes[chave] === "boolean" ? Boolean(excecoes[chave]) : valor,
+    ]),
+  ) as Record<string, boolean>;
+}
+
 function EditarDialog({
   row,
   open,
@@ -51,7 +65,8 @@ function EditarDialog({
   const [erro, setErro] = useState("");
   const [pending, startTransition] = useTransition();
   const [papel, setPapel] = useState(row.papel);
-  const permissoes = normalizePermissions(papel, row.permissoes);
+  // Efetivo = categoria do papel + exceções do usuário (a caixinha manda, 0124).
+  const permissoes = permissoesEfetivasDaLinha(row, papel);
 
   function handle(formData: FormData) {
     startTransition(async () => {

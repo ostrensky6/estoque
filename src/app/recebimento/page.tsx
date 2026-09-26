@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import {
   PEDIDO_INTERNO_AGUARDANDO_CHEGADA,
   pedidoInternoNumero,
@@ -12,6 +12,8 @@ import {
 } from "@/components/pedido/RecebimentoItensTable";
 import { ScannerRecebimentoCompra } from "@/components/compras/ScannerRecebimentoCompra";
 import { HelpExample, HelpTip } from "@/components/common/HelpTip";
+import { emFrascos, rotuloQuantidadeItem } from "@/lib/estoque/quantidade-compra";
+import { formatNumber } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +54,8 @@ type CompraFormalItemRaw = {
   insumo_id: number | null;
   quantidade: number;
   quantidade_recebida: number | null;
+  quantidade_em: string | null;
+  conteudo_embalagem: number | null;
   insumos: { especificacao: string | null; unidade: string | null } | null;
   pedidos_compra: {
     id: number;
@@ -73,10 +77,10 @@ export default async function RecebimentoPage() {
     supabase.from("insumos").select("id, especificacao, unidade").order("especificacao"),
     supabase
       .from("pedidos_compra_itens")
-      .select("id, pedido_id, insumo_id, quantidade, quantidade_recebida, insumos(especificacao, unidade), pedidos_compra!inner(id, status, fornecedores(nome))")
+      .select("id, pedido_id, insumo_id, quantidade, quantidade_recebida, quantidade_em, conteudo_embalagem, insumos(especificacao, unidade), pedidos_compra!inner(id, status, fornecedores(nome))")
       .is("pedido_interno_item_id", null)
       .order("id", { ascending: false }),
-    temPapel("coordenador"),
+    pode("compras.receber"),
   ]);
 
   const itens = ((itensData ?? []) as unknown as ItemRaw[]).filter(
@@ -190,7 +194,7 @@ export default async function RecebimentoPage() {
                       <td className="px-4 py-3 font-medium">{insumo?.especificacao ?? `Insumo #${item.insumo_id}`}</td>
                       <td className="px-4 py-3 text-muted-foreground">{pedido?.fornecedores?.nome ?? "—"}</td>
                       <td className="px-4 py-3 text-right tabular-nums">
-                        {recebido} de {Number(item.quantidade)} {insumo?.unidade ?? ""}
+                        {formatNumber(recebido)} de {rotuloQuantidadeItem(item, insumo?.unidade)}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {podeReceberCompra ? (
@@ -203,6 +207,8 @@ export default async function RecebimentoPage() {
                               insumoId: item.insumo_id,
                               insumoDescricao: insumo?.especificacao ?? null,
                               unidade: insumo?.unidade ?? null,
+                              emFrascos: emFrascos(item),
+                              conteudoEmbalagem: item.conteudo_embalagem == null ? null : Number(item.conteudo_embalagem),
                             }}
                           />
                         ) : (

@@ -319,3 +319,35 @@ Validação: E2E existentes, mais um por fluxo alterado, e verificação de tecl
 
 - **Permissões de orçamento:** decididas (opção 1) e implementadas na 0121.
 - **Deploy:** mesclar o PR #35 exige aplicar as migrations 0110–0119. Nesta rodada, as 16 migrations (0104–0119) foram aplicadas em sequência, sem erro, sobre um banco na 0103 [S]. Os 594 testes unitários passam no branch.
+
+---
+
+## 9. Decisões do dono e implementação (26/09, segunda rodada)
+
+Decisões registradas:
+- **Unidade do saldo:** frasco (embalagem). O volume do frasco vem do cadastro e pode ser informado na chegada quando a embalagem vier diferente.
+- **Baixa:** acontece quando alguém retira o material, em frascos inteiros. Sobras não voltam ao almoxarifado.
+- **Proposta aprovada:** gera o planejamento sozinha, em rascunho. Datas, equipamentos e reserva ficam com a equipe.
+- **Permissões:** "a caixinha manda" no app inteiro. A permissão de ver bloqueia o módulo inteiro (menu e rota). Salário é a única exceção: dentro do módulo, só os valores ficam ocultos.
+
+Implementado no branch `claude/auditoria-processos-onda3`:
+
+| Migration | O que faz | Teste |
+|---|---|---|
+| 0122 | Plano automático da proposta aprovada (um por proposta, aviso ao coordenador); movimentações guardam quem retirou | `plano_da_proposta_0122.sql` |
+| 0123 | Compra em frascos, com o volume do frasco no item; o recebimento cria o lote no modelo do insumo, sem misturar frascos e mL; a previsão de compras converte o que está em aberto | `recebimento_frascos_0123.sql` |
+| 0124 | A caixinha manda: RPCs e políticas por permissão; leitura de orçamentos e auditoria por permissão; padrões por papel iguais ao acesso anterior; valores individuais que só repetiam o padrão antigo são removidos; `minhas_permissoes()` | `permissoes_0124.sql` |
+
+No app:
+- menu e rotas obedecem às permissões de acesso, com a página "Sem acesso";
+- botões e ações usam a permissão correspondente;
+- o diálogo de usuário mostra a categoria mais as exceções e grava só as exceções (PER-1);
+- usuários, privilégios e backups continuam só do admin, e essas três caixinhas saíram da tela;
+- compra e recebimento em frascos;
+- "Retirar insumos e iniciar";
+- coluna "Por" no histórico do lote.
+
+Pendências conhecidas:
+- Converter os lotes antigos (por volume) em frascos exige relatório de impacto e aprovação próprios.
+- Equipamentos (unidades, manutenção) continuam com escrita aberta a qualquer usuário logado; falta definir a permissão.
+- O coordenador do projeto deixa de aprovar pedido interno só pelo e-mail: precisa da permissão "Aprovar pedidos internos".

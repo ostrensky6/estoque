@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClientUntyped } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import {
   adicionarItemPedido,
   removerItemPedido,
@@ -14,6 +14,7 @@ import { HelpTip } from "@/components/common/HelpTip";
 import { listarEventos } from "@/lib/actions/eventos";
 import { Timeline } from "@/components/common/Timeline";
 import { formatDate, formatDateTime, formatNumber as fmt, formatCurrency as brl } from "@/lib/formatters";
+import { emFrascos, rotuloQuantidadeItem } from "@/lib/estoque/quantidade-compra";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,8 @@ type PedidoCompraItemRow = {
   lote_id: number | null;
   pedido_interno_item_id: number | null;
   insumo_id: number | null;
+  quantidade_em: string | null;
+  conteudo_embalagem: number | null;
   insumos: { especificacao: string | null; unidade: string | null } | null;
   pedidos_internos_itens?: { pedido_interno_id: number | null } | null;
   pedidos_compra_item_recebimentos?: CompraItemRecebimento[] | null;
@@ -70,18 +73,21 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
     .single();
   if (!pedido) notFound();
 
-  const [{ data: itens }, { data: insumos }, podeGerir] = await Promise.all([
+  const [{ data: itens }, { data: insumos }, podeAprovar, podeReceber, podeCancelar, podeSolicitar] = await Promise.all([
     (supabase.from("pedidos_compra_itens") as unknown as PedidoCompraItensQuery)
-      .select("id, quantidade, quantidade_recebida, divergencia_recebimento, custo_unitario_estimado, lote_id, pedido_interno_item_id, insumo_id, insumos(especificacao, unidade), pedidos_internos_itens(pedido_interno_id), pedidos_compra_item_recebimentos(id, lote_id, quantidade, codigo_lote, validade, responsavel, recebido_em)")
+      .select("id, quantidade, quantidade_recebida, divergencia_recebimento, custo_unitario_estimado, lote_id, pedido_interno_item_id, insumo_id, quantidade_em, conteudo_embalagem, insumos(especificacao, unidade), pedidos_internos_itens(pedido_interno_id), pedidos_compra_item_recebimentos(id, lote_id, quantidade, codigo_lote, validade, responsavel, recebido_em)")
       .eq("pedido_id", pedidoId)
       .order("id"),
     supabase.from("insumos").select("id, especificacao").order("especificacao"),
-    temPapel("coordenador"),
+    pode("compras.aprovar"),
+    pode("compras.receber"),
+    pode("compras.cancelar"),
+    pode("compras.solicitar"),
   ]);
 
   const eventos = await listarEventos("pedido_compra", pedidoId);
-  const editavel = pedido.status === "solicitado";
-  const recebivel = ["aprovado", "enviado", "em_transito"].includes(pedido.status) && podeGerir;
+  const editavel = pedido.status === "solicitado" && podeSolicitar;
+  const recebivel = ["aprovado", "enviado", "em_transito"].includes(pedido.status) && podeReceber;
   const forn = (pedido.fornecedores as { nome: string | null } | null)?.nome;
   const total = (itens ?? []).reduce(
     (a, it) => a + Number(it.quantidade) * Number(it.custo_unitario_estimado ?? 0),
@@ -154,15 +160,15 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                           </Link>
                         ) : "—"}
                       </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">{fmt(it.quantidade)} {ins?.unidade ?? ""}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{rotuloQuantidadeItem(it, ins?.unidade)}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums">{brl(it.custo_unitario_estimado)}</td>
                       <td className="px-4 py-2.5 text-center">
                         {Number(it.quantidade_recebida ?? 0) > 0 ? (
                           <span className="inline-flex flex-col items-center gap-0.5">
                             <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs text-brand-800 dark:bg-brand-950/50 dark:text-brand-300">
                               {Number(it.quantidade_recebida) >= Number(it.quantidade)
-                                ? `✓ recebido (${fmt(it.quantidade_recebida)})`
-                                : `parcial: ${fmt(it.quantidade_recebida)} de ${fmt(it.quantidade)}`}
+                                ? `✓ recebido (${rotuloQuantidadeItem(it, ins?.unidade, it.quantidade_recebida)})`
+                                : `parcial: ${fmt(it.quantidade_recebida)} de ${rotuloQuantidadeItem(it, ins?.unidade)}`}
                             </span>
                             {it.divergencia_recebimento && (
                               <span className="text-[10px] text-warning-strong">
@@ -173,7 +179,7 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                               <span className="mt-1 w-full space-y-0.5 text-left text-[10px] text-muted-foreground">
                                 {recebimentos.map((recebimento) => (
                                   <span key={recebimento.id} className="block">
-                                    Lote {recebimento.codigo_lote ?? `#${recebimento.lote_id}`} · {fmt(recebimento.quantidade)} {ins?.unidade ?? ""}
+                                    Lote {recebimento.codigo_lote ?? `#${recebimento.lote_id}`} · {rotuloQuantidadeItem(it, ins?.unidade, recebimento.quantidade)}
                                     {recebimento.validade ? ` · val. ${formatDate(recebimento.validade)}` : ""}
                                     {recebimento.responsavel ? ` · ${recebimento.responsavel}` : ""}
                                     {` · ${formatDateTime(recebimento.recebido_em)}`}
@@ -205,6 +211,8 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                                 insumoId: it.insumo_id,
                                 insumoDescricao: ins?.especificacao ?? null,
                                 unidade: ins?.unidade ?? null,
+                                emFrascos: emFrascos(it),
+                                conteudoEmbalagem: it.conteudo_embalagem == null ? null : Number(it.conteudo_embalagem),
                               }}
                             />
                           )}
@@ -234,11 +242,11 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Qtd</label>
-                <input name="quantidade" type="number" min="0" step="any" className={`${inp} w-24`} />
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Frascos</label>
+                <input name="quantidade" type="number" min="1" step="1" className={`${inp} w-24`} />
               </div>
               <div>
-                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Custo un. est.</label>
+                <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Custo est. por frasco</label>
                 <input name="custo_unitario_estimado" type="number" min="0" step="0.01" className={`${inp} w-28`} />
               </div>
               <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Adicionar</button>
@@ -251,7 +259,8 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
           <PedidoAcoes
             pedidoId={pedidoId}
             status={pedido.status}
-            podeGerir={podeGerir}
+            podeAprovar={podeAprovar}
+            podeCancelar={podeCancelar}
             temRecebimento={(itens ?? []).some(
               (item) => Number(item.quantidade_recebida ?? 0) > 0 || item.lote_id != null,
             )}

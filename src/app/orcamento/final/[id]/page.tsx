@@ -111,6 +111,12 @@ export default async function OrcamentoFinalPage({
     podeOrcamento("cancelar_documento"),
   ]);
   const supabase = await createClient();
+  // Proposta aprovada gera o plano sozinha (0122).
+  const { data: planoGerado } = await supabase
+    .from("planejamento")
+    .select("id")
+    .eq("orcamento_final_versao_id", versaoId)
+    .maybeSingle();
 
   const { data: versao } = await supabase
     .from("orcamento_final_versoes")
@@ -333,6 +339,14 @@ export default async function OrcamentoFinalPage({
               </div>
             </div>
             <div className="no-print flex flex-wrap gap-2">
+              {planoGerado && (
+                <Link
+                  href={`/planejamento/${planoGerado.id}`}
+                  className="rounded-md border border-brand-300 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-800 dark:text-brand-300 dark:hover:bg-brand-950/30"
+                >
+                  Planejamento #{planoGerado.id}
+                </Link>
+              )}
               {podeDuplicar && (
               <form action={duplicarVersaoFinal}>
                 <input type="hidden" name="versao_id" value={versao.id} />
