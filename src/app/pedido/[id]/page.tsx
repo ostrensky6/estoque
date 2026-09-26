@@ -18,6 +18,8 @@ import { PedidoItemCamposAssistidos, type PedidoItemCatalogo } from "@/component
 import { Timeline } from "@/components/common/Timeline";
 import { HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { FormComMensagem } from "@/components/pedido/FormComMensagem";
+import { SubmitButton } from "@/components/common/SubmitButton";
+import { ConfirmSubmitButton } from "@/components/common/ConfirmSubmitButton";
 import { statusInfo } from "@/components/app/status";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { listarEventos } from "@/lib/actions/eventos";
@@ -145,8 +147,8 @@ const URGENCIA_LABEL: Record<string, string> = {
 };
 
 const ANEXO_TIPO_LABEL: Record<string, string> = {
-  orcamento_previo: "Orçamento prévio",
-  proposta: "Proposta",
+  orcamento_previo: "Cotação prévia",
+  proposta: "Cotação do fornecedor",
   print: "Print",
   email: "E-mail",
   termo_referencia: "Termo de referência",
@@ -187,8 +189,8 @@ function proximaAcaoDetalhe(status: string) {
     validado: { acao: "Formalizar em compras", responsavel: "Coordenador/Compras" },
     formalizado: { acao: "Registrar análise administrativa", responsavel: "Administrativo" },
     analise_administrativa: { acao: "Aprovar para cotação", responsavel: "Coordenador/Admin." },
-    aprovado_compra: { acao: "Registrar orçamento", responsavel: "Compras/Admin." },
-    orcamentos: { acao: "Anexar orçamentos", responsavel: "Compras/Admin." },
+    aprovado_compra: { acao: "Registrar cotações", responsavel: "Compras/Admin." },
+    orcamentos: { acao: "Anexar cotações", responsavel: "Compras/Admin." },
     orcamentos_recebidos: { acao: "Enviar para aprovação final", responsavel: "Coordenador" },
     aguardando_aprovacao_final: { acao: "Aprovar compra final", responsavel: "Coordenador" },
     aprovado_para_compra: { acao: "Definir modalidade", responsavel: "Compras/Admin." },
@@ -319,6 +321,8 @@ export default async function PedidoInternoDetalhe({
     { data: comunicacoes },
     eventos,
     podeGerir,
+    podeCancelar,
+    podeRegistrarRecebimento,
   ] = await Promise.all([
     supabase
       .from("pedidos_internos_itens")
@@ -354,6 +358,8 @@ export default async function PedidoInternoDetalhe({
       .order("criado_em", { ascending: false }),
     listarEventos("pedido_interno", pedidoId),
     pode("pedido.aprovar"),
+    pode("compras.cancelar"),
+    pode("recebimento.registrar"),
   ]);
 
   const pedidoStatus = pedido.status as PedidoInternoStatus;
@@ -402,10 +408,10 @@ export default async function PedidoInternoDetalhe({
     0,
   );
   const editavel = ["rascunho", "ajuste_solicitante", "ajuste_compras"].includes(pedido.status);
-  const itensTerminal = ["cancelado", "compra_concluida"].includes(pedido.status);
-  // Itens podem ser editados/removidos em rascunho/ajuste (qualquer técnico) ou em qualquer
-  // etapa não terminal por coordenador+.
-  const podeEditarItens = !itensTerminal && (editavel || podeGerir);
+  // Itens mudam em rascunho/ajuste e, antes da formalização, na validação (quem
+  // aprova). Depois de formalizado, o pedido volta para ajuste antes de mudar a
+  // lista (a compra formal acompanha). Mesma regra do servidor.
+  const podeEditarItens = editavel || (podeGerir && ["em_validacao", "validado"].includes(pedido.status));
   const inputCls = "rounded-md border border-input bg-card px-3 py-2 text-sm";
 
   // Etapas: verde = superada, amarelo = em andamento, branco = futura.
@@ -615,7 +621,7 @@ export default async function PedidoInternoDetalhe({
                           orcamentoPrevio: item.orcamento_previo,
                         }}
                         insumos={catalogoItens}
-                        podeReceber={aguardandoChegada && !compraFormal}
+                        podeReceber={aguardandoChegada && !compraFormal && podeRegistrarRecebimento}
                         recebidoEm={item.recebido_em}
                         recebidoPor={item.recebido_por}
                         recebimentos={(item.pedidos_internos_item_recebimentos ?? [])
@@ -704,6 +710,8 @@ export default async function PedidoInternoDetalhe({
                     pedidoId={pedidoId}
                     status={pedido.status}
                     podeGerir={podeGerir}
+                    podeCancelar={podeCancelar}
+                    temCompraFormal={Boolean(compraFormal)}
                     podeEnviarValidacao={rascunhoCompleto}
                   />
                 </div>
@@ -752,11 +760,11 @@ export default async function PedidoInternoDetalhe({
                 </p>
               )}
               {!podeGerir && !["rascunho", "ajuste_solicitante", "ajuste_compras"].includes(pedido.status) && (
-                <p className="text-sm text-muted-foreground/80">Esta etapa exige papel coordenador ou superior.</p>
+                <p className="text-sm text-muted-foreground/80">Esta etapa exige a permissão “Aprovar pedidos internos”.</p>
               )}
             </div>
             {pedido.status === "formalizado" && podeGerir && (
-              <form action={registrarAnaliseAdministrativa} className="mt-5 grid gap-3 rounded-lg border border-border bg-muted/20 p-4 md:grid-cols-2">
+              <FormComMensagem action={registrarAnaliseAdministrativa} className="mt-5 grid gap-3 rounded-lg border border-border bg-muted/20 p-4 md:grid-cols-2">
                 <input type="hidden" name="pedido_interno_id" value={pedidoId} />
                 <div className="md:col-span-2">
                   <h3 className="text-sm font-semibold">Análise administrativa</h3>
@@ -764,26 +772,26 @@ export default async function PedidoInternoDetalhe({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground">Fonte do recurso</label>
-                  <input name="fonte_recurso" defaultValue={pedido.fonte_recurso ?? ""} className={`${inputCls} mt-1 w-full`} />
+                  <input name="fonte_recurso" required defaultValue={pedido.fonte_recurso ?? ""} className={`${inputCls} mt-1 w-full`} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground">Rubrica</label>
-                  <input name="rubrica" defaultValue={pedido.rubrica ?? ""} className={`${inputCls} mt-1 w-full`} />
+                  <input name="rubrica" required defaultValue={pedido.rubrica ?? ""} className={`${inputCls} mt-1 w-full`} />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-xs font-medium text-muted-foreground">Conformidades administrativas</label>
-                  <textarea name="conformidade_admin" defaultValue={pedido.conformidade_admin ?? ""} rows={3} className={`${inputCls} mt-1 w-full`} />
+                  <textarea name="conformidade_admin" required defaultValue={pedido.conformidade_admin ?? ""} rows={3} className={`${inputCls} mt-1 w-full`} />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-xs font-medium text-muted-foreground">Observação</label>
                   <input name="observacao" defaultValue={pedido.observacao_compras ?? ""} className={`${inputCls} mt-1 w-full`} />
                 </div>
                 <div className="md:col-span-2">
-                  <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                  <SubmitButton pendingLabel="Registrando…" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                     Registrar análise administrativa
-                  </button>
+                  </SubmitButton>
                 </div>
-              </form>
+              </FormComMensagem>
             )}
             {aguardandoChegada && (
               <div className="mt-3 rounded-lg border border-leaf-300 bg-leaf-50 p-3 text-sm text-leaf-800 dark:border-leaf-900 dark:bg-leaf-950/30 dark:text-leaf-300">
@@ -845,7 +853,7 @@ export default async function PedidoInternoDetalhe({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Documentos</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Orçamentos, propostas, termos, ofícios, boletos, notas e comprovantes.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Cotações, termos, ofícios, boletos, notas e comprovantes.</p>
               </div>
               <span className={`rounded-md px-2 py-1 text-xs ${temDocumentoCotacao ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" : "bg-warning-soft text-warning-strong"}`}>
                 {anexoRows.length} anexo(s)
@@ -880,11 +888,19 @@ export default async function PedidoInternoDetalhe({
                       {anexo.observacao && <p className="mt-1 text-xs text-muted-foreground">{anexo.observacao}</p>}
                     </div>
                     {editavel && (
-                      <form action={removerAnexoPedidoInterno}>
+                      <FormComMensagem action={removerAnexoPedidoInterno} className="text-right">
                         <input type="hidden" name="anexo_id" value={anexo.id} />
                         <input type="hidden" name="pedido_interno_id" value={pedidoId} />
-                        <button className="text-xs text-danger-strong hover:underline">Remover</button>
-                      </form>
+                        <ConfirmSubmitButton
+                          className="text-xs text-danger-strong hover:underline"
+                          titulo="Remover o documento?"
+                          mensagem={`"${anexo.titulo}" sai da lista de documentos deste pedido e o arquivo é apagado.`}
+                          confirmLabel="Remover"
+                          destrutivo
+                        >
+                          Remover
+                        </ConfirmSubmitButton>
+                      </FormComMensagem>
                     )}
                   </div>
                 </div>
@@ -894,13 +910,13 @@ export default async function PedidoInternoDetalhe({
 
             <details className="mt-3 border-t border-border/70 pt-3">
               <summary className="cursor-pointer text-xs font-medium text-primary hover:underline">Registrar documento</summary>
-              <form action={adicionarAnexoPedidoInterno} encType="multipart/form-data" className="mt-3 grid gap-3 md:grid-cols-2">
+              <FormComMensagem action={adicionarAnexoPedidoInterno} encType="multipart/form-data" className="mt-3 grid gap-3 md:grid-cols-2">
                 <input type="hidden" name="pedido_interno_id" value={pedidoId} />
                 <div>
                   <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Tipo</label>
                   <select name="tipo" defaultValue="orcamento_previo" className={`${inputCls} mt-1 w-full`}>
-                    <option value="orcamento_previo">Orçamento prévio</option>
-                    <option value="proposta">Proposta</option>
+                    <option value="orcamento_previo">Cotação prévia</option>
+                    <option value="proposta">Cotação do fornecedor</option>
                     <option value="print">Print</option>
                     <option value="email">E-mail</option>
                     <option value="termo_referencia">Termo de referência</option>
@@ -929,11 +945,11 @@ export default async function PedidoInternoDetalhe({
                   <input name="observacao" className={`${inputCls} mt-1 w-full`} />
                 </div>
                 <div className="md:col-span-2">
-                  <button className="h-9 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                  <SubmitButton pendingLabel="Enviando…" className="h-9 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                     Registrar documento
-                  </button>
+                  </SubmitButton>
                 </div>
-              </form>
+              </FormComMensagem>
             </details>
           </div>
 
@@ -957,7 +973,7 @@ export default async function PedidoInternoDetalhe({
 
             <details className="mt-3 border-t border-border/70 pt-3">
               <summary className="cursor-pointer text-xs font-medium text-primary hover:underline">Registrar comunicação</summary>
-              <form action={registrarComunicacaoPedidoInterno} className="mt-3 grid gap-3 md:grid-cols-2">
+              <FormComMensagem action={registrarComunicacaoPedidoInterno} className="mt-3 grid gap-3 md:grid-cols-2">
                 <input type="hidden" name="pedido_interno_id" value={pedidoId} />
                 <div>
                   <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Tipo</label>
@@ -990,11 +1006,11 @@ export default async function PedidoInternoDetalhe({
                   <input name="observacao" className={`${inputCls} mt-1 w-full`} />
                 </div>
                 <div className="md:col-span-2">
-                  <button className="h-9 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                  <SubmitButton pendingLabel="Registrando…" className="h-9 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                     Registrar comunicação
-                  </button>
+                  </SubmitButton>
                 </div>
-              </form>
+              </FormComMensagem>
             </details>
           </div>
         </section>

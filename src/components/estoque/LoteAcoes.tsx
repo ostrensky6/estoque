@@ -30,6 +30,8 @@ export function LoteAcoes({
   reservado = 0,
   modeloQuantidade = "LEGADO",
   estornoDiretoPermitido = false,
+  estornoRecebimento = false,
+  aceiteBloqueadoMotivo = null,
   podeAceitar,
   podeGerir,
   podeCorrigir = podeAceitar,
@@ -49,6 +51,10 @@ export function LoteAcoes({
   reservado?: number;
   modeloQuantidade?: ModeloQuantidadeLote;
   estornoDiretoPermitido?: boolean;
+  /** lote de compra ou pedido interno sem consumo: estorno bilateral do recebimento */
+  estornoRecebimento?: boolean;
+  /** quem registrou a chegada não aceita o próprio lote: explica por que o Aceitar sumiu */
+  aceiteBloqueadoMotivo?: string | null;
   /** permissão "Aceitar lotes" */
   podeAceitar: boolean;
   /** permissão "Bloquear e descartar lotes" */
@@ -131,10 +137,13 @@ export function LoteAcoes({
     <span className="inline-flex flex-wrap gap-1">
       {status === "quarentena" && (
         <>
-          {podeAceitar && (
+          {podeAceitar && !aceiteBloqueadoMotivo && (
             <button disabled={pending} onClick={() => setModal("aceitar")} className={`${btn} text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/30`}>
               Aceitar
             </button>
+          )}
+          {podeAceitar && aceiteBloqueadoMotivo && (
+            <span className="text-xs text-muted-foreground">{aceiteBloqueadoMotivo}</span>
           )}
           {estornoDiretoPermitido && podeCorrigir && (
             <button disabled={pending} onClick={() => setModal("estornar")} className={`${btn} text-danger-strong hover:bg-danger-soft`}>
@@ -142,6 +151,11 @@ export function LoteAcoes({
             </button>
           )}
         </>
+      )}
+      {estornoRecebimento && podeCorrigir && (status === "quarentena" || status === "aceito") && (
+        <button disabled={pending} onClick={() => setModal("estornar")} className={`${btn} text-danger-strong hover:bg-danger-soft`}>
+          Estornar recebimento
+        </button>
       )}
       {(status === "aceito" || status === "em_uso") && podeGerir && (
         <button disabled={pending} onClick={() => setModal("bloquear")} className={`${btn} text-warning-strong hover:bg-warning-soft`}>
@@ -190,7 +204,7 @@ export function LoteAcoes({
                 {modal === "aceitar"
                   ? "Aceitar lote"
                   : modal === "estornar"
-                    ? "Estornar entrada"
+                    ? estornoRecebimento ? "Estornar recebimento" : "Estornar entrada"
                   : modal === "bloquear"
                   ? "Bloquear lote"
                   : modal === "descartar"
@@ -203,7 +217,11 @@ export function LoteAcoes({
                     Corrige uma entrada lançada por engano <b>sem apagar o histórico</b>: um movimento
                     compensatório zera o saldo do lote.
                   </p>
-                  <p>Só aparece para lotes em quarentena que não vieram de um pedido.</p>
+                  <p>
+                    {estornoRecebimento
+                      ? "Lote de compra ou pedido interno: o estorno também devolve a quantidade ao item, que volta a aguardar a chegada."
+                      : "Só aparece para lotes em quarentena que não vieram de um pedido."}
+                  </p>
                 </HelpTip>
               )}
               {modal === "ajuste" && (

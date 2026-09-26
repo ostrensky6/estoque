@@ -158,9 +158,9 @@ export function PlanejamentoConferenciaLotes({
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Separar material</h2>
             <HelpTip title="Separar material">
               <p>
-                A baixa acontece ao clicar em <b>Iniciar</b> e consome sempre os lotes{" "}
-                <b>reservados</b>. Se o lote separado for outro, justifique aqui e ajuste a reserva
-                antes de iniciar.
+                A retirada acontece ao clicar em <b>Retirar insumos e iniciar</b>. Ela sai do lote
+                conferido aqui quando ele tem saldo livre para a reserva; senão, do lote{" "}
+                <b>reservado</b>.
               </p>
             </HelpTip>
           </div>
@@ -278,7 +278,7 @@ export function PlanejamentoConferenciaLotes({
             >
               <p>{validacao?.message ?? resultadoScanner.message}</p>
               {validacao?.status === "excecao_fefo" && (
-                <p className="mt-1">A justificativa não troca o lote da baixa.</p>
+                <p className="mt-1">Na retirada, este lote substitui o reservado se tiver saldo livre.</p>
               )}
               {loteEscaneado && (
                 <p className="mt-1 font-medium">
@@ -323,8 +323,7 @@ export function PlanejamentoConferenciaLotes({
                 <HelpTip title="Quando justificar">
                   <p>
                     Quando o lote separado <b>difere do reservado</b> ou não é o que vence primeiro. A
-                    justificativa só registra o motivo; para trocar o lote, ajuste a reserva antes da
-                    baixa.
+                    justificativa fica registrada e a retirada passa a sair do lote conferido.
                   </p>
                 </HelpTip>
               </label>
