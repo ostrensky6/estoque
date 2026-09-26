@@ -48,7 +48,7 @@ export function SalvarDemandaForm({ children }: { children: ReactNode }) {
           disabled={pending}
           className="min-h-11 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
         >
-          {pending ? "Salvando..." : "Salvar demanda"}
+          {pending ? "Salvando…" : "Salvar orçamento"}
         </button>
       </div>
     </form>

@@ -221,7 +221,8 @@ export async function salvarDemanda(
     data_solicitacao: texto(formData, "data_solicitacao") ?? undefined,
     prazo_esperado: texto(formData, "prazo_esperado"),
     modalidade: texto(formData, "modalidade") || "analises",
-    status: texto(formData, "status") || "nova",
+    // UI-6: o status não é mais editado no formulário; a RPC preserva o atual (nulo = mantém).
+    status: texto(formData, "status"),
     origem: texto(formData, "origem"),
     prioridade: texto(formData, "prioridade") || "normal",
     descricao: texto(formData, "descricao"),
