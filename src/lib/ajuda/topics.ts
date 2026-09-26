@@ -219,7 +219,7 @@ export const AJUDA_TOPICOS: AjudaTopico[] = [
           "Crie um plano, informe projeto e período e adicione as análises (só as ativas aparecem) com nº de amostras, controles e repetições.",
           "Clique em 'Reservar insumos': os lotes ficam separados, mas o saldo ainda não sai do estoque.",
           "Separe o material e escaneie os lotes para conferir com a reserva.",
-          "'Iniciar (baixa definitiva)' tira do estoque os lotes reservados; 'Concluir análise' encerra a execução.",
+          "'Retirar insumos e iniciar' tira do estoque os frascos reservados e registra quem retirou; sobras não voltam ao almoxarifado. 'Concluir análise' encerra a execução.",
         ],
       },
       {

@@ -878,6 +878,7 @@ export type Database = {
           quantidade: number
           referencia: string | null
           tipo: string
+          usuario: string | null
         }
         Insert: {
           criado_em?: string
@@ -890,6 +891,7 @@ export type Database = {
           quantidade: number
           referencia?: string | null
           tipo: string
+          usuario?: string | null
         }
         Update: {
           criado_em?: string
@@ -902,6 +904,7 @@ export type Database = {
           quantidade?: number
           referencia?: string | null
           tipo?: string
+          usuario?: string | null
         }
         Relationships: [
           {
@@ -3456,6 +3459,7 @@ export type Database = {
           nome: string | null
           observacao: string | null
           orcamento_id: number | null
+          orcamento_final_versao_id: number | null
           orcamento_projeto_id: number | null
           origem_planejamento: string
           planejado_por: string | null
@@ -3481,6 +3485,7 @@ export type Database = {
           nome?: string | null
           observacao?: string | null
           orcamento_id?: number | null
+          orcamento_final_versao_id?: number | null
           orcamento_projeto_id?: number | null
           origem_planejamento?: string
           planejado_por?: string | null
@@ -3506,6 +3511,7 @@ export type Database = {
           nome?: string | null
           observacao?: string | null
           orcamento_id?: number | null
+          orcamento_final_versao_id?: number | null
           orcamento_projeto_id?: number | null
           origem_planejamento?: string
           planejado_por?: string | null

@@ -38,6 +38,9 @@ jobs:
       - name: Validar permissões de orçamento (papel ou permissão)
         run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/orcamento_permissoes_0121.sql
 
+      - name: Validar planejamento da proposta aprovada e registro da retirada
+        run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/plano_da_proposta_0122.sql
+
   check:
     runs-on: ubuntu-latest
     steps:

@@ -18,7 +18,6 @@ import {
   cancelarOrcamento,
   excluirOrcamento,
 } from "@/lib/actions/orcamentos";
-import { gerarPlanejamentoDeOrcamento } from "@/lib/actions/planejamento";
 import { listarEventos } from "@/lib/actions/eventos";
 import { Timeline } from "@/components/common/Timeline";
 import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
@@ -204,6 +203,15 @@ export default async function OrcamentoDetalhe({
     "rounded-md border border-input bg-card px-3 py-2 text-sm font-medium text-brand-700 dark:text-brand-300"; // §8.2: entrada em azul
   const lbl = "block text-xs font-medium text-muted-foreground";
   const operacaoRecalculoId = randomUUID();
+  // Proposta aprovada gera o plano sozinha (0122); aqui só o link para ele.
+  const { data: planoGerado } = await supabase
+    .from("planejamento")
+    .select("id")
+    .eq("orcamento_id", orcId)
+    .neq("status_operacional", "cancelado")
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
   const [podeRecalcular, podeRevisar, podeCancelar] = await Promise.all([
     podeOrcamento("recalcular_custos"),
     podeOrcamento("revisar_modulo"),
@@ -217,13 +225,13 @@ export default async function OrcamentoDetalhe({
           <Breadcrumbs items={[{ label: "Orçamentos não finalizados", href: "/orcamento/demandas" }, { label: `Custos laboratoriais #${orc.id}` }]} />
           <div className="flex flex-wrap items-center gap-2">
             <PrintButton />
-            {orc.status === "aprovado" && itens.length > 0 && (
-              <form action={gerarPlanejamentoDeOrcamento}>
-                <input type="hidden" name="orcamento_id" value={orcId} />
-                <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                  Gerar planejamento
-                </button>
-              </form>
+            {planoGerado && (
+              <Link
+                href={`/planejamento/${planoGerado.id}`}
+                className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-muted"
+              >
+                Planejamento #{planoGerado.id}
+              </Link>
             )}
             {podeRecalcular && (
               <RecalcularOrcamentoForm

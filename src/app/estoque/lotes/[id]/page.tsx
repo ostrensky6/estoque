@@ -63,7 +63,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
   ] = await Promise.all([
     supabase
       .from("estoque_movimentacoes")
-      .select("id, tipo, quantidade, custo_unitario, data, motivo, referencia")
+      .select("id, tipo, quantidade, custo_unitario, data, motivo, referencia, usuario")
       .eq("lote_id", id)
       .order("data", { ascending: false })
       .order("id", { ascending: false }),
@@ -271,6 +271,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
                 <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qtd.</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Motivo</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Referência</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Por</th>
               </tr>
             </thead>
             <tbody>
@@ -283,12 +284,13 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
                     <td className="px-3 py-2 text-right tabular-nums">{fmt(m.quantidade)} {unidade}</td>
                     <td className="px-3 py-2 text-muted-foreground">{m.motivo ?? "—"}</td>
                     <td className="px-3 py-2 text-muted-foreground">{m.referencia ?? "—"}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{m.usuario ?? "—"}</td>
                   </tr>
                 );
               })}
               {(movs ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground/80">Sem movimentações.</td>
+                  <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground/80">Sem movimentações.</td>
                 </tr>
               )}
             </tbody>
