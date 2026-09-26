@@ -296,6 +296,26 @@ export async function cancelarPedido(_prev: FormState, formData: FormData): Prom
   return { ok: true, message: "Pedido cancelado." };
 }
 
+/** Encerra uma compra recebida em parte: o restante não será mais esperado. */
+export async function encerrarPedidoComPendencia(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  const pedido_id = Number(formData.get("pedido_id"));
+  const motivo = String(formData.get("motivo") ?? "").trim();
+  if (!motivo) return { ok: false, message: "Informe por que o restante não será recebido." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("transicionar_pedido_compra", {
+    p_pedido_id: pedido_id,
+    p_status_destino: "recebido",
+    p_observacao: motivo,
+  });
+  if (error) return { ok: false, message: error.message };
+  revalidarPedidoCompra(pedido_id);
+  return { ok: true, message: "Compra encerrada. A pendência ficou registrada nos itens." };
+}
+
 /** Recebe um item do pedido: cria lote em quarentena (FEFO) e vincula. */
 export async function receberItemPedido(formData: FormData): Promise<FormState> {
   if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;

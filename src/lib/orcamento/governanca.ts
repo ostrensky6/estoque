@@ -1,6 +1,8 @@
 import "server-only";
 
 import { papelAtual, temPapel, type Papel } from "@/lib/auth/roles";
+import { temPermissao } from "@/lib/auth/permissao-efetiva";
+import type { PermissaoUsuario } from "@/lib/auth/permissions";
 
 export type AcaoOrcamento =
   | "criar_demanda"
@@ -21,6 +23,12 @@ export type PermissaoOrcamento = {
   titulo: string;
   descricao: string;
   papelMinimo: Papel;
+  /**
+   * Permissão individual de /usuarios que também libera a ação ("papel OU
+   * permissão", como em análises). null: só o papel. O banco aplica a mesma
+   * regra nas RPCs de orçamento (migration 0121).
+   */
+  chave: PermissaoUsuario | null;
   motivoObrigatorio: boolean;
   eventoAuditavel: string;
 };
@@ -35,6 +43,7 @@ export const LABEL_PAPEL: Record<Papel, string> = {
 export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   {
     acao: "criar_demanda",
+    chave: "orcamentos.criar_editar",
     titulo: "Criar demanda",
     descricao: "Abrir uma solicitação comercial ou técnica antes do orçamento formal.",
     papelMinimo: "tecnico",
@@ -43,6 +52,7 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   },
   {
     acao: "preencher_custos",
+    chave: "orcamentos.criar_editar",
     titulo: "Preencher custos",
     descricao: "Adicionar análises, custos de projeto, anexos e premissas operacionais.",
     papelMinimo: "tecnico",
@@ -51,6 +61,7 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   },
   {
     acao: "recalcular_custos",
+    chave: "orcamentos.emitir",
     titulo: "Recalcular custos",
     descricao: "Atualizar snapshots com parâmetros e cadastros vigentes.",
     papelMinimo: "coordenador",
@@ -59,6 +70,7 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   },
   {
     acao: "revisar_modulo",
+    chave: "orcamentos.emitir",
     titulo: "Revisar módulo",
     descricao: "Mover módulo para enviado, aprovado ou etapa equivalente de revisão.",
     papelMinimo: "coordenador",
@@ -67,6 +79,7 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   },
   {
     acao: "editar_parametros",
+    chave: "orcamento.parametros.editar",
     titulo: "Editar parâmetros",
     descricao: "Alterar percentuais financeiros, gross-up e parâmetros globais.",
     papelMinimo: "gestor",
@@ -75,6 +88,7 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   },
   {
     acao: "emitir_final",
+    chave: "orcamentos.emitir",
     titulo: "Emitir orçamento final",
     descricao: "Gerar proposta institucional com snapshot consolidado.",
     papelMinimo: "coordenador",
@@ -83,6 +97,7 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   },
   {
     acao: "classificar_final",
+    chave: "orcamentos.emitir",
     titulo: "Classificar orçamento final",
     descricao: "Registrar se a proposta foi enviada, reenviada, aprovada ou recusada.",
     papelMinimo: "coordenador",
@@ -91,6 +106,7 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   },
   {
     acao: "duplicar_final",
+    chave: "orcamentos.emitir",
     titulo: "Duplicar versão final",
     descricao: "Criar nova versão preservando a origem e substituindo a versão ativa.",
     papelMinimo: "coordenador",
@@ -99,6 +115,7 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   },
   {
     acao: "cancelar_documento",
+    chave: "orcamentos.cancelar",
     titulo: "Cancelar documento",
     descricao: "Cancelar orçamento, projeto ou versão final sem apagar histórico.",
     papelMinimo: "coordenador",
@@ -107,6 +124,7 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   },
   {
     acao: "acompanhar_fundos",
+    chave: null,
     titulo: "Acompanhar fundos e taxas",
     descricao: "Registrar recebimentos, impostos pagos e execução de fundos de orçamentos emitidos.",
     papelMinimo: "gestor",
@@ -115,6 +133,7 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   },
   {
     acao: "gerir_modelos",
+    chave: null,
     titulo: "Gerir modelos e catálogos",
     descricao: "Duplicar, arquivar e manter templates ou catálogo institucional.",
     papelMinimo: "gestor",
@@ -123,6 +142,7 @@ export const PERMISSOES_ORCAMENTO: PermissaoOrcamento[] = [
   },
   {
     acao: "ver_governanca",
+    chave: null,
     titulo: "Ver governança",
     descricao: "Consultar matriz de permissões, eventos e alterações por campo.",
     papelMinimo: "gestor",
@@ -137,12 +157,19 @@ export function permissaoOrcamento(acao: AcaoOrcamento) {
   return permissao;
 }
 
-export async function exigirPapelOrcamento(acao: AcaoOrcamento) {
+/** Papel mínimo da ação OU a permissão individual correspondente. */
+export async function podeOrcamento(acao: AcaoOrcamento) {
   const permissao = permissaoOrcamento(acao);
-  if (await temPapel(permissao.papelMinimo)) return;
+  if (await temPapel(permissao.papelMinimo)) return true;
+  return permissao.chave ? temPermissao(permissao.chave) : false;
+}
 
+export async function exigirPapelOrcamento(acao: AcaoOrcamento) {
+  if (await podeOrcamento(acao)) return;
+
+  const permissao = permissaoOrcamento(acao);
   const atual = await papelAtual();
   throw new Error(
-    `Sem permissão para ${permissao.titulo.toLowerCase()}. Papel atual: ${LABEL_PAPEL[atual]}. Exigido: ${LABEL_PAPEL[permissao.papelMinimo]} ou superior.`,
+    `Sem permissão para ${permissao.titulo.toLowerCase()}. Papel atual: ${LABEL_PAPEL[atual]}. Exigido: ${LABEL_PAPEL[permissao.papelMinimo]} ou superior${permissao.chave ? ", ou a permissão individual correspondente em Usuários" : ""}.`,
   );
 }

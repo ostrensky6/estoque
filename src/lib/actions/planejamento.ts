@@ -695,7 +695,7 @@ export async function liberarPlano(
   if (error) return { ok: false, message: error.message };
   revalidatePath(`/planejamento/${planId}`);
   revalidatePath("/estoque");
-  return { ok: true, message: "Reservas liberadas." };
+  return { ok: true, message: "Reservas liberadas. O plano voltou para rascunho." };
 }
 
 export async function concluirPlano(

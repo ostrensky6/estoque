@@ -2,8 +2,7 @@ import type { ReactNode } from "react";
 import { Lock, Trash2 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
-import { permissaoOrcamento } from "@/lib/orcamento/governanca";
+import { podeOrcamento } from "@/lib/orcamento/governanca";
 import {
   adicionarAnaliseProjeto,
   adicionarCustoCatalogoProjeto,
@@ -120,7 +119,7 @@ export async function EditorCustosProjeto({
       // permissão "Ver salário dos técnicos"; o SELECT direto do preço é negado.
       supabase.rpc("orcamento_projeto_catalogo_listar"),
       supabase.from("analises").select("codigo, nome").eq("ativo", true).eq("ofertavel", true).order("codigo"),
-      temPapel(permissaoOrcamento("revisar_modulo").papelMinimo),
+      podeOrcamento("revisar_modulo"),
     ]);
 
   if (!orc) {

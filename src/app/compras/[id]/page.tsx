@@ -248,7 +248,14 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
 
         {/* ações de status */}
         <section className="mt-8">
-          <PedidoAcoes pedidoId={pedidoId} status={pedido.status} podeGerir={podeGerir} />
+          <PedidoAcoes
+            pedidoId={pedidoId}
+            status={pedido.status}
+            podeGerir={podeGerir}
+            temRecebimento={(itens ?? []).some(
+              (item) => Number(item.quantidade_recebida ?? 0) > 0 || item.lote_id != null,
+            )}
+          />
         </section>
 
         <section className="mt-8 rounded-xl border border-border bg-card p-4 shadow-sm">

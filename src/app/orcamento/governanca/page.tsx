@@ -8,6 +8,12 @@ import { temPapel, usuarioAtual } from "@/lib/auth/roles";
 import { podeVerSalario } from "@/lib/auth/permissao-efetiva";
 import { mascararAuditoriaSigilosa } from "@/lib/cadastros/salario";
 import { LABEL_PAPEL, PERMISSOES_ORCAMENTO } from "@/lib/orcamento/governanca";
+import { PERMISSOES } from "@/lib/auth/permissions";
+
+function rotuloPermissao(chave: string) {
+  const permissao = PERMISSOES.find((item) => item.key === chave);
+  return permissao ? `${permissao.modulo}: ${permissao.label}` : chave;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -160,7 +166,7 @@ export default async function GovernancaOrcamentoPage() {
               <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">Ação</th>
-                  <th className="px-4 py-3">Papel mínimo</th>
+                  <th className="px-4 py-3">Quem pode</th>
                   <th className="px-4 py-3">Motivo</th>
                   <th className="px-4 py-3">Evidência</th>
                   <th className="px-4 py-3">Regra</th>
@@ -173,10 +179,17 @@ export default async function GovernancaOrcamentoPage() {
                       <strong>{permissao.titulo}</strong>
                       <span className="mt-1 block text-xs text-muted-foreground">{permissao.descricao}</span>
                     </td>
-                    <td className="px-4 py-3">{LABEL_PAPEL[permissao.papelMinimo]}</td>
+                    <td className="px-4 py-3">
+                      {LABEL_PAPEL[permissao.papelMinimo]} ou superior
+                      {permissao.chave && (
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          ou quem tiver “{rotuloPermissao(permissao.chave)}” em Usuários
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">{permissao.motivoObrigatorio ? "Obrigatório" : "Quando aplicável"}</td>
                     <td className="px-4 py-3">{permissao.eventoAuditavel}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">Bloqueio em Server Action e RLS de apoio no banco.</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">Conferido na ação do servidor e no banco.</td>
                   </tr>
                 ))}
               </tbody>
