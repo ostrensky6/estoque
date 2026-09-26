@@ -6,12 +6,12 @@
 -- antes do valor da categoria/papel; admin sempre pode; suspenso nunca). O
 -- papel só define a marcação inicial de cada categoria.
 --
--- Para ninguém ganhar nem perder acesso no dia do deploy, os padrões por
--- papel das chaves que passam a valer reproduzem exatamente o que cada papel
--- fazia antes (técnico < coordenador < gestor). Valores individuais que só
--- repetiam o antigo padrão do código (gravados em bloco pelo diálogo de
--- usuário, sem intenção do admin) são removidos; valores diferentes do padrão
--- são mantidos e passam a valer. Os NOTICEs listam o que mudou.
+-- Ninguém ganha nem perde acesso no dia do deploy (decisão do dono): os
+-- padrões por papel das chaves que passam a valer reproduzem exatamente o que
+-- cada papel fazia antes (técnico < coordenador < gestor), e as marcações
+-- individuais dessas chaves, que nunca tiveram efeito, são removidas. Cada
+-- exceção removida que divergia do padrão é listada em NOTICE para o admin
+-- reaplicar em Usuários, se quiser.
 --
 -- O que muda no banco:
 --  * RPCs trocam fn_exige_papel(...) por kontrol_private.exigir_permissao(chave).
@@ -99,7 +99,8 @@ declare
     'compras.solicitar', 'compras.aprovar', 'compras.receber', 'compras.cancelar',
     'pedido.criar', 'pedido.aprovar', 'recebimento.registrar',
     'estoque.movimentar', 'estoque.lote.aceitar', 'estoque.lote.gerir',
-    'estoque.descartar_bloquear', 'planejamento.editar', 'planejamento.executar'
+    'estoque.descartar_bloquear', 'planejamento.editar', 'planejamento.executar',
+    'analises.editar'
   ];
   -- O que cada papel fazia antes (regra por papel do banco e das telas).
   v_tecnico text[] := array[
@@ -110,7 +111,7 @@ declare
     'recebimento.registrar', 'estoque.movimentar', 'planejamento.executar'
   ];
   v_coordenador text[] := v_tecnico || array[
-    'orcamentos.emitir', 'orcamentos.cancelar', 'compras.aprovar', 'compras.receber',
+    'analises.editar', 'orcamentos.emitir', 'orcamentos.cancelar', 'compras.aprovar', 'compras.receber',
     'compras.cancelar', 'pedido.aprovar', 'estoque.lote.aceitar', 'estoque.lote.gerir',
     'planejamento.editar'
   ];
@@ -118,25 +119,6 @@ declare
     'estoque.descartar_bloquear', 'orcamento.parametros.editar', 'orcamentos.fundos',
     'orcamentos.modelos', 'auditoria.visualizar', 'configuracoes.ver'
   ];
-  -- Padrões antigos do código (permissions.ts antes desta mudança), usados só
-  -- para reconhecer valores individuais gravados sem intenção.
-  v_antigo jsonb := jsonb_build_object(
-    'tecnico', jsonb_build_array('analises.ver','insumos.ver','custeio.ver','estoque.ver','estoque.movimentar',
-      'planejamento.ver','pedido.ver','pedido.criar','compras.ver','compras.solicitar','recebimento.ver',
-      'orcamentos.visualizar','orcamentos.criar_editar','projetos.ver','cadastros.ver'),
-    'coordenador', jsonb_build_array('analises.ver','analises.editar','insumos.ver','insumos.editar','custeio.ver',
-      'estoque.ver','estoque.movimentar','estoque.lote.aceitar','planejamento.ver','planejamento.editar','pedido.ver',
-      'pedido.criar','pedido.aprovar','compras.ver','compras.solicitar','compras.aprovar','compras.receber',
-      'recebimento.ver','recebimento.registrar','orcamentos.visualizar','orcamentos.criar_editar','orcamentos.emitir',
-      'projetos.ver','projetos.editar','cadastros.ver','cadastros.editar'),
-    'gestor', jsonb_build_array('analises.ver','analises.editar','insumos.ver','insumos.editar','custeio.ver',
-      'estoque.ver','estoque.movimentar','estoque.descartar_bloquear','estoque.lote.aceitar','estoque.lote.gerir',
-      'planejamento.ver','planejamento.editar','pedido.ver','pedido.criar','pedido.aprovar','compras.ver',
-      'compras.solicitar','compras.aprovar','compras.receber','compras.cancelar','recebimento.ver',
-      'recebimento.registrar','orcamentos.visualizar','orcamentos.criar_editar','orcamentos.emitir',
-      'orcamentos.cancelar','orcamento.parametros.editar','projetos.ver','projetos.editar','cadastros.ver',
-      'cadastros.editar','auditoria.visualizar','configuracoes.ver')
-  );
   v_papel text;
   v_padrao text[];
   v_chave text;
@@ -162,23 +144,28 @@ begin
     end loop;
   end loop;
 
-  -- Valores individuais iguais ao antigo padrão do código: remove (a pessoa
-  -- passa a seguir a categoria). Diferentes: mantém e passam a valer.
+  -- Marcações individuais das chaves que passam a valer: removidas (a pessoa
+  -- segue a categoria, isto é, o acesso que tinha). As que divergiam do
+  -- padrão ficam listadas para o admin decidir.
   for v_perfil in
     select id, email, papel, permissoes from public.perfis
     where papel in ('tecnico', 'coordenador', 'gestor') and permissoes <> '{}'::jsonb
   loop
+    v_padrao := case v_perfil.papel when 'tecnico' then v_tecnico when 'coordenador' then v_coordenador else v_gestor end;
     foreach v_chave in array v_novas loop
       v_valor := v_perfil.permissoes -> v_chave;
-      continue when v_valor is null or jsonb_typeof(v_valor) <> 'boolean';
-      if v_valor = to_jsonb((v_antigo -> v_perfil.papel) ? v_chave) then
-        update public.perfis set permissoes = permissoes - v_chave where id = v_perfil.id;
-      else
-        raise notice '0124: % (%) mantém % = % (diferente do padrão do papel)',
+      continue when v_valor is null;
+      if jsonb_typeof(v_valor) = 'boolean' and v_valor <> to_jsonb(v_chave = any(v_padrao)) then
+        raise notice '0124: % (%) tinha % = % (sem efeito até hoje); passa a seguir o padrão do papel',
           v_perfil.email, v_perfil.papel, v_chave, v_valor;
       end if;
+      update public.perfis set permissoes = permissoes - v_chave where id = v_perfil.id;
     end loop;
   end loop;
+  -- chaves de gestão de acesso não são delegáveis (só admin): sai a sobra
+  update public.perfis
+     set permissoes = permissoes - 'usuarios.gerenciar' - 'privilegios.gerenciar' - 'backups.gerenciar'
+   where permissoes ?| array['usuarios.gerenciar', 'privilegios.gerenciar', 'backups.gerenciar'];
   raise notice '0124: % valor(es) de categoria ajustados para reproduzir o acesso anterior.', v_mudancas;
 end $$;
 
