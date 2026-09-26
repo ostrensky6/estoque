@@ -23,6 +23,7 @@ const state = {
   projetos: [] as unknown[],
   inserts: [] as string[],
   updates: [] as string[],
+  parametros: [] as { chave: string; valor: number }[],
 };
 
 const from = vi.fn((table: string) => {
@@ -46,6 +47,10 @@ const from = vi.fn((table: string) => {
       update: () => ({ eq: () => ({ eq: async () => { state.updates.push(table); return { error: null }; } }) }),
       insert: () => { state.inserts.push(table); return { select: () => ({ single: async () => ({ data: { id: 1 } }) }) }; },
     };
+  }
+  if (table === "parametros") {
+    // padrões globais usados quando a proposta não tem projeto nem percentuais próprios (0118)
+    return { select: async () => ({ data: state.parametros, error: null }) };
   }
   if (table === "orcamento_parametros_aplicados") {
     return { insert: async () => { state.inserts.push(table); return { error: null }; } };
@@ -111,15 +116,20 @@ beforeEach(() => {
   state.projetos = [];
   state.inserts = [];
   state.updates = [];
+  // fixture "sem parâmetros": zera também a taxa de incubação (padrão 2%)
+  state.parametros = [{ chave: "taxa_incubacao", valor: 0 }];
 });
 
 async function emitir(
   operacaoId = "22222222-2222-4222-8222-222222222222",
+  confirmarSemParametros = true,
 ) {
   const fd = new FormData();
   fd.set("demanda_id", "7");
   fd.set("validade_dias", "30");
   fd.set("operacao_id", operacaoId);
+  // Fixture "apenas análises" não tem parâmetros (Σ% = 0): exige confirmação.
+  if (confirmarSemParametros) fd.set("confirmar_sem_parametros", "sim");
   return demandasActions.emitirOrcamentoFinalDaDemanda(fd);
 }
 
@@ -233,6 +243,26 @@ describe("emissão transacional", () => {
     expect(args.p_total_laboratorio_custo).toBe(100);
   });
 
+  it("apenas análises usa os percentuais gravados na proposta (0118)", async () => {
+    state.demanda = { ...demandaCompleta, param_impostos: 0, param_incubacao: 0, param_reserva: 0, param_investimentos: 0, param_lucro: 20 };
+    await expect(emitir(undefined, false)).rejects.toThrow(/NEXT_REDIRECT/);
+    const args = rpcCall(0)[1] as Record<string, unknown>;
+    // 100 / (1 − 20%) = 125
+    expect(args.p_total_final).toBe(125);
+  });
+
+  it("apenas análises sem percentuais gravados usa os padrões de Parâmetros de custeio", async () => {
+    state.parametros = [
+      { chave: "impostos", valor: 10 },
+      { chave: "margem_lucro", valor: 8 },
+    ];
+    await expect(emitir(undefined, false)).rejects.toThrow(/NEXT_REDIRECT/);
+    const args = rpcCall(0)[1] as Record<string, unknown>;
+    // taxa de incubação não cadastrada = 2%, sobre os serviços sem impostos:
+    // 10 + 8 + 2 × 0,9 = 19,8% → 100 / 0,802 = 124,69
+    expect(args.p_total_final).toBe(124.69);
+  });
+
   it("falha da RPC retorna erro claro e não confirma emissão", async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { message: "lock timeout" } });
     await expect(emitir()).rejects.toThrow(/erro_emissao=/);
@@ -248,5 +278,21 @@ describe("emissão transacional", () => {
     state.orcamentos = [{ ...orcamentoRevisado, id: 5 }, { ...orcamentoRevisado, id: 6 }];
     await expect(emitir()).rejects.toThrow(/erro_emissao=/);
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("sem parâmetros econômicos, só emite com confirmação explícita", async () => {
+    await expect(emitir(undefined, false)).rejects.toThrow(/erro_emissao=.*custo%20t%C3%A9cnico/);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("ignora módulos cancelados nos totais e no snapshot", async () => {
+    state.orcamentos = [
+      { ...orcamentoRevisado },
+      { ...orcamentoRevisado, id: 6, status: "cancelado", status_operacional: "cancelado" },
+    ];
+    await expect(emitir()).rejects.toThrow("NEXT_REDIRECT:/orcamento/demandas/7?etapa=final");
+    const args = rpcCall(0)[1] as { p_total_laboratorio_custo: number; p_snapshot: { orcamentos_analises: unknown[] } };
+    expect(args.p_total_laboratorio_custo).toBe(100);
+    expect(args.p_snapshot.orcamentos_analises).toHaveLength(1);
   });
 });

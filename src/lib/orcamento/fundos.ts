@@ -1,3 +1,5 @@
+import { roundMoney } from "@/lib/costing/pricing";
+
 export type FundosPrevistos = {
   impostos: number;
   incubacao: number;
@@ -28,6 +30,7 @@ type ParametroSnapshot = {
   key?: unknown;
   label?: unknown;
   valorCalculado?: unknown;
+  valorNominal?: unknown;
   amount?: unknown;
 };
 
@@ -38,10 +41,6 @@ const CHAVES: Record<keyof FundosPrevistos, string[]> = {
   investimentos: ["investimentos", "investment", "investments", "fundo_investimento"],
 };
 
-export function dinheiro(valor: number) {
-  return Math.round((valor + Number.EPSILON) * 100) / 100;
-}
-
 function numero(valor: unknown) {
   const n = Number(valor ?? 0);
   return Number.isFinite(n) ? n : 0;
@@ -50,7 +49,7 @@ function numero(valor: unknown) {
 function saldoAjustado(valor: unknown) {
   if (valor === null || valor === undefined || valor === "") return null;
   const n = Number(valor);
-  return Number.isFinite(n) && n >= 0 ? dinheiro(n) : null;
+  return Number.isFinite(n) && n >= 0 ? roundMoney(n) : null;
 }
 
 function chaveParametro(parametro: ParametroSnapshot) {
@@ -58,7 +57,8 @@ function chaveParametro(parametro: ParametroSnapshot) {
 }
 
 function valorParametro(parametro: ParametroSnapshot) {
-  return numero(parametro.valorCalculado ?? parametro.amount);
+  // Snapshot atual grava `valorNominal`; `valorCalculado`/`amount` vêm de formatos anteriores.
+  return numero(parametro.valorCalculado ?? parametro.valorNominal ?? parametro.amount);
 }
 
 export function extrairFundosPrevistos(parametrosSnapshot: unknown, snapshotFinal?: unknown): FundosPrevistos {
@@ -75,7 +75,7 @@ export function extrairFundosPrevistos(parametrosSnapshot: unknown, snapshotFina
         const chave = chaveParametro(parametro as ParametroSnapshot);
         return CHAVES[campo].some((alias) => chave === alias || chave.includes(alias));
       });
-      acc[campo] = encontrado ? dinheiro(valorParametro(encontrado as ParametroSnapshot)) : fallback[campo];
+      acc[campo] = encontrado ? roundMoney(valorParametro(encontrado as ParametroSnapshot)) : fallback[campo];
       return acc;
     },
     { impostos: 0, incubacao: 0, reserva: 0, investimentos: 0 },
@@ -89,7 +89,11 @@ function extrairFundosDoSnapshotFinal(snapshotFinal?: unknown): FundosPrevistos 
   const consolidado = (snapshotFinal as { consolidado?: unknown }).consolidado;
   if (!consolidado || typeof consolidado !== "object") return vazio;
 
-  const parametros = (consolidado as { parametrosProjeto?: unknown }).parametrosProjeto;
+  // Engine atual: consolidado.economia.parametros; versões antigas: parametrosProjeto.
+  const economia = (consolidado as { economia?: { parametros?: unknown } }).economia;
+  const parametros = Array.isArray(economia?.parametros)
+    ? economia.parametros
+    : (consolidado as { parametrosProjeto?: unknown }).parametrosProjeto;
   if (!Array.isArray(parametros)) return vazio;
 
   return extrairFundosPrevistos(parametros);
@@ -104,16 +108,16 @@ export function calcularFundos(args: {
   const valorRecebido = Math.max(0, numero(args.lancamentos.valorRecebido));
   const percentualRecebido = totalFinal > 0 ? Math.max(0, Math.min(1, valorRecebido / totalFinal)) : 0;
   const liberado = {
-    impostos: dinheiro(args.previstos.impostos * percentualRecebido),
-    incubacao: dinheiro(args.previstos.incubacao * percentualRecebido),
-    reserva: dinheiro(args.previstos.reserva * percentualRecebido),
-    investimentos: dinheiro(args.previstos.investimentos * percentualRecebido),
+    impostos: roundMoney(args.previstos.impostos * percentualRecebido),
+    incubacao: roundMoney(args.previstos.incubacao * percentualRecebido),
+    reserva: roundMoney(args.previstos.reserva * percentualRecebido),
+    investimentos: roundMoney(args.previstos.investimentos * percentualRecebido),
   };
   const executado = {
-    impostos: dinheiro(Math.max(0, numero(args.lancamentos.impostosPagos))),
-    incubacao: dinheiro(Math.max(0, numero(args.lancamentos.incubacaoPaga))),
-    reserva: dinheiro(Math.max(0, numero(args.lancamentos.reservaGasta))),
-    investimentos: dinheiro(Math.max(0, numero(args.lancamentos.investimentoGasto))),
+    impostos: roundMoney(Math.max(0, numero(args.lancamentos.impostosPagos))),
+    incubacao: roundMoney(Math.max(0, numero(args.lancamentos.incubacaoPaga))),
+    reserva: roundMoney(Math.max(0, numero(args.lancamentos.reservaGasta))),
+    investimentos: roundMoney(Math.max(0, numero(args.lancamentos.investimentoGasto))),
   };
   const reservaSaldoAjustado = saldoAjustado(args.lancamentos.reservaSaldoAjustado);
   const investimentoSaldoAjustado = saldoAjustado(args.lancamentos.investimentoSaldoAjustado);
@@ -121,18 +125,18 @@ export function calcularFundos(args: {
   return {
     percentualRecebido,
     previsto: {
-      impostos: dinheiro(args.previstos.impostos),
-      incubacao: dinheiro(args.previstos.incubacao),
-      reserva: dinheiro(args.previstos.reserva),
-      investimentos: dinheiro(args.previstos.investimentos),
+      impostos: roundMoney(args.previstos.impostos),
+      incubacao: roundMoney(args.previstos.incubacao),
+      reserva: roundMoney(args.previstos.reserva),
+      investimentos: roundMoney(args.previstos.investimentos),
     },
     liberado,
     executado,
     saldo: {
-      impostos: dinheiro(liberado.impostos - executado.impostos),
-      incubacao: dinheiro(liberado.incubacao - executado.incubacao),
-      reserva: reservaSaldoAjustado ?? dinheiro(liberado.reserva - executado.reserva),
-      investimentos: investimentoSaldoAjustado ?? dinheiro(liberado.investimentos - executado.investimentos),
+      impostos: roundMoney(liberado.impostos - executado.impostos),
+      incubacao: roundMoney(liberado.incubacao - executado.incubacao),
+      reserva: reservaSaldoAjustado ?? roundMoney(liberado.reserva - executado.reserva),
+      investimentos: investimentoSaldoAjustado ?? roundMoney(liberado.investimentos - executado.investimentos),
     },
   };
 }

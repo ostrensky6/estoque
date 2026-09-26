@@ -36,6 +36,9 @@ import { arquivarNotificacao, marcarNotificacaoLida } from "@/lib/actions/notifi
 import { gerarPedidoReposicaoInsumo } from "@/lib/actions/pedidos-internos";
 import type { FormState } from "@/lib/actions/cadastros";
 import { LoteAcoes } from "@/components/estoque/LoteAcoes";
+import { DarBaixaDialog } from "@/components/estoque/DarBaixaDialog";
+import type { LoteBaixa, ModeloQuantidadeLote } from "@/lib/estoque/baixa";
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 
 type Notificacao = {
   id: number;
@@ -74,9 +77,14 @@ type AlertaEstoque = {
 
 type LoteDbRow = {
   id: number;
+  insumoId: number;
+  estornoDiretoPermitido?: boolean;
   codigoLote: string;
   validade: string;
+  validadeIso: string | null;
   quantidadeAtual: number;
+  reservado: number;
+  modeloQuantidade: ModeloQuantidadeLote;
   status: string;
   statusLabel: string;
   especificacao: string;
@@ -94,6 +102,8 @@ type StockControlHubProps = {
   lotes: LoteDbRow[];
   podeAceitar: boolean;
   podeGerir: boolean;
+  podeCorrigir?: boolean;
+  podeBaixar?: boolean;
 };
 
 export function StockControlHub({
@@ -103,6 +113,8 @@ export function StockControlHub({
   lotes,
   podeAceitar,
   podeGerir,
+  podeCorrigir,
+  podeBaixar,
 }: StockControlHubProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedAlertType, setSelectedAlertType] = useState<string>("todos");
@@ -110,6 +122,26 @@ export function StockControlHub({
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
   const [viewMode, setViewMode] = useState<"insumo" | "lote" | "grafica">("insumo");
   const [isPending, startTransition] = useTransition();
+
+  // Lotes com saldo por insumo, para o "Dar baixa" do cartão (FEFO no diálogo).
+  const lotesBaixaPorInsumo = useMemo(() => {
+    const mapa = new Map<number, LoteBaixa[]>();
+    for (const lote of lotes) {
+      if (!(lote.quantidadeAtual > 0)) continue;
+      const lista = mapa.get(lote.insumoId) ?? [];
+      lista.push({
+        id: lote.id,
+        codigoLote: lote.codigoLote,
+        validade: lote.validadeIso,
+        quantidadeAtual: lote.quantidadeAtual,
+        reservado: lote.reservado,
+        modeloQuantidade: lote.modeloQuantidade,
+        status: lote.status,
+      });
+      mapa.set(lote.insumoId, lista);
+    }
+    return mapa;
+  }, [lotes]);
 
   // Mapear notificações por insumo_id ou por texto correspondente
   const getNotificationsForInsumo = useCallback((insumoId: number | null, especificacao: string | null) => {
@@ -278,7 +310,7 @@ export function StockControlHub({
             </span>
           </div>
           <p className="mt-2 text-3xl font-bold tracking-tight text-danger-strong">{countSemEstoque}</p>
-          <p className="mt-1 text-xs text-muted-foreground">críticos sem saldo</p>
+          <p className="mt-1 text-xs text-muted-foreground">sem saldo disponível</p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
@@ -312,7 +344,16 @@ export function StockControlHub({
         </div>
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Saúde do Estoque</p>
+            <div className="flex items-center gap-1">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">Saúde do Estoque</p>
+              <HelpTip title="Saúde do estoque">
+                <p>
+                  Percentual de insumos <b>sem nenhum alerta</b>. Cada insumo conta uma vez, na
+                  situação mais grave: vencido, sem estoque, repor, vence em breve ou quarentena.
+                </p>
+                <HelpExample>40 insumos, 30 sem alerta → saúde de 75%.</HelpExample>
+              </HelpTip>
+            </div>
             <span className="rounded-md bg-info-soft p-1 text-info-strong">
               <ShieldAlert className="h-4 w-4" />
             </span>
@@ -417,7 +458,15 @@ export function StockControlHub({
 
               {/* Status Notificações */}
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Estado Administrativo</label>
+                <div className="mb-1 flex items-center gap-1">
+                  <label className="block text-xs font-medium text-muted-foreground">Estado Administrativo</label>
+                  <HelpTip title="Estado administrativo">
+                    <p>
+                      Filtra pelos avisos do sistema ligados ao insumo. <b>Pendentes</b> ainda não foram
+                      tratados; tratadas já foram marcadas em “Tratar alerta”.
+                    </p>
+                  </HelpTip>
+                </div>
                 <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
@@ -587,7 +636,7 @@ export function StockControlHub({
                                     <Bell className="h-3 w-3 text-muted-foreground/80" /> {n.titulo}
                                   </span>
                                   <span className="text-[10px] text-muted-foreground/80 shrink-0">
-                                    {new Date(n.criado_em).toLocaleDateString("pt-BR")}
+                                    {formatDate(n.criado_em)}
                                   </span>
                                 </div>
                                 {n.corpo && <p className="text-muted-foreground mt-0.5 line-clamp-1">{n.corpo}</p>}
@@ -633,7 +682,7 @@ export function StockControlHub({
                           {item.alerts.filter((a) => a.tipo === "vencido" || a.tipo === "vencimento").map((a) => (
                             <div key={`${item.insumo_id ?? item.especificacao}-${a.tipo}-${a.validade ?? "sem-data"}`} className="text-xs text-danger-strong font-semibold flex items-center gap-1.5">
                               <CalendarClock className="h-3.5 w-3.5" />
-                              {a.tipo === "vencido" ? "Vencido em:" : "Vence em:"} {a.validade ? new Date(a.validade).toLocaleDateString("pt-BR") : "sem data"}
+                              {a.tipo === "vencido" ? "Vencido em:" : "Vence em:"} {a.validade ? formatDate(a.validade) : "sem data"}
                             </div>
                           ))}
                         </div>
@@ -645,7 +694,13 @@ export function StockControlHub({
                           >
                             <ExternalLink className="h-3.5 w-3.5" /> Ficha
                           </Link>
-                          {disponivel <= ponto && (
+                          <DarBaixaDialog
+                            lotes={lotesBaixaPorInsumo.get(Number(item.insumo_id)) ?? []}
+                            unidade={item.unidade ?? ""}
+                            especificacao={item.especificacao ?? undefined}
+                            triggerClassName="inline-flex items-center gap-1 rounded-md border border-danger-strong/30 bg-card px-2.5 py-1.5 text-xs font-semibold text-danger-strong shadow-sm hover:bg-danger-soft"
+                          />
+                          {ponto > 0 && disponivel <= ponto && (
                             <GerarPedidoInsumoButton insumoId={item.insumo_id} />
                           )}
                         </div>
@@ -684,7 +739,9 @@ export function StockControlHub({
                         {lote.especificacao}
                       </td>
                       <td className="px-6 py-4 font-mono text-xs">
-                        {lote.codigoLote}
+                        <Link href={`/estoque/lotes/${lote.id}`} className="text-primary hover:underline">
+                          {lote.codigoLote}
+                        </Link>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
@@ -707,12 +764,20 @@ export function StockControlHub({
                       <td className="px-6 py-4 text-right">
                         <LoteAcoes
                           loteId={lote.id}
+                          codigoLote={lote.codigoLote}
                           status={lote.status}
                           quantidadeAtual={lote.quantidadeAtual}
                           unidade={lote.unidade}
                           critico={lote.critico}
+                          validade={lote.validadeIso}
+                          vencido={lote.vencido}
+                          reservado={lote.reservado}
+                          modeloQuantidade={lote.modeloQuantidade}
+                          estornoDiretoPermitido={lote.estornoDiretoPermitido}
                           podeAceitar={podeAceitar}
                           podeGerir={podeGerir}
+                          podeCorrigir={podeCorrigir}
+                          podeBaixar={podeBaixar}
                         />
                       </td>
                     </tr>
@@ -770,19 +835,19 @@ export function StockControlHub({
                 <ul className="space-y-3 text-xs text-muted-foreground mt-4 leading-relaxed">
                   <li className="flex items-start gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-danger-strong mt-1.5 shrink-0" />
-                    <span><b>{countSemEstoque} insumos críticos estão totalmente sem saldo disponível</b> no estoque. A abertura imediata de pedidos internos de reposição é recomendada.</span>
+                    <span><b>{countSemEstoque} insumos sem saldo disponível</b>: abra pedidos de reposição.</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-warning-strong mt-1.5 shrink-0" />
-                    <span>Existem <b>{countRepor} insumos abaixo do ponto de reposição</b>, o que pode comprometer reservas e planejamentos operacionais em andamento.</span>
+                    <span><b>{countRepor} insumos abaixo do ponto de reposição</b>: podem faltar para os planos.</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-success-strong mt-1.5 shrink-0" />
-                    <span><b>{countQuarentena} lotes estão aguardando inspeção/aceite técnico</b>. Use a <i>Visão por Lote</i> para liberar os insumos para uso operacional.</span>
+                    <span><b>{countQuarentena} insumos com lotes aguardando aceite</b>: libere em <i>Por Lote</i>.</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-info-strong mt-1.5 shrink-0" />
-                    <span><b>{countOk} reagentes e insumos estão com estoque saudável</b>, satisfazendo a demanda estipulada de segurança.</span>
+                    <span><b>{countOk} insumos sem alertas</b>.</span>
                   </li>
                 </ul>
               </div>

@@ -1,7 +1,10 @@
+import Link from "next/link";
 import { calcularTodas, carregarSimuladorCusteio } from "@/lib/costing/loader";
 import { CusteioAmostrasChart } from "@/components/custeio/CusteioAmostrasChart";
 import { CusteioTable, type CusteioRow } from "@/components/custeio/CusteioTable";
 import { CusteioSimulator } from "@/components/custeio/CusteioSimulator";
+import { HelpExample, HelpFormula, HelpTip } from "@/components/common/HelpTip";
+import { podeVerSalario, pode } from "@/lib/auth/permissao-efetiva";
 import { formatCurrency as brl } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +13,10 @@ export default async function CusteioPage() {
   const { breakdowns, params, valorHoraPessoal, custoHoraOverhead } =
     await calcularTodas();
   const simulador = await carregarSimuladorCusteio();
+  const [verRemuneracao, podeAjustarFatores] = await Promise.all([
+    podeVerSalario(),
+    pode("orcamento.parametros.editar"),
+  ]);
   const codigosAtivos = new Set(simulador.analises.map((analise) => analise.codigo));
 
   const fatoresPct = (
@@ -36,17 +43,31 @@ export default async function CusteioPage() {
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
-        <h1 className="text-xl font-semibold tracking-tight">
-          Custeio por análise
-        </h1>
+        <div className="flex items-center gap-1">
+          <h1 className="text-xl font-semibold tracking-tight">Custeio por análise</h1>
+          <HelpTip title="Como o custo é calculado">
+            <p>
+              O <b>custo analítico</b> de uma amostra soma reagentes, equipamento e pessoal. Com o{" "}
+              <b>overhead</b> (custos fixos do laboratório por hora de bancada), forma o custo total.
+            </p>
+            <p>
+              O preço de tabela aplica os fatores de preço, que hoje somam {fatoresPct}%
+              {verRemuneracao ? <>; hora de pessoal {brl(valorHoraPessoal)}</> : null}; hora de
+              overhead {brl(custoHoraOverhead)}.
+            </p>
+            <HelpFormula>preço = custo total × (1 + fatores)</HelpFormula>
+          </HelpTip>
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Custo analítico por amostra (reagentes + equipamento + pessoal),
-          overhead e preço. Cenário: lote = tamanho da execução-gargalo · fatores
-          de preço somando {fatoresPct}%.
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground/80">
-          valor-hora pessoal {brl(valorHoraPessoal)} · custo-hora overhead{" "}
-          {brl(custoHoraOverhead)}
+          Custo e preço por amostra, com fatores de preço somando {fatoresPct}%.
+          {podeAjustarFatores && (
+            <>
+              {" "}
+              <Link href="/parametros" className="font-medium text-primary hover:underline">
+                Ajustar fatores
+              </Link>
+            </>
+          )}
         </p>
 
         <div className="mt-8">
@@ -67,10 +88,22 @@ export default async function CusteioPage() {
           custoHoraOverhead={simulador.custoHoraOverhead}
         />
 
-        <p className="mt-4 text-xs text-muted-foreground/80">
-          Premissas a validar: lote padrão = execução-gargalo; itens
-          &quot;por_execucao&quot; rateados pelo lote; grupo_escolha usa a opção
-          mais barata por enquanto. Preço = custo total × (1 + fatores).
+        <p className="mt-4 flex items-center gap-1 text-xs text-muted-foreground/80">
+          Premissas do cálculo em revisão.
+          <HelpTip title="Premissas do cálculo">
+            <p>
+              O <b>lote</b> é o número de amostras que cabem na etapa mais lenta da análise. Itens
+              cobrados por corrida, como controles e calibrações, são divididos entre as amostras do
+              lote.
+            </p>
+            <p>
+              Quando a análise aceita reagentes alternativos, entra por enquanto o{" "}
+              <b>mais barato</b>.
+            </p>
+            <HelpExample>
+              Controle de R$ 60 por corrida e lote de 12 amostras: R$ 5 por amostra.
+            </HelpExample>
+          </HelpTip>
         </p>
       </main>
     </div>

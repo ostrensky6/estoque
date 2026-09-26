@@ -2,25 +2,22 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
 import {
-  calcularOrcamentoProjetoLegacy,
-  type ProjetoBudgetItem,
-  type ProjetoBudgetRates,
-} from "@/lib/project-budget/legacy";
+  calcularOrcamentoProjeto,
+  itensProjetoNaBaseDeCusto,
+} from "@/lib/project-budget/orcamento-projeto";
+import { criarResolvedorDeTaxas, type ProjetoComTaxas } from "@/lib/orcamento/valores-modulos";
 import { ParametrosEconomicosForm } from "@/components/orcamento/ParametrosEconomicosForm";
+import { HelpExample, HelpFormula, HelpTip } from "@/components/common/HelpTip";
 import {
   formatCurrency as brl,
   formatNumber,
   formatDateTime,
-  APP_LOCALE,
+  formatPercent,
 } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
-const pct = (v: number) =>
-  `${v.toLocaleString(APP_LOCALE, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })}%`;
+const pct = (v: number) => formatPercent(v, 2);
 
 const PARAM_KEYS = [
   "dias_uteis_ano",
@@ -53,8 +50,6 @@ type ProjetoResumo = {
   status: string | null;
   cliente_nome: string | null;
   data_orcamento: string | null;
-  rates: ProjetoBudgetRates;
-  itens: ProjetoBudgetItem[];
   analisesCount: number;
   custosCount: number;
 };
@@ -103,7 +98,7 @@ export default async function ParametrosEconomicosPage() {
     supabase
       .from("orcamento_projetos")
       .select(
-        "id, titulo, status, cliente_nome, data_orcamento, impostos, impostos_legacy, incubacao, reserva, investimentos, lucro, margem_lucro, orcamento_projeto_analises(n_amostras, custo_unitario), orcamento_projeto_custos(rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados)",
+        "id, demanda_id, titulo, status, cliente_nome, data_orcamento, impostos, impostos_legacy, incubacao, reserva, investimentos, lucro, margem_lucro, orcamento_projeto_analises(n_amostras, custo_unitario), orcamento_projeto_custos(rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados)",
       )
       .order("criado_em", { ascending: false })
       .limit(8),
@@ -146,37 +141,28 @@ export default async function ParametrosEconomicosPage() {
     versao: versaoMaisRecente(versoes as VersaoParametro[] | null | undefined, "laboratorio_global"),
   }));
 
+  const taxasDa = criarResolvedorDeTaxas({
+    projetos: orcamentosProjeto as unknown as ProjetoComTaxas[] | null,
+    demandas: [],
+    parametrosGlobais: parametros,
+  });
   const projetos = ((orcamentosProjeto ?? []) as unknown as ProjetoResumo[]).map((orcamento) => {
     const analises = (orcamento as unknown as { orcamento_projeto_analises?: ProjetoAnalise[] | null })
       .orcamento_projeto_analises ?? [];
     const custos = (orcamento as unknown as { orcamento_projeto_custos?: ProjetoCusto[] | null })
       .orcamento_projeto_custos ?? [];
-    const itens: ProjetoBudgetItem[] = [
-      ...analises.map((item) => ({
-        rubrica: "ST",
-        quantidade: Number(item.n_amostras ?? 0),
-        preco_unitario: Number(item.custo_unitario ?? 0),
-      })),
-      ...custos.map((item) => ({
-        rubrica: item.rubrica,
-        quantidade: item.quantidade,
-        preco_unitario: Number(item.custo_unitario ?? item.preco_unitario ?? 0),
-        meses_selecionados: item.meses_selecionados,
-      })),
-    ];
+    // mesma base e mesmas taxas da emissão da proposta
+    const itens = itensProjetoNaBaseDeCusto({ custos, analises });
+    const demandaId = (orcamento as unknown as { demanda_id?: number | null }).demanda_id;
     return {
       id: orcamento.id,
+      // Editor de custos fica na etapa de projeto da proposta; o endereço antigo só redireciona.
+      href: demandaId ? `/orcamento/demandas/${demandaId}?etapa=projeto` : `/orcamento/projetos/${orcamento.id}`,
       titulo: orcamento.titulo,
       status: orcamento.status,
       cliente_nome: orcamento.cliente_nome,
       data_orcamento: orcamento.data_orcamento,
-      rates: {
-        impostos_legacy: Number(orcamento.rates?.impostos_legacy ?? (orcamento as unknown as { impostos_legacy?: number | null }).impostos_legacy ?? (orcamento as unknown as { impostos?: number | null }).impostos ?? 0),
-        incubacao: Number(orcamento.rates?.incubacao ?? (orcamento as unknown as { incubacao?: number | null }).incubacao ?? 0),
-        reserva: Number(orcamento.rates?.reserva ?? (orcamento as unknown as { reserva?: number | null }).reserva ?? 0),
-        investimentos: Number(orcamento.rates?.investimentos ?? (orcamento as unknown as { investimentos?: number | null }).investimentos ?? 0),
-        lucro: Number(orcamento.rates?.lucro ?? (orcamento as unknown as { lucro?: number | null }).lucro ?? (orcamento as unknown as { margem_lucro?: number | null }).margem_lucro ?? 0),
-      },
+      rates: taxasDa(demandaId, orcamento as unknown as ProjetoComTaxas),
       itens,
       analisesCount: analises.length,
       custosCount: custos.length,
@@ -184,7 +170,7 @@ export default async function ParametrosEconomicosPage() {
   });
   const projetosCalculados = projetos.map((projeto) => ({
     ...projeto,
-    calculo: calcularOrcamentoProjetoLegacy(projeto.itens, projeto.rates),
+    calculo: calcularOrcamentoProjeto(projeto.itens, projeto.rates),
   }));
   const totalProjetoCusto = projetosCalculados.reduce((acc, projeto) => acc + projeto.calculo.subtotal, 0);
   const totalProjetoFinal = projetosCalculados.reduce((acc, projeto) => acc + projeto.calculo.grossTotal, 0);
@@ -206,14 +192,13 @@ export default async function ParametrosEconomicosPage() {
             >
               Orçamentos
             </Link>
-            <h1 className="mt-2 text-xl font-semibold tracking-tight">
-              Parâmetros econômicos
-            </h1>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Cockpit financeiro para conferir custos recebidos, percentuais,
-              fórmula, impacto e versões antes de recalcular ou emitir novas
-              propostas.
-            </p>
+            <div className="mt-2 flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Parâmetros econômicos</h1>
+              <HelpTip title="Parâmetros econômicos">
+                <p>Mostra os percentuais que formam os preços e o <b>impacto</b> de cada um, para conferir antes de recalcular ou emitir propostas. Cada salvamento gera uma nova versão.</p>
+                <p>A <b>margem global</b> é o padrão do laboratório; o lucro de cada proposta é definido na própria proposta ou no orçamento de projeto.</p>
+              </HelpTip>
+            </div>
           </div>
           <Link
             href="/custeio"
@@ -225,9 +210,14 @@ export default async function ParametrosEconomicosPage() {
 
         <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className={card}>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Fator econômico total
-            </p>
+            <div className="flex items-center gap-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Fator econômico total
+              </p>
+              <HelpTip title="Fator econômico total">
+                <p>Soma dos <b>fatores de preço</b> do laboratório: margem, impostos, taxas e fundos.</p>
+              </HelpTip>
+            </div>
             <p className="mt-2 text-2xl font-semibold text-brand-700 dark:text-brand-400">
               {pct(fatorTotal)}
             </p>
@@ -241,9 +231,14 @@ export default async function ParametrosEconomicosPage() {
             </p>
           </div>
           <div className={card}>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Impacto laboratório
-            </p>
+            <div className="flex items-center gap-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Impacto laboratório
+              </p>
+              <HelpTip title="Impacto dos parâmetros">
+                <p>Quanto os parâmetros <b>acrescentam ao custo</b>. No laboratório, a conta usa o custo médio do catálogo; no projeto, os orçamentos de projeto recentes.</p>
+              </HelpTip>
+            </div>
             <p className="mt-2 text-2xl font-semibold tabular-nums">
               {brl(impactoTotalLab)}
             </p>
@@ -268,7 +263,14 @@ export default async function ParametrosEconomicosPage() {
             ]}
           />
           <div className={card}>
-            <h2 className="text-sm font-semibold">Fórmula e validação</h2>
+            <div className="flex items-center gap-1">
+              <h2 className="text-sm font-semibold">Fórmula e validação</h2>
+              <HelpTip title="Duas fórmulas de preço">
+                <p><b>Laboratório</b>: o preço de tabela soma os fatores sobre o custo. <b>Projeto</b>: os percentuais incidem sobre o preço final (gross-up), por isso a soma precisa ficar abaixo de 100%.</p>
+                <HelpFormula>projeto: total = custo ÷ (1 − soma dos %)</HelpFormula>
+                <HelpExample>Custo de R$ 1.000 e 25%: laboratório → R$ 1.250; projeto → R$ 1.333,33.</HelpExample>
+              </HelpTip>
+            </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
               <InfoParametro label="Laboratório" value={`Preço = custo x (1 + ${pct(fatorTotal)})`} />
               <InfoParametro label="Projeto" value="Total = custo / (1 - soma dos percentuais)" />
@@ -281,10 +283,7 @@ export default async function ParametrosEconomicosPage() {
                   {projetosInvalidos.length} orçamento(s) de projeto têm gross-up inválido e precisam de revisão antes de emissão.
                 </span>
               ) : (
-                <span>
-                  Gross-up de projeto validado nos orçamentos recentes: a soma de impostos,
-                  incubação, reserva, investimentos e lucro fica abaixo de 100%.
-                </span>
+                <span>Percentuais válidos nos orçamentos recentes (soma abaixo de 100%).</span>
               )}
             </div>
           </div>
@@ -299,14 +298,12 @@ export default async function ParametrosEconomicosPage() {
 
         <section className="mt-8">
           <div className="mb-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Premissas de orçamento
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Alterações valem para novos cálculos e para orçamentos
-              recalculados. Orçamentos já emitidos mantêm o snapshot salvo até
-              você usar “Recalcular preços”.
-            </p>
+            <div className="flex items-center gap-1">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Premissas de orçamento</h2>
+              <HelpTip title="Quando as mudanças valem">
+                <p>Alterações valem para <b>novos cálculos</b>. Orçamentos já existentes mantêm os valores gravados até você usar <b>Recalcular preços</b>.</p>
+              </HelpTip>
+            </div>
           </div>
           <ParametrosEconomicosForm valores={valores} />
         </section>
@@ -361,7 +358,7 @@ export default async function ParametrosEconomicosPage() {
               {projetosCalculados.map((projeto) => (
                 <tr key={projeto.id}>
                   <td className="px-4 py-3">
-                    <Link href={`/orcamento/projetos/${projeto.id}`} className="font-medium text-brand-700 hover:underline dark:text-brand-300">
+                    <Link href={projeto.href} className="font-medium text-brand-700 hover:underline dark:text-brand-300">
                       #{projeto.id} {projeto.titulo ?? "Sem título"}
                     </Link>
                     <p className="mt-0.5 text-xs text-muted-foreground">{projeto.status ?? "sem status"}</p>
@@ -397,10 +394,12 @@ export default async function ParametrosEconomicosPage() {
 
         <section className="mt-8 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div className="border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold">Versões de parâmetros</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Snapshots criados ao salvar parâmetros globais ou parâmetros econômicos de projeto.
-            </p>
+            <div className="flex items-center gap-1">
+              <h2 className="text-sm font-semibold">Versões de parâmetros</h2>
+              <HelpTip title="Versões de parâmetros">
+                <p>Cada vez que parâmetros globais ou de um projeto são salvos, uma <b>nova versão</b> é registrada aqui, com data e origem.</p>
+              </HelpTip>
+            </div>
           </div>
           <div className="divide-y divide-border/70">
             {(versoes ?? []).map((versao) => (
@@ -417,7 +416,7 @@ export default async function ParametrosEconomicosPage() {
             ))}
             {(versoes ?? []).length === 0 && (
               <p className="px-4 py-5 text-sm text-muted-foreground/80">
-                Nenhuma versão registrada ainda. O próximo salvamento criará o primeiro snapshot.
+                Nenhuma versão registrada ainda. O próximo salvamento criará a primeira versão.
               </p>
             )}
           </div>
@@ -553,11 +552,11 @@ function versaoMaisRecente(
   escopo: "laboratorio_global" | "projeto",
 ) {
   const versao = (versoes ?? []).find((item) => item.escopo === escopo);
-  return versao ? `v${versao.versao}` : "sem snapshot";
+  return versao ? `v${versao.versao}` : "sem versão";
 }
 
 function somarParametrosProjeto(
-  projetos: Array<{ calculo: ReturnType<typeof calcularOrcamentoProjetoLegacy> }>,
+  projetos: Array<{ calculo: ReturnType<typeof calcularOrcamentoProjeto> }>,
 ) {
   const mapa = new Map<string, { label: string; impacto: number; percentual: number; count: number }>();
   for (const projeto of projetos) {

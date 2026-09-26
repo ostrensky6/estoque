@@ -6,6 +6,7 @@ import { FilePlus2 } from "lucide-react";
 
 import { gerarPedidosReposicaoEstoque } from "@/lib/actions/pedidos-internos";
 import { Button } from "@/components/ui/button";
+import { HelpTip } from "@/components/common/HelpTip";
 import {
   Dialog,
   DialogContent,
@@ -36,15 +37,19 @@ export function GerarPedidoReposicaoButton() {
         </DialogTrigger>
         <DialogContent className="max-w-md" showCloseButton={!pending}>
           <DialogHeader>
-            <DialogTitle>Gerar pedido de reposição?</DialogTitle>
+            <div className="flex items-center gap-1">
+              <DialogTitle>Gerar pedido de reposição?</DialogTitle>
+              <HelpTip title="Pedido de reposição">
+                <p>
+                  O pedido nasce como <b>rascunho</b>. Antes de virar compra, revise os itens, informe o
+                  projeto e a fonte de recurso e envie para validação.
+                </p>
+              </HelpTip>
+            </div>
             <DialogDescription>
-              Esta ação cria um pedido interno em rascunho com os insumos abaixo do ponto de reposição.
+              Cria um pedido interno em rascunho com os insumos abaixo do ponto de reposição.
             </DialogDescription>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            O pedido ainda precisará ser revisado, vinculado ao projeto/fonte de recurso e enviado para
-            validação antes de virar compra formal.
-          </p>
           <form action={action} onSubmit={() => setOpen(false)}>
             <DialogFooter>
               <Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>

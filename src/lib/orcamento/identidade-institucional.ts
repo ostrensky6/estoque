@@ -62,3 +62,19 @@ export function exigirIdentidadeInstitucional(valor?: string | null) {
   }
   return identidade;
 }
+
+/**
+ * Versão que nunca lança, para telas e exportações de versões já emitidas:
+ * sem instituição reconhecida, usa GIA / UFPR e devolve um aviso para exibir.
+ */
+export function resolverIdentidadeComAviso(valor?: string | null): {
+  identidade: IdentidadeInstitucional;
+  aviso: string | null;
+} {
+  const identidade = resolverIdentidadeInstitucional(valor);
+  if (identidade) return { identidade, aviso: null };
+  return {
+    identidade: IDENTIDADES.GIA,
+    aviso: "Instituição emissora não informada no orçamento; usada GIA / UFPR. Corrija o campo Instituição (GIA / UFPR ou ATGC).",
+  };
+}

@@ -57,58 +57,6 @@ describe("actions de orcamentos", () => {
     single.mockResolvedValue({ data: { id: 42 }, error: null });
   });
 
-  it("cria orcamento de analises usando cliente da sessao/RLS e redireciona para edicao", async () => {
-    const { criarOrcamento } = await import("./orcamentos");
-    const formData = new FormData();
-    formData.set("demanda_id", "7");
-    formData.set("tipo", "analises");
-    formData.set("cliente_nome", "Cliente Teste");
-
-    await expect(criarOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/42");
-
-    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
-    expect(insert).toHaveBeenCalledWith({
-      demanda_id: 7,
-      cliente_nome: "Cliente Teste",
-      projeto_id: null,
-      tipo: "analises",
-    });
-    expect(redirect).toHaveBeenCalledWith("/orcamento/42");
-  });
-
-  it("cria orcamento de projeto na tabela unificada de projetos", async () => {
-    const { criarOrcamento } = await import("./orcamentos");
-    const formData = new FormData();
-    formData.set("demanda_id", "9");
-    formData.set("tipo", "analises_projeto");
-    formData.set("cliente_nome", "Cliente Projeto");
-    formData.set("projeto_id", "5");
-    formData.set("titulo", "Proposta Completa");
-
-    await expect(criarOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/demandas/9?etapa=projeto");
-
-    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
-    expect(insert).toHaveBeenCalledWith({
-      demanda_id: 9,
-      projeto_id: 5,
-      titulo: "Proposta Completa",
-      cliente_nome: "Cliente Projeto",
-    });
-    expect(redirect).toHaveBeenCalledWith("/orcamento/demandas/9?etapa=projeto");
-  });
-
-  it("bloqueia criacao direta sem demanda vinculada", async () => {
-    const { criarOrcamento } = await import("./orcamentos");
-    const formData = new FormData();
-    formData.set("tipo", "analises");
-
-    await expect(criarOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/demandas");
-
-    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
-    expect(insert).not.toHaveBeenCalled();
-    expect(redirect).toHaveBeenCalledWith("/orcamento/demandas");
-  });
-
   it("bloqueia exclusao de orcamento enviado", async () => {
     const { excluirOrcamento } = await import("./orcamentos");
     const formData = new FormData();
@@ -135,6 +83,32 @@ describe("actions de orcamentos", () => {
     expect(eq).toHaveBeenCalledWith("id", 42);
     expect(revalidatePath).toHaveBeenCalledWith("/orcamento");
     expect(redirect).toHaveBeenCalledWith("/orcamento");
+  });
+
+  it("não anuncia sucesso quando a exclusão falha no banco", async () => {
+    const { excluirOrcamento } = await import("./orcamentos");
+    const formData = new FormData();
+    formData.set("orcamento_id", "42");
+    single.mockResolvedValue({ data: { status: "rascunho" }, error: null });
+    deleteRow.mockReturnValue({ eq: vi.fn(async () => ({ error: { message: "violação de chave" } })) });
+
+    await expect(excluirOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/42?erro_exclusao=");
+    expect(revalidatePath).not.toHaveBeenCalledWith("/orcamento");
+  });
+
+  it("remove item só dentro do próprio orçamento e propaga erro", async () => {
+    const { removerItemOrcamento } = await import("./orcamentos");
+    const formData = new FormData();
+    formData.set("orcamento_id", "42");
+    formData.set("item_id", "7");
+    single.mockResolvedValue({ data: { status: "rascunho", status_operacional: "preenchido" }, error: null });
+    const eqOrcamento = vi.fn(async () => ({ error: { message: "sem permissão" } }));
+    const eqItem = vi.fn(() => ({ eq: eqOrcamento }));
+    deleteRow.mockReturnValue({ eq: eqItem });
+
+    await expect(removerItemOrcamento(formData)).rejects.toThrow(/sem permissão/);
+    expect(eqItem).toHaveBeenCalledWith("id", 7);
+    expect(eqOrcamento).toHaveBeenCalledWith("orcamento_id", 42);
   });
 
   it("cancela orcamento preservando historico", async () => {

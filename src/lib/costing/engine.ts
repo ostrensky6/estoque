@@ -137,6 +137,19 @@ export function horasBancadaPorAmostra(etapas: Etapa[]): number {
   return lote > 0 ? horasBancadaPorExecucao(etapas) / lote : 0;
 }
 
+/**
+ * Consumo de um insumo: por execução (lote) ou por amostra. Regra única para
+ * previsão da proposta e demanda do planejamento/compras.
+ */
+export function consumoInsumo(
+  linha: Pick<InsumoLinha, "quantidade_por_amostra" | "modo_cobranca">,
+  amostras: number,
+  execucoes: number,
+) {
+  const q = n(linha.quantidade_por_amostra);
+  return linha.modo_cobranca === "por_execucao" ? q * execucoes : q * amostras;
+}
+
 /** Seleciona as linhas de insumo válidas aplicando as escolhas de grupo. */
 export function insumosSelecionados(
   linhas: InsumoLinha[],

@@ -8,6 +8,7 @@ import { PrintButton } from "@/components/orcamento/PrintButton";
 import { FluxoProposta } from "@/components/orcamento/FluxoProposta";
 import { RecalcularOrcamentoForm } from "@/components/orcamento/RecalcularOrcamentoForm";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
+import { ConfirmSubmitButton } from "@/components/common/ConfirmSubmitButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import {
   salvarCabecalho,
@@ -17,12 +18,15 @@ import {
   cancelarOrcamento,
   excluirOrcamento,
 } from "@/lib/actions/orcamentos";
-import { gerarPlanejamentoDeOrcamento } from "@/lib/actions/planejamento";
 import { listarEventos } from "@/lib/actions/eventos";
 import { Timeline } from "@/components/common/Timeline";
 import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
 import { montarSnapshotLaboratorio } from "@/lib/orcamento/laboratorio-operacional";
+import { moduloBloqueadoParaEdicao } from "@/lib/orcamento/ciclo-vida-modulo";
+import { rotuloStatusModulo } from "@/lib/orcamento/rotulos-status";
+import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import type { Json } from "@/lib/supabase/database.types";
+import { podeOrcamento } from "@/lib/orcamento/governanca";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +129,9 @@ export default async function OrcamentoDetalhe({
   const statusOperacional = orc.status_operacional ?? (
     orc.status === "cancelado" ? "cancelado" : ["enviado", "aprovado"].includes(orc.status) ? "revisado" : itens.length > 0 ? "preenchido" : "pendente"
   );
+  // Mesma regra do servidor: revisado/enviado/aprovado/cancelado não aceita edição direta.
+  const bloqueado = moduloBloqueadoParaEdicao({ status: orc.status, statusOperacional: orc.status_operacional }).bloqueado;
+  const motivoBloqueio = `Somente leitura: custos ${rotuloStatusModulo(orc.status_operacional === "revisado" ? "revisado" : orc.status).toLowerCase()}.`;
   const nomeAnalise = new Map((analises ?? []).map((analise) => [analise.codigo, analise.nome ?? null]));
   const breakdownPorCodigo = new Map(breakdowns.map((breakdown) => [breakdown.codigo, breakdown]));
   const linhasTecnicas = itens.map((item) => {
@@ -155,7 +162,7 @@ export default async function OrcamentoDetalhe({
       preco,
       custoUnitario: Number(item.custo_unitario),
       precoUnitario: Number(item.preco_unitario),
-      origem: snapshot.composicao_totais ? "Snapshot preservado no item" : breakdown ? "Snapshot de custeio" : "Snapshot preservado no item",
+      origem: snapshot.composicao_totais ? "Gravado no item" : breakdown ? "Custeio atual" : "Gravado no item",
     };
   });
 
@@ -196,27 +203,43 @@ export default async function OrcamentoDetalhe({
     "rounded-md border border-input bg-card px-3 py-2 text-sm font-medium text-brand-700 dark:text-brand-300"; // §8.2: entrada em azul
   const lbl = "block text-xs font-medium text-muted-foreground";
   const operacaoRecalculoId = randomUUID();
+  // Proposta aprovada gera o plano sozinha (0122); aqui só o link para ele.
+  const { data: planoGerado } = await supabase
+    .from("planejamento")
+    .select("id")
+    .eq("orcamento_id", orcId)
+    .neq("status_operacional", "cancelado")
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const [podeRecalcular, podeRevisar, podeCancelar] = await Promise.all([
+    podeOrcamento("recalcular_custos"),
+    podeOrcamento("revisar_modulo"),
+    podeOrcamento("cancelar_documento"),
+  ]);
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="print-area app-page-container">
-        <div className="no-print flex items-center justify-between">
+        <div className="no-print flex flex-wrap items-center justify-between gap-3">
           <Breadcrumbs items={[{ label: "Orçamentos não finalizados", href: "/orcamento/demandas" }, { label: `Custos laboratoriais #${orc.id}` }]} />
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <PrintButton />
-            {orc.status === "aprovado" && itens.length > 0 && (
-              <form action={gerarPlanejamentoDeOrcamento}>
-                <input type="hidden" name="orcamento_id" value={orcId} />
-                <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                  Gerar planejamento
-                </button>
-              </form>
+            {planoGerado && (
+              <Link
+                href={`/planejamento/${planoGerado.id}`}
+                className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-muted"
+              >
+                Planejamento #{planoGerado.id}
+              </Link>
             )}
-            <RecalcularOrcamentoForm
-              orcamentoId={orcId}
-              fonteAtual={orc.fonte_custo_insumos ?? "custo_padrao"}
-              operacaoId={operacaoRecalculoId}
-            />
+            {podeRecalcular && (
+              <RecalcularOrcamentoForm
+                orcamentoId={orcId}
+                fonteAtual={orc.fonte_custo_insumos ?? "custo_padrao"}
+                operacaoId={operacaoRecalculoId}
+              />
+            )}
           </div>
         </div>
 
@@ -235,7 +258,7 @@ export default async function OrcamentoDetalhe({
             </div>
             <div className="text-right text-sm">
               <p className="font-medium">Nº {orc.id}</p>
-              <p className="text-muted-foreground">Data: {orc.data_orcamento ?? "—"}</p>
+              <p className="text-muted-foreground">Data: {formatDate(orc.data_orcamento)}</p>
               {validade && (
                 <p className="text-muted-foreground">Válido até: {validade}</p>
               )}
@@ -245,7 +268,7 @@ export default async function OrcamentoDetalhe({
           <dl className="mt-5 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
             <div className="flex gap-2">
               <dt className="text-muted-foreground">Orçamento lab:</dt>
-              <dd className="font-medium">#{orc.id} · {orc.status}</dd>
+              <dd className="font-medium">#{orc.id} · {rotuloStatusModulo(orc.status)}</dd>
             </div>
             <div className="flex gap-2">
               <dt className="text-muted-foreground">Demanda:</dt>
@@ -284,7 +307,7 @@ export default async function OrcamentoDetalhe({
               <dd>{orc.responsavel ?? "—"}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-muted-foreground">Snapshot de custo:</dt>
+              <dt className="text-muted-foreground">Custo calculado em:</dt>
               <dd>{formatDateTime(snapshotGeradoEm)}</dd>
             </div>
             <div className="flex gap-2">
@@ -297,7 +320,7 @@ export default async function OrcamentoDetalhe({
             </div>
           </dl>
 
-          <nav className="no-print sticky top-0 z-10 mt-6 overflow-x-auto border-y border-border bg-card/95 py-2 shadow-sm backdrop-blur">
+          <nav className="no-print sticky top-[57px] z-10 mt-6 overflow-x-auto md:top-0 border-y border-border bg-card/95 py-2 shadow-sm backdrop-blur">
             <div className="flex min-w-max gap-2">
               {tabs.map((tab) => (
                 <a
@@ -314,14 +337,28 @@ export default async function OrcamentoDetalhe({
 
           <section id="totais-tecnicos" className="no-print mt-6 scroll-mt-24 rounded-lg border border-border bg-muted/50 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
+              <div className="flex items-center gap-1">
                 <h2 className="text-sm font-semibold">Preenchimento interno</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Base operacional por custo. O preço de saída fica preservado no documento e no orçamento final.
-                </p>
+                <HelpTip title="Custo técnico">
+                  <p>Tudo aqui é <b>custo</b>: insumos, equipamentos, mão de obra e overhead. O preço da proposta só é formado depois, nos parâmetros econômicos.</p>
+                  <p><b>Preço preservado</b> é o preço de tabela das análises, mostrado apenas como referência.</p>
+                  <HelpExample>Custo de R$ 80 por amostra e preço de tabela de R$ 120: a proposta parte dos R$ 80.</HelpExample>
+                </HelpTip>
               </div>
-              <span className="rounded-full bg-card px-2.5 py-1 text-xs font-medium text-foreground ring-1 ring-border">
-                {statusOperacional}
+              <span className="flex items-center gap-1">
+                <span className="rounded-full bg-card px-2.5 py-1 text-xs font-medium text-foreground ring-1 ring-border">
+                  {rotuloStatusModulo(statusOperacional)}
+                </span>
+                <HelpTip title="Status dos custos" align="end">
+                  <p>Indica a etapa da <b>conferência técnica</b> destes custos, não a situação da proposta.</p>
+                  <HelpLegend
+                    items={[
+                      { tom: "neutro", rotulo: "Pendente", texto: "Nenhuma análise incluída ainda." },
+                      { tom: "neutro", rotulo: "Preenchido", texto: "Há análises, mas falta a revisão técnica." },
+                      { tom: "neutro", rotulo: "Revisado", texto: "Custos conferidos e travados para a proposta." },
+                    ]}
+                  />
+                </HelpTip>
               </span>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
@@ -342,15 +379,13 @@ export default async function OrcamentoDetalhe({
           {/* Análises solicitadas */}
           <section id="analises-quantidades" className="mt-6 scroll-mt-24">
             <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Análises e quantidades
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Leitura técnica por custo. Valores de preço ficam preservados no resumo e no documento final.
-                </p>
-              </div>
-              <span className="text-xs text-muted-foreground/80">{totalAmostras} amostra(s)</span>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Análises e quantidades
+              </h2>
+              <span className="text-xs text-muted-foreground/80">
+                {bloqueado && <span className="no-print mr-2 font-medium text-warning-strong">{motivoBloqueio}</span>}
+                {totalAmostras} amostra(s)
+              </span>
             </div>
           <div className="mt-2 overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-right text-sm">
@@ -358,14 +393,29 @@ export default async function OrcamentoDetalhe({
                 <tr>
                   <th className="px-3 py-2 text-left">Análise</th>
                   <th className="px-3 py-2 text-left">Matriz</th>
-                  <th className="px-3 py-2">Lote</th>
+                  <th className="px-3 py-2">
+                    <span className="inline-flex items-center gap-1">
+                      Lote
+                      <HelpTip title="Lote da análise" className="no-print">
+                        <p>Quantas amostras cabem em <b>uma corrida</b>. Itens cobrados por corrida, como controles, são divididos entre elas.</p>
+                        <HelpExample>Controle de R$ 60 por corrida e lote de 12: R$ 5 por amostra.</HelpExample>
+                      </HelpTip>
+                    </span>
+                  </th>
                   <th className="px-3 py-2">Amostras</th>
-                  <th className="px-3 py-2">Reagentes</th>
+                  <th className="px-3 py-2 no-print">Reagentes</th>
                   <th className="px-3 py-2">Equip.</th>
                   <th className="px-3 py-2">Mão obra</th>
                   <th className="px-3 py-2">Overhead</th>
                   <th className="px-3 py-2">Custo</th>
-                  <th className="px-3 py-2 text-left">Origem</th>
+                  <th className="px-3 py-2 text-left">
+                    <span className="inline-flex items-center gap-1">
+                      Origem
+                      <HelpTip title="Origem do valor" align="end" className="no-print">
+                        <p><b>Gravado no item</b>: valor guardado quando a análise foi incluída. <b>Custeio atual</b>: calculado agora pela receita da análise.</p>
+                      </HelpTip>
+                    </span>
+                  </th>
                   <th className="px-3 py-2 no-print"></th>
                 </tr>
               </thead>
@@ -390,13 +440,15 @@ export default async function OrcamentoDetalhe({
                     </td>
                     <td className="px-3 py-2 text-left text-xs text-muted-foreground">{linha.origem}</td>
                     <td className="px-3 py-2 no-print">
-                      <form action={removerItemOrcamento}>
-                        <input type="hidden" name="orcamento_id" value={orcId} />
-                        <input type="hidden" name="item_id" value={linha.id} />
-                        <button className="text-xs text-danger-strong hover:underline">
-                          Remover
-                        </button>
-                      </form>
+                      {!bloqueado && (
+                        <form action={removerItemOrcamento}>
+                          <input type="hidden" name="orcamento_id" value={orcId} />
+                          <input type="hidden" name="item_id" value={linha.id} />
+                          <button className="text-xs text-danger-strong hover:underline">
+                            Remover
+                          </button>
+                        </form>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -433,25 +485,24 @@ export default async function OrcamentoDetalhe({
 
           <section id="composicao-tecnica" className="no-print mt-6 scroll-mt-24">
             <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Composição técnica por bloco
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Cada subtotal mostra a origem calculada pela engine de custeio e a regra operacional aplicada.
-                </p>
+              <div className="flex items-center gap-1">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Composição técnica por bloco</h2>
+                <HelpTip title="Overhead técnico">
+                  <p>São os <b>custos indiretos</b> do laboratório (limpeza, energia, gestão), repartidos pelas <b>horas de bancada</b> de cada amostra.</p>
+                  <HelpExample>0,5 h por amostra × R$ 40/h de overhead = R$ 20 por amostra.</HelpExample>
+                </HelpTip>
               </div>
             </div>
             <TabelaResumoTecnico
-              colunas={["Bloco", "Origem", "Regra", "Subtotal"]}
+              colunas={["Bloco", "Como é calculado", "Subtotal"]}
               vazio="Sem composição técnica calculada."
               linhas={[
-                ["Reagentes", orc.fonte_custo_insumos === "custo_medio_ponderado" ? "média ponderada dos lotes liberados" : "insumo_analise + custo_unitario padrão", "Quantidade por amostra multiplicada pelas amostras; itens por execução são rateados pelo lote.", brl(Number(totaisOperacionais.reagentes ?? 0))],
-                ["Materiais", "mesma base de insumos selecionados", "Material de consumo entra no custo técnico junto aos reagentes.", brl(Number(totaisOperacionais.materiais ?? 0))],
-                ["Equipamentos", "equipamento_analise + depreciação/manutenção", "Custo diário do equipamento alocado por peso e capacidade diária da análise.", brl(Number(totaisOperacionais.equipamentos ?? 0))],
-                ["Mão de obra", "tecnicos + etapas", "Horas de bancada por amostra multiplicadas pelo valor-hora dedicado.", brl(Number(totaisOperacionais.mao_obra ?? 0))],
-                ["Terceiros", "lançamento reservado", "Sem terceiros laboratoriais próprios neste snapshot.", brl(Number(totaisOperacionais.terceiros ?? 0))],
-                ["Overhead técnico", "overhead + etapas", "Horas de bancada por amostra multiplicadas pelo custo-hora de overhead.", brl(Number(totaisOperacionais.overhead ?? 0))],
+                ["Reagentes", `Consumo por amostra × amostras; itens por corrida são divididos pelo lote. Preço: ${orc.fonte_custo_insumos === "custo_medio_ponderado" ? "média dos lotes liberados" : "custo padrão do insumo"}.`, brl(Number(totaisOperacionais.reagentes ?? 0))],
+                ["Materiais", "Material de consumo, somado junto aos reagentes.", brl(Number(totaisOperacionais.materiais ?? 0))],
+                ["Equipamentos", "Custo diário do equipamento (depreciação e manutenção) dividido pela capacidade da análise.", brl(Number(totaisOperacionais.equipamentos ?? 0))],
+                ["Mão de obra", "Horas de bancada por amostra × valor-hora da equipe.", brl(Number(totaisOperacionais.mao_obra ?? 0))],
+                ["Terceiros", "Serviços de terceiros (nenhum lançado).", brl(Number(totaisOperacionais.terceiros ?? 0))],
+                ["Overhead técnico", "Horas de bancada por amostra × custo-hora de overhead.", brl(Number(totaisOperacionais.overhead ?? 0))],
               ]}
             />
           </section>
@@ -484,15 +535,18 @@ export default async function OrcamentoDetalhe({
         {/* Catálogo visível de análises */}
         <section id="identificacao-tecnica" className="no-print mt-6 scroll-mt-24 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
+            <div className="flex items-center gap-1">
               <h2 className="text-sm font-semibold">Catálogo de análises laboratoriais</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Todas as análises ativas ficam visíveis. Somente análises marcadas entram no subtotal técnico.
-              </p>
+              <HelpTip title="Catálogo de análises">
+                <p>Lista todas as análises ativas. Use <b>Incluir</b> para levar uma análise a este orçamento; só as incluídas entram no subtotal de custo.</p>
+              </HelpTip>
             </div>
-            <span className="text-xs text-muted-foreground/80">{analises?.length ?? 0} análise(s) ativa(s)</span>
+            <span className="text-xs text-muted-foreground/80">
+              {bloqueado ? motivoBloqueio : `${analises?.length ?? 0} análise(s) ativa(s)`}
+            </span>
           </div>
           <TabelaCatalogoAnalises
+            bloqueado={bloqueado}
             analises={(analises ?? []).map((analise) => ({
               codigo: analise.codigo,
               nome: analise.nome ?? null,
@@ -506,11 +560,11 @@ export default async function OrcamentoDetalhe({
         {demanda ? (
           <section className="no-print mt-6 rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
+              <div className="flex items-center gap-1">
                 <h2 className="text-sm font-semibold">Dados comerciais herdados</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Cliente, documento e contato são lidos da demanda. A versão emitida preserva snapshot próprio.
-                </p>
+                <HelpTip title="Dados comerciais herdados">
+                  <p>Cliente, documento e contato vêm dos <b>dados do orçamento</b>; altere-os por lá. A proposta emitida guarda uma cópia própria desses dados.</p>
+                </HelpTip>
               </div>
               <Link
                 href={`/orcamento/demandas/${demanda.id}#demanda`}
@@ -623,11 +677,16 @@ export default async function OrcamentoDetalhe({
             </ul>
           ) : (
             <p className="mt-3 rounded-md bg-brand-50 px-3 py-2 text-xs leading-5 text-brand-900 dark:bg-brand-950/40 dark:text-brand-200">
-              Cabeçalho, responsável e análises estão coerentes. Marque os custos laboratoriais como revisados para liberar a proposta final.
+              Tudo certo. Marque como revisado para liberar a proposta final.
             </p>
           )}
-          {demanda && statusOperacional !== "revisado" && orc.status !== "cancelado" && (
-            <form action={revisarOrcamentoLaboratorio} className="mt-4 grid gap-3 rounded-md border border-border bg-muted/50 p-3 text-sm sm:grid-cols-[1fr_180px_auto]">
+          {demanda && statusOperacional !== "revisado" && orc.status !== "cancelado" && !podeRevisar && (
+            <p className="mt-4 text-xs text-muted-foreground">
+              A revisão dos custos é feita por coordenador ou superior, ou por quem tem a permissão “Orçamentos: Emitir proposta”.
+            </p>
+          )}
+          {demanda && statusOperacional !== "revisado" && orc.status !== "cancelado" && podeRevisar && (
+            <form action={revisarOrcamentoLaboratorio} className="mt-4 grid gap-3 rounded-md border border-border bg-muted/50 p-3 text-sm sm:grid-cols-[1fr_auto]">
               <input type="hidden" name="orcamento_id" value={orcId} />
               <div>
                 <label className={lbl}>Responsável técnico</label>
@@ -639,26 +698,19 @@ export default async function OrcamentoDetalhe({
                   required
                 />
               </div>
-              <div>
-                <label className={lbl}>Status de revisão</label>
-                <select
-                  aria-label="Status de revisão"
-                  name="status"
-                  defaultValue="enviado"
-                  className={`${inp} mt-1 w-full`}
+              <div className="flex items-end gap-1">
+                <ConfirmSubmitButton
+                  className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500"
+                  titulo="Marcar custos como revisados?"
+                  mensagem="Os custos laboratoriais ficam congelados para a proposta final. Depois disso, a edição direta fica bloqueada."
+                  confirmLabel="Marcar revisado"
                 >
-                  <option value="enviado">Enviado</option>
-                  <option value="aprovado">Aprovado</option>
-                </select>
-              </div>
-              <div className="flex items-end">
-                <button className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
                   Marcar revisado
-                </button>
+                </ConfirmSubmitButton>
+                <HelpTip title="Marcar revisado" align="end">
+                  <p><b>Congela</b> os custos atuais para a proposta. Depois disso, análises e quantidades não podem mais ser alteradas aqui.</p>
+                </HelpTip>
               </div>
-              <p className="sm:col-span-3 text-xs leading-5 text-muted-foreground">
-                Esta ação preserva o snapshot laboratorial e transforma o módulo em revisado; depois disso, a edição direta fica bloqueada.
-              </p>
             </form>
           )}
         </section>
@@ -666,13 +718,13 @@ export default async function OrcamentoDetalhe({
         <section id="historico-laboratorio" className="no-print mt-6 scroll-mt-24 rounded-xl border border-border bg-card p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Linha do tempo</h2>
           <p className="mt-1 mb-3 text-xs text-muted-foreground">
-            Transições de status registradas (salve mudando o status acima para gerar eventos).
+            Mudanças de status aparecem aqui.
           </p>
           <Timeline eventos={eventos} />
         </section>
 
         <div className="no-print mt-6 flex flex-wrap gap-3">
-          {["enviado", "aprovado"].includes(orc.status) ? (
+          {!podeCancelar ? null : ["enviado", "aprovado"].includes(orc.status) ? (
             <ConfirmActionButton
               action={cancelarOrcamento}
               fields={{ orcamento_id: orcId, motivo: "Cancelamento operacional solicitado na tela do orçamento." }}
@@ -726,7 +778,9 @@ function TabelaCatalogoAnalises({
   analises,
   itens,
   orcId,
+  bloqueado = false,
 }: {
+  bloqueado?: boolean;
   analises: Array<{
     codigo: string;
     nome: string | null;
@@ -757,7 +811,14 @@ function TabelaCatalogoAnalises({
             <th className="px-3 py-2 text-left">Nome</th>
             <th className="px-3 py-2">Lote</th>
             <th className="px-3 py-2">Custo unit.</th>
-            <th className="px-3 py-2">Composição</th>
+            <th className="px-3 py-2">
+              <span className="inline-flex items-center gap-1">
+                Composição
+                <HelpTip title="Composição do custo">
+                  <p>Custo de uma amostra dividido por bloco: <b>R</b> reagentes, <b>E</b> equipamentos, <b>P</b> pessoal e <b>O</b> overhead.</p>
+                </HelpTip>
+              </span>
+            </th>
             <th className="px-3 py-2">Amostras</th>
             <th className="px-3 py-2">Subtotal</th>
             <th className="px-3 py-2"></th>
@@ -773,6 +834,9 @@ function TabelaCatalogoAnalises({
             return (
               <tr key={analise.codigo} className={selecionada ? "bg-brand-50/40 dark:bg-brand-950/10" : ""}>
                 <td className="px-3 py-2 text-left">
+                  {bloqueado ? (
+                    <span className="text-xs text-muted-foreground">{selecionada ? "Incluída" : "—"}</span>
+                  ) : (
                   <form action={alternarAnaliseOrcamento}>
                     <input type="hidden" name="orcamento_id" value={orcId} />
                     <input type="hidden" name="codigo_analise" value={analise.codigo} />
@@ -788,6 +852,7 @@ function TabelaCatalogoAnalises({
                       {selecionada ? "Remover" : "Incluir"}
                     </button>
                   </form>
+                  )}
                 </td>
                 <td className="px-3 py-2 text-left font-semibold">{analise.codigo}</td>
                 <td className="max-w-xs px-3 py-2 text-left text-foreground">{analise.nome ?? "—"}</td>
@@ -797,7 +862,9 @@ function TabelaCatalogoAnalises({
                   R {brl(Number(analise.breakdown?.reagentes ?? 0))} · E {brl(Number(analise.breakdown?.equipamento ?? 0))} · P {brl(Number(analise.breakdown?.pessoal ?? 0))} · O {brl(Number(analise.breakdown?.overhead ?? 0))}
                 </td>
                 <td className="px-3 py-2">
-                  {selecionada ? (
+                  {selecionada && bloqueado ? (
+                    <span className="tabular-nums">{amostras}</span>
+                  ) : selecionada ? (
                     <form action={alternarAnaliseOrcamento} className="flex justify-end gap-2">
                       <input type="hidden" name="orcamento_id" value={orcId} />
                       <input type="hidden" name="codigo_analise" value={analise.codigo} />
@@ -821,7 +888,7 @@ function TabelaCatalogoAnalises({
                 </td>
                 <td className="px-3 py-2 font-semibold tabular-nums">{brl(subtotal)}</td>
                 <td className="px-3 py-2 text-left text-xs text-muted-foreground">
-                  {selecionada ? "Snapshot preservado" : "Visível, fora do subtotal"}
+                  {selecionada ? "No orçamento" : "Fora do subtotal"}
                 </td>
               </tr>
             );

@@ -11,6 +11,7 @@ import { modalidadeExigeLaboratorio, modalidadeExigeProjeto } from "@/lib/orcame
 import { detectarCustosZero } from "@/lib/orcamento/proposta-final";
 import { planejarModulosProposta, type PlanoModulos } from "@/lib/orcamento/garantir-modulos";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
+import { padroesDeParametrosGlobais, resolverParametrosProposta } from "@/lib/orcamento/parametros-proposta";
 import {
   lerAnalisesSelecionadas,
   lerGruposAmostras,
@@ -98,11 +99,23 @@ async function clienteSnapshot(clienteId: number | null) {
 }
 
 export async function criarDemanda(formData: FormData) {
+  const erro = await executarCriacaoDemanda(formData);
+  if (erro) throw new Error(erro);
+}
+
+// Cria e redireciona; em falha devolve a mensagem (o formulário não se perde).
+async function executarCriacaoDemanda(formData: FormData): Promise<string | null> {
   await exigirPapelOrcamento("criar_demanda");
   const supabase = await createClient();
   // Validação dos grupos e das análises antes de qualquer escrita.
-  const grupos = lerGruposAmostras(formData);
-  const analises = lerAnalisesSelecionadas(formData);
+  let grupos;
+  let analises;
+  try {
+    grupos = lerGruposAmostras(formData);
+    analises = lerAnalisesSelecionadas(formData);
+  } catch (e) {
+    return e instanceof Error ? e.message : "Grupos de amostras inválidos.";
+  }
   const clienteId = numeroOuNull(formData, "cliente_id");
   const cliente = await clienteSnapshot(clienteId);
   const demanda = {
@@ -112,6 +125,10 @@ export async function criarDemanda(formData: FormData) {
     cliente_nome: cliente?.nome ?? texto(formData, "cliente_nome"),
     cliente_cnpj: cliente?.cnpj ?? texto(formData, "cliente_cnpj"),
     cliente_contato: cliente?.contato || cliente?.email || cliente?.telefone || texto(formData, "cliente_contato"),
+    instituicao: texto(formData, "instituicao"),
+    responsavel_interno: texto(formData, "responsavel_interno"),
+    data_solicitacao: texto(formData, "data_solicitacao") ?? undefined,
+    prazo_esperado: texto(formData, "prazo_esperado"),
     modalidade: texto(formData, "modalidade") || "analises",
     origem: texto(formData, "origem"),
     prioridade: texto(formData, "prioridade") || "normal",
@@ -142,9 +159,9 @@ export async function criarDemanda(formData: FormData) {
     p_analises: analises,
   } as never);
 
-  if (error) throw new Error(error.message);
+  if (error) return `Não foi possível criar o orçamento: ${error.message}`;
   const demandaId = (data as { demanda_id?: number } | null)?.demanda_id;
-  if (!demandaId) throw new Error("A criação da demanda não foi confirmada pelo banco.");
+  if (!demandaId) return "O banco não confirmou a criação do orçamento. Nada foi salvo.";
 
   revalidatePath(listaPath);
   redirect(`${listaPath}/${demandaId}`);
@@ -154,8 +171,8 @@ export async function criarDemandaCompleta(
   _prevState: DemandaFormState,
   formData: FormData,
 ): Promise<DemandaFormState> {
-  await criarDemanda(formData);
-  return { ok: true, message: "Demanda criada." };
+  const erro = await executarCriacaoDemanda(formData);
+  return { ok: false, message: erro ?? "Não foi possível criar o orçamento." };
 }
 
 export async function salvarDemanda(formData: FormData): Promise<void>;
@@ -328,7 +345,7 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
     redirect(`${listaPath}/${id}?etapa=demanda&erro_integridade=${encodeURIComponent(plano.erros.join("; "))}`);
   }
   if (projeto.acao === "abrir" && projeto.moduloId) {
-    redirect(`/orcamento/projetos/${projeto.moduloId}`);
+    redirect(`/orcamento/demandas/${id}?etapa=projeto`);
   }
 
   const { error } = await supabase
@@ -350,64 +367,6 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
   await marcarEmAnalise(supabase, demanda);
   revalidatePath(listaPath);
   redirect(`/orcamento/demandas/${id}?etapa=projeto`);
-}
-
-/**
- * Rotina ÚNICA e idempotente: garante os módulos aplicáveis da proposta.
- * Cria somente o que falta, abre o existente, bloqueia se houver duplicidade
- * histórica. Tolera cliques/chamadas repetidas (re-consulta os ativos a cada
- * execução). Não marca a demanda como "orcada".
- */
-export async function garantirModulosDaProposta(formData: FormData) {
-  await exigirPapelOrcamento("preencher_custos");
-  const id = Number(formData.get("demanda_id"));
-  if (!id) return;
-  const supabase = await createClient();
-  const { data: demanda } = await supabase.from("demandas_propostas").select("*").eq("id", id).single();
-  if (!demanda) return;
-  if (!avaliarCompletudeDemanda(demanda).completa) {
-    redirect(`${listaPath}/${id}`);
-  }
-
-  const plano = await planoModulos(supabase, demanda);
-  if (plano.bloqueadoPorDuplicidade) {
-    redirect(`${listaPath}/${id}?etapa=demanda&erro_integridade=${encodeURIComponent(plano.erros.join("; "))}`);
-  }
-
-  let criou = false;
-  if (plano.laboratorio.acao === "criar") {
-    const { error } = await supabase.from("orcamentos").insert({
-      demanda_id: id,
-      cliente_id: demanda.cliente_id,
-      projeto_id: demanda.projeto_id,
-      cliente_nome: demanda.cliente_nome || demanda.titulo,
-      cliente_cnpj: demanda.cliente_cnpj,
-      cliente_contato: demanda.cliente_contato,
-      responsavel: demanda.responsavel_interno,
-      observacoes: demanda.escopo_preliminar || demanda.descricao || demanda.observacoes,
-    });
-    if (error) throw new Error(error.message);
-    criou = true;
-  }
-  if (plano.projeto.acao === "criar") {
-    const { error } = await supabase.from("orcamento_projetos").insert({
-      demanda_id: id,
-      projeto_id: demanda.projeto_id,
-      cliente_id: demanda.cliente_id,
-      titulo: demanda.titulo,
-      cliente_nome: demanda.cliente_nome,
-      cliente_cnpj: demanda.cliente_cnpj,
-      cliente_contato: demanda.cliente_contato,
-      responsavel: demanda.responsavel_interno,
-      escopo: demanda.escopo_preliminar || demanda.descricao,
-      observacoes: demanda.observacoes,
-    });
-    if (error) throw new Error(error.message);
-    criou = true;
-  }
-  if (criou) await marcarEmAnalise(supabase, demanda);
-  revalidatePath(listaPath);
-  redirect(`${listaPath}/${id}?etapa=demanda`);
 }
 
 export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
@@ -434,7 +393,7 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
     redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent("Complete a demanda antes de emitir o orçamento final.")}`);
   }
 
-  const [{ data: orcamentos }, { data: orcProjetos }] = await Promise.all([
+  const [{ data: orcamentosTodos }, { data: orcProjetosTodos }] = await Promise.all([
     supabase
       .from("orcamentos")
       .select("id, status, status_operacional, fonte_custo_insumos, custo_snapshot, orcamento_itens(id, n_amostras, custo_unitario, preco_unitario, valor_snapshot)")
@@ -446,6 +405,9 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
       .eq("demanda_id", id)
       .order("id"),
   ]);
+  // Módulos cancelados não entram em totais, validações nem no snapshot.
+  const orcamentos = (orcamentosTodos ?? []).filter((o) => o.status !== "cancelado" && o.status_operacional !== "cancelado");
+  const orcProjetos = (orcProjetosTodos ?? []).filter((o) => o.status !== "cancelado");
 
   // Integridade: não emitir com duplicidade ativa (também travado na RPC sob lock).
   const labAtivos = (orcamentos ?? [])
@@ -534,17 +496,23 @@ export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
         meses_selecionados: [],
       })),
     ],
-    parametrosProjeto: {
-      impostos_legacy: Number(projetoReferencia?.impostos_legacy ?? projetoReferencia?.impostos ?? 0),
-      incubacao: Number(projetoReferencia?.incubacao ?? 0),
-      reserva: Number(projetoReferencia?.reserva ?? 0),
-      investimentos: Number(projetoReferencia?.investimentos ?? 0),
-      lucro: Number(projetoReferencia?.lucro ?? projetoReferencia?.margem_lucro ?? 0),
-    },
+    // com projeto: percentuais do projeto; sem projeto: os da proposta ou os padrões (0118)
+    parametrosProjeto: resolverParametrosProposta({
+      projeto: projetoReferencia,
+      proposta: demanda as Record<string, unknown>,
+      padroes: padroesDeParametrosGlobais((await supabase.from("parametros").select("chave, valor")).data),
+    }).rates,
   });
 
   if (!consolidado.pronto) {
     redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent(consolidado.pendencias.join("; "))}`);
+  }
+
+  // Σ parâmetros = 0: a proposta sairia pelo custo técnico, sem impostos nem
+  // lucro. Só emite com confirmação explícita do formulário.
+  if (consolidado.somaPercentual <= 0 && String(formData.get("confirmar_sem_parametros") ?? "") !== "sim") {
+    const msg = "Nenhum parâmetro econômico definido: a proposta sairia pelo custo técnico, sem impostos nem lucro. Confirme para emitir assim.";
+    redirect(`${listaPath}/${id}?etapa=final&erro_emissao=${encodeURIComponent(msg)}`);
   }
 
   // Validação defensiva (Fase 10): bloqueia emissão com custo técnico <= 0 sem
@@ -700,24 +668,36 @@ export async function salvarParametrosEconomicosDaDemanda(formData: FormData) {
     .limit(1)
     .maybeSingle();
 
-  if (!projeto?.id) {
-    redirect(`${listaPath}/${demandaId}?etapa=final&erro_parametros=${encodeURIComponent("Não foi possível localizar o orçamento para salvar parâmetros.")}`);
+  const soma = Object.values(patch).reduce<number>((total, valor) => total + Math.max(0, Number(valor ?? 0)), 0);
+  if (Object.values(patch).some((valor) => valor != null && valor < 0) || soma >= 100) {
+    redirect(`${listaPath}/${demandaId}?etapa=parametros&erro_parametros=${encodeURIComponent("Use percentuais positivos com soma menor que 100%.")}`);
   }
 
-  const { error } = await supabase.from("orcamento_projetos").update(patch).eq("id", projeto.id);
-  if (error) throw new Error(error.message);
+  // Com orçamento de projeto, os percentuais continuam no projeto; sem ele
+  // (proposta "Apenas análises"), ficam na própria proposta (migration 0118).
+  const { data: gravado, error } = projeto?.id
+    ? await supabase.from("orcamento_projetos").update(patch).eq("id", projeto.id).select("id")
+    : await supabase
+        .from("demandas_propostas")
+        .update({
+          param_impostos: patch.impostos_legacy ?? 0,
+          param_incubacao: patch.incubacao ?? 0,
+          param_reserva: patch.reserva ?? 0,
+          param_investimentos: patch.investimentos ?? 0,
+          param_lucro: patch.lucro ?? 0,
+        } as never)
+        .eq("id", demandaId)
+        .select("id");
+  if (error || !gravado?.length) {
+    const msg = error
+      ? /param_/.test(error.message) && /column|schema cache/i.test(error.message)
+        ? "Parâmetros da proposta ainda não disponíveis no banco (migration 0118 pendente)."
+        : error.message
+      : "Nada foi salvo: seu perfil não tem permissão para alterar esta proposta.";
+    redirect(`${listaPath}/${demandaId}?etapa=parametros&erro_parametros=${encodeURIComponent(msg)}`);
+  }
 
   revalidatePath(listaPath);
   revalidatePath(`${listaPath}/${demandaId}`);
-  redirect(`${listaPath}/${demandaId}?etapa=final`);
-}
-
-export async function emitirPropostaCliente(
-  _prevState: DemandaFormState,
-  formData: FormData,
-): Promise<DemandaFormState> {
-  const id = Number(formData.get("demanda_id"));
-  if (!id) return { ok: false, message: "Identificador de demanda inválido." };
-  await emitirOrcamentoFinalDaDemanda(formData);
-  return { ok: true, message: "Proposta emitida." };
+  redirect(`${listaPath}/${demandaId}?etapa=parametros&parametros_salvos=1`);
 }

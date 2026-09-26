@@ -4,8 +4,7 @@ import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { DataTable } from "@/components/common/DataTable";
-import { Badge } from "@/components/ui/badge";
-import { pedidoInternoStatus } from "@/lib/pedido/status";
+import { StatusBadge } from "@/components/app/StatusBadge";
 import { ItemRecebimentoCell, type RecebimentoLancamento } from "./ItemRecebimentoCell";
 
 type Insumo = { id: number; especificacao: string | null; unidade: string | null };
@@ -29,11 +28,6 @@ export type RecebimentoItemRow = {
   statusLabel: string;
   podeReceber: boolean;
 };
-
-function StatusBadge({ status }: { status: string }) {
-  const meta = pedidoInternoStatus(status);
-  return <Badge className={meta.className}>{meta.label}</Badge>;
-}
 
 function colunas(insumos: Insumo[]): ColumnDef<RecebimentoItemRow, unknown>[] {
   return [

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClientUntyped } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import {
   adicionarAnexoPedidoInterno,
   adicionarItemPedidoInterno,
@@ -16,11 +16,15 @@ import { ItemRecebimentoCell } from "@/components/pedido/ItemRecebimentoCell";
 import { PedidoItemEditar } from "@/components/pedido/PedidoItemEditar";
 import { PedidoItemCamposAssistidos, type PedidoItemCatalogo } from "@/components/pedido/PedidoItemCamposAssistidos";
 import { Timeline } from "@/components/common/Timeline";
+import { HelpLegend, HelpTip } from "@/components/common/HelpTip";
+import { FormComMensagem } from "@/components/pedido/FormComMensagem";
+import { statusInfo } from "@/components/app/status";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { listarEventos } from "@/lib/actions/eventos";
 import {
   PEDIDO_INTERNO_ETAPA_RECEBIDA,
   PEDIDO_INTERNO_FLUXO,
+  PEDIDO_INTERNO_STATUS,
   pedidoInternoNumero,
   pedidoInternoStatus,
   podeMarcarRecebida,
@@ -132,6 +136,47 @@ type PedidoInternoComunicacao = {
   usuario: string | null;
   criado_em: string;
 };
+
+const URGENCIA_LABEL: Record<string, string> = {
+  baixa: "Baixa",
+  normal: "Normal",
+  alta: "Alta",
+  critica: "Crítica",
+};
+
+const ANEXO_TIPO_LABEL: Record<string, string> = {
+  orcamento_previo: "Orçamento prévio",
+  proposta: "Proposta",
+  print: "Print",
+  email: "E-mail",
+  termo_referencia: "Termo de referência",
+  oficio: "Ofício",
+  boleto: "Boleto",
+  nota_fiscal: "Nota fiscal",
+  comprovante: "Comprovante",
+  outro: "Outro",
+};
+
+const COMUNICACAO_TIPO_LABEL: Record<string, string> = {
+  email: "E-mail",
+  reuniao: "Reunião",
+  telefone: "Telefone",
+  mensagem: "Mensagem",
+  outro: "Outro",
+};
+
+const DECISAO_LABEL: Record<string, string> = {
+  aprovado: "Aprovado",
+  reprovado: "Reprovado",
+  devolvido: "Devolvido",
+  registrado: "Registrado",
+};
+
+/** Etapas e status gravados como código (ex.: "em_validacao") viram o rótulo do fluxo. */
+function rotuloEtapa(valor: string | null | undefined) {
+  if (!valor) return null;
+  return PEDIDO_INTERNO_STATUS[valor as PedidoInternoStatus]?.label ?? valor;
+}
 
 function proximaAcaoDetalhe(status: string) {
   const map: Record<string, { acao: string; responsavel: string }> = {
@@ -308,7 +353,7 @@ export default async function PedidoInternoDetalhe({
       .eq("pedido_interno_id", pedidoId)
       .order("criado_em", { ascending: false }),
     listarEventos("pedido_interno", pedidoId),
-    temPapel("coordenador"),
+    pode("pedido.aprovar"),
   ]);
 
   const pedidoStatus = pedido.status as PedidoInternoStatus;
@@ -421,7 +466,7 @@ export default async function PedidoInternoDetalhe({
             <p className="mt-1 text-sm text-muted-foreground">
               Projeto: {projeto} · Solicitante: {pedido.solicitante ?? "—"}
               {pedido.data_necessidade ? ` · Necessidade: ${formatDate(pedido.data_necessidade)}` : ""}
-              {pedido.urgencia ? ` · Urgência: ${pedido.urgencia}` : ""}
+              {pedido.urgencia ? ` · Urgência: ${URGENCIA_LABEL[pedido.urgencia] ?? pedido.urgencia}` : ""}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
               Tipo: {String(pedido.tipo_demanda ?? "laboratorio").replaceAll("_", "/")} · Coordenador: {coordenadorProjeto}
@@ -453,9 +498,21 @@ export default async function PedidoInternoDetalhe({
 
         <section className="mt-3 rounded-lg border border-border bg-card p-3 shadow-sm">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <div>
+            <div className="flex items-center gap-1">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Etapas do processo</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">Acompanhe onde o pedido está antes de executar a próxima ação.</p>
+              <HelpTip title="Etapas do pedido">
+                <p>
+                  Mostra onde o pedido está. A próxima ação e quem responde por ela aparecem no{" "}
+                  <b>Painel operacional</b>, logo abaixo.
+                </p>
+                <HelpLegend
+                  items={[
+                    { tom: "ok", rotulo: "Verde", texto: "etapa concluída" },
+                    { tom: "atencao", rotulo: "Amarelo", texto: "etapa atual" },
+                    { tom: "neutro", rotulo: "Branco", texto: "etapa futura" },
+                  ]}
+                />
+              </HelpTip>
             </div>
             <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">{statusMeta.label}</span>
           </div>
@@ -499,10 +556,15 @@ export default async function PedidoInternoDetalhe({
         <section className="mt-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Materiais, serviços e equipamentos</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Monte a solicitação antes de enviar para validação.
-              </p>
+              <div className="flex items-center gap-1">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Materiais, serviços e equipamentos</h2>
+                <HelpTip title="Itens do pedido">
+                  <p>
+                    Monte a lista antes de enviar para validação. O valor <b>prévio</b> é uma estimativa;
+                    o preço final vem da cotação.
+                  </p>
+                </HelpTip>
+              </div>
             </div>
             <p className="text-sm text-muted-foreground">Total prévio: <b>{brl(total)}</b></p>
           </div>
@@ -587,11 +649,11 @@ export default async function PedidoInternoDetalhe({
                       <td className="px-4 py-2.5 text-right">
                         <div className="flex items-center justify-end gap-3">
                           <PedidoItemEditar pedidoId={pedidoId} item={item} catalogo={catalogoItens} fornecedores={fornecedoresPedido} />
-                          <form action={removerItemPedidoInterno}>
+                          <FormComMensagem action={removerItemPedidoInterno} className="flex flex-col items-end">
                             <input type="hidden" name="item_id" value={item.id} />
                             <input type="hidden" name="pedido_interno_id" value={pedidoId} />
                             <button className="text-xs text-danger-strong hover:underline">Remover</button>
-                          </form>
+                          </FormComMensagem>
                         </div>
                       </td>
                     )}
@@ -609,7 +671,7 @@ export default async function PedidoInternoDetalhe({
           </div>
 
           {editavel && (
-            <form action={adicionarItemPedidoInterno} className="mt-3 rounded-lg border border-border bg-card p-3 shadow-sm">
+            <FormComMensagem action={adicionarItemPedidoInterno} className="mt-3 grid gap-2 rounded-lg border border-border bg-card p-3 shadow-sm">
               <input type="hidden" name="pedido_interno_id" value={pedidoId} />
               <div className="grid gap-3 md:grid-cols-12">
                 <PedidoItemCamposAssistidos catalogo={catalogoItens} fornecedores={fornecedoresPedido} idPrefix="novo-item" />
@@ -619,7 +681,7 @@ export default async function PedidoInternoDetalhe({
                   </button>
                 </div>
               </div>
-            </form>
+            </FormComMensagem>
           )}
           {editavel && (
             <div className="mt-3 rounded-lg border border-border bg-card p-3 shadow-sm">
@@ -725,11 +787,21 @@ export default async function PedidoInternoDetalhe({
             )}
             {aguardandoChegada && (
               <div className="mt-3 rounded-lg border border-leaf-300 bg-leaf-50 p-3 text-sm text-leaf-800 dark:border-leaf-900 dark:bg-leaf-950/30 dark:text-leaf-300">
-                Receba cada item físico na tabela ou no módulo{" "}
-                <Link href="/recebimento" className="font-medium underline">
-                  Recebimento
-                </Link>
-                . A etapa de recebimento fecha quando todos os materiais e equipamentos forem lançados em estoque.
+                <span className="inline-flex items-center gap-1">
+                  <span>
+                    Receba os itens na tabela ou em{" "}
+                    <Link href="/recebimento" className="font-medium underline">
+                      Recebimento
+                    </Link>
+                    .
+                  </span>
+                  <HelpTip title="Quando o recebimento termina">
+                    <p>
+                      A etapa de recebimento só fecha quando <b>todos</b> os materiais e equipamentos do
+                      pedido forem lançados no estoque.
+                    </p>
+                  </HelpTip>
+                </span>
               </div>
             )}
           </div>
@@ -740,7 +812,7 @@ export default async function PedidoInternoDetalhe({
               <Referencia label="Compra formal">
                 {compraFormal ? (
                   <Link href={`/compras/${compraFormal.id}`} className="text-primary hover:underline">
-                    #{compraFormal.id} · {compraFormal.status}
+                    #{compraFormal.id} · {statusInfo(compraFormal.status).label}
                   </Link>
                 ) : "—"}
               </Referencia>
@@ -787,23 +859,22 @@ export default async function PedidoInternoDetalhe({
                     <div>
                       <p className="font-medium">{anexo.titulo}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {anexo.tipo} · {anexo.etapa ?? "sem etapa"} · {formatDateTime(anexo.criado_em)}
+                        {ANEXO_TIPO_LABEL[anexo.tipo] ?? anexo.tipo} · {rotuloEtapa(anexo.etapa) ?? "sem etapa"} · {formatDateTime(anexo.criado_em)}
                       </p>
-                      {(anexo.downloadUrl || anexo.url) && (
-                        <a href={anexo.downloadUrl ?? anexo.url ?? "#"} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-primary hover:underline">
+                      {anexo.downloadUrl || anexo.url ? (
+                        <a href={(anexo.downloadUrl ?? anexo.url) as string} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-primary hover:underline">
                           {anexo.downloadUrl ? "Abrir arquivo" : "Abrir referência"}
                         </a>
-                      )}
+                      ) : anexo.storage_path ? (
+                        <span className="mt-1 inline-block cursor-not-allowed text-xs text-muted-foreground/80" aria-disabled="true">
+                          Arquivo indisponível no momento
+                        </span>
+                      ) : null}
                       {(anexo.arquivo_nome || anexo.storage_path) && (
                         <p className="mt-1 text-xs text-muted-foreground">
                           {anexo.arquivo_nome ?? "Arquivo preparado"}
                           {anexo.mime_type ? ` · ${anexo.mime_type}` : ""}
                           {anexo.tamanho_bytes ? ` · ${Math.round(anexo.tamanho_bytes / 1024)} KB` : ""}
-                        </p>
-                      )}
-                      {anexo.storage_path && (
-                        <p className="mt-1 break-all font-mono text-[11px] text-muted-foreground">
-                          {anexo.storage_bucket ? `${anexo.storage_bucket}/` : ""}{anexo.storage_path}
                         </p>
                       )}
                       {anexo.observacao && <p className="mt-1 text-xs text-muted-foreground">{anexo.observacao}</p>}
@@ -873,9 +944,9 @@ export default async function PedidoInternoDetalhe({
             <div className="mt-3 space-y-2">
               {comunicacaoRows.map((comunicacao) => (
                 <div key={comunicacao.id} className="rounded-lg border border-border p-3 text-sm">
-                  <p className="font-medium">{comunicacao.assunto ?? comunicacao.tipo}</p>
+                  <p className="font-medium">{comunicacao.assunto ?? COMUNICACAO_TIPO_LABEL[comunicacao.tipo] ?? comunicacao.tipo}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {comunicacao.tipo} · {comunicacao.remetente ?? "—"} → {comunicacao.destinatarios ?? "—"} · {formatDateTime(comunicacao.criado_em)}
+                    {COMUNICACAO_TIPO_LABEL[comunicacao.tipo] ?? comunicacao.tipo} · {comunicacao.remetente ?? "—"} → {comunicacao.destinatarios ?? "—"} · {formatDateTime(comunicacao.criado_em)}
                   </p>
                   {comunicacao.referencia && <p className="mt-1 text-xs text-primary">{comunicacao.referencia}</p>}
                   {comunicacao.observacao && <p className="mt-1 text-xs text-muted-foreground">{comunicacao.observacao}</p>}
@@ -935,15 +1006,15 @@ export default async function PedidoInternoDetalhe({
               <div key={aprovacao.id} className="rounded-lg border border-border p-3 text-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-medium">{aprovacao.etapa}</p>
+                    <p className="font-medium">{rotuloEtapa(aprovacao.etapa) ?? "—"}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {aprovacao.responsavel ?? "—"} · {aprovacao.papel ?? "—"} · {formatDateTime(aprovacao.criado_em)}
                     </p>
                   </div>
-                  <span className="rounded-md bg-muted px-2 py-1 text-xs">{aprovacao.decisao}</span>
+                  <span className="rounded-md bg-muted px-2 py-1 text-xs">{DECISAO_LABEL[aprovacao.decisao] ?? aprovacao.decisao}</span>
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {aprovacao.status_origem ?? "início"} → {aprovacao.status_destino ?? "—"}
+                  {rotuloEtapa(aprovacao.status_origem) ?? "início"} → {rotuloEtapa(aprovacao.status_destino) ?? "—"}
                 </p>
                 {aprovacao.comentario && (
                   <p className="mt-2 text-xs leading-5 text-foreground">{aprovacao.comentario}</p>

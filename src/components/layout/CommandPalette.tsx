@@ -136,7 +136,7 @@ export function CommandPalette({ groups }: { groups: NavGroup[] }) {
                   {g.links.map((l) => (
                     <CommandItem
                       key={l.href}
-                      value={`${g.title} ${l.label} ${l.desc ?? ""}`}
+                      value={`${g.title} ${l.label} ${(l.desc ?? "").replaceAll("**", "")}`}
                       onSelect={() => ir(l.href)}
                       className="items-start"
                     >
@@ -145,7 +145,7 @@ export function CommandPalette({ groups }: { groups: NavGroup[] }) {
                         <span className="block font-medium">{l.label}</span>
                         {l.desc && (
                           <span className="block truncate text-xs text-muted-foreground">
-                            {l.desc}
+                            {l.desc.replaceAll("**", "")}
                           </span>
                         )}
                       </span>

@@ -46,10 +46,10 @@ function EstadoDesconhecido({ codigo }: { codigo: string }) {
   return (
     <main className="mx-auto max-w-lg px-4 py-6 sm:px-6 sm:py-8">
       <h1 className="text-xl font-semibold text-foreground">
-        Codigo nao encontrado
+        Código não encontrado
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        O Kontrol registrou a leitura, mas nao encontrou uma entidade ativa para este codigo.
+        A leitura foi registrada, mas nenhum item ativo tem este código.
       </p>
       <p className="mt-4 rounded-md bg-muted px-3 py-2 font-mono text-xs text-foreground">
         {codigo}

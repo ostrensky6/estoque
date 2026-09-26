@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { PAPEIS } from "@/lib/auth/permissions";
 import type { FormState } from "@/lib/actions/cadastros";
+import { HelpTip } from "@/components/common/HelpTip";
 
 const initialState: FormState = { ok: false, message: "" };
 
@@ -42,9 +43,15 @@ export function CriarUsuarioForm() {
           {pending ? "Cadastrando…" : "Cadastrar usuário"}
         </Button>
       </div>
-      <p className="mt-2 text-xs leading-5 text-info-strong/80">
-        O usuário é criado já com acesso, usando uma senha provisória. No primeiro acesso ele é
-        obrigado a definir uma senha definitiva. As permissões iniciais seguem a categoria escolhida.
+      <p className="mt-2 flex items-center gap-1 text-xs leading-5 text-info-strong/80">
+        Entra com senha provisória e troca no primeiro acesso.
+        <HelpTip title="Novo usuário">
+          <p>
+            A conta é criada com acesso e uma <b>senha provisória</b>. No primeiro login, a pessoa
+            define a senha definitiva.
+          </p>
+          <p>As permissões iniciais são as da categoria escolhida; ajuste depois em Editar.</p>
+        </HelpTip>
       </p>
       {state.message && (
         <p className={`mt-2 text-xs ${state.ok ? "text-brand-700 dark:text-brand-300" : "text-danger-strong"}`}>

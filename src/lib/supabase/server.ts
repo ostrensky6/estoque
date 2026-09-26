@@ -10,7 +10,15 @@ import type { Database } from "./database.types";
 export async function createClient() {
   if (process.env.PLAYWRIGHT_MOCK_SUPABASE === "1") {
     const { createMockSupabaseClient } = await import("@/lib/testing/mock-supabase");
-    return createMockSupabaseClient() as unknown as ReturnType<typeof createServerClient<Database>>;
+    // Somente no mock E2E: o cookie simula outra categoria na avaliação de
+    // permissões granulares (ex.: salário mascarado para não-admin).
+    let papel: string | undefined;
+    try {
+      papel = (await cookies()).get("kontrol_e2e_papel")?.value || undefined;
+    } catch {
+      papel = undefined; // fora de uma requisição (testes unitários)
+    }
+    return createMockSupabaseClient({ papel }) as unknown as ReturnType<typeof createServerClient<Database>>;
   }
 
   const cookieStore = await cookies();

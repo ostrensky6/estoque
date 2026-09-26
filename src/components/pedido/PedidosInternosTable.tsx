@@ -5,7 +5,6 @@ import { Trash2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { DataTable } from "@/components/common/DataTable";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogClose,
@@ -16,8 +15,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { HelpTip } from "@/components/common/HelpTip";
 import { excluirPedidoInterno } from "@/lib/actions/pedidos-internos";
-import { pedidoInternoStatus } from "@/lib/pedido/status";
+import { FormComMensagem } from "./FormComMensagem";
+import { StatusBadge } from "@/components/app/StatusBadge";
 import { PedidoItensQuickView, type PedidoItemView } from "./PedidoItensQuickView";
 
 export type PedidoInternoRow = {
@@ -44,11 +45,6 @@ export type PedidoInternoRow = {
   pendencias: string;
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const meta = pedidoInternoStatus(status);
-  return <Badge className={meta.className}>{meta.label}</Badge>;
-}
-
 function ExcluirPedido({ row }: { row: PedidoInternoRow }) {
   return (
     <Dialog>
@@ -63,11 +59,16 @@ function ExcluirPedido({ row }: { row: PedidoInternoRow }) {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Excluir rascunho {row.numero}?</DialogTitle>
-          <DialogDescription>
-            Esta ação remove apenas rascunhos que ainda não entraram no fluxo operacional. Pedidos em andamento devem
-            ser cancelados com motivo.
-          </DialogDescription>
+          <div className="flex items-center gap-1">
+            <DialogTitle>Excluir rascunho {row.numero}?</DialogTitle>
+            <HelpTip title="Excluir ou cancelar?">
+              <p>
+                Excluir só vale para <b>rascunhos</b> que ainda não entraram no fluxo. Pedidos em
+                andamento devem ser <b>cancelados</b>, com motivo, para manter o histórico.
+              </p>
+            </HelpTip>
+          </div>
+          <DialogDescription>O rascunho será apagado e não poderá ser recuperado.</DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <DialogClose asChild>
@@ -78,7 +79,7 @@ function ExcluirPedido({ row }: { row: PedidoInternoRow }) {
               Cancelar
             </button>
           </DialogClose>
-          <form action={excluirPedidoInterno}>
+          <FormComMensagem action={excluirPedidoInterno} className="flex flex-col items-end gap-1">
             <input type="hidden" name="pedido_interno_id" value={row.id} />
             <button
               type="submit"
@@ -86,7 +87,7 @@ function ExcluirPedido({ row }: { row: PedidoInternoRow }) {
             >
               Excluir rascunho
             </button>
-          </form>
+          </FormComMensagem>
         </DialogFooter>
       </DialogContent>
     </Dialog>

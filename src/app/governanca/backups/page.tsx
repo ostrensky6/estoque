@@ -1,6 +1,7 @@
 import { Clock, DatabaseBackup, FolderArchive, ShieldCheck } from "lucide-react";
 import { obterResumoBackups } from "@/lib/actions/backups";
 import { BackupAplicativoButton } from "@/components/governanca/BackupAplicativoButton";
+import { HelpTip } from "@/components/common/HelpTip";
 import { APP_LOCALE, formatDateTime } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -101,15 +102,27 @@ export default async function BackupsPage() {
             <div className="flex items-center gap-2 font-semibold">
               <Clock className="h-4 w-4" aria-hidden="true" />
               Agendamento Windows
+              <HelpTip title="Como agendar">
+                <p>
+                  No computador do administrador, execute uma vez{" "}
+                  <b>scripts\install-windows-backup-tasks.ps1</b>. Ele registra as tarefas do Windows
+                  que fazem os backups.
+                </p>
+              </HelpTip>
             </div>
-            <p className="mt-2 text-muted-foreground">
-              Execute scripts\install-windows-backup-tasks.ps1 no computador do
-              administrador para registrar os backups de 00:30 e 12:30.
-            </p>
+            <p className="mt-2 text-muted-foreground">Backups automáticos às 00:30 e às 12:30.</p>
           </div>
           <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
             <div className="rounded-md border border-border/70 bg-muted/50 p-3">
-              <dt className="text-xs font-medium uppercase text-muted-foreground">Retenção</dt>
+              <dt className="flex items-center gap-1 text-xs font-medium uppercase text-muted-foreground">
+                Retenção
+                <HelpTip title="Retenção dos dumps">
+                  <p>
+                    Os backups diários ficam guardados por 30 dias. Os dos dias 1 e 15 de cada mês são
+                    mantidos <b>sem prazo</b>.
+                  </p>
+                </HelpTip>
+              </dt>
               <dd className="mt-1 font-semibold">30 dias; dias 1 e 15 indefinidos</dd>
             </div>
             <div className="rounded-md border border-border/70 bg-muted/50 p-3">

@@ -357,6 +357,11 @@ export type Database = {
           instituicao: string | null
           matriz_amostra: string | null
           modalidade: string
+          param_impostos: number | null
+          param_incubacao: number | null
+          param_investimentos: number | null
+          param_lucro: number | null
+          param_reserva: number | null
           observacoes: string | null
           origem: string | null
           prazo_esperado: string | null
@@ -383,6 +388,11 @@ export type Database = {
           instituicao?: string | null
           matriz_amostra?: string | null
           modalidade?: string
+          param_impostos?: number | null
+          param_incubacao?: number | null
+          param_investimentos?: number | null
+          param_lucro?: number | null
+          param_reserva?: number | null
           observacoes?: string | null
           origem?: string | null
           prazo_esperado?: string | null
@@ -409,6 +419,11 @@ export type Database = {
           instituicao?: string | null
           matriz_amostra?: string | null
           modalidade?: string
+          param_impostos?: number | null
+          param_incubacao?: number | null
+          param_investimentos?: number | null
+          param_lucro?: number | null
+          param_reserva?: number | null
           observacoes?: string | null
           origem?: string | null
           prazo_esperado?: string | null
@@ -863,6 +878,7 @@ export type Database = {
           quantidade: number
           referencia: string | null
           tipo: string
+          usuario: string | null
         }
         Insert: {
           criado_em?: string
@@ -875,6 +891,7 @@ export type Database = {
           quantidade: number
           referencia?: string | null
           tipo: string
+          usuario?: string | null
         }
         Update: {
           criado_em?: string
@@ -887,6 +904,7 @@ export type Database = {
           quantidade?: number
           referencia?: string | null
           tipo?: string
+          usuario?: string | null
         }
         Relationships: [
           {
@@ -2744,6 +2762,8 @@ export type Database = {
           pedido_interno_item_id: number | null
           quantidade: number
           quantidade_recebida: number | null
+          conteudo_embalagem: number | null
+          quantidade_em: string
         }
         Insert: {
           custo_unitario_estimado?: number | null
@@ -2755,6 +2775,8 @@ export type Database = {
           pedido_interno_item_id?: number | null
           quantidade: number
           quantidade_recebida?: number | null
+          conteudo_embalagem?: number | null
+          quantidade_em?: string | null
         }
         Update: {
           custo_unitario_estimado?: number | null
@@ -2766,6 +2788,8 @@ export type Database = {
           pedido_interno_item_id?: number | null
           quantidade?: number
           quantidade_recebida?: number | null
+          conteudo_embalagem?: number | null
+          quantidade_em?: string | null
         }
         Relationships: [
           {
@@ -3286,6 +3310,8 @@ export type Database = {
           tipo: string
           unidade: string | null
           volume: string | null
+          conteudo_embalagem: number | null
+          quantidade_em: string | null
         }
         Insert: {
           criado_em?: string
@@ -3306,6 +3332,8 @@ export type Database = {
           tipo?: string
           unidade?: string | null
           volume?: string | null
+          conteudo_embalagem?: number | null
+          quantidade_em?: string | null
         }
         Update: {
           criado_em?: string
@@ -3326,6 +3354,8 @@ export type Database = {
           tipo?: string
           unidade?: string | null
           volume?: string | null
+          conteudo_embalagem?: number | null
+          quantidade_em?: string | null
         }
         Relationships: [
           {
@@ -3441,6 +3471,7 @@ export type Database = {
           nome: string | null
           observacao: string | null
           orcamento_id: number | null
+          orcamento_final_versao_id: number | null
           orcamento_projeto_id: number | null
           origem_planejamento: string
           planejado_por: string | null
@@ -3448,6 +3479,7 @@ export type Database = {
           projeto: string | null
           projeto_id: number | null
           reservado_em: string | null
+          reserva_desatualizada: boolean
           reservado_por: string | null
           responsavel: string | null
           status_operacional: string
@@ -3465,6 +3497,7 @@ export type Database = {
           nome?: string | null
           observacao?: string | null
           orcamento_id?: number | null
+          orcamento_final_versao_id?: number | null
           orcamento_projeto_id?: number | null
           origem_planejamento?: string
           planejado_por?: string | null
@@ -3472,6 +3505,7 @@ export type Database = {
           projeto?: string | null
           projeto_id?: number | null
           reservado_em?: string | null
+          reserva_desatualizada?: boolean
           reservado_por?: string | null
           responsavel?: string | null
           status_operacional?: string
@@ -3489,6 +3523,7 @@ export type Database = {
           nome?: string | null
           observacao?: string | null
           orcamento_id?: number | null
+          orcamento_final_versao_id?: number | null
           orcamento_projeto_id?: number | null
           origem_planejamento?: string
           planejado_por?: string | null
@@ -3496,6 +3531,7 @@ export type Database = {
           projeto?: string | null
           projeto_id?: number | null
           reservado_em?: string | null
+          reserva_desatualizada?: boolean
           reservado_por?: string | null
           responsavel?: string | null
           status_operacional?: string
@@ -4497,6 +4533,23 @@ export type Database = {
         Args: { p_abertura: string; p_fabricante: string }
         Returns: string
       }
+      orcamento_projeto_catalogo_listar: {
+        Args: never
+        Returns: {
+          ativo: boolean
+          atualizado_em: string
+          categoria: string | null
+          criado_em: string
+          descricao: string
+          id: string
+          origem: string
+          preco_mascarado: boolean
+          preco_unitario: number | null
+          rubrica: string
+          unidade: string | null
+          valid_from: string | null
+        }[]
+      }
       papel_minimo: { Args: { p_min: string }; Returns: boolean }
       recalcular_orcamento_transacional: {
         Args: {
@@ -4604,6 +4657,11 @@ export type Database = {
           triagem_id: number
         }[]
       }
+      tecnicos_remuneracao: {
+        Args: never
+        Returns: { id: number; valor_mes: number | null }[]
+      }
+      tem_permissao: { Args: { p_chave: string }; Returns: boolean }
       transicionar_orcamento: {
         Args: {
           p_observacao?: string
@@ -4651,6 +4709,7 @@ export type Database = {
         Args: { p_planejamento_id: number }
         Returns: undefined
       }
+      valor_hora_pessoal_total: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never

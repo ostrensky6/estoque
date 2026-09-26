@@ -23,6 +23,30 @@ jobs:
       - name: Validar permissoes reais dos cadastros
         run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/rls_cadastros_0108.sql
 
+      - name: Validar edição e exclusão de planejamento
+        run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/planejamento_edicao_exclusao_0111.sql
+
+      - name: Validar baixa de embalagens fechadas
+        run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/baixa_manual_embalagens_0110.sql
+
+      - name: Validar proteção do salário dos técnicos
+        run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/salario_tecnicos_0112.sql
+
+      - name: Validar integridade do estoque e acesso anônimo
+        run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/integridade_estoque_0120.sql
+
+      - name: Validar permissões de orçamento (papel ou permissão)
+        run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/orcamento_permissoes_0121.sql
+
+      - name: Validar planejamento da proposta aprovada e registro da retirada
+        run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/plano_da_proposta_0122.sql
+
+      - name: Validar compra e recebimento em frascos
+        run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/recebimento_frascos_0123.sql
+
+      - name: Validar permissões (a caixinha manda)
+        run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/permissoes_0124.sql
+
   check:
     runs-on: ubuntu-latest
     steps:

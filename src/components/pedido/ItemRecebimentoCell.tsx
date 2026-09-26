@@ -6,6 +6,7 @@ import Link from "next/link";
 import { CheckCircle2, RotateCcw } from "lucide-react";
 
 import { estornarRecebimentoItem, estornarRecebimentoLancamento } from "@/lib/actions/pedidos-internos";
+import { formatDate } from "@/lib/formatters";
 import { ReceberItemPedidoInterno, type ItemRecebivel } from "./ReceberItemPedidoInterno";
 
 type Insumo = { id: number; especificacao: string | null; unidade: string | null };
@@ -42,7 +43,7 @@ export function ItemRecebimentoCell({
   const parcial = !recebidoEm && quantidadeRecebida > 0;
 
   if (recebidoEm) {
-    const quando = new Date(recebidoEm).toLocaleDateString("pt-BR");
+    const quando = formatDate(recebidoEm);
     function estornar(recebimentoId?: number) {
       setErro(null);
       startTransition(async () => {
@@ -141,7 +142,7 @@ function RecebimentosHistorico({
   return (
     <div className="mt-1 min-w-44 space-y-1 rounded-md border border-border/70 bg-muted/30 p-2 text-[11px]">
       {recebimentos.map((recebimento) => {
-        const quando = new Date(recebimento.recebidoEm).toLocaleDateString("pt-BR");
+        const quando = formatDate(recebimento.recebidoEm);
         return (
           <div key={recebimento.id} className="flex items-start justify-between gap-2">
             <div className="min-w-0">

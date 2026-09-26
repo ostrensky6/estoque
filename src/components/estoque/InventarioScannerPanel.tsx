@@ -15,6 +15,7 @@ import {
   type ScannerCameraControls,
 } from "@/components/scanner/zxing-adapter";
 import { calcularDivergenciaInventario } from "@/lib/inventario/contagem";
+import { HelpTip } from "@/components/common/HelpTip";
 import type { FormState } from "@/lib/actions/cadastros";
 
 type StatusCamera = "parada" | "iniciando" | "ativa" | "erro";
@@ -116,7 +117,7 @@ export function InventarioScannerPanel({
   function resolverScanner(codigo: string) {
     const codigoLimpo = codigo.trim();
     if (!codigoLimpo) {
-      setResultadoScanner({ ok: false, message: "Informe um codigo para resolver." });
+      setResultadoScanner({ ok: false, message: "Informe um código para resolver." });
       return;
     }
 
@@ -145,7 +146,7 @@ export function InventarioScannerPanel({
       setCameraMessage(
         error instanceof Error
           ? error.message
-          : "Nao foi possivel acessar a camera. Use a entrada manual.",
+          : "Não foi possível acessar a câmera. Digite o código.",
       );
     }
   }
@@ -168,16 +169,28 @@ export function InventarioScannerPanel({
   return (
     <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="inline-flex items-center gap-2 text-sm font-semibold">
-          <ScanLine className="h-4 w-4 text-brand-600 dark:text-brand-300" />
-          Contagem por scanner
-        </h2>
+        <div className="flex items-center gap-1">
+          <h2 className="inline-flex items-center gap-2 text-sm font-semibold">
+            <ScanLine className="h-4 w-4 text-brand-600 dark:text-brand-300" />
+            Contagem por scanner
+          </h2>
+          <HelpTip title="Como contar">
+            <p>
+              Leia a etiqueta do <b>local</b> e depois a do <b>lote</b> (ou escolha nas listas) e
+              digite a quantidade encontrada na prateleira.
+            </p>
+            <p>
+              Código não reconhecido vai para a triagem. Se a contagem diferir do sistema, a
+              justificativa é obrigatória.
+            </p>
+          </HelpTip>
+        </div>
         <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
           {cameraStatus === "ativa"
-            ? "Camera ativa"
+            ? "Câmera ativa"
             : cameraStatus === "iniciando"
-              ? "Iniciando camera"
-              : "Manual disponivel"}
+              ? "Iniciando câmera"
+              : "Digitação disponível"}
         </span>
       </div>
 
@@ -198,7 +211,7 @@ export function InventarioScannerPanel({
               ) : (
                 <Camera className="h-3.5 w-3.5" />
               )}
-              Usar camera
+              Usar câmera
             </button>
             <button
               type="button"
@@ -206,7 +219,7 @@ export function InventarioScannerPanel({
               disabled={cameraStatus === "parada" || submitPending}
               className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
             >
-              Parar camera
+              Parar câmera
             </button>
           </div>
 
@@ -224,7 +237,7 @@ export function InventarioScannerPanel({
                 value={codigoScanner}
                 onChange={(event) => setCodigoScanner(event.target.value)}
                 className={`${inp} mt-0 pl-8`}
-                placeholder="/s/local/1, /s/lote/123 ou codigo interno"
+                placeholder="Etiqueta do local ou do lote"
               />
             </div>
             <button
@@ -351,7 +364,7 @@ export function InventarioScannerPanel({
               }`}
             >
               Divergência: <b>{divergencia.divergencia}</b>
-              {divergencia.temDivergencia ? " · justificativa obrigatoria" : " · sem divergencia"}
+              {divergencia.temDivergencia ? " · justificativa obrigatória" : " · sem divergência"}
             </p>
           )}
 

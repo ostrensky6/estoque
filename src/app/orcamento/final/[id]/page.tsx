@@ -8,9 +8,15 @@ import { PrintButton } from "@/components/orcamento/PrintButton";
 import { cancelarVersaoFinal, duplicarVersaoFinal } from "@/lib/actions/orcamento-historico";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
-import { exigirIdentidadeInstitucional } from "@/lib/orcamento/identidade-institucional";
+import { resolverIdentidadeComAviso } from "@/lib/orcamento/identidade-institucional";
+import { rotuloModalidade } from "@/lib/orcamento/orcamento-economico";
+import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
+import { HelpTip, HelpExample } from "@/components/common/HelpTip";
 import { montarPropostaFinalExport } from "@/lib/orcamento/proposta-final-export";
+import { explicarOrigem } from "@/lib/orcamento/orcamento-final";
+import { rotuloStatusVersaoFinal, statusEfetivoVersaoFinal } from "@/lib/orcamento/rotulos-status";
 import type { Json } from "@/lib/supabase/database.types";
+import { podeOrcamento } from "@/lib/orcamento/governanca";
 
 export const dynamic = "force-dynamic";
 
@@ -92,12 +98,6 @@ type SnapshotItemProjeto = {
   meses_selecionados?: number[] | null;
 };
 
-const STATUS: Record<string, string> = {
-  emitido: "Emitido",
-  substituido: "Substituído",
-  cancelado: "Cancelado",
-};
-
 export default async function OrcamentoFinalPage({
   params,
 }: {
@@ -106,7 +106,17 @@ export default async function OrcamentoFinalPage({
   const { id } = await params;
   const versaoId = Number(id);
   const operacaoDuplicacaoId = randomUUID();
+  const [podeDuplicar, podeCancelar] = await Promise.all([
+    podeOrcamento("duplicar_final"),
+    podeOrcamento("cancelar_documento"),
+  ]);
   const supabase = await createClient();
+  // Proposta aprovada gera o plano sozinha (0122).
+  const { data: planoGerado } = await supabase
+    .from("planejamento")
+    .select("id")
+    .eq("orcamento_final_versao_id", versaoId)
+    .maybeSingle();
 
   const { data: versao } = await supabase
     .from("orcamento_final_versoes")
@@ -123,7 +133,8 @@ export default async function OrcamentoFinalPage({
     .single();
 
   const demanda = snapshot.demanda ?? demandaAtual;
-  const identidade = exigirIdentidadeInstitucional(demanda?.instituicao);
+  // Não lança: versões antigas sem instituição ainda abrem, com aviso.
+  const { identidade, aviso: avisoIdentidade } = resolverIdentidadeComAviso(demanda?.instituicao);
   const consolidado = snapshot.consolidado ?? {};
   const origens = normalizarOrigens(consolidado, versao);
   const itensLaboratorio = (snapshot.orcamentos_analises ?? []).flatMap((orcamento) =>
@@ -155,7 +166,7 @@ export default async function OrcamentoFinalPage({
     responsavel: identidade.responsavel,
   });
   const composicaoCliente = dadosExport.composicaoComercial;
-  const statusLabel = STATUS[versao.status] ?? versao.status;
+  const statusLabel = rotuloStatusVersaoFinal(statusEfetivoVersaoFinal(versao));
   const modoInternoHref = "#modo-interno";
 
   return (
@@ -186,6 +197,11 @@ export default async function OrcamentoFinalPage({
             <PrintButton />
           </div>
         </div>
+        {avisoIdentidade && (
+          <p role="alert" className="no-print mt-3 rounded-md border border-warning-strong/30 bg-warning-soft px-3 py-2 text-sm text-warning-strong">
+            {avisoIdentidade}
+          </p>
+        )}
 
         <section className="mt-4 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60 print:border-0 print:shadow-none">
           <div className="border-b border-zinc-200 px-6 py-5 text-white dark:border-zinc-800" style={{ backgroundColor: identidade.id === "ATGC" ? "#09090B" : identidade.corPrincipal }}>
@@ -220,7 +236,7 @@ export default async function OrcamentoFinalPage({
                   <Campo titulo="Cliente" valor={demanda?.cliente_nome ?? "—"} />
                   <Campo titulo="CNPJ/CPF" valor={demanda?.cliente_cnpj ?? "—"} />
                   <Campo titulo="Contato" valor={demanda?.cliente_contato ?? "—"} />
-                  <Campo titulo="Modalidade" valor={demanda?.modalidade ?? "—"} />
+                  <Campo titulo="Modalidade" valor={rotuloModalidade(demanda?.modalidade)} />
                   <Campo titulo="Emitido em" valor={formatDateTime(versao.criado_em)} />
                   <Campo titulo="Válido até" valor={formatDate(versao.valido_ate)} />
                 </dl>
@@ -246,11 +262,18 @@ export default async function OrcamentoFinalPage({
 
             <section className="mt-6 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
               <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Composição comercial</h2>
-                <p className="mt-1 text-xs text-zinc-500">
-                  Valor comercial alocado por participação técnica; soma reconcilia com o total final.
-                  {dadosExport.avisoLegado ? ` · ${dadosExport.avisoLegado}` : ""}
-                </p>
+                <div className="flex items-center gap-1">
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Composição comercial</h2>
+                  <span className="no-print">
+                    <HelpTip title="Composição comercial">
+                      <p>O total da proposta é dividido entre os itens na <b>proporção do custo técnico</b> de cada um. A soma das linhas sempre fecha com o total.</p>
+                      <HelpExample>Custos de R$ 300 e R$ 700, total de R$ 1.500 → linhas de R$ 450 (30%) e R$ 1.050 (70%).</HelpExample>
+                    </HelpTip>
+                  </span>
+                </div>
+                {dadosExport.avisoLegado && (
+                  <p className="mt-1 text-xs text-zinc-500">{dadosExport.avisoLegado}</p>
+                )}
               </div>
               <table className="w-full text-left text-sm">
                 <thead className="text-xs uppercase tracking-wide text-zinc-500">
@@ -275,7 +298,7 @@ export default async function OrcamentoFinalPage({
                   {composicaoCliente.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-4 py-5 text-center text-sm text-zinc-400">
-                        Nenhum item preservado no snapshot da proposta.
+                        Nenhum item registrado nesta versão.
                       </td>
                     </tr>
                   )}
@@ -295,7 +318,7 @@ export default async function OrcamentoFinalPage({
                 Emitido em {formatDateTime(versao.criado_em)} e válido até {formatDate(versao.valido_ate)}.
               </BlocoDocumento>
               <BlocoDocumento titulo="Responsável">
-                {identidade.responsavel} · orçamento emitido a partir do snapshot #{versao.id}.
+                {identidade.responsavel}.
               </BlocoDocumento>
             </section>
           </div>
@@ -307,12 +330,24 @@ export default async function OrcamentoFinalPage({
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
                 Modo interno
               </p>
-              <h2 className="mt-1 text-xl font-semibold tracking-tight">Custos, parâmetros e auditoria</h2>
-              <p className="mt-1 text-sm text-zinc-500">
-                Snapshot preservado na emissão. Esta área não precisa entrar no documento enviado ao cliente.
-              </p>
+              <div className="mt-1 flex items-center gap-1">
+                <h2 className="text-xl font-semibold tracking-tight">Custos, parâmetros e auditoria</h2>
+                <HelpTip title="Modo interno">
+                  <p>Custos, parâmetros e auditoria desta versão, <b>congelados na emissão</b>, para conferência da equipe.</p>
+                  <p>Esta área <b>não é impressa</b> nem enviada ao cliente.</p>
+                </HelpTip>
+              </div>
             </div>
             <div className="no-print flex flex-wrap gap-2">
+              {planoGerado && (
+                <Link
+                  href={`/planejamento/${planoGerado.id}`}
+                  className="rounded-md border border-brand-300 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-800 dark:text-brand-300 dark:hover:bg-brand-950/30"
+                >
+                  Planejamento #{planoGerado.id}
+                </Link>
+              )}
+              {podeDuplicar && (
               <form action={duplicarVersaoFinal}>
                 <input type="hidden" name="versao_id" value={versao.id} />
                 <input type="hidden" name="operacao_id" value={operacaoDuplicacaoId} />
@@ -321,14 +356,23 @@ export default async function OrcamentoFinalPage({
                   Duplicar versão
                 </button>
               </form>
-              {versao.status !== "cancelado" && (
-                <form action={cancelarVersaoFinal} className="flex gap-2">
-                  <input type="hidden" name="versao_id" value={versao.id} />
-                  <input type="hidden" name="motivo" value="Cancelamento a partir do detalhe da versão final." />
-                  <button className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/30">
-                    Cancelar
-                  </button>
-                </form>
+              )}
+              {podeDuplicar && (
+              <HelpTip title="Duplicar versão">
+                <p>Cria uma <b>nova versão</b> com os mesmos itens e valores, pronta para ajustes. A versão atual continua no histórico.</p>
+                <HelpExample>v1 duplicada → v2 com nova validade; a v1 não é alterada.</HelpExample>
+              </HelpTip>
+              )}
+              {podeCancelar && versao.status !== "cancelado" && (
+                <ConfirmActionButton
+                  action={cancelarVersaoFinal}
+                  fields={{ versao_id: versao.id, motivo: "Cancelamento a partir do detalhe da versão final." }}
+                  trigger="Cancelar proposta"
+                  titulo="Cancelar esta proposta?"
+                  mensagem={`A versão ${versao.numero} deixará de valer para o cliente. O registro continua no histórico.`}
+                  confirmLabel="Cancelar proposta"
+                  triggerClassName="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/30"
+                />
               )}
             </div>
           </div>
@@ -338,7 +382,7 @@ export default async function OrcamentoFinalPage({
             <Campo titulo="CNPJ/CPF" valor={demanda?.cliente_cnpj ?? "—"} />
             <Campo titulo="Contato" valor={demanda?.cliente_contato ?? "—"} />
             <Campo titulo="Demanda" valor={demanda?.titulo ?? `#${versao.demanda_id}`} />
-            <Campo titulo="Modalidade" valor={demanda?.modalidade ?? "—"} />
+            <Campo titulo="Modalidade" valor={rotuloModalidade(demanda?.modalidade)} />
             <Campo titulo="Validade" valor={`${versao.validade_dias} dias`} />
           </dl>
 
@@ -370,7 +414,7 @@ export default async function OrcamentoFinalPage({
                 </div>
               ))}
               {(consolidado.parametrosProjeto ?? []).length === 0 && (
-                <p className="text-sm text-zinc-400">Sem parâmetros de projeto no snapshot.</p>
+                <p className="text-sm text-zinc-400">Sem parâmetros registrados nesta versão.</p>
               )}
             </div>
           </section>
@@ -387,19 +431,17 @@ export default async function OrcamentoFinalPage({
           <section className="mt-6 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Origem e auditoria</h2>
             <div className="mt-3 grid gap-3 text-sm md:grid-cols-3">
-              <Campo titulo="Snapshot" valor="Valores preservados na emissão" />
-              <Campo titulo="Status da versão" valor={STATUS[versao.status] ?? versao.status} />
+              <Campo titulo="Valores" valor="Congelados na emissão" />
+              <Campo titulo="Status da versão" valor={statusLabel} />
               <Campo titulo="Demanda origem" valor={`#${versao.demanda_id}`} />
             </div>
             <div className="mt-4 divide-y divide-zinc-100 rounded-md border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
               {origens.map((origem) => (
-                <div key={origem.campo ?? origem.titulo} className="grid gap-2 px-3 py-3 text-sm md:grid-cols-[1fr_1.4fr_1.6fr_auto]">
-                  <div>
-                    <p className="font-medium">{origem.titulo ?? origem.campo}</p>
-                    <p className="text-xs text-zinc-500">{origem.campo}</p>
-                  </div>
-                  <p className="text-zinc-600 dark:text-zinc-300">{origem.origem ?? "Snapshot da emissão"}</p>
-                  <p className="text-zinc-600 dark:text-zinc-300">{origem.regra ?? "Valor preservado na versão final emitida."}</p>
+                <div key={origem.campo ?? origem.titulo} className="grid gap-2 px-3 py-3 text-sm md:grid-cols-[1fr_2fr_auto]">
+                  <p className="font-medium">{origem.titulo ?? origem.campo}</p>
+                  <p className="text-zinc-600 dark:text-zinc-300">
+                    {dadosExport.legado ? origem.regra ?? "Valor registrado na emissão." : explicarOrigem(origem)}
+                  </p>
                   <p className="font-semibold tabular-nums md:text-right">{brl(Number(origem.valor ?? 0))}</p>
                 </div>
               ))}
@@ -435,7 +477,7 @@ function TabelaAnalisesSnapshot({
               <th className="px-3 py-2 text-left">Análise</th>
               <th className="px-3 py-2">Amostras</th>
               <th className="px-3 py-2">{tipo === "laboratorio" ? "Custo unit." : "Custo/amostra"}</th>
-              <th className="px-3 py-2">{tipo === "laboratorio" ? "Preço unit." : "Preço snapshot"}</th>
+              <th className="px-3 py-2">{tipo === "laboratorio" ? "Preço unit." : "Preço registrado"}</th>
               <th className="px-3 py-2">Subtotal</th>
             </tr>
           </thead>
@@ -455,7 +497,7 @@ function TabelaAnalisesSnapshot({
             {itens.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-5 text-center text-xs text-zinc-400">
-                  Nenhum item preservado no snapshot.
+                  Nenhum item registrado nesta versão.
                 </td>
               </tr>
             )}
@@ -504,7 +546,7 @@ function TabelaCustosSnapshot({
             {itens.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-5 text-center text-xs text-zinc-400">
-                  Nenhum item preservado no snapshot.
+                  Nenhum item registrado nesta versão.
                 </td>
               </tr>
             )}
@@ -530,35 +572,35 @@ function normalizarOrigens(
     {
       campo: "totalLaboratorioCusto",
       titulo: "Custo laboratório",
-      origem: "Snapshot da emissão",
+      origem: "Registro da emissão",
       regra: "Total preservado na versão final.",
       valor: Number(versao.total_laboratorio_custo ?? 0),
     },
     {
       campo: "totalLaboratorioPreco",
       titulo: "Preço laboratório",
-      origem: "Snapshot da emissão",
+      origem: "Registro da emissão",
       regra: "Total preservado na versão final.",
       valor: Number(versao.total_laboratorio_preco ?? 0),
     },
     {
       campo: "totalProjetoCusto",
       titulo: "Custo projeto",
-      origem: "Snapshot da emissão",
+      origem: "Registro da emissão",
       regra: "Total preservado na versão final.",
       valor: Number(versao.total_projeto_custo ?? 0),
     },
     {
       campo: "totalProjetoFinal",
       titulo: "Projeto final",
-      origem: "Snapshot da emissão",
+      origem: "Registro da emissão",
       regra: "Total preservado na versão final.",
       valor: Number(versao.total_projeto_final ?? 0),
     },
     {
       campo: "totalFinal",
       titulo: "Total final",
-      origem: "Snapshot da emissão",
+      origem: "Registro da emissão",
       regra: "Total preservado na versão final.",
       valor: Number(versao.total_final ?? 0),
     },

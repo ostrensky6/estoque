@@ -65,8 +65,8 @@ export function TriagemResolucaoCard({
             {triagem.codigo}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Formato: {triagem.formato ?? "desconhecido"} · Sugestao:{" "}
-            {triagem.tipo_sugerido ?? "nao identificada"}
+            Formato: {triagem.formato === "kontrol_interno" ? "código do Kontrol" : triagem.formato === "url_kontrol" ? "link do Kontrol" : "não reconhecido"} · Sugestão:{" "}
+            {triagem.tipo_sugerido ? triagem.tipo_sugerido.replaceAll("_", " ") : "não identificado"}
           </p>
         </div>
         <span className="rounded-md bg-warning-soft px-2.5 py-1 text-xs font-semibold text-warning-strong">
@@ -136,7 +136,7 @@ export function TriagemResolucaoCard({
             Criar novo insumo
           </h2>
           <label className="grid gap-1 text-sm">
-            <span className="font-medium text-foreground">Especificacao</span>
+            <span className="font-medium text-foreground">Especificação</span>
             <input
               name="especificacao"
               className="h-9 rounded-md border border-border bg-card px-2 text-sm"

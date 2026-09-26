@@ -16,6 +16,10 @@ vi.mock("@/lib/auth/roles", () => ({
   temPapel: vi.fn(async () => true),
   usuarioAtual: vi.fn(async () => ({ nome: "Coordenador", email: "coord@example.com", papel: "coordenador" })),
 }));
+vi.mock("@/lib/auth/permissao-efetiva", () => ({
+  pode: vi.fn(async () => true),
+  temPermissao: vi.fn(async () => true),
+}));
 vi.mock("./eventos", () => ({ registrarEvento }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({ from, rpc })),

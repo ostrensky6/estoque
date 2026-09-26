@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ExcelJS from "exceljs";
-import { calcularOrcamentoProjetoLegacy } from "./legacy";
+import { calcularOrcamentoProjeto } from "./orcamento-projeto";
 import {
   exportProjetoDocx,
   exportProjetoXlsx,
@@ -52,7 +52,7 @@ const itens: ProjetoExportItem[] = [
   },
 ];
 
-const calculo = calcularOrcamentoProjetoLegacy(
+const calculo = calcularOrcamentoProjeto(
   itens.map((it) => ({
     rubrica: it.rubrica,
     quantidade: it.quantidade,

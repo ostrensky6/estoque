@@ -26,6 +26,7 @@ import {
 import { PERMISSOES, PAPEIS, normalizePermissions } from "@/lib/auth/permissions";
 import type { FormState } from "@/lib/actions/cadastros";
 import { AssinaturaUsuarioForm } from "./AssinaturaUsuarioForm";
+import { HelpTip } from "@/components/common/HelpTip";
 import type { UsuarioRow } from "./UsuariosTable";
 
 const initial: FormState = { ok: false, message: "" };
@@ -37,6 +38,20 @@ for (const permissao of PERMISSOES) {
 const GRUPOS_PERMISSOES = Array.from(permissoesPorModulo.entries());
 
 type DialogAberto = "editar" | "assinatura" | "senha" | "apagar" | "pre_aprovar" | null;
+
+function permissoesEfetivasDaLinha(row: UsuarioRow, papel: string) {
+  const base = row.categorias?.[papel] ?? normalizePermissions(papel, {});
+  const excecoes =
+    typeof row.permissoes === "object" && row.permissoes !== null
+      ? (row.permissoes as Record<string, unknown>)
+      : {};
+  return Object.fromEntries(
+    Object.entries(base).map(([chave, valor]) => [
+      chave,
+      papel === "admin" ? true : typeof excecoes[chave] === "boolean" ? Boolean(excecoes[chave]) : valor,
+    ]),
+  ) as Record<string, boolean>;
+}
 
 function EditarDialog({
   row,
@@ -50,7 +65,8 @@ function EditarDialog({
   const [erro, setErro] = useState("");
   const [pending, startTransition] = useTransition();
   const [papel, setPapel] = useState(row.papel);
-  const permissoes = normalizePermissions(papel, row.permissoes);
+  // Efetivo = categoria do papel + exceções do usuário (a caixinha manda, 0124).
+  const permissoes = permissoesEfetivasDaLinha(row, papel);
 
   function handle(formData: FormData) {
     startTransition(async () => {
@@ -106,7 +122,15 @@ function EditarDialog({
             </div>
           </div>
           <div className="min-h-0 overflow-y-auto pr-1">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Permissões efetivas</p>
+            <div className="mb-2 flex items-center gap-1">
+              <p className="text-xs font-medium text-muted-foreground">Permissões efetivas</p>
+              <HelpTip title="Permissões efetivas">
+                <p>
+                  O que esta pessoa pode fazer de fato. Parte do padrão da <b>categoria</b>; o que você
+                  marcar ou desmarcar aqui vale só para ela.
+                </p>
+              </HelpTip>
+            </div>
             <div className="space-y-2">
               {GRUPOS_PERMISSOES.map(([modulo, permissoesModulo]) => (
                 <details key={modulo} className="rounded-md border border-border bg-background/50">
@@ -176,7 +200,7 @@ function AssinaturaDialog({
         <DialogHeader>
           <DialogTitle>Upload da assinatura</DialogTitle>
           <DialogDescription>
-            Envie a assinatura PNG de {row.nome}. O app remove fundo claro e usa a assinatura automaticamente na proposta emitida por esse usuário.
+            Imagem PNG da assinatura de {row.nome}. O fundo claro é removido e ela entra nas propostas emitidas por esse usuário.
           </DialogDescription>
         </DialogHeader>
         <AssinaturaUsuarioForm
@@ -260,7 +284,7 @@ function AlterarSenhaDialog({
         <DialogHeader>
           <DialogTitle>Alterar senha</DialogTitle>
           <DialogDescription>
-            Defina uma nova senha para {row.email}. A senha não é exibida nem armazenada pelo Kontrol.
+            Nova senha para {row.email}. Ela não fica visível para ninguém.
           </DialogDescription>
         </DialogHeader>
         <form action={action} className="space-y-4">

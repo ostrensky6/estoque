@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { DataTable } from "@/components/common/DataTable";
 import { Badge } from "@/components/ui/badge";
+import { PlanoLinhaAcoes, type AcaoGestaoPlano } from "./PlanoGestao";
 
 export type PlanoRow = {
   id: number;
@@ -17,7 +18,21 @@ export type PlanoRow = {
   itens: number;
   status: string;
   statusLabel: string;
+  editavel: boolean;
+  gestao: AcaoGestaoPlano;
 };
+
+function Acoes({ row, mobile = false }: { row: PlanoRow; mobile?: boolean }) {
+  return (
+    <PlanoLinhaAcoes
+      planId={row.id}
+      nome={row.nome}
+      editavel={row.editavel}
+      gestao={row.gestao}
+      alinhamento={mobile ? "justify-start" : "justify-end"}
+    />
+  );
+}
 
 const columns: ColumnDef<PlanoRow, unknown>[] = [
   {
@@ -49,6 +64,13 @@ const columns: ColumnDef<PlanoRow, unknown>[] = [
     meta: { align: "center" },
     cell: ({ row }) => <StatusBadge status={row.original.status} label={row.original.statusLabel} />,
     filterFn: "equalsString",
+  },
+  {
+    id: "acoes",
+    header: "Ações",
+    meta: { align: "right" },
+    enableSorting: false,
+    cell: ({ row }) => <Acoes row={row.original} />,
   },
 ];
 
@@ -131,7 +153,14 @@ export function PlanosTable({ rows }: { rows: PlanoRow[] }) {
           {row.nome}
         </Link>
       )}
-      getMobileDescription={(row) => `${row.projeto} · ${row.periodo} · ${row.itens} análise(s)`}
+      getMobileDescription={(row) => (
+        <>
+          {`${row.projeto} · ${row.periodo} · ${row.itens} análise(s)`}
+          <div className="mt-2">
+            <Acoes row={row} mobile />
+          </div>
+        </>
+      )}
       getMobileMeta={(row) => <StatusBadge status={row.status} label={row.statusLabel} />}
     />
   );

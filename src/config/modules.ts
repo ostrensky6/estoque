@@ -1,11 +1,14 @@
 import type { Accent, NavGroup, NavIcon, NavLink } from "@/components/layout/SideNav";
 import { getCadastrosOrdenados } from "@/lib/cadastros/config";
+import { acessoDaRota } from "@/config/acesso-modulos";
 
 export const ORDEM_PAPEIS = ["tecnico", "coordenador", "gestor", "admin"] as const;
 
 export type Role = (typeof ORDEM_PAPEIS)[number];
 export type NavigationProfile = {
   papel?: string | null;
+  /** permissões efetivas (0124); sem elas, vale só o papel mínimo */
+  permissoes?: { admin: boolean; permissoes: Record<string, boolean> } | null;
 } | null;
 
 export type AppModuleId =
@@ -78,7 +81,7 @@ export const APP_MODULES: AppModule[] = [
     desc: "análises, receitas e custo técnico",
     icon: "Activity",
     accent: "brand",
-    activePaths: ["/operacao", "/analises", "/insumos", "/custeio"],
+    activePaths: ["/operacao", "/analises", "/insumos", "/custeio", "/parametros"],
     children: [
       {
         href: "/analises",
@@ -92,7 +95,6 @@ export const APP_MODULES: AppModule[] = [
         label: "Insumos por análise",
         desc: "reagentes, controles e perdas",
         icon: "TestTube2",
-        showInTopNav: false,
       },
       {
         href: "/custeio",
@@ -100,6 +102,12 @@ export const APP_MODULES: AppModule[] = [
         desc: "custo técnico, overhead e preço base",
         icon: "Calculator",
         shortcut: "C",
+      },
+      {
+        href: "/parametros",
+        label: "Parâmetros de custeio",
+        desc: "margem, impostos, taxas e fundos do preço",
+        icon: "Percent",
         showInTopNav: false,
       },
     ],
@@ -119,6 +127,8 @@ export const APP_MODULES: AppModule[] = [
       "/compras",
       "/recebimento",
       "/notificacoes",
+      "/etiquetas",
+      "/scanner",
     ],
     children: [
       {
@@ -173,23 +183,37 @@ export const APP_MODULES: AppModule[] = [
         icon: "Wrench",
         showInTopNav: false,
       },
+      {
+        href: "/estoque/inventario",
+        label: "Inventário",
+        desc: "contagem por local e lote, com ajuste de divergências",
+        icon: "ClipboardCheck",
+      },
+      {
+        href: "/etiquetas",
+        label: "Etiquetas",
+        desc: "etiquetas com QR code para lotes e equipamentos",
+        icon: "Tag",
+        showInTopNav: false,
+      },
+      {
+        href: "/scanner/triagem",
+        label: "Códigos não reconhecidos",
+        desc: "triagem de códigos lidos que ainda não têm cadastro",
+        icon: "ScanLine",
+        showInTopNav: false,
+      },
     ],
   },
   {
     id: "orcamentos",
     label: "Orçamentos",
-    href: "/orcamento",
+    href: "/orcamento/demandas",
     desc: "propostas, parâmetros e histórico",
     icon: "FileText",
     accent: "amber",
-    activePaths: ["/orcamento"],
+    activePaths: ["/orcamento", "/projetos"],
     children: [
-      {
-        href: "/orcamento",
-        label: "Dashboard",
-        desc: "dashboard consolidado e funil de orçamentos",
-        icon: "LayoutGrid",
-      },
       {
         href: "/orcamento/demandas",
         label: "Orçamentos não finalizados",
@@ -208,6 +232,13 @@ export const APP_MODULES: AppModule[] = [
         label: "Histórico de orçamentos",
         desc: "consulta de versões concluídas",
         icon: "History",
+      },
+      {
+        href: "/projetos",
+        label: "Visão por projeto",
+        desc: "orçamentos, planejamentos e compras de cada projeto",
+        icon: "FolderKanban",
+        showInTopNav: false,
       },
       {
         href: "/orcamento/fundos",
@@ -262,7 +293,6 @@ export const APP_MODULES: AppModule[] = [
     desc: "auditoria, backups e permissões",
     icon: "ShieldCheck",
     accent: "slate",
-    minRole: "gestor",
     activePaths: ["/governanca", "/auditoria", "/usuarios"],
     children: [
       {
@@ -270,7 +300,6 @@ export const APP_MODULES: AppModule[] = [
         label: "Auditoria",
         desc: "trilha de alterações e eventos",
         icon: "History",
-        minRole: "gestor",
       },
       {
         href: "/governanca/backups",
@@ -297,8 +326,16 @@ export const APP_MODULES: AppModule[] = [
   },
 ];
 
+/** A caixinha manda (0124): o item só aparece com a permissão "Acessar …" da área. */
+export function permiteAcesso(perfil: NavigationProfile, href: string) {
+  const efetivas = perfil?.permissoes;
+  if (!efetivas || efetivas.admin) return true;
+  const acesso = acessoDaRota(href);
+  return !acesso || efetivas.permissoes[acesso.chave] === true;
+}
+
 export function filtrarChildrenPorPerfil(children: ModuleChild[], perfil: NavigationProfile) {
-  return children.filter((child) => permiteMinRole(perfil, child.minRole));
+  return children.filter((child) => permiteMinRole(perfil, child.minRole) && permiteAcesso(perfil, child.href));
 }
 
 export function getModulesForProfile(perfil: NavigationProfile) {
@@ -310,6 +347,20 @@ export function getModulesForProfile(perfil: NavigationProfile) {
 
 export function getModuleForProfile(moduleId: AppModuleId, perfil: NavigationProfile) {
   return getModulesForProfile(perfil).find((module) => module.id === moduleId) ?? null;
+}
+
+/**
+ * Aba ativa da barra do módulo: o item cujo href é o prefixo mais longo da rota
+ * atual. Evita duas abas ativas quando um href é prefixo de outro
+ * (ex.: /estoque e /estoque/controle).
+ */
+export function hrefAtivoNaBarra(items: Pick<ModuleChild, "href">[], pathname: string) {
+  let melhor: string | null = null;
+  for (const { href } of items) {
+    const casa = pathname === href || pathname.startsWith(href + "/");
+    if (casa && (melhor === null || href.length > melhor.length)) melhor = href;
+  }
+  return melhor;
 }
 
 export function moduleIsActive(module: Pick<AppModule, "activePaths">, pathname: string) {
