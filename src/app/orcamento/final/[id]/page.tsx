@@ -485,7 +485,7 @@ export default async function OrcamentoFinalPage({
             <Campo titulo="Contato" valor={demanda?.cliente_contato ?? "—"} />
             <Campo titulo="Orçamento" valor={demanda?.titulo ?? `#${versao.demanda_id}`} />
             <Campo titulo="Modalidade" valor={rotuloModalidade(demanda?.modalidade)} />
-            <Campo titulo="Validade" valor={`${versao.validade_dias} dias`} />
+            <Campo titulo="Validade" valor={versao.validade_dias != null ? `${versao.validade_dias} dias` : "—"} />
           </dl>
 
           <div className="mt-6 grid gap-3 md:grid-cols-5">
