@@ -191,6 +191,35 @@ export async function removerItemPedido(_prev: FormState, formData: FormData): P
   return { ok: true, message: "Item removido." };
 }
 
+/**
+ * Define o fornecedor de uma compra ainda solicitada. A formalização do pedido
+ * interno cria a compra sem fornecedor; sem ele a impressão sai incompleta.
+ * A RLS (0127) já restringe a alteração a `solicitado` para quem só solicita.
+ */
+export async function definirFornecedorCompra(_prev: FormState, formData: FormData): Promise<FormState> {
+  const pedidoId = Number(formData.get("pedido_id"));
+  const fornecedorId = Number(formData.get("fornecedor_id"));
+  if (!(pedidoId > 0)) return { ok: false, message: "Compra não informada." };
+  if (!(fornecedorId > 0)) return { ok: false, message: "Escolha o fornecedor." };
+  const [podeSolicitar, podeAprovar] = await Promise.all([pode("compras.solicitar"), pode("compras.aprovar")]);
+  if (!podeSolicitar && !podeAprovar) return SEM_PERMISSAO;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("pedidos_compra")
+    .update({ fornecedor_id: fornecedorId })
+    .eq("id", pedidoId)
+    .eq("status", "solicitado")
+    .select("id");
+  if (error) return { ok: false, message: mensagemDoBanco(error, "Não foi possível definir o fornecedor.") };
+  if ((data ?? []).length === 0) {
+    return { ok: false, message: "Só é possível definir o fornecedor enquanto a compra está solicitada." };
+  }
+  revalidatePath(`/compras/${pedidoId}`);
+  revalidatePath(`/compras/${pedidoId}/imprimir`);
+  revalidatePath("/compras");
+  return { ok: true, message: "Fornecedor definido." };
+}
+
 function revalidarPedidoCompra(pedidoId: number) {
   revalidatePath(`/compras/${pedidoId}`);
   revalidatePath("/compras");

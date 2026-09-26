@@ -718,7 +718,7 @@ function DeleteRegistroDialog({
           >
             Voltar
           </Button>
-          <form action={action}>
+          <form action={action} {...formularioSemPerda(state)}>
             <input type="hidden" name="_slug" value={slug} />
             <input type="hidden" name="_id" value={id} />
             <SubmitButton variant="destructive" size="sm" pendingLabel="Excluindo…">
@@ -1068,7 +1068,7 @@ function CorrigirQuantidadeDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form action={action} className="mt-2 grid gap-3">
+        <form action={action} {...formularioSemPerda(state)} className="mt-2 grid gap-3">
           <input type="hidden" name="insumo_id" value={insumoId} />
           <input type="hidden" name="operacao_id" value={operacaoId} />
           <div>

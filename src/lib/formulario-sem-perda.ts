@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+import { startTransition, type FormEvent } from "react";
 
 type EstadoComOk = { ok: boolean; message?: string | null } | null | undefined;
 
@@ -17,5 +17,19 @@ export function formularioSemPerda(estado: EstadoComOk) {
     onReset: (evento: FormEvent<HTMLFormElement>) => {
       if (evento.currentTarget.dataset.erroAcao === "1") evento.preventDefault();
     },
+  };
+}
+
+/**
+ * `onSubmit` que entrega o FormData sem o reset automático que o React aplica
+ * a `<form action>`: em caso de erro, o que o usuário digitou continua no
+ * formulário. Serve tanto para o `dispatch` de `useActionState` quanto para
+ * handlers com `useTransition`. A validação nativa roda antes do submit.
+ */
+export function enviarSemReset(enviar: (dados: FormData) => void) {
+  return (evento: FormEvent<HTMLFormElement>) => {
+    evento.preventDefault();
+    const dados = new FormData(evento.currentTarget);
+    startTransition(() => enviar(dados));
   };
 }

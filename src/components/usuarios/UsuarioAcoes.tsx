@@ -28,7 +28,7 @@ import type { FormState } from "@/lib/actions/cadastros";
 import { AssinaturaUsuarioForm } from "./AssinaturaUsuarioForm";
 import { HelpTip } from "@/components/common/HelpTip";
 import type { UsuarioRow } from "./UsuariosTable";
-import { formularioSemPerda } from "@/lib/formulario-sem-perda";
+import { enviarSemReset, formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 const initial: FormState = { ok: false, message: "" };
 
@@ -88,7 +88,7 @@ function EditarDialog({
           <DialogTitle>Editar usuário</DialogTitle>
           <DialogDescription>{row.email}</DialogDescription>
         </DialogHeader>
-        <form action={handle} className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-4">
+        <form onSubmit={enviarSemReset(handle)} className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-4">
           <input type="hidden" name="id" value={row.id} />
           <input type="hidden" name="permissoes_presentes" value="1" />
           <div className="grid gap-3 sm:grid-cols-2">

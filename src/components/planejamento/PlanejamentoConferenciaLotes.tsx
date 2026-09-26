@@ -17,6 +17,7 @@ import {
   validarConferenciaLote,
 } from "@/lib/planejamento/conferencia-lotes";
 import type { FormState } from "@/lib/actions/cadastros";
+import { enviarSemReset } from "@/lib/formulario-sem-perda";
 import { HelpTip } from "@/components/common/HelpTip";
 
 type StatusCamera = "parada" | "iniciando" | "ativa" | "erro";
@@ -298,7 +299,7 @@ export function PlanejamentoConferenciaLotes({
             </div>
           )}
 
-          <form action={salvarConferencia} className="mt-4 grid gap-3">
+          <form onSubmit={enviarSemReset(salvarConferencia)} className="mt-4 grid gap-3">
             <input type="hidden" name="planejamento_id" value={planId} />
             <input type="hidden" name="insumo_id" value={insumoSelecionado?.insumoId ?? ""} />
             <input type="hidden" name="lote_id" value={loteEscaneado?.id ?? ""} />

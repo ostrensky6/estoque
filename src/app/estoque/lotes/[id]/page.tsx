@@ -30,6 +30,19 @@ const TIPO_MOV: Record<string, { label: string; cls: string }> = {
   ajuste: { label: "Ajuste", cls: "text-warning-strong" },
 };
 
+const SO_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Baixas e entradas por operação gravam o id da operação (UUID) como
+ * referência: não diz nada a quem lê. O motivo já descreve a operação; o id
+ * completo fica no title da célula para rastreio.
+ */
+function referenciaLegivel(referencia: string | null): string {
+  const texto = referencia?.trim() ?? "";
+  if (!texto) return "—";
+  return SO_UUID.test(texto) ? "—" : texto;
+}
+
 function Campo({ rotulo, valor }: { rotulo: string; valor: React.ReactNode }) {
   return (
     <div className="flex flex-col">
@@ -175,6 +188,8 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
             modeloQuantidade={loteBaixa.modeloQuantidade}
             estornoDiretoPermitido={estornoDiretoPermitido}
             estornoRecebimento={estornoRecebimento}
+            origemRecebimento={(vinculoCompra.data ?? []).length > 0 ? "compra" : "pedido_interno"}
+            responsavelPadrao={usuario?.nome || usuario?.email || ""}
             aceiteBloqueadoMotivo={aceiteBloqueadoMotivo}
             podeAceitar={podeAceitar}
             podeGerir={podeGerir}
@@ -313,7 +328,9 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
                     <td className={`px-3 py-2 font-medium ${t.cls}`}>{t.label}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{fmt(m.quantidade)} {unidade}</td>
                     <td className="px-3 py-2 text-muted-foreground">{m.motivo ?? "—"}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{m.referencia ?? "—"}</td>
+                    <td className="px-3 py-2 text-muted-foreground" title={m.referencia ?? undefined}>
+                      {referenciaLegivel(m.referencia)}
+                    </td>
                     <td className="px-3 py-2 text-muted-foreground">{m.usuario ?? "—"}</td>
                   </tr>
                 );

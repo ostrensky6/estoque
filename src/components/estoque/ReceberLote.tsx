@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { entradaEmbalagens, entradaInventario } from "@/lib/actions/estoque";
 import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 import type { FormState } from "@/lib/actions/cadastros";
+import { enviarSemReset } from "@/lib/formulario-sem-perda";
 
 /**
  * 2.4 — Entrada de inventário / ajuste (porta avulsa, separada do recebimento
@@ -128,7 +129,7 @@ export function AjusteInventarioButton({
                 </div>
               </div>
             ) : (
-              <form action={action} className="mt-4 grid grid-cols-2 gap-3">
+              <form onSubmit={enviarSemReset(action)} className="mt-4 grid grid-cols-2 gap-3">
                 <input type="hidden" name="insumo_id" value={insumoId} />
                 <input type="hidden" name="operacao_id" value={operacaoId} />
                 <div className="col-span-1">

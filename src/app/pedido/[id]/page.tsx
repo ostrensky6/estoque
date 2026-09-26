@@ -716,13 +716,14 @@ export default async function PedidoInternoDetalhe({
           )}
           {editavel && (
             <div className="mt-3 rounded-lg border border-border bg-card p-3 shadow-sm">
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-                <div>
+              {/* Em larguras médias (~1024 px com a barra lateral) a lista e as ações não cabem lado a lado: empilham. */}
+              <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+                <div className="min-w-0">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Conferência do rascunho</h3>
                   <div className="mt-2 grid gap-x-4 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
                     {pendencias.map((item) => (
-                      <div key={item.label} className="flex items-center gap-2 text-xs">
-                        <span className={`h-2.5 w-2.5 rounded-full ${item.ok ? "bg-brand-500" : "bg-warning-strong"}`} />
+                      <div key={item.label} className="flex items-start gap-2 text-xs">
+                        <span className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${item.ok ? "bg-brand-500" : "bg-warning-strong"}`} />
                         <span className={item.ok ? "text-muted-foreground" : "font-medium text-warning-strong"}>
                           {item.label}
                         </span>
@@ -730,7 +731,7 @@ export default async function PedidoInternoDetalhe({
                     ))}
                   </div>
                 </div>
-                <div className="flex justify-start lg:justify-end">
+                <div className="flex justify-start border-t border-border/70 pt-3 xl:justify-end xl:border-t-0 xl:pt-0">
                   <PedidoInternoAcoes
                     pedidoId={pedidoId}
                     status={pedido.status}

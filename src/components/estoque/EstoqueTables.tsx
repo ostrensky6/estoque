@@ -183,9 +183,16 @@ function SaldoAcoes({ row, entradaInicialInsumoId }: { row: SaldoRow; entradaIni
   );
 }
 
-type PermissoesLote = { podeAceitar: boolean; podeGerir: boolean; podeCorrigir?: boolean; podeBaixar?: boolean };
+type PermissoesLote = {
+  podeAceitar: boolean;
+  podeGerir: boolean;
+  podeCorrigir?: boolean;
+  podeBaixar?: boolean;
+  /** quem está logado: sugestão do responsável no aceite do lote */
+  responsavelPadrao?: string;
+};
 
-function LoteAcoesLinha({ row, podeAceitar, podeGerir, podeCorrigir, podeBaixar }: { row: LoteRow } & PermissoesLote) {
+function LoteAcoesLinha({ row, podeAceitar, podeGerir, podeCorrigir, podeBaixar, responsavelPadrao }: { row: LoteRow } & PermissoesLote) {
   return (
     <LoteAcoes
       loteId={row.id}
@@ -204,6 +211,7 @@ function LoteAcoesLinha({ row, podeAceitar, podeGerir, podeCorrigir, podeBaixar 
       podeGerir={podeGerir}
       podeCorrigir={podeCorrigir}
       podeBaixar={podeBaixar}
+      responsavelPadrao={responsavelPadrao}
     />
   );
 }

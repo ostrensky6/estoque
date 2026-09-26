@@ -352,6 +352,7 @@ export default async function EstoquePage({
             podeGerir={podeGerir}
             podeCorrigir={podeCorrigir}
             podeBaixar={podeBaixar}
+            responsavelPadrao={usuario?.nome || usuario?.email || ""}
           />
         </div>
       </main>

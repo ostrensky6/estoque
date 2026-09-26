@@ -219,6 +219,18 @@ export default async function OrcamentoDetalhe({
     podeOrcamento("revisar_modulo"),
     podeOrcamento("cancelar_documento"),
   ]);
+  // Cada pendência da revisão leva ao campo onde ela se resolve.
+  const formularioRevisaoVisivel =
+    Boolean(demanda) && statusOperacional !== "revisado" && orc.status !== "cancelado" && podeRevisar;
+  const alvoPendencia: Record<string, string | null> = {
+    "informar cliente": demanda ? `/orcamento/demandas/${demanda.id}#demanda` : "#cabecalho-cliente",
+    "informar responsável técnico": formularioRevisaoVisivel
+      ? "#revisao-responsavel"
+      : demanda
+        ? null
+        : "#cabecalho-responsavel",
+    "adicionar ao menos uma análise": "#analises-quantidades",
+  };
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
@@ -605,7 +617,7 @@ export default async function OrcamentoDetalhe({
             </div>
             <div className="sm:col-span-2">
               <label className={lbl}>Cliente (texto livre, se não cadastrado)</label>
-              <input aria-label="Cliente (texto livre, se não cadastrado)" name="cliente_nome" defaultValue={orc.cliente_nome ?? ""} className={`${inp} mt-1 w-full`} />
+              <input id="cabecalho-cliente" aria-label="Cliente (texto livre, se não cadastrado)" name="cliente_nome" defaultValue={orc.cliente_nome ?? ""} className={`${inp} mt-1 w-full scroll-mt-28`} />
             </div>
             <div>
               <label className={lbl}>CNPJ</label>
@@ -629,7 +641,7 @@ export default async function OrcamentoDetalhe({
             </div>
             <div>
               <label className={lbl}>Responsável (laboratório)</label>
-              <input aria-label="Responsável (laboratório)" name="responsavel" defaultValue={orc.responsavel ?? ""} className={`${inp} mt-1 w-full`} />
+              <input id="cabecalho-responsavel" aria-label="Responsável (laboratório)" name="responsavel" defaultValue={orc.responsavel ?? ""} className={`${inp} mt-1 w-full scroll-mt-28`} />
             </div>
             <div>
               <p className={lbl}>Situação</p>
@@ -661,9 +673,23 @@ export default async function OrcamentoDetalhe({
           </div>
           {revisaoPendencias.length > 0 ? (
             <ul className="mt-3 list-disc space-y-1 pl-4 text-xs leading-5 text-warning-strong">
-              {revisaoPendencias.map((pendencia) => (
-                <li key={pendencia}>{pendencia}</li>
-              ))}
+              {revisaoPendencias.map((pendencia) => {
+                const alvo = alvoPendencia[pendencia] ?? null;
+                return (
+                  <li key={pendencia}>
+                    {alvo ? (
+                      <a href={alvo} className="underline underline-offset-2 hover:text-warning-strong/80">
+                        {pendencia}
+                      </a>
+                    ) : (
+                      pendencia
+                    )}
+                    {pendencia === "informar responsável técnico" && alvo === "#revisao-responsavel" && (
+                      <span className="text-muted-foreground"> — no campo “Responsável técnico” abaixo; é gravado ao marcar revisado</span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="mt-3 rounded-md bg-brand-50 px-3 py-2 text-xs leading-5 text-brand-900 dark:bg-brand-950/40 dark:text-brand-200">
@@ -684,7 +710,7 @@ export default async function OrcamentoDetalhe({
                   id="revisao-responsavel"
                   name="responsavel"
                   defaultValue={orc.responsavel ?? demanda.responsavel_interno ?? ""}
-                  className={`${inp} mt-1 w-full`}
+                  className={`${inp} mt-1 w-full scroll-mt-28`}
                   required
                 />
               </div>
