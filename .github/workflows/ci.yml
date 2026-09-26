@@ -53,6 +53,9 @@ jobs:
       - name: Validar permissões, auditoria e notificações por usuário
         run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/permissoes_auditoria_0128.sql
 
+      - name: Validar integridade dos cadastros (exclusão com vínculo, técnico ativo, faixas)
+        run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/cadastros_integridade_0129.sql
+
   check:
     runs-on: ubuntu-latest
     steps:
