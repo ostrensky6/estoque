@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { emailAutoLoginDev, ROTA_DEV_LOGIN } from "@/lib/auth/dev-auto-login";
 
 const PUBLICAS = ["/login", "/auth", "/aprovar"];
 
@@ -62,7 +63,14 @@ export async function updateSession(request: NextRequest) {
 
   if (!user && !publica) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    if (emailAutoLoginDev()) {
+      // Ambiente local: entra direto, sem senha (ver lib/auth/dev-auto-login.ts).
+      url.pathname = ROTA_DEV_LOGIN;
+      url.search = "";
+      url.searchParams.set("next", path + request.nextUrl.search);
+    } else {
+      url.pathname = "/login";
+    }
     return NextResponse.redirect(url);
   }
   if (user && path.startsWith("/login")) {
