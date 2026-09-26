@@ -35,7 +35,7 @@ Observação: a pasta antiga `D:\Aplicativos\Estoque` está depreciada e não de
 
 ## Supabase
 
-- Projeto: `estoque`
+- Projeto: `Kontrol`
 - Project ref: `gkcjzwfsnoknxgpsumxi`
 - Região: `sa-east-1`
 - API URL: https://gkcjzwfsnoknxgpsumxi.supabase.co
