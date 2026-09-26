@@ -1,11 +1,14 @@
 import type { Accent, NavGroup, NavIcon, NavLink } from "@/components/layout/SideNav";
 import { getCadastrosOrdenados } from "@/lib/cadastros/config";
+import { acessoDaRota } from "@/config/acesso-modulos";
 
 export const ORDEM_PAPEIS = ["tecnico", "coordenador", "gestor", "admin"] as const;
 
 export type Role = (typeof ORDEM_PAPEIS)[number];
 export type NavigationProfile = {
   papel?: string | null;
+  /** permissões efetivas (0124); sem elas, vale só o papel mínimo */
+  permissoes?: { admin: boolean; permissoes: Record<string, boolean> } | null;
 } | null;
 
 export type AppModuleId =
@@ -106,7 +109,6 @@ export const APP_MODULES: AppModule[] = [
         desc: "margem, impostos, taxas e fundos do preço",
         icon: "Percent",
         showInTopNav: false,
-        minRole: "gestor",
       },
     ],
   },
@@ -291,7 +293,6 @@ export const APP_MODULES: AppModule[] = [
     desc: "auditoria, backups e permissões",
     icon: "ShieldCheck",
     accent: "slate",
-    minRole: "gestor",
     activePaths: ["/governanca", "/auditoria", "/usuarios"],
     children: [
       {
@@ -299,7 +300,6 @@ export const APP_MODULES: AppModule[] = [
         label: "Auditoria",
         desc: "trilha de alterações e eventos",
         icon: "History",
-        minRole: "gestor",
       },
       {
         href: "/governanca/backups",
@@ -326,8 +326,16 @@ export const APP_MODULES: AppModule[] = [
   },
 ];
 
+/** A caixinha manda (0124): o item só aparece com a permissão "Acessar …" da área. */
+export function permiteAcesso(perfil: NavigationProfile, href: string) {
+  const efetivas = perfil?.permissoes;
+  if (!efetivas || efetivas.admin) return true;
+  const acesso = acessoDaRota(href);
+  return !acesso || efetivas.permissoes[acesso.chave] === true;
+}
+
 export function filtrarChildrenPorPerfil(children: ModuleChild[], perfil: NavigationProfile) {
-  return children.filter((child) => permiteMinRole(perfil, child.minRole));
+  return children.filter((child) => permiteMinRole(perfil, child.minRole) && permiteAcesso(perfil, child.href));
 }
 
 export function getModulesForProfile(perfil: NavigationProfile) {

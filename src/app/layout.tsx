@@ -9,6 +9,7 @@ import { ContextHelp } from "@/components/layout/ContextHelp";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { getCommandGroups, getSidebarGroups } from "@/config/navigation";
+import { minhasPermissoes } from "@/lib/auth/permissao-efetiva";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,14 +36,19 @@ export default async function RootLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  let perfil: { nome: string | null; email: string | null; papel: string } | null = null;
+  let perfil: {
+    nome: string | null;
+    email: string | null;
+    papel: string;
+    permissoes?: Awaited<ReturnType<typeof minhasPermissoes>>;
+  } | null = null;
   if (user) {
     const { data } = await supabase
       .from("perfis")
       .select("nome, email, papel")
       .eq("id", user.id)
       .single();
-    perfil = data;
+    perfil = data ? { ...data, permissoes: await minhasPermissoes() } : null;
   }
 
   const sidebarGroups = getSidebarGroups(perfil);

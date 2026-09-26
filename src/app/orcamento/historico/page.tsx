@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { rotuloModalidade } from "@/lib/orcamento/orcamento-economico";
 import { hojeCalendario, rotuloStatusVersaoFinal, statusEfetivoVersaoFinal } from "@/lib/orcamento/rotulos-status";
+import { podeOrcamento } from "@/lib/orcamento/governanca";
 
 export const dynamic = "force-dynamic";
 
@@ -174,6 +175,10 @@ export default async function HistoricoOrcamentosPage({
   const cancelados = versoes.filter((item) => item.status === "cancelado").length;
   const totalHistorico = versoes.reduce((total, item) => total + Number(item.total_final ?? 0), 0);
   const operacoesDuplicacao = new Map(versoes.map((item) => [item.id, randomUUID()]));
+  const [podeDuplicar, podeCancelar] = await Promise.all([
+    podeOrcamento("duplicar_final"),
+    podeOrcamento("cancelar_documento"),
+  ]);
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
@@ -393,13 +398,15 @@ export default async function HistoricoOrcamentosPage({
                         <Link href={`/orcamento/historico?${new URLSearchParams({ ...limparFiltros(filtros), comparar: String(item.id) }).toString()}`} className="text-xs text-brand-700 hover:underline dark:text-brand-300">
                           Comparar
                         </Link>
+                        {podeDuplicar && (
                         <form action={duplicarVersaoFinal}>
                           <input type="hidden" name="versao_id" value={item.id} />
                           <input type="hidden" name="validade_dias" value={item.validade_dias || 30} />
                           <input type="hidden" name="operacao_id" value={operacoesDuplicacao.get(item.id)} />
                           <button className="text-xs text-brand-700 hover:underline dark:text-brand-300">Duplicar</button>
                         </form>
-                        {!["cancelado", "substituido"].includes(item.status) && (
+                        )}
+                        {podeCancelar && !["cancelado", "substituido"].includes(item.status) && (
                           <ConfirmActionButton
                             action={cancelarVersaoFinal}
                             fields={{ versao_id: item.id, motivo: "Cancelamento operacional pelo histórico." }}

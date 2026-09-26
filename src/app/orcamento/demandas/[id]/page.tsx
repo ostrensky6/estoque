@@ -20,7 +20,7 @@ import { PainelParametrosEconomicos } from "@/components/orcamento/PainelParamet
 import { SalvarDemandaForm } from "@/components/orcamento/SalvarDemandaForm";
 import { EditorCustosProjeto } from "@/components/orcamento/projeto/EditorCustosProjeto";
 import { EditorParametrosProposta } from "@/components/orcamento/EditorParametrosProposta";
-import { temPapel } from "@/lib/auth/roles";
+import { podeOrcamento } from "@/lib/orcamento/governanca";
 import { padroesDeParametrosGlobais, resolverParametrosProposta } from "@/lib/orcamento/parametros-proposta";
 import { ConfirmSubmitButton } from "@/components/common/ConfirmSubmitButton";
 import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
@@ -288,6 +288,10 @@ export default async function DemandaDetalhe({
     versoesEmitidas: versoesFinais?.length ?? 0,
     ultimaVersaoStatus: ultimaVersaoFinal?.status ?? null,
   });
+  const [autorizadoEmitir, autorizadoParametros] = await Promise.all([
+    podeOrcamento("emitir_final"),
+    podeOrcamento("editar_parametros"),
+  ]);
   const podeEmitir = orcamentoFinal.pronto && !temCustoZeroSemJustificativa;
   // Σ% = 0 (ex.: "Apenas análises", sem módulo de projeto para guardar parâmetros).
   const semParametros = orcamentoFinal.somaPercentual <= 0;
@@ -648,7 +652,7 @@ export default async function DemandaDetalhe({
             origem={parametrosProposta.origem}
             erro={erroParametros}
             salvo={parametrosSalvos === "1"}
-            podeEditar={await temPapel("gestor")}
+            podeEditar={autorizadoParametros}
           />
           <TabelaSimples
             colunas={["Campo", "Como é calculado", "Valor"]}
@@ -695,6 +699,11 @@ export default async function DemandaDetalhe({
                     Abrir versão emitida ({versaoEmitidaVigente.numero})
                   </Link>
                 )}
+                {!autorizadoEmitir ? (
+                  <p className="text-xs text-muted-foreground">
+                    A emissão é feita por coordenador ou superior, ou por quem tem a permissão “Orçamentos: Emitir proposta”.
+                  </p>
+                ) : (
                 <form action={emitirOrcamentoFinalDaDemanda} className="flex flex-wrap items-end gap-2">
                   <input {...hydrationSafe} type="hidden" name="demanda_id" value={demandaId} />
                   <input {...hydrationSafe} type="hidden" name="operacao_id" value={operacaoEmissaoId} />
@@ -719,6 +728,7 @@ export default async function DemandaDetalhe({
                     Emitir versão final
                   </ConfirmSubmitButton>
                 </form>
+                )}
               </div>
             </div>
             {!podeEmitir && (

@@ -175,7 +175,9 @@ function SaldoAcoes({ row, entradaInicialInsumoId }: { row: SaldoRow; entradaIni
   );
 }
 
-function LoteAcoesLinha({ row, podeAceitar, podeGerir }: { row: LoteRow; podeAceitar: boolean; podeGerir: boolean }) {
+type PermissoesLote = { podeAceitar: boolean; podeGerir: boolean; podeCorrigir?: boolean; podeBaixar?: boolean };
+
+function LoteAcoesLinha({ row, podeAceitar, podeGerir, podeCorrigir, podeBaixar }: { row: LoteRow } & PermissoesLote) {
   return (
     <LoteAcoes
       loteId={row.id}
@@ -191,14 +193,13 @@ function LoteAcoesLinha({ row, podeAceitar, podeGerir }: { row: LoteRow; podeAce
       estornoDiretoPermitido={row.estornoDiretoPermitido}
       podeAceitar={podeAceitar}
       podeGerir={podeGerir}
+      podeCorrigir={podeCorrigir}
+      podeBaixar={podeBaixar}
     />
   );
 }
 
-const lotesColumns = (
-  podeAceitar: boolean,
-  podeGerir: boolean,
-): ColumnDef<LoteRow, unknown>[] => [
+const lotesColumns = (permissoes: PermissoesLote): ColumnDef<LoteRow, unknown>[] => [
   { accessorKey: "especificacao", header: "Reagente", meta: { className: "max-w-xs truncate" } },
   {
     accessorKey: "codigoLote",
@@ -242,7 +243,7 @@ const lotesColumns = (
     enableSorting: false,
     enableGlobalFilter: false,
     meta: { align: "right" },
-    cell: ({ row }) => <LoteAcoesLinha row={row.original} podeAceitar={podeAceitar} podeGerir={podeGerir} />,
+    cell: ({ row }) => <LoteAcoesLinha row={row.original} {...permissoes} />,
   },
 ];
 
@@ -303,17 +304,14 @@ export function SaldoTable({
 
 export function LotesTable({
   rows,
-  podeAceitar,
-  podeGerir,
+  ...permissoes
 }: {
   rows: LoteRow[];
-  podeAceitar: boolean;
-  podeGerir: boolean;
-}) {
+} & PermissoesLote) {
   return (
     <DataTable
       data={rows}
-      columns={lotesColumns(podeAceitar, podeGerir)}
+      columns={lotesColumns(permissoes)}
       searchPlaceholder="Buscar reagente ou lote..."
       emptyText="Nenhum lote em estoque. Use + Entrada na tabela acima para receber."
       filters={[
@@ -334,7 +332,7 @@ export function LotesTable({
       }
       getMobileMeta={(row) => <LoteStatusBadge status={row.status} label={row.statusLabel} />}
       getMobileHref={(row) => `/estoque/lotes/${row.id}`}
-      getMobileActions={(row) => <LoteAcoesLinha row={row} podeAceitar={podeAceitar} podeGerir={podeGerir} />}
+      getMobileActions={(row) => <LoteAcoesLinha row={row} {...permissoes} />}
     />
   );
 }

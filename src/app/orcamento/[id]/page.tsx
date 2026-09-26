@@ -18,7 +18,6 @@ import {
   cancelarOrcamento,
   excluirOrcamento,
 } from "@/lib/actions/orcamentos";
-import { gerarPlanejamentoDeOrcamento } from "@/lib/actions/planejamento";
 import { listarEventos } from "@/lib/actions/eventos";
 import { Timeline } from "@/components/common/Timeline";
 import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
@@ -27,6 +26,7 @@ import { moduloBloqueadoParaEdicao } from "@/lib/orcamento/ciclo-vida-modulo";
 import { rotuloStatusModulo } from "@/lib/orcamento/rotulos-status";
 import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import type { Json } from "@/lib/supabase/database.types";
+import { podeOrcamento } from "@/lib/orcamento/governanca";
 
 export const dynamic = "force-dynamic";
 
@@ -203,6 +203,20 @@ export default async function OrcamentoDetalhe({
     "rounded-md border border-input bg-card px-3 py-2 text-sm font-medium text-brand-700 dark:text-brand-300"; // §8.2: entrada em azul
   const lbl = "block text-xs font-medium text-muted-foreground";
   const operacaoRecalculoId = randomUUID();
+  // Proposta aprovada gera o plano sozinha (0122); aqui só o link para ele.
+  const { data: planoGerado } = await supabase
+    .from("planejamento")
+    .select("id")
+    .eq("orcamento_id", orcId)
+    .neq("status_operacional", "cancelado")
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const [podeRecalcular, podeRevisar, podeCancelar] = await Promise.all([
+    podeOrcamento("recalcular_custos"),
+    podeOrcamento("revisar_modulo"),
+    podeOrcamento("cancelar_documento"),
+  ]);
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
@@ -211,19 +225,21 @@ export default async function OrcamentoDetalhe({
           <Breadcrumbs items={[{ label: "Orçamentos não finalizados", href: "/orcamento/demandas" }, { label: `Custos laboratoriais #${orc.id}` }]} />
           <div className="flex flex-wrap items-center gap-2">
             <PrintButton />
-            {orc.status === "aprovado" && itens.length > 0 && (
-              <form action={gerarPlanejamentoDeOrcamento}>
-                <input type="hidden" name="orcamento_id" value={orcId} />
-                <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                  Gerar planejamento
-                </button>
-              </form>
+            {planoGerado && (
+              <Link
+                href={`/planejamento/${planoGerado.id}`}
+                className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-muted"
+              >
+                Planejamento #{planoGerado.id}
+              </Link>
             )}
-            <RecalcularOrcamentoForm
-              orcamentoId={orcId}
-              fonteAtual={orc.fonte_custo_insumos ?? "custo_padrao"}
-              operacaoId={operacaoRecalculoId}
-            />
+            {podeRecalcular && (
+              <RecalcularOrcamentoForm
+                orcamentoId={orcId}
+                fonteAtual={orc.fonte_custo_insumos ?? "custo_padrao"}
+                operacaoId={operacaoRecalculoId}
+              />
+            )}
           </div>
         </div>
 
@@ -664,8 +680,13 @@ export default async function OrcamentoDetalhe({
               Tudo certo. Marque como revisado para liberar a proposta final.
             </p>
           )}
-          {demanda && statusOperacional !== "revisado" && orc.status !== "cancelado" && (
-            <form action={revisarOrcamentoLaboratorio} className="mt-4 grid gap-3 rounded-md border border-border bg-muted/50 p-3 text-sm sm:grid-cols-[1fr_180px_auto]">
+          {demanda && statusOperacional !== "revisado" && orc.status !== "cancelado" && !podeRevisar && (
+            <p className="mt-4 text-xs text-muted-foreground">
+              A revisão dos custos é feita por coordenador ou superior, ou por quem tem a permissão “Orçamentos: Emitir proposta”.
+            </p>
+          )}
+          {demanda && statusOperacional !== "revisado" && orc.status !== "cancelado" && podeRevisar && (
+            <form action={revisarOrcamentoLaboratorio} className="mt-4 grid gap-3 rounded-md border border-border bg-muted/50 p-3 text-sm sm:grid-cols-[1fr_auto]">
               <input type="hidden" name="orcamento_id" value={orcId} />
               <div>
                 <label className={lbl}>Responsável técnico</label>
@@ -676,18 +697,6 @@ export default async function OrcamentoDetalhe({
                   className={`${inp} mt-1 w-full`}
                   required
                 />
-              </div>
-              <div>
-                <label className={lbl}>Status de revisão</label>
-                <select
-                  aria-label="Status de revisão"
-                  name="status"
-                  defaultValue="enviado"
-                  className={`${inp} mt-1 w-full`}
-                >
-                  <option value="enviado">Enviado</option>
-                  <option value="aprovado">Aprovado</option>
-                </select>
               </div>
               <div className="flex items-end gap-1">
                 <ConfirmSubmitButton
@@ -715,7 +724,7 @@ export default async function OrcamentoDetalhe({
         </section>
 
         <div className="no-print mt-6 flex flex-wrap gap-3">
-          {["enviado", "aprovado"].includes(orc.status) ? (
+          {!podeCancelar ? null : ["enviado", "aprovado"].includes(orc.status) ? (
             <ConfirmActionButton
               action={cancelarOrcamento}
               fields={{ orcamento_id: orcId, motivo: "Cancelamento operacional solicitado na tela do orçamento." }}

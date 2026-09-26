@@ -114,10 +114,10 @@ begin
   exception when invalid_parameter_value then null;
   end;
 
-  -- lote vencido
+  -- lote vencido: desde a 0117 so aceita baixa com o motivo "Vencimento"
   begin
-    perform public.baixa_manual_embalagens(v_b, 1, 2, gen_random_uuid(), 'Vencimento');
-    raise exception '0110: baixa em lote vencido aceita';
+    perform public.baixa_manual_embalagens(v_b, 1, 2, gen_random_uuid(), 'Consumo em análise');
+    raise exception '0110: baixa de consumo em lote vencido aceita';
   exception when invalid_parameter_value then null;
   end;
 
@@ -206,10 +206,11 @@ begin
     raise exception '0110: reenvio nao marcado como repetido: %', v_r;
   end if;
 
+  -- desde a 0117, "Perda/quebra" e gravada como 'ajuste' (fora da previsao de consumo)
   select count(*) into v_movs from public.estoque_movimentacoes
-  where lote_id = v_lote.id and tipo = 'saida' and motivo like 'baixa manual: %';
+  where lote_id = v_lote.id and tipo in ('saida', 'ajuste') and motivo like 'baixa manual: %';
   if v_movs <> 2 then
-    raise exception '0110: esperadas 2 saidas no lote A (obtidas %)', v_movs;
+    raise exception '0110: esperadas 2 baixas no lote A (obtidas %)', v_movs;
   end if;
   if exists (select 1 from public.estoque_movimentacoes
              where lote_id = v_lote.id and referencia ~ '^plano [0-9]+') then

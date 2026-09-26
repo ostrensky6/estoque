@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { salvarAcompanhamentoFundos } from "@/lib/actions/orcamento-fundos";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { formatCurrency as brl, formatDate, formatPercent } from "@/lib/formatters";
 import {
   calcularFundos,
@@ -69,7 +69,7 @@ const inputCls = "h-8 w-full min-w-0 rounded-md border border-input bg-card px-2
 
 export default async function FundosPage() {
   const supabase = await createClient();
-  const podeEditar = await temPapel("gestor");
+  const podeEditar = await pode("orcamentos.fundos");
   const db = supabase as unknown as {
     from: (table: string) => {
       select: (columns: string) => {

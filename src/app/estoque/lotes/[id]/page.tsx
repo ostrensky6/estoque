@@ -7,7 +7,7 @@ import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 import { QrCode } from "@/components/common/QrCode";
 import { formatNumber as fmt, formatDate as fdata, formatCurrency } from "@/lib/formatters";
 import { LoteAcoes } from "@/components/estoque/LoteAcoes";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { origemPublicaKontrol } from "@/lib/scanner/origem";
 import { gerarUrlCurtaKontrol } from "@/lib/scanner/urls";
 import { loteBaixaDeDb, loteVencido, somarReservasPorLote, type LoteDbBaixa } from "@/lib/estoque/baixa";
@@ -57,13 +57,15 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
     { data: reservas },
     podeAceitar,
     podeGerir,
+    podeCorrigir,
+    podeBaixar,
     origem,
     vinculoCompra,
     vinculoInterno,
   ] = await Promise.all([
     supabase
       .from("estoque_movimentacoes")
-      .select("id, tipo, quantidade, custo_unitario, data, motivo, referencia")
+      .select("id, tipo, quantidade, custo_unitario, data, motivo, referencia, usuario")
       .eq("lote_id", id)
       .order("data", { ascending: false })
       .order("id", { ascending: false }),
@@ -75,8 +77,10 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
       .select("lote_id, quantidade, quantidade_consumida, status")
       .eq("lote_id", id)
       .in("status", ["reservado", "parcial"]),
-    temPapel("coordenador"),
-    temPapel("gestor"),
+    pode("estoque.lote.aceitar"),
+    pode("estoque.descartar_bloquear"),
+    pode("estoque.lote.gerir"),
+    pode("estoque.movimentar"),
     origemPublicaKontrol(),
     supabase.from("pedidos_compra_item_recebimentos").select("lote_id").eq("lote_id", id).limit(1),
     supabase.from("pedidos_internos_item_recebimentos").select("lote_id").eq("lote_id", id).limit(1),
@@ -94,7 +98,15 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
     !vinculoInterno.error &&
     (vinculoCompra.data ?? []).length === 0 &&
     (vinculoInterno.data ?? []).length === 0;
-  const unidade = ins?.unidade ?? "";
+  // Lote de embalagens fechadas conta frascos, não a unidade física (0109/0123).
+  const loteModelo = lote as unknown as {
+    modelo_quantidade?: string | null;
+    conteudo_embalagem_snapshot?: number | null;
+  };
+  const unidade =
+    loteModelo.modelo_quantidade === "EMBALAGEM_FECHADA"
+      ? `frasco(s)${loteModelo.conteudo_embalagem_snapshot ? ` de ${fmt(loteModelo.conteudo_embalagem_snapshot)} ${ins?.unidade ?? ""}` : ""}`.trim()
+      : ins?.unidade ?? "";
   const s = LOTE_STATUS[lote.status] ?? { label: lote.status, cls: "bg-muted text-muted-foreground" };
   // modelo_quantidade (0109) ainda não está nos tipos gerados.
   const loteBaixa = loteBaixaDeDb(
@@ -150,6 +162,8 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
             estornoDiretoPermitido={estornoDiretoPermitido}
             podeAceitar={podeAceitar}
             podeGerir={podeGerir}
+            podeCorrigir={podeCorrigir}
+            podeBaixar={podeBaixar}
           />
         </div>
 
@@ -271,6 +285,7 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
                 <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qtd.</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Motivo</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Referência</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Por</th>
               </tr>
             </thead>
             <tbody>
@@ -283,12 +298,13 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
                     <td className="px-3 py-2 text-right tabular-nums">{fmt(m.quantidade)} {unidade}</td>
                     <td className="px-3 py-2 text-muted-foreground">{m.motivo ?? "—"}</td>
                     <td className="px-3 py-2 text-muted-foreground">{m.referencia ?? "—"}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{m.usuario ?? "—"}</td>
                   </tr>
                 );
               })}
               {(movs ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground/80">Sem movimentações.</td>
+                  <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground/80">Sem movimentações.</td>
                 </tr>
               )}
             </tbody>

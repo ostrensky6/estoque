@@ -185,13 +185,12 @@ export async function revisarOrcamentoLaboratorio(formData: FormData) {
   await exigirPapelOrcamento("revisar_modulo");
   const id = Number(formData.get("orcamento_id"));
   const responsavel = String(formData.get("responsavel") ?? "").trim();
-  const novoStatus = String(formData.get("status") ?? "enviado");
+  // A revisão interna só marca o módulo como revisado ("enviado"). Aprovação
+  // é decisão do cliente e fica na proposta (versão final), não aqui.
+  const novoStatus = "enviado";
   if (!id) return;
   if (!responsavel) {
     throw new Error("Informe o responsável técnico antes de revisar os custos laboratoriais.");
-  }
-  if (!["enviado", "aprovado"].includes(novoStatus)) {
-    throw new Error("Status de revisão inválido.");
   }
 
   const supabase = await createClient();
@@ -210,6 +209,17 @@ export async function revisarOrcamentoLaboratorio(formData: FormData) {
     throw new Error("Adicione ao menos uma análise antes de revisar os custos laboratoriais.");
   }
 
+  // Transição primeiro: se o banco recusar, nada foi gravado e o módulo não
+  // fica "revisado" com o documento ainda em rascunho.
+  const statusFinal = anterior?.status === "rascunho" ? novoStatus : anterior?.status ?? novoStatus;
+  if (anterior?.status === "rascunho") {
+    const { error: transicaoError } = await supabase.rpc("transicionar_orcamento", {
+      p_orcamento_id: id,
+      p_status_destino: novoStatus,
+      p_observacao: "Revisão do módulo laboratorial.",
+    });
+    if (transicaoError) throw new Error(transicaoError.message);
+  }
   const { error } = await supabase
     .from("orcamentos")
     .update({
@@ -219,15 +229,7 @@ export async function revisarOrcamentoLaboratorio(formData: FormData) {
     })
     .eq("id", id);
   if (error) throw new Error(error.message);
-  if (anterior && anterior.status !== novoStatus) {
-    const { error: transicaoError } = await supabase.rpc("transicionar_orcamento", {
-      p_orcamento_id: id,
-      p_status_destino: novoStatus,
-      p_observacao: "Revisão do módulo laboratorial.",
-    });
-    if (transicaoError) throw new Error(transicaoError.message);
-  }
-  await atualizarOperacionalLaboratorio(supabase, id, novoStatus);
+  await atualizarOperacionalLaboratorio(supabase, id, statusFinal);
   revalidatePath(`/orcamento/${id}`);
   revalidatePath("/orcamento");
 }

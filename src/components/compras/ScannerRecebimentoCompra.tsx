@@ -26,6 +26,9 @@ export type ItemCompraRecebivel = {
   insumoId: number | null;
   insumoDescricao: string | null;
   unidade: string | null;
+  /** Item comprado em frascos (0123): quantidade inteira e volume de cada frasco. */
+  emFrascos?: boolean;
+  conteudoEmbalagem?: number | null;
 };
 
 export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }) {
@@ -186,7 +189,9 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {item.insumoDescricao ?? `Insumo #${item.insumoId ?? "-"}`}
-              {item.unidade ? ` · ${item.unidade}` : ""}
+              {item.emFrascos
+                ? ` · frascos${item.conteudoEmbalagem ? ` de ${item.conteudoEmbalagem} ${item.unidade ?? ""}` : ""}`
+                : item.unidade ? ` · ${item.unidade}` : ""}
             </p>
 
             <section className="mt-4 rounded-lg border border-border p-3">
@@ -289,12 +294,14 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
               <input type="hidden" name="pedido_id" value={item.pedidoId} />
               <input type="hidden" name="operacao_id" value={operacaoId} />
               <div className="col-span-1">
-                <label className="block text-xs font-medium text-muted-foreground">Quantidade</label>
+                <label className="block text-xs font-medium text-muted-foreground">
+                  {item.emFrascos ? "Frascos recebidos" : "Quantidade"}
+                </label>
                 <input
                   name="quantidade_recebida"
                   type="number"
-                  step="any"
-                  min="0.0000001"
+                  step={item.emFrascos ? "1" : "any"}
+                  min={item.emFrascos ? "1" : "0.0000001"}
                   max={saldoPendente}
                   defaultValue={saldoPendente}
                   className={inp}
@@ -310,6 +317,22 @@ export function ScannerRecebimentoCompra({ item }: { item: ItemCompraRecebivel }
                   className={inp}
                 />
               </div>
+              {item.emFrascos && (
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-muted-foreground">
+                    Volume de cada frasco ({item.unidade ?? "unidade do cadastro"})
+                  </label>
+                  <input
+                    name="conteudo_embalagem"
+                    type="number"
+                    step="any"
+                    min="0.0000001"
+                    defaultValue={item.conteudoEmbalagem ?? undefined}
+                    className={inp}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">Altere só se a embalagem chegou diferente do cadastro.</p>
+                </div>
+              )}
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-muted-foreground">Código do lote</label>
                 <input

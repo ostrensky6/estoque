@@ -151,7 +151,7 @@ describe("excluirUsuario", () => {
     expect(Object.values(payload.permissoes).every((enabled) => enabled === false)).toBe(true);
   });
 
-  it("usa os defaults configurados da categoria ao criar usuario", async () => {
+  it("novo usuário segue a categoria: não grava cópia das permissões", async () => {
     maybeSingle.mockResolvedValue({
       data: {
         permissoes: {
@@ -172,8 +172,8 @@ describe("excluirUsuario", () => {
     expect(result.ok).toBe(true);
     expect(adminFrom).toHaveBeenCalledWith("permissoes_categorias");
     const payload = update.mock.calls[0]?.[0] as { permissoes: Record<string, boolean> };
-    expect(payload.permissoes["analises.ver"]).toBe(false);
-    expect(payload.permissoes["usuarios.gerenciar"]).toBe(true);
+    // só exceções ficam no usuário; sem ajuste no formulário, nenhuma (0124)
+    expect(payload.permissoes).toEqual({});
   });
 
   it("salva categoria explicitamente vazia como todas as permissoes desativadas", async () => {

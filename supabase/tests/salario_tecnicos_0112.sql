@@ -90,6 +90,8 @@ begin
         when 'tecnico_padrao' then '{}'::jsonb
         when 'gestor_com' then '{"cadastros.editar": true, "tecnicos.salario.ver": true}'::jsonb
         when 'tecnico_com' then '{"cadastros.editar": true, "tecnicos.salario.ver": true}'::jsonb
+        -- desde a 0124 o catálogo de projeto exige a permissão "Modelos e catálogos"
+        when 'coordenador_sem' then '{"cadastros.editar": true, "orcamentos.modelos": true}'::jsonb
         when 'suspenso' then '{"cadastros.editar": true, "tecnicos.salario.ver": true}'::jsonb
         else '{"cadastros.editar": true}'::jsonb end
     where id = uid;
@@ -256,7 +258,7 @@ reset role;
 
 -- Concessao pela categoria (sem chave no perfil) libera o salario.
 update public.permissoes_categorias
-set permissoes = permissoes || '{"tecnicos.salario.ver": true}'::jsonb
+set permissoes = permissoes || '{"tecnicos.salario.ver": true, "orcamentos.modelos": true}'::jsonb
 where papel = 'coordenador';
 
 set local role authenticated;

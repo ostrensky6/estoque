@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { acessoDaRota } from "@/config/acesso-modulos";
 
 const PUBLICAS = ["/login", "/auth", "/aprovar"];
 
@@ -83,6 +84,21 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
+  }
+
+  // A caixinha manda (0124): sem a permissão "Acessar …" a área não abre.
+  // Se a consulta falhar, segue: o banco continua protegendo os dados.
+  const acesso = user ? acessoDaRota(path) : null;
+  if (acesso) {
+    const { data: efetivas, error: erroPermissoes } = await supabase.rpc("minhas_permissoes");
+    const bruto = efetivas as { admin?: boolean; permissoes?: Record<string, unknown> } | null;
+    const liberado = Boolean(erroPermissoes) || bruto?.admin === true || bruto?.permissoes?.[acesso.chave] === true;
+    if (!liberado) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/sem-acesso";
+      url.search = `?area=${encodeURIComponent(acesso.area)}`;
+      return NextResponse.redirect(url);
+    }
   }
 
   return response;

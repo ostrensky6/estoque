@@ -16,6 +16,7 @@ import { montarPropostaFinalExport } from "@/lib/orcamento/proposta-final-export
 import { explicarOrigem } from "@/lib/orcamento/orcamento-final";
 import { rotuloStatusVersaoFinal, statusEfetivoVersaoFinal } from "@/lib/orcamento/rotulos-status";
 import type { Json } from "@/lib/supabase/database.types";
+import { podeOrcamento } from "@/lib/orcamento/governanca";
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +106,17 @@ export default async function OrcamentoFinalPage({
   const { id } = await params;
   const versaoId = Number(id);
   const operacaoDuplicacaoId = randomUUID();
+  const [podeDuplicar, podeCancelar] = await Promise.all([
+    podeOrcamento("duplicar_final"),
+    podeOrcamento("cancelar_documento"),
+  ]);
   const supabase = await createClient();
+  // Proposta aprovada gera o plano sozinha (0122).
+  const { data: planoGerado } = await supabase
+    .from("planejamento")
+    .select("id")
+    .eq("orcamento_final_versao_id", versaoId)
+    .maybeSingle();
 
   const { data: versao } = await supabase
     .from("orcamento_final_versoes")
@@ -328,6 +339,15 @@ export default async function OrcamentoFinalPage({
               </div>
             </div>
             <div className="no-print flex flex-wrap gap-2">
+              {planoGerado && (
+                <Link
+                  href={`/planejamento/${planoGerado.id}`}
+                  className="rounded-md border border-brand-300 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-800 dark:text-brand-300 dark:hover:bg-brand-950/30"
+                >
+                  Planejamento #{planoGerado.id}
+                </Link>
+              )}
+              {podeDuplicar && (
               <form action={duplicarVersaoFinal}>
                 <input type="hidden" name="versao_id" value={versao.id} />
                 <input type="hidden" name="operacao_id" value={operacaoDuplicacaoId} />
@@ -336,11 +356,14 @@ export default async function OrcamentoFinalPage({
                   Duplicar versão
                 </button>
               </form>
+              )}
+              {podeDuplicar && (
               <HelpTip title="Duplicar versão">
                 <p>Cria uma <b>nova versão</b> com os mesmos itens e valores, pronta para ajustes. A versão atual continua no histórico.</p>
                 <HelpExample>v1 duplicada → v2 com nova validade; a v1 não é alterada.</HelpExample>
               </HelpTip>
-              {versao.status !== "cancelado" && (
+              )}
+              {podeCancelar && versao.status !== "cancelado" && (
                 <ConfirmActionButton
                   action={cancelarVersaoFinal}
                   fields={{ versao_id: versao.id, motivo: "Cancelamento a partir do detalhe da versão final." }}

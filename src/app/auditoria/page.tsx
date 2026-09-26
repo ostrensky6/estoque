@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
-import { podeVerSalario } from "@/lib/auth/permissao-efetiva";
+import { pode, podeVerSalario } from "@/lib/auth/permissao-efetiva";
 import { mascararAuditoriaSigilosa } from "@/lib/cadastros/salario";
 import { AuditoriaTable, type AuditoriaRow } from "@/components/auditoria/AuditoriaTable";
 import { formatDateTime } from "@/lib/formatters";
@@ -50,7 +49,7 @@ export default async function AuditoriaPage({
 }: {
   searchParams: Promise<{ tabela?: string }>;
 }) {
-  if (!(await temPapel("gestor"))) {
+  if (!(await pode("auditoria.visualizar"))) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8 text-center font-sans">
         <p className="text-muted-foreground">

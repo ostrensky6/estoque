@@ -1,5 +1,5 @@
 import { createClientUntyped } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { PedidosInternosTable, type PedidoInternoRow } from "@/components/pedido/PedidosInternosTable";
 import type { PedidoItemView } from "@/components/pedido/PedidoItensQuickView";
 import { NovoPedidoDialog } from "@/components/pedido/NovoPedidoDialog";
@@ -110,7 +110,7 @@ export default async function PedidoPage() {
       .select("id, titulo, status, solicitante, data_necessidade, urgencia, tipo_demanda, modalidade_compra, pedido_compra_id, criado_em, coordenador_projeto_nome, coordenador_projeto_email, projetos(nome, coordenador, coordenador_nome, coordenador_email), pedidos_compra(id, status), pedidos_internos_itens(id, tipo, especificacao, modelo, volume, quantidade, unidade, orcamento_previo, fornecedor_sugerido, recebido_em), pedidos_internos_anexos(id, tipo)")
       .order("criado_em", { ascending: false }),
     supabase.from("projetos").select("id, nome, coordenador, coordenador_nome, coordenador_email").order("nome"),
-    temPapel("coordenador"),
+    pode("pedido.aprovar"),
   ]);
   const { data: pedidos } = pedidosFull.error
     ? await supabase

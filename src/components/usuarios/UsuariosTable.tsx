@@ -20,7 +20,10 @@ export type UsuarioRow = {
   temAcesso: boolean;
   assinaturaPath?: string | null;
   assinaturaUrl?: string | null;
+  /** só as exceções do usuário (0124); o restante vem da categoria */
   permissoes: unknown;
+  /** marcação efetiva de cada categoria, para o diálogo mostrar o que vale de fato */
+  categorias?: Record<string, Record<string, boolean>>;
 };
 
 function statusTexto(row: UsuarioRow) {

@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PrintButton } from "@/components/orcamento/PrintButton";
-import { formatCurrency, formatDate, formatNumber } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 import { createClientUntyped } from "@/lib/supabase/server";
+import { rotuloQuantidadeItem } from "@/lib/estoque/quantidade-compra";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,8 @@ type ItemCompra = {
   quantidade: number;
   quantidade_recebida: number | null;
   custo_unitario_estimado: number | null;
+  quantidade_em: string | null;
+  conteudo_embalagem: number | null;
   insumos: { especificacao: string | null; unidade: string | null } | null;
 };
 
@@ -44,7 +47,7 @@ export default async function PedidoCompraImprimivel({ params }: { params: Promi
       .eq("id", pedidoId)
       .single(),
     (supabase.from("pedidos_compra_itens") as unknown as ItensQuery)
-      .select("id, quantidade, quantidade_recebida, custo_unitario_estimado, insumos(especificacao, unidade)")
+      .select("id, quantidade, quantidade_recebida, custo_unitario_estimado, quantidade_em, conteudo_embalagem, insumos(especificacao, unidade)")
       .eq("pedido_id", pedidoId)
       .order("id"),
   ]);
@@ -127,7 +130,7 @@ export default async function PedidoCompraImprimivel({ params }: { params: Promi
                   {(itens ?? []).map((item) => (
                     <tr key={item.id}>
                       <td className="px-4 py-3 font-medium">{item.insumos?.especificacao ?? `Insumo #${item.id}`}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{formatNumber(item.quantidade)} {item.insumos?.unidade ?? ""}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{rotuloQuantidadeItem(item, item.insumos?.unidade)}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(item.custo_unitario_estimado)}</td>
                       <td className="px-4 py-3 text-right font-medium tabular-nums">{formatCurrency(Number(item.quantidade) * Number(item.custo_unitario_estimado ?? 0))}</td>
                     </tr>

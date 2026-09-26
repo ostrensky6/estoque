@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   reservarPlano,
@@ -10,25 +10,25 @@ import {
 } from "@/lib/actions/planejamento";
 import type { FormState } from "@/lib/actions/cadastros";
 import { HelpTip } from "@/components/common/HelpTip";
+import { ConfirmSubmitButton } from "@/components/common/ConfirmSubmitButton";
 
 type Action = (prev: FormState, fd: FormData) => Promise<FormState>;
+type Confirmacao = { titulo: string; mensagem: string; confirmLabel: string; destrutivo?: boolean };
 
 function Botao({
   planId,
   action,
   label,
   cls,
-  confirmar,
+  confirmacao,
 }: {
   planId: number;
   action: Action;
   label: string;
   cls: string;
-  confirmar?: string;
+  confirmacao?: Confirmacao;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, {
     ok: false,
   });
@@ -36,67 +36,23 @@ function Botao({
     if (state.ok) router.refresh();
   }, [state, router]);
 
-  function confirmarEnvio() {
-    const form = formRef.current;
-    setOpen(false);
-    form?.requestSubmit();
-  }
-
   return (
     <div className="flex flex-col gap-1">
-      <form ref={formRef} action={formAction}>
+      <form action={formAction}>
         <input type="hidden" name="planejamento_id" value={planId} />
-        {confirmar ? (
-          <button
-            type="button"
-            disabled={pending}
-            className={cls}
-            onClick={() => setOpen(true)}
-          >
-            {pending ? "…" : label}
-          </button>
+        {confirmacao ? (
+          <ConfirmSubmitButton className={cls} {...confirmacao}>
+            {label}
+          </ConfirmSubmitButton>
         ) : (
           <button disabled={pending} className={cls}>
             {pending ? "…" : label}
           </button>
         )}
-
-        {open && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 text-left">
-            <button
-              type="button"
-              aria-label="Fechar confirmação"
-              className="absolute inset-0 bg-black/40"
-              onClick={() => setOpen(false)}
-            />
-            <div className="relative w-full max-w-sm rounded-xl bg-card p-5 shadow-xl">
-              <h3 className="text-base font-semibold text-foreground">
-                Confirmar ação
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">{confirmar}</p>
-              <div className="mt-5 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={confirmarEnvio}
-                  className="rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-500"
-                >
-                  {pending ? "…" : "Confirmar"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </form>
       {state.message && (
         <p
+          role={state.ok ? "status" : "alert"}
           className={`text-xs ${state.ok ? "text-brand-700 dark:text-brand-400" : "text-danger-strong"}`}
         >
           {state.message}
@@ -177,9 +133,14 @@ export function PlanoAcoes({
           <Botao
             planId={planId}
             action={iniciarPlano}
-            label="Iniciar (baixa definitiva)"
+            label="Retirar insumos e iniciar"
             cls="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500 disabled:opacity-50"
-            confirmar="Iniciar a análise dá baixa definitiva nos lotes reservados. Confirmar?"
+            confirmacao={{
+              titulo: "Retirar os insumos e iniciar?",
+              mensagem:
+                "Os frascos reservados saem do estoque agora, em seu nome. O que sobrar não volta ao almoxarifado.",
+              confirmLabel: "Retirar e iniciar",
+            }}
           />
         )}
         {podeLiberar && (
@@ -188,6 +149,12 @@ export function PlanoAcoes({
             action={liberarPlano}
             label="Liberar reservas"
             cls="rounded-md border border-input px-4 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
+            confirmacao={{
+              titulo: "Liberar as reservas?",
+              mensagem:
+                "Os insumos e equipamentos voltam a ficar disponíveis e o plano volta para rascunho. Para usar o plano, reserve de novo.",
+              confirmLabel: "Liberar reservas",
+            }}
           />
         )}
         {podeConcluir && (
@@ -196,7 +163,12 @@ export function PlanoAcoes({
             action={concluirPlano}
             label="Concluir análise"
             cls="rounded-md border border-brand-300 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-50 dark:border-brand-800 dark:text-brand-300 dark:hover:bg-brand-950/30"
-            confirmar="Marcar este planejamento como concluído? A baixa de estoque deve ter sido feita ao iniciar."
+            confirmacao={{
+              titulo: "Concluir a análise?",
+              mensagem:
+                "O plano fica concluído e as reservas que sobraram são liberadas. A baixa de estoque já foi feita ao iniciar.",
+              confirmLabel: "Concluir análise",
+            }}
           />
         )}
       </div>

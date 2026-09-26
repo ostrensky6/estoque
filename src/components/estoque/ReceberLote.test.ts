@@ -39,7 +39,7 @@ describe("entrada inicial de estoque", () => {
   });
 
   it("mantem Aceitar visivel somente sob a permissao existente", () => {
-    expect(loteAcoes).toMatch(/status\s*===\s*"quarentena"\s*&&\s*podeAceitar/);
+    expect(loteAcoes).toMatch(/status\s*===\s*"quarentena"\s*&&\s*\(/);
     expect(loteAcoes).toMatch(/podeAceitar[\s\S]+setModal\("aceitar"\)[\s\S]+Aceitar/);
     expect(loteAcoes).toContain("estornoDiretoPermitido");
   });
