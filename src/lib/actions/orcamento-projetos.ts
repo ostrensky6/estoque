@@ -19,7 +19,9 @@ import { validarParametrosProjetoGrossUp } from "@/lib/project-budget/orcamento-
 import { linhasViagemFaltantes, normalizarMeses } from "@/lib/project-budget/editor";
 import { registrarVersaoParametrosEconomicos } from "@/lib/orcamento/parametros-versionamento";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
+import { recusaSemPermissao } from "@/lib/orcamento/permissao-acao";
 import { moduloBloqueadoParaEdicao } from "@/lib/orcamento/ciclo-vida-modulo";
+import { falha, mensagemDoBanco, sucesso, type EstadoAcao } from "@/lib/erros";
 
 const pathDemandas = "/orcamento/demandas";
 
@@ -703,63 +705,76 @@ export async function removerCustoProjeto(formData: FormData) {
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
-/** Gera um link público read-only de aprovação. O token bruto é mostrado uma
- *  única vez (via query param); o banco guarda só o hash SHA-256. */
-export async function criarLinkPublico(formData: FormData) {
-  await exigirPapelOrcamento("preencher_custos");
-  const id = numero(formData, "orcamento_projeto_id");
-  if (!id) return;
+type EstadoLink = EstadoAcao & { caminho?: string };
 
-  const token = randomBytes(24).toString("base64url");
+/**
+ * Gera o link público de aprovação de uma versão da proposta (ORC-2,
+ * funcionalidade do app antigo restaurada). O código bruto volta uma única vez
+ * para a tela; o banco guarda só o hash SHA-256. Mesma permissão na tela e no
+ * banco (RLS): "Orçamentos: Emitir proposta".
+ */
+export async function criarLinkPublico(_estado: EstadoLink, formData: FormData): Promise<EstadoLink> {
+  const recusa = await recusaSemPermissao("emitir_final");
+  if (recusa) return recusa;
+  const versaoId = numero(formData, "versao_id");
+  if (!versaoId) return falha("Proposta não identificada.");
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { data: projeto, error: projetoError } = await supabase
-    .from("orcamento_projetos")
-    .select("demanda_id")
-    .eq("id", id)
-    .single();
-  if (projetoError || !projeto?.demanda_id) {
-    throw new Error("Não foi possível identificar a demanda deste orçamento.");
-  }
-  const { data: versaoFinal, error: versaoError } = await supabase
+  const { data: versao, error: versaoError } = await supabase
     .from("orcamento_final_versoes")
+    .select("id, demanda_id, status, valido_ate")
+    .eq("id", versaoId)
+    .maybeSingle();
+  if (versaoError || !versao) return falha("Proposta não encontrada.");
+  if (!["emitido", "enviado", "alterado_reenviado"].includes(versao.status)) {
+    return falha("Link de aprovação só existe para proposta emitida ou enviada, ainda não aprovada.");
+  }
+  // Módulo de projeto ativo, quando houver (o link também vale sem ele — 0126).
+  const { data: projeto } = await supabase
+    .from("orcamento_projetos")
     .select("id")
-    .eq("demanda_id", projeto.demanda_id)
-    .in("status", ["emitido", "enviado", "alterado_reenviado", "aprovado"])
-    .order("versao", { ascending: false })
+    .eq("demanda_id", versao.demanda_id)
+    .neq("status", "cancelado")
+    .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (versaoError || !versaoFinal?.id) {
-    throw new Error("Emita uma versão final antes de criar o link público.");
-  }
 
+  const token = randomBytes(24).toString("base64url");
   const { error } = await supabase.from("orcamento_projeto_links").insert({
-    orcamento_projeto_id: id,
-    orcamento_final_versao_id: versaoFinal.id,
+    orcamento_projeto_id: projeto?.id ?? null,
+    orcamento_final_versao_id: versao.id,
     token_hash: hashToken(token),
     criado_por: user?.id ?? null,
   });
-  if (error) throw new Error(error.message);
+  if (error) return falha(mensagemDoBanco(error));
 
-  revalidarEtapaProjeto(projeto.demanda_id);
-  redirect(comParametro(caminhoEtapa(projeto.demanda_id, "final"), "novo_link", token));
+  revalidatePath(`/orcamento/final/${versao.id}`);
+  return { ok: true, message: "Link criado.", caminho: `/aprovar/${token}` };
 }
 
-export async function revogarLinkPublico(formData: FormData) {
-  await exigirPapelOrcamento("preencher_custos");
-  const id = numero(formData, "orcamento_projeto_id");
+export async function revogarLinkPublico(_estado: EstadoAcao, formData: FormData): Promise<EstadoAcao> {
+  const recusa = await recusaSemPermissao("emitir_final");
+  if (recusa) return recusa;
+  const versaoId = numero(formData, "versao_id");
   const linkId = numero(formData, "link_id");
-  if (!id || !linkId) return;
+  if (!versaoId || !linkId) return falha("Link não identificado.");
   const supabase = await createClient();
-  await supabase
+  const { data, error } = await supabase
     .from("orcamento_projeto_links")
     .update({ revogado: true })
     .eq("id", linkId)
-    .eq("orcamento_projeto_id", id);
-  revalidarEtapaProjeto(demandaDe(await carregarProjeto(supabase, id), formData));
+    .eq("orcamento_final_versao_id", versaoId)
+    .select("id");
+  if (error) return falha(mensagemDoBanco(error));
+  if (!data?.length) return falha("O link não foi revogado: ele não existe mais ou seu perfil não pode alterá-lo.");
+  revalidatePath(`/orcamento/final/${versaoId}`);
+  return sucesso("Link revogado. Quem tiver o endereço não consegue mais abrir a proposta.");
 }
+
+const MOTIVOS_APROVACAO_PUBLICA = new Set(["vencida", "outra_aprovada", "versao_nova"]);
 
 /** Aprovação pública (sem login) via RPC SECURITY DEFINER validando o token. */
 export async function aprovarOrcamentoPublico(formData: FormData) {
@@ -775,9 +790,13 @@ export async function aprovarOrcamentoPublico(formData: FormData) {
     aprovado?: boolean;
     repetido?: boolean;
     versao_id?: number;
+    motivo?: string;
   } | null;
   if (error || !resultado?.aprovado || !resultado.versao_id) {
-    redirect(`/aprovar/${token}?erro=link_indisponivel`);
+    const motivo = resultado?.motivo && MOTIVOS_APROVACAO_PUBLICA.has(resultado.motivo)
+      ? resultado.motivo
+      : "link_indisponivel";
+    redirect(`/aprovar/${token}?erro=${motivo}`);
   }
   revalidatePath(`/aprovar/${token}`);
   revalidatePath(`/orcamento/final/${resultado.versao_id}`);
