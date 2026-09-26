@@ -2169,7 +2169,9 @@ with (security_invoker = true) as
             i.fornecedor_id,
             f.nome AS fornecedor_nome,
             i.custo_unitario,
-            i.categoria_compra
+            i.categoria_compra,
+            s.modelo_quantidade,
+            s.unidade_saldo
            FROM v_estoque_saldo s
              JOIN insumos i ON i.id = s.insumo_id
              LEFT JOIN fornecedores f ON f.id = i.fornecedor_id
@@ -2194,12 +2196,18 @@ with (security_invoker = true) as
             ELSE NULL::numeric
         END AS dias_cobertura,
     GREATEST(ponto_reposicao_configurado, consumo_medio_diario * lead_time_dias::numeric + estoque_seguranca) AS ponto_reposicao_sugerido,
-    GREATEST(0::numeric, consumo_medio_diario * lead_time_dias::numeric + estoque_seguranca - disponivel - qtd_pedida_aberta) AS qtd_sugerida_compra,
+    -- Insumo contado em frascos só se compra em frascos inteiros (igual à reposição automática, 0125).
+    CASE
+        WHEN modelo_quantidade = 'EMBALAGEM_FECHADA'::text
+          THEN ceil(GREATEST(0::numeric, consumo_medio_diario * lead_time_dias::numeric + estoque_seguranca - disponivel - qtd_pedida_aberta))
+        ELSE GREATEST(0::numeric, consumo_medio_diario * lead_time_dias::numeric + estoque_seguranca - disponivel - qtd_pedida_aberta)
+    END AS qtd_sugerida_compra,
     qtd_pedida_aberta,
     fornecedor_id,
     fornecedor_nome,
     custo_unitario,
-    categoria_compra
+    categoria_compra,
+    unidade_saldo
    FROM base;
 
 revoke all on public.v_estoque_saldo, public.v_estoque_disponivel_unidade, public.v_alertas_estoque,

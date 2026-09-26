@@ -58,6 +58,8 @@ type EstoqueSaldo = {
   insumo_id: number | null;
   especificacao: string | null;
   unidade: string | null;
+  /** 0127: "frasco(s) de 100 mL" para insumo contado em frascos. */
+  unidade_saldo?: string | null;
   em_maos: number | null;
   em_quarentena: number | null;
   reservado: number | null;
@@ -207,6 +209,8 @@ export function StockControlHub({
 
       return {
         ...s,
+        // Saldo, reserva e ponto vêm na unidade do saldo (frascos no modelo atual).
+        unidade: s.unidade_saldo ?? s.unidade,
         status,
         statusLabel,
         tone,

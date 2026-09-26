@@ -37,6 +37,7 @@ type Previsao = {
   insumo_id: number;
   especificacao: string | null;
   unidade: string | null;
+  unidade_saldo?: string | null;
   disponivel: number | null;
   qtd_sugerida_compra: number | null;
   qtd_pedida_aberta: number | null;
@@ -232,7 +233,7 @@ export default async function Home() {
     verSuprimentos
       ? supabase
           .from("v_previsao_suprimentos")
-          .select("insumo_id, especificacao, unidade, disponivel, qtd_sugerida_compra, qtd_pedida_aberta, categoria_compra")
+          .select("insumo_id, especificacao, unidade, unidade_saldo, disponivel, qtd_sugerida_compra, qtd_pedida_aberta, categoria_compra")
           .gt("qtd_sugerida_compra", 0)
           .order("qtd_sugerida_compra", { ascending: false })
       : vazio,
@@ -270,7 +271,7 @@ export default async function Home() {
   const comprarAgora = previsao
     .map((p) => ({
       titulo: p.especificacao ?? `Insumo #${p.insumo_id}`,
-      meta: `disp. ${formatNumber(p.disponivel)} ${p.unidade ?? ""} · já pedido ${formatNumber(p.qtd_pedida_aberta)} · sugerido ${formatNumber(p.qtd_sugerida_compra)}`,
+      meta: `disp. ${formatNumber(p.disponivel)} · já pedido ${formatNumber(p.qtd_pedida_aberta)} · sugerido ${formatNumber(p.qtd_sugerida_compra)} ${p.unidade_saldo ?? p.unidade ?? ""}`.trim(),
       peso: (p.categoria_compra === "critico" ? 1e9 : 0) + Number(p.qtd_sugerida_compra ?? 0),
     }))
     .sort((a, b) => b.peso - a.peso);
@@ -493,7 +494,7 @@ export default async function Home() {
             href="/compras"
             vazio="Nenhum pedido aberto no ciclo de compras."
             itens={pedidos.slice(0, 5).map((p) => ({
-              titulo: `Pedido #${p.id}`,
+              titulo: `Compra #${p.id}`,
               meta: `${statusInfo(p.status).label}${p.data_solicitacao ? ` · ${formatDate(p.data_solicitacao)}` : ""}${p.projeto ? ` · ${p.projeto}` : ""}`,
             }))}
           />

@@ -4473,6 +4473,7 @@ export type Database = {
           qtd_sugerida_compra: number | null
           reservado: number | null
           unidade: string | null
+          unidade_saldo: string | null
         }
         Relationships: [
           {
