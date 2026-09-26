@@ -126,22 +126,22 @@ describe("actions de receita - vinculo de materiais", () => {
     );
   });
 
-  it("duplicarAnalise copia a análise inteira numa transação do banco (preserva preferencial)", async () => {
+  it("nova análise copiando outra usa a transação do banco (preserva preferencial)", async () => {
     rpc.mockResolvedValue({ data: { codigo: "PCR-002" }, error: null });
-    const { duplicarAnalise } = await import("./receita");
+    const { criarAnaliseAcao } = await import("./receita");
     const formData = new FormData();
+    formData.set("codigo", "PCR-002");
     formData.set("origem", "PCR-001");
-    formData.set("novo_codigo", "PCR-002");
 
-    await duplicarAnalise(formData);
+    const resultado = await criarAnaliseAcao({ ok: false }, formData);
 
+    expect(resultado).toEqual({ ok: true, message: "Análise criada.", codigo: "PCR-002" });
     expect(rpc).toHaveBeenCalledWith("duplicar_analise", {
       p_origem: "PCR-001",
       p_novo: "PCR-002",
       p_nome: null,
     });
     expect(from).not.toHaveBeenCalled();
-    expect(redirect).toHaveBeenCalledWith("/analises/PCR-002");
 
     // a cópia no banco usa todas as colunas das tabelas filhas (inclui preferencial)
     const { readFileSync } = await import("node:fs");

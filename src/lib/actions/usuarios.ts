@@ -330,39 +330,6 @@ export async function alternarSuspensao(formData: FormData) {
   }
 }
 
-/**
- * Reseta a senha de um usuário para a senha provisória e força a troca no
- * próximo acesso (senha_provisoria=true).
- */
-export async function resetarSenha(_prev: FormState, formData: FormData): Promise<FormState> {
-  try {
-    if (!(await temPapel("admin"))) {
-      return { ok: false, message: "Sem permissão para resetar senhas." };
-    }
-    const id = String(formData.get("id") ?? "");
-    const email = String(formData.get("email") ?? "");
-    if (!id) return { ok: false, message: "Usuário inválido." };
-
-    const { error } = await createAdminClient().auth.admin.updateUserById(id, {
-      password: SENHA_PROVISORIA,
-      user_metadata: { senha_provisoria: true },
-      app_metadata: APP_METADATA_SENHA_PROVISORIA,
-    });
-    if (error) return { ok: false, message: mensagemErroAdminSupabase(error) };
-
-    const supabase = await createClient();
-    await supabase.from("perfis").update({ senha_provisoria: true }).eq("id", id);
-
-    revalidatePath("/usuarios");
-    return {
-      ok: true,
-      message: `Senha de ${email || "usuário"} redefinida. Ele definirá uma nova senha no próximo acesso.`,
-    };
-  } catch (error) {
-    return { ok: false, message: mensagemErroAcao(error) };
-  }
-}
-
 export async function salvarAssinaturaUsuario(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!(await temPapel("admin"))) {
     return { ok: false, message: "Sem permissão para alterar assinatura." };

@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 // ---- helpers ---------------------------------------------------------
@@ -156,43 +155,6 @@ export async function definirSituacaoAnalise(
   return { ok: true, message: "Situação atualizada.", codigo };
 }
 
-// =====================================================================
-// Análise (cabeçalho) — criar / duplicar / atualizar / excluir
-// =====================================================================
-
-export async function criarAnalise(formData: FormData) {
-  const codigo = txtReq(formData, "codigo");
-  if (!codigo) throw new Error("Informe o código da análise.");
-  const supabase = await createClient();
-  const { error } = await supabase.from("analises").insert({
-    codigo,
-    nome: txt(formData, "nome"),
-    descricao: txt(formData, "descricao"),
-    ativo: true,
-  });
-  if (error) throw new Error(error.message);
-  revalidatePath("/analises");
-  redirect(`/analises/${codigo}`);
-}
-
-export async function atualizarAnalise(formData: FormData) {
-  const codigo = txtReq(formData, "codigo");
-  if (!codigo) return;
-  const supabase = await createClient();
-  garantirEscrita(
-    await supabase
-    .from("analises")
-    .update({
-      nome: txt(formData, "nome"),
-      descricao: txt(formData, "descricao"),
-      ativo: bool(formData, "ativo"),
-    })
-    .eq("codigo", codigo)
-    .select("codigo"),
-  );
-  revalidarReceita(codigo);
-}
-
 /** Atualiza só os campos do catálogo simplificado (módulo Análises): nome simplificado, descrição e status. Não toca em `nome` nem `ativo`. */
 export async function atualizarCatalogoAnalise(formData: FormData) {
   const codigo = txtReq(formData, "codigo");
@@ -225,36 +187,6 @@ export async function inativarAnalise(formData: FormData) {
       .select("codigo"),
   );
   revalidarReceita(codigo);
-}
-
-/**
- * Exclusão física numa transação (excluir_analise_sem_historico, 0114):
- * recusa análise usada em orçamentos/planos em vez de apagar a receita e falhar.
- */
-export async function excluirAnalise(formData: FormData) {
-  const codigo = txtReq(formData, "codigo");
-  if (!codigo) return;
-  const resultado = await excluirAnaliseAcao({ ok: false }, formData);
-  if (!resultado.ok) throw new Error(resultado.message);
-  redirect("/analises");
-}
-
-/** Duplica a análise inteira (cabeçalho + etapas + equipamentos + materiais). */
-export async function duplicarAnalise(formData: FormData) {
-  const origem = txtReq(formData, "origem");
-  const novo = txtReq(formData, "novo_codigo");
-  if (!origem || !novo) throw new Error("Código de origem e novo código são obrigatórios.");
-  // cópia atômica no banco (duplicar_analise, 0114): nada fica pela metade
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("duplicar_analise" as never, {
-    p_origem: origem,
-    p_novo: novo,
-    p_nome: txt(formData, "novo_nome"),
-  } as never);
-  if (error) throw new Error(mensagemRpcAnalise(error.message));
-
-  revalidatePath("/analises");
-  redirect(`/analises/${novo}`);
 }
 
 // =====================================================================

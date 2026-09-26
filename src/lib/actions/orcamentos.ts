@@ -109,45 +109,6 @@ async function atualizarOperacionalLaboratorio(
   }).eq("id", id);
 }
 
-/** Cria um orçamento em rascunho e abre a tela de edição. */
-export async function criarOrcamento(formData: FormData) {
-  await exigirPapelOrcamento("preencher_custos");
-  const demandaId = formData.get("demanda_id") ? Number(formData.get("demanda_id")) : null;
-  if (!demandaId) {
-    redirect("/orcamento/demandas");
-  }
-
-  const tipo = String(formData.get("tipo") ?? "analises");
-  const cliente_nome =
-    String(formData.get("cliente_nome") ?? "").trim() || "Cliente sem nome";
-  const projeto_id = formData.get("projeto_id") ? Number(formData.get("projeto_id")) : null;
-  const supabase = await createClient();
-
-  if (tipo === "projeto" || tipo === "analises_projeto") {
-    const titulo =
-      String(formData.get("titulo") ?? "").trim() ||
-      (tipo === "analises_projeto" ? `Projeto com análises - ${cliente_nome}` : `Projeto - ${cliente_nome}`);
-    const { error } = await supabase
-      .from("orcamento_projetos")
-      .insert({
-        demanda_id: demandaId,
-        projeto_id,
-        titulo,
-        cliente_nome,
-      });
-    if (error) throw new Error(error.message);
-    redirect(`/orcamento/demandas/${demandaId}?etapa=projeto`);
-  }
-
-  const { data, error } = await supabase
-    .from("orcamentos")
-    .insert({ demanda_id: demandaId, cliente_nome, projeto_id, tipo: "analises" })
-    .select("id")
-    .single();
-  if (error) throw new Error(error.message);
-  redirect(`/orcamento/${data.id}`);
-}
-
 /** Salva o cabeçalho (cliente/projeto + dados) do orçamento. Se um cliente
  *  cadastrado for vinculado, os dados do documento são preenchidos a partir dele. */
 export async function salvarCabecalho(formData: FormData) {

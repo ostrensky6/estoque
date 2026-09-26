@@ -369,64 +369,6 @@ export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {
   redirect(`/orcamento/demandas/${id}?etapa=projeto`);
 }
 
-/**
- * Rotina ÚNICA e idempotente: garante os módulos aplicáveis da proposta.
- * Cria somente o que falta, abre o existente, bloqueia se houver duplicidade
- * histórica. Tolera cliques/chamadas repetidas (re-consulta os ativos a cada
- * execução). Não marca a demanda como "orcada".
- */
-export async function garantirModulosDaProposta(formData: FormData) {
-  await exigirPapelOrcamento("preencher_custos");
-  const id = Number(formData.get("demanda_id"));
-  if (!id) return;
-  const supabase = await createClient();
-  const { data: demanda } = await supabase.from("demandas_propostas").select("*").eq("id", id).single();
-  if (!demanda) return;
-  if (!avaliarCompletudeDemanda(demanda).completa) {
-    redirect(`${listaPath}/${id}`);
-  }
-
-  const plano = await planoModulos(supabase, demanda);
-  if (plano.bloqueadoPorDuplicidade) {
-    redirect(`${listaPath}/${id}?etapa=demanda&erro_integridade=${encodeURIComponent(plano.erros.join("; "))}`);
-  }
-
-  let criou = false;
-  if (plano.laboratorio.acao === "criar") {
-    const { error } = await supabase.from("orcamentos").insert({
-      demanda_id: id,
-      cliente_id: demanda.cliente_id,
-      projeto_id: demanda.projeto_id,
-      cliente_nome: demanda.cliente_nome || demanda.titulo,
-      cliente_cnpj: demanda.cliente_cnpj,
-      cliente_contato: demanda.cliente_contato,
-      responsavel: demanda.responsavel_interno,
-      observacoes: demanda.escopo_preliminar || demanda.descricao || demanda.observacoes,
-    });
-    if (error) throw new Error(error.message);
-    criou = true;
-  }
-  if (plano.projeto.acao === "criar") {
-    const { error } = await supabase.from("orcamento_projetos").insert({
-      demanda_id: id,
-      projeto_id: demanda.projeto_id,
-      cliente_id: demanda.cliente_id,
-      titulo: demanda.titulo,
-      cliente_nome: demanda.cliente_nome,
-      cliente_cnpj: demanda.cliente_cnpj,
-      cliente_contato: demanda.cliente_contato,
-      responsavel: demanda.responsavel_interno,
-      escopo: demanda.escopo_preliminar || demanda.descricao,
-      observacoes: demanda.observacoes,
-    });
-    if (error) throw new Error(error.message);
-    criou = true;
-  }
-  if (criou) await marcarEmAnalise(supabase, demanda);
-  revalidatePath(listaPath);
-  redirect(`${listaPath}/${id}?etapa=demanda`);
-}
-
 export async function emitirOrcamentoFinalDaDemanda(formData: FormData) {
   const id = Number(formData.get("demanda_id"));
   if (!id) return;
@@ -758,14 +700,4 @@ export async function salvarParametrosEconomicosDaDemanda(formData: FormData) {
   revalidatePath(listaPath);
   revalidatePath(`${listaPath}/${demandaId}`);
   redirect(`${listaPath}/${demandaId}?etapa=parametros&parametros_salvos=1`);
-}
-
-export async function emitirPropostaCliente(
-  _prevState: DemandaFormState,
-  formData: FormData,
-): Promise<DemandaFormState> {
-  const id = Number(formData.get("demanda_id"));
-  if (!id) return { ok: false, message: "Identificador de demanda inválido." };
-  await emitirOrcamentoFinalDaDemanda(formData);
-  return { ok: true, message: "Proposta emitida." };
 }
