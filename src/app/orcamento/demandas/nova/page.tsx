@@ -139,8 +139,8 @@ export default async function NovaDemandaPage() {
           <div>
             <Breadcrumbs
               items={[
-                { label: "Orçamentos não finalizados", href: "/orcamento/demandas" },
-                { label: "Novo Orçamento" },
+                { label: "Orçamentos", href: "/orcamento/demandas" },
+                { label: "Novo orçamento" },
               ]}
             />
             <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">

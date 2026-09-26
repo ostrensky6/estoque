@@ -203,7 +203,7 @@ export default async function HistoricoOrcamentosPage({
               Exportar CSV
             </DownloadButton>
             <Link href="/orcamento/demandas/nova" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
-              + Novo Orçamento
+              + Novo orçamento
             </Link>
           </div>
         </div>

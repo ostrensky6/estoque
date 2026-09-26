@@ -310,7 +310,7 @@ async function adicionarAnaliseProjetoInterno(formData: FormData) {
     .eq("codigo", codigo)
     .single();
   if (!analise?.ativo || !analise?.ofertavel) {
-    throw new Error("Analise inativa ou nao oferecivel para novo orcamento.");
+    throw new Error("Análise inativa ou fora da oferta; não pode entrar em novos orçamentos.");
   }
   const { breakdowns } = await calcularTodas();
   const breakdown = breakdowns.find((x) => x.codigo === codigo);

@@ -148,14 +148,14 @@ export const APP_MODULES: AppModule[] = [
       {
         href: "/planejamento",
         label: "Planejamento",
-        desc: "demanda, reservas e consumo previsto",
+        desc: "necessidades, reservas e consumo previsto",
         icon: "CalendarClock",
         shortcut: "P",
       },
       {
         href: "/pedido",
         label: "Pedidos internos",
-        desc: "demandas internas para compra",
+        desc: "pedidos do laboratório para compra",
         icon: "ClipboardList",
       },
       {

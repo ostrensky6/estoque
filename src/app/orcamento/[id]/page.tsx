@@ -224,7 +224,7 @@ export default async function OrcamentoDetalhe({
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="print-area app-page-container">
         <div className="no-print flex flex-wrap items-center justify-between gap-3">
-          <Breadcrumbs items={[{ label: "Orçamentos não finalizados", href: "/orcamento/demandas" }, { label: `Custos laboratoriais #${orc.id}` }]} />
+          <Breadcrumbs items={[{ label: "Orçamentos", href: "/orcamento/demandas" }, { label: `Custos laboratoriais #${orc.id}` }]} />
           <div className="flex flex-wrap items-center gap-2">
             <PrintButton />
             {planoGerado && (

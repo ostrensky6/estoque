@@ -189,7 +189,7 @@ export async function salvarDemanda(
   const formData = maybeFormData ?? (stateOrFormData as FormData);
   const retornaEstado = Boolean(maybeFormData);
   const id = Number(formData.get("demanda_id"));
-  if (!id) return retornaEstado ? { ok: false, message: "Demanda inválida." } : undefined;
+  if (!id) return retornaEstado ? { ok: false, message: "Orçamento inválido." } : undefined;
 
   const supabase = await createClient();
   const clienteId = numeroOuNull(formData, "cliente_id");
@@ -267,7 +267,7 @@ export async function salvarDemanda(
   revalidatePath(listaPath);
   revalidatePath(`${listaPath}/${id}`);
   if (retornaEstado) {
-    return { ok: true, message: "Demanda salva com sucesso.", savedAt: new Date().toISOString() };
+    return { ok: true, message: "Orçamento salvo.", savedAt: new Date().toISOString() };
   }
 }
 
