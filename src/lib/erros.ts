@@ -47,7 +47,10 @@ export function mensagemDoBanco(error: unknown, padrao: string = PADRAO): string
     case "23505":
       return "Já existe um registro com esses dados.";
     case "23503":
-      return "Este registro está em uso em outro lugar e não pode ser alterado ou excluído.";
+      // Os gatilhos de exclusão (0120, 0129) explicam o vínculo e o que fazer.
+      return texto && !TECNICA.test(texto)
+        ? texto
+        : "Este registro está em uso em outro lugar e não pode ser alterado ou excluído.";
     case "23502":
       return "Preencha todos os campos obrigatórios.";
     case "23514":

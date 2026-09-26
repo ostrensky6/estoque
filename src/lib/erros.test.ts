@@ -23,6 +23,9 @@ describe("mensagemDoBanco", () => {
       "Já existe um registro com esses dados.",
     );
     expect(mensagemDoBanco({ code: "23503", message: "update or delete violates foreign key" })).toMatch(/em uso/);
+    expect(
+      mensagemDoBanco({ code: "23503", message: "Este projeto tem pedidos internos. Conclua ou desative em vez de excluir." }),
+    ).toMatch(/desative/);
     expect(mensagemDoBanco({ message: 'column "x" does not exist' })).toMatch(/Não foi possível/);
   });
 
