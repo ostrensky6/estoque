@@ -12,8 +12,8 @@ Este repositório local oficial fica em `D:\Aplicativos\Kontrol`.
 ## GitHub
 
 - Conta: `ostrensky6`
-- Repositório: `ostrensky6/estoque`
-- Origin: `https://github.com/ostrensky6/estoque.git`
+- Repositório: `ostrensky6/kontrol` (renomeado de `ostrensky6/estoque` em 2026-09-26; o GitHub redireciona o nome antigo)
+- Origin: `https://github.com/ostrensky6/kontrol.git`
 - Branch alvo de produção: `main`
 - Baseline estável pós-auditoria: commit `efa20f15205ea3d12b7bd9b0f72444d27561173a`
 - Tag local do baseline: `baseline-producao-pos-auditoria-20260704`
@@ -35,7 +35,7 @@ Observação: a pasta antiga `D:\Aplicativos\Estoque` está depreciada e não de
 
 ## Supabase
 
-- Projeto: `estoque`
+- Projeto: `Kontrol`
 - Project ref: `gkcjzwfsnoknxgpsumxi`
 - Região: `sa-east-1`
 - API URL: https://gkcjzwfsnoknxgpsumxi.supabase.co
