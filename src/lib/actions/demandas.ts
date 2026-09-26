@@ -12,6 +12,7 @@ import { detectarCustosZero } from "@/lib/orcamento/proposta-final";
 import { planejarModulosProposta, type PlanoModulos } from "@/lib/orcamento/garantir-modulos";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
 import { mensagemDoBanco } from "@/lib/erros";
+import { incluirAnalisesDaDemandaNoOrcamento } from "./orcamentos";
 import { padroesDeParametrosGlobais, resolverParametrosProposta } from "@/lib/orcamento/parametros-proposta";
 import {
   lerAnalisesSelecionadas,
@@ -338,9 +339,11 @@ export async function gerarOrcamentoAnalisesDaDemanda(formData: FormData) {
     }
     redirect(`${listaPath}/${id}?etapa=demanda&erro_integridade=${encodeURIComponent(mensagemDoBanco(error))}`);
   }
+  // As análises escolhidas nos grupos entram no módulo (antes ele nascia vazio).
+  const copia = await incluirAnalisesDaDemandaNoOrcamento(data.id, id);
   await marcarEmAnalise(supabase, demanda);
   revalidatePath(listaPath);
-  redirect(`/orcamento/${data.id}`);
+  redirect(copia.ok ? `/orcamento/${data.id}` : `/orcamento/${data.id}?aviso=${encodeURIComponent(copia.message ?? "")}`);
 }
 
 export async function gerarOrcamentoProjetoDaDemanda(formData: FormData) {

@@ -326,6 +326,64 @@ export async function salvarItemOrcamento(_estado: EstadoAcao, formData: FormDat
   return sucesso(remover ? `${codigo} removida.` : `${codigo}: ${n} amostra(s) salvas.`);
 }
 
+/**
+ * Copia para o orçamento laboratorial recém-criado as análises escolhidas nos
+ * grupos de amostras do orçamento (demanda_analises), somando as quantidades da
+ * mesma análise. Antes o módulo nascia vazio e o técnico escolhia tudo de novo.
+ * Cada item passa pela mesma RPC transacional do "Incluir" (custo congelado).
+ */
+export async function incluirAnalisesDaDemandaNoOrcamento(orcamentoId: number, demandaId: number): Promise<EstadoAcao> {
+  const supabase = await createClient();
+  const { data: escolhidas, error: escolhidasError } = await supabase
+    .from("demanda_analises")
+    .select("codigo_analise, quantidade_amostras")
+    .eq("demanda_id", demandaId);
+  if (escolhidasError) return falha(mensagemDoBanco(escolhidasError));
+  const quantidades = new Map<string, number>();
+  for (const linha of (escolhidas ?? []) as { codigo_analise: string; quantidade_amostras: number }[]) {
+    quantidades.set(linha.codigo_analise, (quantidades.get(linha.codigo_analise) ?? 0) + Number(linha.quantidade_amostras));
+  }
+  if (quantidades.size === 0) return sucesso("Nenhuma análise escolhida no orçamento.");
+
+  const { data: orcamento } = await supabase
+    .from("orcamentos")
+    .select("fonte_custo_insumos")
+    .eq("id", orcamentoId)
+    .single();
+  const fonteCustoInsumos = normalizarFonteCustoInsumos(orcamento?.fonte_custo_insumos);
+  const { breakdowns } = await calcularTodas({}, fonteCustoInsumos);
+
+  const gravados: ItemGravado[] = [];
+  const semCusto: string[] = [];
+  for (const [codigo, n] of quantidades) {
+    const breakdown = breakdowns.find((x) => x.codigo === codigo);
+    if (!breakdown) {
+      semCusto.push(codigo);
+      continue;
+    }
+    const novo = itemDoCusteio(breakdown, n, fonteCustoInsumos);
+    gravados.push({ codigo_analise: codigo, ...novo });
+    const custoSnapshot = {
+      ...(montarSnapshotLaboratorio(gravados as ItemLaboratorioOperacional[], breakdowns) as Record<string, Json>),
+      fonte_custo_insumos: fonteCustoInsumos,
+    };
+    const { error } = await supabase.rpc("salvar_item_orcamento", {
+      p_orcamento_id: orcamentoId,
+      p_codigo_analise: codigo,
+      p_n_amostras: n,
+      p_custo_unitario: novo.custo_unitario,
+      p_preco_unitario: novo.preco_unitario,
+      p_valor_snapshot: novo.valor_snapshot as Json,
+      p_custo_snapshot: custoSnapshot,
+    });
+    if (error) return falha(mensagemDoBanco(error));
+  }
+  revalidatePath(`/orcamento/${orcamentoId}`);
+  return semCusto.length > 0
+    ? falha(`Sem custo calculado para: ${semCusto.join(", ")}. Confira a receita em Análises e inclua depois.`)
+    : sucesso(`${gravados.length} análise(s) trazidas do orçamento.`);
+}
+
 export type ResultadoRecalculoOrcamento = {
   ok: boolean;
   message: string;

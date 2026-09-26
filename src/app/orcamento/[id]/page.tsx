@@ -70,10 +70,10 @@ export default async function OrcamentoDetalhe({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ erro_exclusao?: string }>;
+  searchParams: Promise<{ erro_exclusao?: string; aviso?: string }>;
 }) {
   const { id } = await params;
-  const { erro_exclusao: erroExclusao } = await searchParams;
+  const { erro_exclusao: erroExclusao, aviso } = await searchParams;
   const orcId = Number(id);
   const supabase = await createClient();
 
@@ -521,6 +521,11 @@ export default async function OrcamentoDetalhe({
         {erroExclusao && (
           <p className="no-print mt-4 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">
             {erroExclusao}
+          </p>
+        )}
+        {aviso && (
+          <p role="status" className="no-print mt-4 rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+            {aviso}
           </p>
         )}
 
