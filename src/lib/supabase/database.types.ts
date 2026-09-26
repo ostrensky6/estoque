@@ -3966,6 +3966,7 @@ export type Database = {
       }
       tecnicos: {
         Row: {
+          ativo: boolean
           horas_mes_base: number
           id: number
           nome: string
@@ -3974,6 +3975,7 @@ export type Database = {
           valor_mes: number
         }
         Insert: {
+          ativo?: boolean
           horas_mes_base?: number
           id?: never
           nome: string
@@ -3982,6 +3984,7 @@ export type Database = {
           valor_mes?: number
         }
         Update: {
+          ativo?: boolean
           horas_mes_base?: number
           id?: never
           nome?: string

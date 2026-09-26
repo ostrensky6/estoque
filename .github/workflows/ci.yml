@@ -50,6 +50,9 @@ jobs:
       - name: Validar item de pedido interno e travas da reposição
         run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/pedido_interno_itens_0125.sql
 
+      - name: Validar integridade dos cadastros (exclusão com vínculo, técnico ativo, faixas)
+        run: docker exec -i supabase_db_Estoque psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/cadastros_integridade_0129.sql
+
   check:
     runs-on: ubuntu-latest
     steps:
