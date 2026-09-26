@@ -98,6 +98,7 @@ coordenador e gestor.
 | `0115_corrigir_descarte_lote.sql` | esta auditoria | Descarte registra o saldo atual, com custo e categoria; cria `categoria_saida`. Rollback: recriar a função da 0014. |
 | `0116_catalogo_analises_transacional.sql` | esta auditoria | `duplicar_analise` e `excluir_analise_sem_historico`. Rollback: `drop function` das duas. |
 | `0118_parametros_economicos_proposta.sql` | esta auditoria | Percentuais econômicos na própria proposta (colunas `param_*`, soma < 100%). Rollback: `drop column` das cinco colunas novas. |
+| `0119_taxa_e_valor_fixo_incubacao.sql` | esta auditoria | Parâmetro `taxa_incubacao` (2%, editável em Parâmetros de custeio), padrão da "Taxa de incubação" da proposta; linha de Overhead "Incubação UFPR (valor fixo mensal)" com R$ 0 para preencher. Só insere se não existir. |
 | `0117_baixa_lote_vencido.sql` | esta auditoria | Baixa de lote vencido com o motivo "Vencimento"; perdas gravadas como `ajuste`. Rollback: recriar as funções da 0110. |
 
 Até as migrations serem aplicadas, o app degrada com segurança:

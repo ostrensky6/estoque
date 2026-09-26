@@ -7,7 +7,8 @@ import {
 
 const padroes = padroesDeParametrosGlobais([
   { chave: "impostos", valor: 16.33 },
-  { chave: "taxas", valor: 2 },
+  { chave: "taxas", valor: 7 },
+  { chave: "taxa_incubacao", valor: 2.5 },
   { chave: "fundo_reserva", valor: 5 },
   { chave: "fundo_investimento", valor: "5" },
   { chave: "margem_lucro", valor: 20 },
@@ -16,7 +17,12 @@ const padroes = padroesDeParametrosGlobais([
 
 describe("parâmetros econômicos da proposta", () => {
   it("mapeia os parâmetros de custeio para o vocabulário da proposta", () => {
-    expect(padroes).toEqual({ impostos_legacy: 16.33, incubacao: 2, reserva: 5, investimentos: 5, lucro: 20 });
+    // "Taxas administrativas" não é a taxa de incubação
+    expect(padroes).toEqual({ impostos_legacy: 16.33, incubacao: 2.5, reserva: 5, investimentos: 5, lucro: 20 });
+  });
+
+  it("taxa de incubação padrão é 2% quando não cadastrada", () => {
+    expect(padroesDeParametrosGlobais([]).incubacao).toBe(2);
   });
 
   it("com projeto, usa os percentuais do projeto (comportamento de sempre)", () => {

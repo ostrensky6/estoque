@@ -116,7 +116,8 @@ beforeEach(() => {
   state.projetos = [];
   state.inserts = [];
   state.updates = [];
-  state.parametros = [];
+  // fixture "sem parâmetros": zera também a taxa de incubação (padrão 2%)
+  state.parametros = [{ chave: "taxa_incubacao", valor: 0 }];
 });
 
 async function emitir(
@@ -253,11 +254,11 @@ describe("emissão transacional", () => {
   it("apenas análises sem percentuais gravados usa os padrões de Parâmetros de custeio", async () => {
     state.parametros = [
       { chave: "impostos", valor: 10 },
-      { chave: "margem_lucro", valor: 10 },
+      { chave: "margem_lucro", valor: 8 },
     ];
     await expect(emitir(undefined, false)).rejects.toThrow(/NEXT_REDIRECT/);
     const args = rpcCall(0)[1] as Record<string, unknown>;
-    // 100 / (1 − 20%) = 125, sem exigir a confirmação de "sem parâmetros"
+    // taxa de incubação não cadastrada = 2% → 10 + 8 + 2 = 20% → 100 / 0,8 = 125
     expect(args.p_total_final).toBe(125);
   });
 

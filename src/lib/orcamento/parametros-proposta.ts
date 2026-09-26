@@ -26,6 +26,9 @@ type PropostaRates = {
   param_lucro?: number | string | null;
 };
 
+/** Taxa de incubação da UFPR sobre o valor dos serviços de cada nota fiscal. */
+export const TAXA_INCUBACAO_PADRAO = 2;
+
 const num = (v: unknown) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -38,7 +41,8 @@ export function padroesDeParametrosGlobais(
   const mapa = new Map((linhas ?? []).map((l) => [l.chave, num(l.valor)]));
   return {
     impostos_legacy: mapa.get("impostos") ?? 0,
-    incubacao: mapa.get("taxas") ?? 0,
+    // taxa de incubação UFPR (% por nota fiscal); padrão 2% (0119)
+    incubacao: mapa.get("taxa_incubacao") ?? TAXA_INCUBACAO_PADRAO,
     reserva: mapa.get("fundo_reserva") ?? 0,
     investimentos: mapa.get("fundo_investimento") ?? 0,
     lucro: mapa.get("margem_lucro") ?? 0,
