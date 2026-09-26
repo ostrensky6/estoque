@@ -145,11 +145,21 @@ históricas; snapshots antigos são lidos no modo legado em `/orcamento/final/[i
 - Bloqueio Σ ≥ 100% centralizado na engine autoritativa.
 - Engine B e adapters C ficam como compatibilidade histórica (`@deprecated`).
 
+## 8.1 Decisão de 26/09/2026: taxa de incubação (UFPR)
+
+- A **taxa de incubação (UFPR)** (padrão 2%, parâmetro global `taxa_incubacao`) incide sobre o valor
+  dos serviços de cada nota fiscal **sem os impostos**. Na engine, entra com a taxa efetiva
+  `incubacao × (1 − impostos/100)`, tanto na soma do gross-up quanto no valor em R$; o percentual exibido
+  continua o nominal.
+- O **valor fixo mensal** da incubação é custo fixo, cadastrado em Overhead (rateado nas horas de bancada),
+  e não é parâmetro da proposta.
+- Propostas sem orçamento de projeto guardam os próprios percentuais (`demandas_propostas.param_*`, 0118);
+  sem valores salvos, usam os padrões de Parâmetros de custeio.
+
 ## 9. Pendências conhecidas
 
-- **Fonte dos parâmetros para propostas só-laboratório:** hoje os percentuais vêm
-  do módulo de projeto; para uma proposta sem projeto, é preciso uma fonte de
-  parâmetros em nível de proposta (a tratar na unificação de parâmetros).
+- **Unificação dos parâmetros em propostas mistas:** propostas sem projeto já têm
+  percentuais próprios (0118); nas mistas eles continuam no módulo de projeto.
 - **Compatibilidade com `Laboratorio1.xlsm`** no nível do projeto: confirmar
   abrindo a planilha (não verificável automaticamente nesta fase).
 - **Reconciliação da “composição comercial”** em `/orcamento/final/[id]`: a tabela

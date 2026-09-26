@@ -108,3 +108,24 @@ describe("calcularPropostaEconomica — Política A (autoritativa)", () => {
     expect(a.politica).toBe("A_GROSS_UP_TOTAL");
   });
 });
+
+describe("taxa de incubação (UFPR) sobre os serviços sem impostos", () => {
+  it("incide sobre o total sem os impostos e entra no gross-up com a taxa efetiva", () => {
+    const r = calcularPropostaEconomica({
+      custoLaboratorioTecnico: 1000,
+      custoDiretoProjeto: 0,
+      parametros: [
+        { chave: "impostos_legacy", label: "Impostos", percentual: 16.33 },
+        { chave: "incubacao", label: "Taxa de incubação (UFPR)", percentual: 2 },
+      ],
+    });
+    // efetiva = 2% × (1 − 16,33%) = 1,6734%; soma = 18,0034%
+    expect(r.somaPercentual).toBeCloseTo(18.0034, 4);
+    expect(r.totalFinal).toBeCloseTo(1000 / (1 - 0.180034), 2);
+    const impostos = r.parametros.find((p) => p.chave === "impostos_legacy")!;
+    const incubacao = r.parametros.find((p) => p.chave === "incubacao")!;
+    // 2% sobre (total − impostos)
+    expect(incubacao.valorNominal).toBeCloseTo((r.totalFinal - impostos.valorNominal) * 0.02, 1);
+    expect(incubacao.percentual).toBe(2);
+  });
+});

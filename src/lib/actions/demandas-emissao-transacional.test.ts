@@ -258,8 +258,9 @@ describe("emissão transacional", () => {
     ];
     await expect(emitir(undefined, false)).rejects.toThrow(/NEXT_REDIRECT/);
     const args = rpcCall(0)[1] as Record<string, unknown>;
-    // taxa de incubação não cadastrada = 2% → 10 + 8 + 2 = 20% → 100 / 0,8 = 125
-    expect(args.p_total_final).toBe(125);
+    // taxa de incubação não cadastrada = 2%, sobre os serviços sem impostos:
+    // 10 + 8 + 2 × 0,9 = 19,8% → 100 / 0,802 = 124,69
+    expect(args.p_total_final).toBe(124.69);
   });
 
   it("falha da RPC retorna erro claro e não confirma emissão", async () => {
