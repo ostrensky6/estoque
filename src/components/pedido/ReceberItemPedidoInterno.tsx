@@ -51,6 +51,12 @@ export function ReceberItemPedidoInterno({
   const emFrascos = item.emFrascos ?? /^frasco/i.test((item.unidade ?? "").trim());
   const [codigoLote, setCodigoLote] = useState("");
   const [validade, setValidade] = useState("");
+  // Campos controlados: o React limpa campos não controlados ao fim de cada envio,
+  // inclusive na recusa; a quantidade voltava ao total pendente.
+  const saldoPendenteInicial = Math.max(0, item.quantidade - Number(item.quantidadeRecebida ?? 0));
+  const [quantidade, setQuantidade] = useState(String(saldoPendenteInicial || item.quantidade));
+  const [custo, setCusto] = useState(item.orcamentoPrevio != null ? String(item.orcamentoPrevio) : "");
+  const [fornecedor, setFornecedor] = useState(item.fornecedorSugerido ?? "");
   const [codigoScanner, setCodigoScanner] = useState("");
   const [resultadoScanner, setResultadoScanner] = useState<ResultadoScannerRecebimento | null>(null);
   const [cameraStatus, setCameraStatus] = useState<"parada" | "iniciando" | "ativa" | "erro">("parada");
@@ -66,6 +72,11 @@ export function ReceberItemPedidoInterno({
 
   function abrir() {
     setOperacaoId((atual) => atual || crypto.randomUUID());
+    if (!aberto) {
+      setQuantidade(String(saldoPendenteInicial || item.quantidade));
+      setCusto(item.orcamentoPrevio != null ? String(item.orcamentoPrevio) : "");
+      setFornecedor(item.fornecedorSugerido ?? "");
+    }
     setAberto(true);
   }
 
@@ -319,7 +330,8 @@ export function ReceberItemPedidoInterno({
                   step={emFrascos ? "1" : "any"}
                   min={emFrascos ? "1" : "0.000001"}
                   max={saldoPendente || item.quantidade}
-                  defaultValue={saldoPendente || item.quantidade}
+                  value={quantidade}
+                  onChange={(event) => setQuantidade(event.target.value)}
                   className={inp}
                 />
               </div>
@@ -356,17 +368,18 @@ export function ReceberItemPedidoInterno({
                   type="number"
                   step="0.0001"
                   min="0"
-                  defaultValue={item.orcamentoPrevio ?? ""}
+                  value={custo}
+                  onChange={(event) => setCusto(event.target.value)}
                   className={inp}
                 />
               </div>
               <div className="col-span-1">
                 <label className="block text-xs font-medium text-muted-foreground">Fornecedor</label>
-                <input name="fornecedor" type="text" defaultValue={item.fornecedorSugerido ?? ""} className={inp} />
+                <input name="fornecedor" type="text" value={fornecedor} onChange={(event) => setFornecedor(event.target.value)} className={inp} />
               </div>
 
               {state.message && !state.ok && (
-                <p className="col-span-2 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">
+                <p role="alert" className="col-span-2 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">
                   {state.message}
                 </p>
               )}

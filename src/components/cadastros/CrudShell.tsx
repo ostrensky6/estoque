@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 import { useRouter } from "next/navigation";
 import {
   type ColumnDef,
@@ -825,7 +826,7 @@ function CadastroDrawer({
           />
         )}
 
-        <form action={action} className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form action={action} {...formularioSemPerda(state)} className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <input type="hidden" name="_slug" value={slug} />
           <input type="hidden" name="_operacao_id" value={operacaoId} />
           {registro?.id != null && (

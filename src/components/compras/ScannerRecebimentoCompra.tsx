@@ -55,6 +55,12 @@ export function ScannerRecebimentoCompra({
   const [cameraStatus, setCameraStatus] = useState<StatusCamera>("parada");
   const [cameraMessage, setCameraMessage] = useState<string | null>(null);
   const saldoPendente = Math.max(0, item.quantidade - item.quantidadeRecebida);
+  // Campos controlados: o React limpa campos não controlados ao fim de cada envio,
+  // inclusive quando o banco recusa; a quantidade voltava ao total pendente e um
+  // segundo "Confirmar" registrava mais frascos do que chegaram.
+  const [quantidade, setQuantidade] = useState(String(saldoPendente));
+  const [conteudo, setConteudo] = useState(item.conteudoEmbalagem != null ? String(item.conteudoEmbalagem) : "");
+  const [localId, setLocalId] = useState("");
 
   function pararCamera(status: StatusCamera = "parada") {
     controlsRef.current?.stop();
@@ -64,6 +70,11 @@ export function ScannerRecebimentoCompra({
 
   function abrir() {
     setOperacaoId((atual) => atual || crypto.randomUUID());
+    if (!aberto) {
+      setQuantidade(String(saldoPendente));
+      setConteudo(item.conteudoEmbalagem != null ? String(item.conteudoEmbalagem) : "");
+      setLocalId("");
+    }
     setAberto(true);
   }
 
@@ -310,7 +321,8 @@ export function ScannerRecebimentoCompra({
                   step={item.emFrascos ? "1" : "any"}
                   min={item.emFrascos ? "1" : "0.0000001"}
                   max={saldoPendente}
-                  defaultValue={saldoPendente}
+                  value={quantidade}
+                  onChange={(event) => setQuantidade(event.target.value)}
                   className={inp}
                 />
               </div>
@@ -338,7 +350,8 @@ export function ScannerRecebimentoCompra({
                     type="number"
                     step="any"
                     min="0.0000001"
-                    defaultValue={item.conteudoEmbalagem ?? undefined}
+                    value={conteudo}
+                    onChange={(event) => setConteudo(event.target.value)}
                     className={inp}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">Altere só se a embalagem chegou diferente do cadastro.</p>
@@ -347,7 +360,7 @@ export function ScannerRecebimentoCompra({
               {locais.length > 0 && (
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-muted-foreground">Local de guarda (opcional)</label>
-                  <select name="local_id" defaultValue="" className={inp}>
+                  <select name="local_id" value={localId} onChange={(event) => setLocalId(event.target.value)} className={inp}>
                     <option value="">Definir depois</option>
                     {locais.map((local) => (
                       <option key={local.id} value={local.id}>{local.nome}</option>
@@ -367,7 +380,7 @@ export function ScannerRecebimentoCompra({
               </div>
 
               {erroRecebimento && (
-                <p className="col-span-2 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">
+                <p role="alert" className="col-span-2 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">
                   {erroRecebimento}
                 </p>
               )}
