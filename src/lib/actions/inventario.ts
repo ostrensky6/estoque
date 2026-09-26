@@ -14,7 +14,7 @@ import type { FormState } from "./cadastros";
 
 const SEM_PERMISSAO: FormState = {
   ok: false,
-  message: "Sem permissão — requer papel coordenador ou superior.",
+  message: "Seu perfil não tem permissão para esta ação. Peça ao administrador para liberar em Usuários.",
 };
 
 const criarCicloSchema = z.object({
@@ -162,7 +162,7 @@ export async function aplicarAjusteContagemInventario(
 ): Promise<FormState> {
   if (!(await pode("estoque.lote.gerir"))) return {
     ok: false,
-    message: "Sem permissão — requer papel gestor ou superior.",
+    message: "Aplicar ajuste de inventário exige a permissão “Corrigir estoque”.",
   };
 
   const parsed = aplicarAjusteSchema.safeParse({

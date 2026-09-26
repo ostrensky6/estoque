@@ -51,6 +51,8 @@ export type LoteRow = {
   vencido: boolean;
   critico: boolean;
   estornoDiretoPermitido: boolean;
+  /** quem registrou a chegada não aceita o próprio lote */
+  aceiteBloqueadoMotivo?: string | null;
 };
 
 function SaldoStatusBadge({ status, label }: { status: SaldoRow["status"]; label: string }) {
@@ -197,6 +199,7 @@ function LoteAcoesLinha({ row, podeAceitar, podeGerir, podeCorrigir, podeBaixar 
       reservado={row.reservado}
       modeloQuantidade={row.modeloQuantidade}
       estornoDiretoPermitido={row.estornoDiretoPermitido}
+      aceiteBloqueadoMotivo={row.aceiteBloqueadoMotivo ?? null}
       podeAceitar={podeAceitar}
       podeGerir={podeGerir}
       podeCorrigir={podeCorrigir}

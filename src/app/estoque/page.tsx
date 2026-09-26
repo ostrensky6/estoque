@@ -1,5 +1,6 @@
 import { createClient, createClientUntyped } from "@/lib/supabase/server";
 import { pode } from "@/lib/auth/permissao-efetiva";
+import { usuarioAtual } from "@/lib/auth/roles";
 import {
   hojeIso,
   loteBaixaDeDb,
@@ -33,6 +34,7 @@ const LOTE_STATUS: Record<string, string> = {
 type LoteEstoqueDb = LoteDbBaixa & {
   insumo_id: number;
   conteudo_embalagem_snapshot?: number | null;
+  recebido_por_id?: string | null;
   insumos: { especificacao: string | null; unidade: string | null; categoria_compra: string | null } | null;
 };
 
@@ -90,7 +92,7 @@ export default async function EstoquePage({
     supabase.from("v_alertas_estoque").select("*"),
     supabaseSemTipos
       .from("lotes_estoque")
-      .select("id, insumo_id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status, modelo_quantidade, conteudo_embalagem_snapshot, insumos(especificacao, unidade, categoria_compra)")
+      .select("id, insumo_id, codigo_lote, validade, validade_apos_abertura, quantidade_atual, status, modelo_quantidade, conteudo_embalagem_snapshot, recebido_por_id, insumos(especificacao, unidade, categoria_compra)")
       .not("status", "in", "(consumido,descartado)")
       .order("validade", { nullsFirst: false }),
     supabase.from("v_previsao_suprimentos").select("*"),
@@ -104,11 +106,12 @@ export default async function EstoquePage({
   ]);
   const lotes = (lotesRaw ?? []) as unknown as LoteEstoqueDb[];
   const reservadoPorLote = somarReservasPorLote(reservasRaw ?? []);
-  const [podeAceitar, podeGerir, podeCorrigir, podeBaixar] = await Promise.all([
+  const [podeAceitar, podeGerir, podeCorrigir, podeBaixar, usuario] = await Promise.all([
     pode("estoque.lote.aceitar"),
     pode("estoque.descartar_bloquear"),
     pode("estoque.lote.gerir"),
     pode("estoque.movimentar"),
+    usuarioAtual(),
   ]);
 
   const al = (alertas ?? []) as Alerta[];
@@ -187,6 +190,11 @@ export default async function EstoquePage({
       critico: ins?.categoria_compra === "critico",
       estornoDiretoPermitido:
         origemEstornoComprovada && !lotesVinculados.has(Number(l.id)),
+      // Dupla conferência: quem registrou a chegada não aceita o próprio lote (admin isento).
+      aceiteBloqueadoMotivo:
+        usuario && l.recebido_por_id && l.recebido_por_id === usuario.id && usuario.papel !== "admin"
+          ? "Você registrou a chegada; o aceite fica com outra pessoa."
+          : null,
     };
   });
 
