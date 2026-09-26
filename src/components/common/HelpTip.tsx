@@ -63,7 +63,8 @@ export function HelpTip({
             <CircleHelp className="h-4 w-4 shrink-0 text-primary" aria-hidden />
             {title}
           </p>
-          <div className="mt-1.5 space-y-2 leading-relaxed text-muted-foreground [&_b]:font-semibold [&_b]:text-foreground [&_strong]:text-foreground">
+          {/* texto justificado com hifenização (lang="pt-BR" no <html>) para não abrir vãos */}
+          <div className="mt-1.5 space-y-2 text-justify leading-relaxed text-muted-foreground hyphens-auto [&_b]:font-semibold [&_b]:text-foreground [&_strong]:font-semibold [&_strong]:text-foreground">
             {children}
           </div>
           <PopoverPrimitive.Arrow className="fill-popover" width={12} height={6} />
@@ -82,7 +83,7 @@ export function HelpExample({
   title?: string;
 }) {
   return (
-    <div className="rounded-md border border-info-strong/20 bg-info-soft px-2.5 py-2 text-xs leading-relaxed text-foreground">
+    <div className="rounded-md border border-info-strong/20 bg-info-soft px-2.5 py-2 text-justify text-xs leading-relaxed text-foreground hyphens-auto">
       <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-info-strong">
         {title}
       </p>
@@ -119,7 +120,7 @@ export function HelpLegend({
           >
             {item.rotulo}
           </span>
-          <span className="text-muted-foreground">{item.texto}</span>
+          <span className="text-left text-muted-foreground">{item.texto}</span>
         </li>
       ))}
     </ul>
@@ -132,5 +133,17 @@ export function HelpFormula({ children }: { children: React.ReactNode }) {
     <p className="rounded-md bg-muted px-2.5 py-1.5 font-mono text-xs text-foreground">
       {children}
     </p>
+  );
+}
+
+/** Texto simples com **negrito** (usado nas ajudas declaradas como string, ex.: campos de cadastro). */
+export function TextoAjuda({ texto }: { texto: string }) {
+  const partes = texto.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+  return (
+    <>
+      {partes.map((parte, i) =>
+        parte.startsWith("**") && parte.endsWith("**") ? <b key={i}>{parte.slice(2, -2)}</b> : parte,
+      )}
+    </>
   );
 }

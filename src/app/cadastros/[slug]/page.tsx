@@ -6,7 +6,7 @@ import {
 } from "@/lib/cadastros/config";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { CrudShell } from "@/components/cadastros/CrudShell";
-import { HelpTip } from "@/components/common/HelpTip";
+import { HelpTip, TextoAjuda } from "@/components/common/HelpTip";
 import { loteBaixaDeDb, somarReservasPorLote, type LoteDbBaixa } from "@/lib/estoque/baixa";
 import { equipCustoDia } from "@/lib/costing/engine";
 import { modeloQuantidadePorInsumo, projetarQuantidadeInsumos, type LoteInsumo, type LoteModelo } from "@/lib/cadastros/insumos";
@@ -230,7 +230,9 @@ export default async function CadastroPage({
         <div className="mt-6 flex items-center gap-1">
           <h1 className="text-xl font-semibold tracking-tight">{cfg.titulo}</h1>
           <HelpTip title={cfg.titulo}>
-            <p>{cfg.subtitulo}</p>
+            <p>
+              <TextoAjuda texto={cfg.subtitulo} />
+            </p>
             {slug === "tecnicos" && !podeVerSalarioTecnicos && (
               <p>
                 O salário aparece como <b>XXX</b>: ver e alterar exige a permissão “Ver salário dos

@@ -63,7 +63,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
-import { HelpExample, HelpTip } from "@/components/common/HelpTip";
+import { HelpExample, HelpTip, TextoAjuda } from "@/components/common/HelpTip";
 import { DownloadButton } from "@/components/common/DownloadButton";
 import { DarBaixaDialog } from "@/components/estoque/DarBaixaDialog";
 import type { LoteBaixa } from "@/lib/estoque/baixa";
@@ -1131,8 +1131,14 @@ function CampoInput({
         </Label>
         {campo.ajuda && (
           <HelpTip title={campo.label}>
-            <p>{campo.ajuda}</p>
-            {campo.exemplo && <HelpExample>{campo.exemplo}</HelpExample>}
+            <p>
+              <TextoAjuda texto={campo.ajuda} />
+            </p>
+            {campo.exemplo && (
+              <HelpExample>
+                <TextoAjuda texto={campo.exemplo} />
+              </HelpExample>
+            )}
           </HelpTip>
         )}
       </div>
