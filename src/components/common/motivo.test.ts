@@ -37,7 +37,7 @@ describe("diálogos de confirmação", () => {
   for (const arquivo of ["./ConfirmActionButton.tsx", "./ConfirmSubmitButton.tsx"]) {
     it(`${arquivo}: desistir é "Voltar" e o motivo é opcional`, () => {
       const codigo = fonte(arquivo);
-      expect(codigo).toContain(">\n              Voltar\n");
+      expect(codigo).toMatch(/>\s*Voltar\s*</);
       expect(codigo).not.toMatch(/>\s*Cancelar\s*</);
       expect(codigo).toMatch(/motivo\?: MotivoConfirmacao/);
       expect(codigo).toContain("erroMotivo(");
