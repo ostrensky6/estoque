@@ -2221,7 +2221,7 @@ export type Database = {
           expira_em: string | null
           id: number
           orcamento_final_versao_id: number | null
-          orcamento_projeto_id: number
+          orcamento_projeto_id: number | null
           revogado: boolean
           token_hash: string
         }
@@ -2233,7 +2233,7 @@ export type Database = {
           expira_em?: string | null
           id?: never
           orcamento_final_versao_id?: number | null
-          orcamento_projeto_id: number
+          orcamento_projeto_id?: number | null
           revogado?: boolean
           token_hash: string
         }
@@ -2245,7 +2245,7 @@ export type Database = {
           expira_em?: string | null
           id?: never
           orcamento_final_versao_id?: number | null
-          orcamento_projeto_id?: number
+          orcamento_projeto_id?: number | null
           revogado?: boolean
           token_hash?: string
         }
@@ -4429,6 +4429,28 @@ export type Database = {
           },
         ]
       }
+      v_proposta_aprovada_vigente: {
+        Row: {
+          classificado_em: string | null
+          cliente_id: number | null
+          cliente_nome: string | null
+          criado_em: string | null
+          demanda_id: number | null
+          numero: string | null
+          projeto_id: number | null
+          status: string | null
+          titulo: string | null
+          total_final: number | null
+          total_laboratorio_custo: number | null
+          total_laboratorio_preco: number | null
+          total_projeto_custo: number | null
+          total_projeto_final: number | null
+          valido_ate: string | null
+          versao: number | null
+          versao_id: number | null
+        }
+        Relationships: []
+      }
       v_previsao_suprimentos: {
         Row: {
           categoria_compra: string | null
@@ -4531,6 +4553,7 @@ export type Database = {
       }
       current_papel: { Args: never; Returns: string }
       dar_baixa_plano: { Args: { p_planejamento_id: number }; Returns: Json }
+      gerar_planejamento_da_proposta: { Args: { p_versao_id: number }; Returns: Json }
       duplicar_orcamento_final_transacional: {
         Args: {
           p_operacao_id: string
@@ -4779,6 +4802,18 @@ export type Database = {
           triagem_id: number
         }[]
       }
+      salvar_item_orcamento: {
+        Args: {
+          p_codigo_analise: string
+          p_custo_snapshot: Json
+          p_custo_unitario: number
+          p_n_amostras: number
+          p_orcamento_id: number
+          p_preco_unitario: number
+          p_valor_snapshot: Json
+        }
+        Returns: Json
+      }
       tecnicos_remuneracao: {
         Args: never
         Returns: { id: number; valor_mes: number | null }[]
@@ -4831,6 +4866,7 @@ export type Database = {
         Args: { p_planejamento_id: number }
         Returns: undefined
       }
+      vencer_orcamentos_finais: { Args: never; Returns: number }
       valor_hora_pessoal_total: { Args: never; Returns: number }
     }
     Enums: {

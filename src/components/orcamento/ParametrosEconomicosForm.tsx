@@ -35,7 +35,7 @@ const CAMPOS: ParametroCampo[] = [
   {
     chave: "margem_lucro",
     label: "Margem de lucro",
-    ajuda: "Percentual aplicado sobre o custo total da análise.",
+    ajuda: "Nas propostas, é % do preço final. Na tabela de análises, soma-se ao custo.",
     unidade: "%",
     step: "0.1",
     min: "0",
