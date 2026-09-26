@@ -2762,6 +2762,8 @@ export type Database = {
           pedido_interno_item_id: number | null
           quantidade: number
           quantidade_recebida: number | null
+          conteudo_embalagem: number | null
+          quantidade_em: string
         }
         Insert: {
           custo_unitario_estimado?: number | null
@@ -2773,6 +2775,8 @@ export type Database = {
           pedido_interno_item_id?: number | null
           quantidade: number
           quantidade_recebida?: number | null
+          conteudo_embalagem?: number | null
+          quantidade_em?: string | null
         }
         Update: {
           custo_unitario_estimado?: number | null
@@ -2784,6 +2788,8 @@ export type Database = {
           pedido_interno_item_id?: number | null
           quantidade?: number
           quantidade_recebida?: number | null
+          conteudo_embalagem?: number | null
+          quantidade_em?: string | null
         }
         Relationships: [
           {
@@ -3304,6 +3310,8 @@ export type Database = {
           tipo: string
           unidade: string | null
           volume: string | null
+          conteudo_embalagem: number | null
+          quantidade_em: string | null
         }
         Insert: {
           criado_em?: string
@@ -3324,6 +3332,8 @@ export type Database = {
           tipo?: string
           unidade?: string | null
           volume?: string | null
+          conteudo_embalagem?: number | null
+          quantidade_em?: string | null
         }
         Update: {
           criado_em?: string
@@ -3344,6 +3354,8 @@ export type Database = {
           tipo?: string
           unidade?: string | null
           volume?: string | null
+          conteudo_embalagem?: number | null
+          quantidade_em?: string | null
         }
         Relationships: [
           {

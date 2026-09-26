@@ -94,7 +94,15 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
     !vinculoInterno.error &&
     (vinculoCompra.data ?? []).length === 0 &&
     (vinculoInterno.data ?? []).length === 0;
-  const unidade = ins?.unidade ?? "";
+  // Lote de embalagens fechadas conta frascos, não a unidade física (0109/0123).
+  const loteModelo = lote as unknown as {
+    modelo_quantidade?: string | null;
+    conteudo_embalagem_snapshot?: number | null;
+  };
+  const unidade =
+    loteModelo.modelo_quantidade === "EMBALAGEM_FECHADA"
+      ? `frasco(s)${loteModelo.conteudo_embalagem_snapshot ? ` de ${fmt(loteModelo.conteudo_embalagem_snapshot)} ${ins?.unidade ?? ""}` : ""}`.trim()
+      : ins?.unidade ?? "";
   const s = LOTE_STATUS[lote.status] ?? { label: lote.status, cls: "bg-muted text-muted-foreground" };
   // modelo_quantidade (0109) ainda não está nos tipos gerados.
   const loteBaixa = loteBaixaDeDb(
