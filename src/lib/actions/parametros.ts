@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { conferirEscrita } from "@/lib/supabase/escrita";
 import type { FormState } from "./cadastros";
 
 /**
@@ -41,12 +42,16 @@ export async function salvarParametros(
 
   const supabase = await createClient();
   for (const u of updates) {
-    const { error } = await supabase
+    // `.select()` é obrigatório: sob RLS (perfil abaixo de gestor) o UPDATE
+    // volta sem `error` e sem linha alguma. Só a linha devolvida comprova.
+    const { data, error } = await supabase
       .from("parametros")
       .update({ valor: u.valor, atualizado_em: new Date().toISOString() })
-      .eq("chave", u.chave);
+      .eq("chave", u.chave)
+      .select("chave");
 
-    if (error) return { ok: false, message: error.message };
+    const escrita = conferirEscrita(error, data, `Não foi possível salvar "${u.chave}".`);
+    if (!escrita.ok) return { ok: false, message: escrita.message };
   }
 
   for (const path of [

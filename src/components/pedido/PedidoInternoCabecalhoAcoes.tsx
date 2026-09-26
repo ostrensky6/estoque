@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 
 import {
@@ -12,7 +13,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { HelpTip } from "@/components/common/HelpTip";
 import { atualizarPedidoInterno, excluirPedidoInterno } from "@/lib/actions/pedidos-internos";
+import { FormComMensagem } from "./FormComMensagem";
 
 type Opcao = {
   id: number;
@@ -52,10 +55,11 @@ export function PedidoInternoCabecalhoAcoes({
   status: string;
   podeExcluir: boolean;
 }) {
+  const [editando, setEditando] = useState(false);
   return (
     <div className="flex items-center gap-2">
       {/* Editar */}
-      <Dialog>
+      <Dialog open={editando} onOpenChange={setEditando}>
         <DialogTrigger asChild>
           <button className="inline-flex items-center gap-1 rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted">
             <Pencil className="h-3.5 w-3.5" />
@@ -67,7 +71,7 @@ export function PedidoInternoCabecalhoAcoes({
             <DialogTitle>Editar pedido {numero}</DialogTitle>
             <DialogDescription>Atualize os dados gerais da demanda.</DialogDescription>
           </DialogHeader>
-          <form action={atualizarPedidoInterno} className="grid gap-3">
+          <FormComMensagem action={atualizarPedidoInterno} onSuccess={() => setEditando(false)} className="grid gap-3">
             <input type="hidden" name="pedido_interno_id" value={pedidoId} />
             <div>
               <label className="block text-xs font-medium text-muted-foreground">Demanda</label>
@@ -124,13 +128,11 @@ export function PedidoInternoCabecalhoAcoes({
                   Cancelar
                 </button>
               </DialogClose>
-              <DialogClose asChild>
-                <button type="submit" className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
-                  Salvar alterações
-                </button>
-              </DialogClose>
+              <button type="submit" className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500">
+                Salvar alterações
+              </button>
             </DialogFooter>
-          </form>
+          </FormComMensagem>
         </DialogContent>
       </Dialog>
 
@@ -145,10 +147,17 @@ export function PedidoInternoCabecalhoAcoes({
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Excluir rascunho {numero}?</DialogTitle>
+              <div className="flex items-center gap-1">
+                <DialogTitle>Excluir rascunho {numero}?</DialogTitle>
+                <HelpTip title="Excluir ou cancelar?">
+                  <p>
+                    Excluir só vale para <b>rascunhos</b> que ainda não entraram no fluxo. Pedidos em
+                    andamento devem ser <b>cancelados</b>, com motivo, para manter o histórico.
+                  </p>
+                </HelpTip>
+              </div>
               <DialogDescription>
-                Esta ação remove o pedido <b>{titulo}</b> antes de ele entrar no fluxo operacional. Pedidos em
-                andamento devem ser cancelados com motivo.
+                O pedido <b>{titulo}</b> será apagado e não poderá ser recuperado.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -157,12 +166,12 @@ export function PedidoInternoCabecalhoAcoes({
                   Cancelar
                 </button>
               </DialogClose>
-              <form action={excluirPedidoInterno}>
+              <FormComMensagem action={excluirPedidoInterno} className="flex flex-col items-end gap-1">
                 <input type="hidden" name="pedido_interno_id" value={pedidoId} />
                 <button type="submit" className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-white hover:bg-destructive/90">
                   Excluir rascunho
                 </button>
-              </form>
+              </FormComMensagem>
             </DialogFooter>
           </DialogContent>
         </Dialog>

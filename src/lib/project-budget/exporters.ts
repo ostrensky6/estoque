@@ -18,13 +18,13 @@ import { saveAs } from "file-saver";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import {
   RUBRICAS_PROJETO,
-  calcularOrcamentoProjetoLegacy,
-} from "./legacy";
+  calcularOrcamentoProjeto,
+} from "./orcamento-projeto";
 
 /**
  * Exportadores do orçamento de projeto (XLSX / DOCX / PDF imprimível),
  * adaptados do app ATGC Orçamentos ao modelo do Kontrol
- * (rubrica/meses_selecionados, gross-up de `calcularOrcamentoProjetoLegacy`).
+ * (rubrica/meses_selecionados, gross-up de `calcularOrcamentoProjeto`).
  * Rodam no navegador (exceljs/docx/file-saver).
  */
 
@@ -56,7 +56,7 @@ export type ProjetoExportItem = {
   total: number;
 };
 
-export type ProjetoCalculo = ReturnType<typeof calcularOrcamentoProjetoLegacy>;
+export type ProjetoCalculo = ReturnType<typeof calcularOrcamentoProjeto>;
 
 const FONT_FAMILY = "Helvetica";
 const INK = "1B3530";

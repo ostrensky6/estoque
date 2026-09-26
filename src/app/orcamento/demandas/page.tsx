@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { formatDate } from "@/lib/formatters";
+import { HelpTip } from "@/components/common/HelpTip";
 import { criarDemanda } from "@/lib/actions/demandas";
 import { DemandasTable, type DemandaRow } from "@/components/orcamento/DemandasTable";
 import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
@@ -65,9 +67,9 @@ export default async function DemandasPage({
       modalidade: d.modalidade,
       modalidadeLabel: MODALIDADES[d.modalidade] ?? d.modalidade,
       projeto: d.projeto_id ? projetoNome.get(d.projeto_id) ?? "—" : "—",
-      prazo: d.prazo_esperado ?? "—",
+      prazo: formatDate(d.prazo_esperado),
       prioridade: d.prioridade ?? "—",
-      dataSolicitacao: d.data_solicitacao ?? "—",
+      dataSolicitacao: formatDate(d.data_solicitacao),
       status: d.status,
       statusLabel: STATUS[d.status] ?? d.status,
       completudeLabel: completude.completa ? "Pronta" : `${completude.faltante}% faltante`,
@@ -86,7 +88,13 @@ export default async function DemandasPage({
       <PageHeader
         breadcrumbs={[{ label: "Orçamento" }, { label: "Propostas" }]}
         title="Propostas"
-        description="Crie e acompanhe propostas comerciais. A partir daqui o fluxo segue para orçamento de análises, orçamento de projeto ou composição híbrida."
+        description="Crie e acompanhe propostas comerciais."
+        help={
+          <HelpTip title="Propostas">
+            <p>O orçamento é o processo; a <b>proposta</b> é o documento emitido ao final para o cliente.</p>
+            <p>Cada orçamento segue um caminho conforme a <b>modalidade</b>: só análises laboratoriais, só projeto, ou projeto com análises.</p>
+          </HelpTip>
+        }
       />
 
       <section className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6" aria-label="Funil de propostas">

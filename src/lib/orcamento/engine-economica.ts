@@ -7,6 +7,12 @@
 //   total_final  = subtotal / (1 - taxa_total)              (gross-up único)
 //   valor_param  = total_final × (percentual_param / 100)
 //
+// Exceção — taxa de incubação (UFPR): incide sobre o valor dos serviços SEM
+// os impostos (decisão do usuário, 26/09/2026). A taxa efetiva é
+//   incubacao × (1 − impostos/100)
+// e é ela que entra na soma do gross-up e no valor em R$; o percentual
+// exibido continua o nominal (ex.: 2%).
+//
 // Interpretação aprovada:
 //   - laboratório entra como CUSTO TÉCNICO (não preço já formado);
 //   - projeto entra como CUSTO DIRETO;
@@ -20,12 +26,12 @@ import { roundMoney } from "@/lib/costing/pricing";
 export const POLITICA_ECONOMICA = "A_GROSS_UP_TOTAL" as const;
 
 export const FORMULA_ECONOMICA =
-  "total_final = (custo_laboratorial_tecnico + custo_direto_projeto) / (1 - Σparametros/100)";
+  "total_final = (custo_laboratorial_tecnico + custo_direto_projeto) / (1 - Σparametros/100); incubacao incide sobre total_final sem impostos";
 
 /** Parâmetros econômicos da proposta, na ordem canônica. */
 export const PARAMETROS_PROPOSTA = [
   { chave: "impostos_legacy", label: "Impostos" },
-  { chave: "incubacao", label: "Incubação" },
+  { chave: "incubacao", label: "Taxa de incubação (UFPR)" },
   { chave: "reserva", label: "Reserva" },
   { chave: "investimentos", label: "Investimentos" },
   { chave: "lucro", label: "Lucro" },
@@ -87,7 +93,11 @@ export function calcularPropostaEconomica(args: {
     label: p.label,
     percentual: pctSeguro(p.percentual),
   }));
-  const somaPercentual = entrada.reduce((acc, p) => acc + p.percentual, 0);
+  // taxa de incubação: base = serviços sem impostos → percentual efetivo menor
+  const impostos = entrada.find((p) => p.chave === "impostos_legacy")?.percentual ?? 0;
+  const efetivo = (p: { chave: string; percentual: number }) =>
+    p.chave === "incubacao" ? p.percentual * Math.max(0, 1 - impostos / 100) : p.percentual;
+  const somaPercentual = entrada.reduce((acc, p) => acc + efetivo(p), 0);
   const taxaTotal = somaPercentual / 100;
   const valido = taxaTotal < 1;
   const fatorGrossUp = valido ? (taxaTotal > 0 ? 1 / (1 - taxaTotal) : 1) : 0;
@@ -95,7 +105,7 @@ export function calcularPropostaEconomica(args: {
 
   const parametros: ParametroEconomicoCalculado[] = entrada.map((p) => ({
     ...p,
-    valorNominal: valido ? roundMoney(totalFinal * (p.percentual / 100)) : 0,
+    valorNominal: valido ? roundMoney(totalFinal * (efetivo(p) / 100)) : 0,
   }));
   const totalParametros = valido ? roundMoney(Math.max(0, totalFinal - subtotal)) : 0;
   const alertas = valido ? [] : ["A soma dos parâmetros econômicos deve ser menor que 100%."];

@@ -3,12 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, createClientUntyped } from "@/lib/supabase/server";
-import { garantirEscrita } from "@/lib/supabase/escrita";
+import { conferirEscrita, semLinhasAfetadas } from "@/lib/supabase/escrita";
 import { usuarioAtual } from "@/lib/auth/roles";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
+import {
+  MENSAGEM_RESERVA_DESATUALIZADA,
+  STATUS_EDITAVEIS,
+  STATUS_PLANO_LABEL,
+  statusEditavel,
+} from "@/lib/planejamento/gestao";
 import type { FormState } from "./cadastros";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
+type SupabaseUntyped = Awaited<ReturnType<typeof createClientUntyped>>;
 type DemandaInsumo = Awaited<ReturnType<typeof computarDemandaPlano>>[number];
 type Shortfall = { insumo_id: number; falta: number };
 
@@ -160,47 +167,109 @@ async function validarEquipamentosDoPlano(
     : null;
 }
 
-export async function atualizarPlanejamentoExecutivo(formData: FormData) {
-  const u = await usuarioAtual();
-  const planId = Number(formData.get("planejamento_id"));
-  if (!planId) return;
+function mensagemStatusBloqueado(status: string) {
+  return `Plano ${STATUS_PLANO_LABEL[status] ?? status}: só é possível editar em rascunho ou reservado.`;
+}
 
-  const data_inicio_prevista = texto(formData, "data_inicio_prevista");
-  const data_fim_prevista = texto(formData, "data_fim_prevista");
-  const supabase = await createClientUntyped();
-  let { error } = await supabase
+/** Status atual do plano, ou mensagem de erro pronta para a tela. */
+async function statusDoPlano(
+  supabase: SupabaseUntyped,
+  planId: number,
+): Promise<{ ok: true; status: string } | { ok: false; message: string }> {
+  const { data, error } = await supabase
     .from("planejamento")
-    .update({
-      nome: texto(formData, "nome") ?? "Plano sem nome",
-      projeto_id: numeroOpcional(formData, "projeto_id"),
-      data_inicio_prevista,
-      data_fim_prevista,
-      data_alvo: texto(formData, "data_alvo") ?? data_fim_prevista,
-      prioridade: texto(formData, "prioridade") ?? "normal",
-      responsavel: texto(formData, "responsavel"),
-      planejado_por: u?.nome ?? u?.email ?? null,
-      observacao: texto(formData, "observacao"),
-    })
+    .select("status_operacional")
     .eq("id", planId)
-    .in("status_operacional", ["rascunho", "reservado"]);
-  if (erroSchemaCache(error)) {
-    const retry = await supabase
-      .from("planejamento")
-      .update({
-        nome: texto(formData, "nome") ?? "Plano sem nome",
-        projeto_id: numeroOpcional(formData, "projeto_id"),
-        data_alvo: texto(formData, "data_alvo") ?? data_fim_prevista,
-        responsavel: texto(formData, "responsavel"),
-        observacao: texto(formData, "observacao"),
-      })
-      .eq("id", planId);
-    error = retry.error;
-  }
-  if (error) throw new Error(error.message);
+    .maybeSingle();
+  if (error) return { ok: false, message: error.message };
+  if (!data) return { ok: false, message: "Planejamento não encontrado." };
+  return { ok: true, status: String(data.status_operacional ?? "rascunho") };
+}
 
+/**
+ * Pré-checagem amigável. A garantia real é o gatilho
+ * trg_guardar_itens_planejamento_editavel (0111) e o filtro de status no UPDATE.
+ */
+async function planoEditavel(
+  supabase: SupabaseUntyped,
+  planId: number,
+): Promise<{ ok: true; status: string } | { ok: false; message: string }> {
+  const atual = await statusDoPlano(supabase, planId);
+  if (!atual.ok) return atual;
+  if (!statusEditavel(atual.status)) return { ok: false, message: mensagemStatusBloqueado(atual.status) };
+  return atual;
+}
+
+function revalidarPlano(planId: number) {
   revalidatePath(`/planejamento/${planId}`);
   revalidatePath("/planejamento");
   revalidatePath("/suprimentos");
+}
+
+/**
+ * Edita o contexto operacional. O UPDATE só alcança planos em rascunho ou
+ * reservado; `.select()` comprova a linha alterada e, quando nada muda, a
+ * resposta diz o porquê em vez de silenciar.
+ */
+export async function atualizarPlanejamentoExecutivo(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const planId = Number(formData.get("planejamento_id"));
+  if (!planId) return { ok: false, message: "Planejamento inválido." };
+
+  const data_inicio_prevista = texto(formData, "data_inicio_prevista");
+  const data_fim_prevista = texto(formData, "data_fim_prevista");
+  if (data_inicio_prevista && data_fim_prevista && data_fim_prevista < data_inicio_prevista) {
+    return { ok: false, message: "O fim previsto não pode ser anterior ao início previsto." };
+  }
+
+  const u = await usuarioAtual();
+  const supabase = await createClientUntyped();
+  const basico = {
+    nome: texto(formData, "nome") ?? "Plano sem nome",
+    projeto_id: numeroOpcional(formData, "projeto_id"),
+    data_alvo: texto(formData, "data_alvo") ?? data_fim_prevista,
+    responsavel: texto(formData, "responsavel"),
+    observacao: texto(formData, "observacao"),
+  };
+  let { data, error } = await supabase
+    .from("planejamento")
+    .update({
+      ...basico,
+      data_inicio_prevista,
+      data_fim_prevista,
+      prioridade: texto(formData, "prioridade") ?? "normal",
+      planejado_por: u?.nome ?? u?.email ?? null,
+    })
+    .eq("id", planId)
+    .in("status_operacional", [...STATUS_EDITAVEIS])
+    .select("id");
+  if (erroSchemaCache(error)) {
+    // Schema antigo sem as colunas executivas: grava o básico, sem nunca
+    // abrir mão do filtro de status.
+    const retry = await supabase
+      .from("planejamento")
+      .update(basico)
+      .eq("id", planId)
+      .in("status_operacional", [...STATUS_EDITAVEIS])
+      .select("id");
+    data = retry.data;
+    error = retry.error;
+  }
+  if (error) return { ok: false, message: error.message };
+  if (semLinhasAfetadas(data)) {
+    const atual = await planoEditavel(supabase, planId);
+    return {
+      ok: false,
+      message: atual.ok
+        ? "Nada foi salvo: seu perfil não tem permissão para editar este plano."
+        : atual.message,
+    };
+  }
+
+  revalidarPlano(planId);
+  return { ok: true, message: "Contexto salvo." };
 }
 
 /** Reserva uma unidade física exigida pelas análises do próprio plano.
@@ -282,163 +351,108 @@ export async function reservarEquipamentoDoPlano(formData: FormData) {
   revalidatePath("/suprimentos");
 }
 
-/**
- * 2.2 — Orçamento (de análises) aprovado → gera um planejamento já vinculado
- * ao mesmo projeto, com as análises/amostras do orçamento. Um clique.
- */
-export async function gerarPlanejamentoDeOrcamento(formData: FormData) {
-  const u = await usuarioAtual();
-  const orcamentoId = Number(formData.get("orcamento_id"));
-  if (!orcamentoId) return;
-  const supabase = await createClientUntyped();
+type NumerosItem = {
+  n_amostras: number;
+  n_controles: number;
+  repeticoes: number;
+  perda_percentual: number;
+};
 
-  const { data: orc, error: orcErr } = await supabase
-    .from("orcamentos")
-    .select("id, cliente_nome, projeto_id, orcamento_itens(codigo_analise, n_amostras)")
-    .eq("id", orcamentoId)
-    .single();
-  if (orcErr) throw new Error(orcErr.message);
-
-  const itens = orc.orcamento_itens ?? [];
-  if (itens.length === 0)
-    throw new Error("O orçamento não tem análises para gerar um planejamento.");
-
-  let { data: plano, error: planoErr } = await supabase
-    .from("planejamento")
-    .insert({
-      nome: `Orçamento ${orc.id} — ${orc.cliente_nome ?? "sem cliente"}`,
-      projeto_id: orc.projeto_id,
-      origem_planejamento: "orcamento",
-      orcamento_id: orc.id,
-      planejado_por: u?.nome ?? u?.email ?? null,
-    })
-    .select("id")
-    .single();
-  if (erroSchemaCache(planoErr)) {
-    const retry = await supabase
-      .from("planejamento")
-      .insert({
-        nome: `Orçamento ${orc.id} — ${orc.cliente_nome ?? "sem cliente"}`,
-        projeto_id: orc.projeto_id,
-      })
-      .select("id")
-      .single();
-    plano = retry.data;
-    planoErr = retry.error;
-  }
-  if (planoErr) throw new Error(planoErr.message);
-  if (!plano) throw new Error("Não foi possível criar o planejamento do orçamento.");
-
-  const { error: itensErr } = await supabase.from("planejamento_itens").insert(
-    itens.map((it) => ({
-      planejamento_id: plano.id,
-      codigo_analise: it.codigo_analise,
-      n_amostras: Number(it.n_amostras),
-    })),
-  );
-  if (itensErr) throw new Error(itensErr.message);
-
-  revalidatePath("/planejamento");
-  redirect(`/planejamento/${plano.id}`);
+function numeroCampo(formData: FormData, key: string, padrao: number) {
+  const bruto = String(formData.get(key) ?? "").trim().replace(",", ".");
+  return bruto === "" ? padrao : Number(bruto);
 }
 
-/**
- * 2.2 — Variante para orçamento de projeto (rubricas + análises). Usa as
- * análises do orçamento de projeto para semear o planejamento.
- */
-export async function gerarPlanejamentoDeOrcamentoProjeto(formData: FormData) {
-  const u = await usuarioAtual();
-  const orcamentoProjetoId = Number(formData.get("orcamento_projeto_id"));
-  if (!orcamentoProjetoId) return;
-  const supabase = await createClientUntyped();
-
-  const { data: orc, error: orcErr } = await supabase
-    .from("orcamento_projetos")
-    .select("id, titulo, projeto_id, orcamento_projeto_analises(codigo_analise, n_amostras)")
-    .eq("id", orcamentoProjetoId)
-    .single();
-  if (orcErr) throw new Error(orcErr.message);
-
-  const itens = orc.orcamento_projeto_analises ?? [];
-  if (itens.length === 0)
-    throw new Error("O orçamento de projeto não tem análises para gerar um planejamento.");
-
-  let { data: plano, error: planoErr } = await supabase
-    .from("planejamento")
-    .insert({
-      nome: `Projeto: ${orc.titulo ?? `Orçamento ${orc.id}`}`,
-      projeto_id: orc.projeto_id,
-      origem_planejamento: "orcamento_projeto",
-      orcamento_projeto_id: orc.id,
-      planejado_por: u?.nome ?? u?.email ?? null,
-    })
-    .select("id")
-    .single();
-  if (erroSchemaCache(planoErr)) {
-    const retry = await supabase
-      .from("planejamento")
-      .insert({
-        nome: `Projeto: ${orc.titulo ?? `Orçamento ${orc.id}`}`,
-        projeto_id: orc.projeto_id,
-      })
-      .select("id")
-      .single();
-    plano = retry.data;
-    planoErr = retry.error;
+/** Lê e valida amostras, controles, repetições e % de perda de um item. */
+function lerNumerosItem(
+  formData: FormData,
+): { ok: true; valores: NumerosItem } | { ok: false; message: string } {
+  const n_amostras = numeroCampo(formData, "n_amostras", Number.NaN);
+  const n_controles = numeroCampo(formData, "n_controles", 0);
+  const repeticoes = numeroCampo(formData, "repeticoes", 1);
+  const perda_percentual = numeroCampo(formData, "perda_percentual", 0);
+  if (!Number.isFinite(n_amostras) || n_amostras <= 0) {
+    return { ok: false, message: "Informe o número de amostras (maior que zero)." };
   }
-  if (planoErr) throw new Error(planoErr.message);
-  if (!plano) throw new Error("Não foi possível criar o planejamento do orçamento de projeto.");
-
-  const { error: itensErr } = await supabase.from("planejamento_itens").insert(
-    itens.map((it) => ({
-      planejamento_id: plano.id,
-      codigo_analise: it.codigo_analise,
-      n_amostras: Number(it.n_amostras),
-    })),
-  );
-  if (itensErr) throw new Error(itensErr.message);
-
-  revalidatePath("/planejamento");
-  redirect(`/planejamento/${plano.id}`);
+  if (!Number.isFinite(n_controles) || n_controles < 0) {
+    return { ok: false, message: "Controles não pode ser negativo." };
+  }
+  if (!Number.isFinite(repeticoes) || repeticoes < 1) {
+    return { ok: false, message: "Repetições deve ser pelo menos 1." };
+  }
+  if (!Number.isFinite(perda_percentual) || perda_percentual < 0 || perda_percentual > 100) {
+    return { ok: false, message: "% de perda deve ficar entre 0 e 100." };
+  }
+  return { ok: true, valores: { n_amostras, n_controles, repeticoes, perda_percentual } };
 }
 
-export async function adicionarItem(formData: FormData) {
+function sufixoReserva(status: string) {
+  return status === "reservado" ? " Reserve os insumos de novo antes de iniciar." : "";
+}
+
+export async function adicionarItem(_prev: FormState, formData: FormData): Promise<FormState> {
   const planId = Number(formData.get("planejamento_id"));
-  const codigo = String(formData.get("codigo_analise") ?? "");
-  const n = Number(formData.get("n_amostras"));
-  if (!planId || !codigo || !(n > 0)) return;
-  const controles = Number(formData.get("n_controles")) || 0;
-  const repeticoes = Number(formData.get("repeticoes")) || 1;
-  const perda = Number(formData.get("perda_percentual")) || 0;
-  const supabase = await createClient();
+  const codigo = String(formData.get("codigo_analise") ?? "").trim();
+  if (!planId) return { ok: false, message: "Planejamento inválido." };
+  if (!codigo) return { ok: false, message: "Selecione a análise." };
+  const numeros = lerNumerosItem(formData);
+  if (!numeros.ok) return numeros;
+
+  const supabase = await createClientUntyped();
+  const plano = await planoEditavel(supabase, planId);
+  if (!plano.ok) return plano;
   // `.select()` é obrigatório: sob RLS uma escrita negada pode voltar sem
   // `error` e sem nenhuma linha afetada. Só a linha retornada comprova.
   const { data, error } = await supabase
     .from("planejamento_itens")
-    .insert({
-      planejamento_id: planId,
-      codigo_analise: codigo,
-      n_amostras: n,
-      n_controles: controles,
-      repeticoes,
-      perda_percentual: perda,
-    })
+    .insert({ planejamento_id: planId, codigo_analise: codigo, ...numeros.valores })
     .select("id");
-  garantirEscrita(error, data, "Não foi possível adicionar o item ao planejamento.");
-  revalidatePath(`/planejamento/${planId}`);
+  const escrita = conferirEscrita(error, data, "Não foi possível adicionar a análise ao plano.");
+  if (!escrita.ok) return escrita;
+  revalidarPlano(planId);
+  return { ok: true, message: `Análise adicionada.${sufixoReserva(plano.status)}` };
 }
 
-export async function removerItem(formData: FormData) {
-  const id = Number(formData.get("item_id"));
+export async function atualizarItem(_prev: FormState, formData: FormData): Promise<FormState> {
+  const itemId = Number(formData.get("item_id"));
   const planId = Number(formData.get("planejamento_id"));
-  const supabase = await createClient();
+  if (!itemId || !planId) return { ok: false, message: "Item inválido." };
+  const numeros = lerNumerosItem(formData);
+  if (!numeros.ok) return numeros;
+
+  const supabase = await createClientUntyped();
+  const plano = await planoEditavel(supabase, planId);
+  if (!plano.ok) return plano;
+  const { data, error } = await supabase
+    .from("planejamento_itens")
+    .update(numeros.valores)
+    .eq("id", itemId)
+    .eq("planejamento_id", planId)
+    .select("id");
+  const escrita = conferirEscrita(error, data, "Não foi possível salvar o item.");
+  if (!escrita.ok) return escrita;
+  revalidarPlano(planId);
+  return { ok: true, message: `Item salvo.${sufixoReserva(plano.status)}` };
+}
+
+export async function removerItem(_prev: FormState, formData: FormData): Promise<FormState> {
+  const itemId = Number(formData.get("item_id"));
+  const planId = Number(formData.get("planejamento_id"));
+  if (!itemId || !planId) return { ok: false, message: "Item inválido." };
+
+  const supabase = await createClientUntyped();
+  const plano = await planoEditavel(supabase, planId);
+  if (!plano.ok) return plano;
   const { data, error } = await supabase
     .from("planejamento_itens")
     .delete()
-    .eq("id", id)
+    .eq("id", itemId)
+    .eq("planejamento_id", planId)
     .select("id");
-  garantirEscrita(error, data, "Não foi possível remover o item do planejamento.");
-  revalidatePath(`/planejamento/${planId}`);
+  const escrita = conferirEscrita(error, data, "Não foi possível remover o item.");
+  if (!escrita.ok) return escrita;
+  revalidarPlano(planId);
+  return { ok: true, message: `Análise removida.${sufixoReserva(plano.status)}` };
 }
 
 export async function reservarPlano(
@@ -494,6 +508,15 @@ export async function iniciarPlano(
 ): Promise<FormState> {
   const planId = Number(formData.get("planejamento_id"));
   const supabase = await createClientUntyped();
+  // A baixa consome as reservas gravadas; itens alterados depois da reserva
+  // exigem nova reserva (o gatilho de 0111 também recusa a transição).
+  const { data: marca } = await supabase
+    .from("planejamento")
+    .select("reserva_desatualizada")
+    .eq("id", planId)
+    .maybeSingle();
+  if (marca?.reserva_desatualizada) return { ok: false, message: MENSAGEM_RESERVA_DESATUALIZADA };
+
   const demanda = await computarDemandaPlano(supabase, planId);
   const faltasAntesDaBaixa = demanda.filter((d) => d.falta > 0);
   if (faltasAntesDaBaixa.length > 0) {
@@ -552,7 +575,7 @@ export async function liberarPlano(
   if (error) return { ok: false, message: error.message };
   revalidatePath(`/planejamento/${planId}`);
   revalidatePath("/estoque");
-  return { ok: true, message: "Reservas liberadas." };
+  return { ok: true, message: "Reservas liberadas. O plano voltou para rascunho." };
 }
 
 export async function concluirPlano(
@@ -570,35 +593,77 @@ export async function concluirPlano(
   return { ok: true, message: "Planejamento concluído." };
 }
 
+function lerMotivo(formData: FormData) {
+  const motivo = texto(formData, "motivo");
+  return motivo && motivo.length >= 3 ? motivo : null;
+}
+
+function mensagemErroGestao(error: { message?: string; code?: string }, acao: "excluir" | "cancelar") {
+  const message = error.message ?? "";
+  if (error.code === "PGRST202" || message.includes("Could not find the function")) {
+    return `Não foi possível ${acao}: o banco ainda não tem a migration 0111.`;
+  }
+  if (error.code === "42501" && message.includes("Sem permiss")) {
+    return `Somente coordenador pode ${acao} planos.`;
+  }
+  return message || `Não foi possível ${acao} o plano.`;
+}
+
 /**
- * Exclusão física de planejamento.
- *
- * Passa pela RPC `excluir_planejamento_rascunho` (0104), que exige
- * coordenador e recusa planos com reserva de insumo, reserva de
- * equipamento, conferência de lote ou pedido interno vinculado — o DELETE
- * direto apagava tudo isso por cascade, em nível técnico. Planos com
- * vínculo devem ser cancelados, não excluídos.
- *
- * O redirect só acontece depois da confirmação; antes, a tela redirecionava
- * mesmo quando a exclusão não tinha ocorrido.
+ * Exclusão física ("Excluir se não houve baixa" — 0111). A RPC
+ * `excluir_planejamento` exige coordenador e motivo, recusa planos com baixa
+ * de material ou pedido interno ativo, libera as reservas e grava a trilha
+ * antes do DELETE. Com baixa, o caminho é `cancelarPlano`.
  */
-export async function excluirPlano(formData: FormData): Promise<void> {
+export async function excluirPlano(_prev: FormState, formData: FormData): Promise<FormState> {
   const id = Number(formData.get("planejamento_id"));
-  if (!id) throw new Error("Planejamento inválido.");
+  if (!id) return { ok: false, message: "Planejamento inválido." };
+  const motivo = lerMotivo(formData);
+  if (!motivo) return { ok: false, message: "Informe o motivo da exclusão (mínimo 3 caracteres)." };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("excluir_planejamento_rascunho" as never, {
+  const supabase = await createClientUntyped();
+  const { data, error } = await supabase.rpc("excluir_planejamento", {
     p_planejamento_id: id,
-  } as never);
-
-  if (error) throw new Error(error.message);
+    p_motivo: motivo,
+  });
+  if (error) return { ok: false, message: mensagemErroGestao(error, "excluir") };
   if (!data) {
-    throw new Error(
-      "A exclusão não foi confirmada pelo banco. O planejamento foi preservado.",
-    );
+    return { ok: false, message: "A exclusão não foi confirmada pelo banco. O planejamento foi preservado." };
   }
 
-  revalidatePath("/planejamento");
-  revalidatePath(`/planejamento/${id}`);
-  redirect("/planejamento");
+  revalidarPlano(id);
+  revalidatePath("/estoque");
+  // Excluído a partir da própria página do plano: sai dela no servidor, antes
+  // que a página (agora inexistente) seja renderizada de novo.
+  if (texto(formData, "redirecionar_para") === "/planejamento") {
+    redirect(`/planejamento?excluido=${id}`);
+  }
+  const liberadas = Number((data as { reservas_liberadas?: unknown }).reservas_liberadas ?? 0);
+  return {
+    ok: true,
+    message: liberadas > 0 ? `Plano excluído; ${liberadas} reserva(s) liberada(s).` : "Plano excluído.",
+  };
+}
+
+/**
+ * Cancelamento com motivo para planos que já tiveram baixa de material.
+ * `cancelar_planejamento` (0111) registra o motivo e delega a
+ * `cancelar_planejamento_operacional`, preservando o histórico.
+ */
+export async function cancelarPlano(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = Number(formData.get("planejamento_id"));
+  if (!id) return { ok: false, message: "Planejamento inválido." };
+  const motivo = lerMotivo(formData);
+  if (!motivo) return { ok: false, message: "Informe o motivo do cancelamento (mínimo 3 caracteres)." };
+
+  const supabase = await createClientUntyped();
+  const { error } = await supabase.rpc("cancelar_planejamento", {
+    p_planejamento_id: id,
+    p_motivo: motivo,
+  });
+  if (error) return { ok: false, message: mensagemErroGestao(error, "cancelar") };
+
+  revalidarPlano(id);
+  revalidatePath("/estoque");
+  return { ok: true, message: "Plano cancelado. O histórico foi preservado." };
 }

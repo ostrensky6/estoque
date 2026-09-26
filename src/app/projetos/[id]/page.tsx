@@ -2,17 +2,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
-import { calcularOrcamentoProjetoLegacy } from "@/lib/project-budget/legacy";
+import { HelpTip } from "@/components/common/HelpTip";
+import { PlanoLinhaAcoes } from "@/components/planejamento/PlanoGestao";
+import { pode } from "@/lib/auth/permissao-efetiva";
+import { avaliarGestaoPlano } from "@/lib/planejamento/gestao";
+import { criarResolvedorDeTaxas, valorLaboratorioNaProposta, valorProjetoNaProposta } from "@/lib/orcamento/valores-modulos";
 import { formatCurrency as moeda, formatDate as fmtData } from "@/lib/formatters";
+import { STATUS_PROJETO } from "../_lib/status";
+import { responsavelDoProjeto } from "../_lib/responsavel";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_PROJETO: Record<string, { label: string; cls: string }> = {
-  proposto: { label: "Proposto", cls: "bg-warning-soft text-warning-strong" },
-  ativo: { label: "Ativo", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
-  concluido: { label: "Concluído", cls: "bg-info-soft text-info-strong" },
-  cancelado: { label: "Cancelado", cls: "bg-muted text-muted-foreground" },
-};
 
 const STATUS_ORC: Record<string, { label: string; cls: string }> = {
   rascunho: { label: "Rascunho", cls: "bg-warning-soft text-warning-strong" },
@@ -39,10 +38,20 @@ function Badge({ map, status }: { map: Record<string, { label: string; cls: stri
   );
 }
 
-function Kpi({ label, valor, hint }: { label: string; valor: string; hint?: string }) {
+function Kpi({
+  label,
+  valor,
+  hint,
+  ajuda,
+}: {
+  label: string;
+  valor: string;
+  hint?: string;
+  ajuda?: React.ReactNode;
+}) {
   return (
     <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}{ajuda}</p>
       <p className="mt-1 text-xl font-semibold tracking-tight text-foreground">{valor}</p>
       {hint && <p className="mt-0.5 text-xs text-muted-foreground/80">{hint}</p>}
     </div>
@@ -68,7 +77,7 @@ export default async function ProjetoHubPage({
 
   const { data: projeto } = await supabase
     .from("projetos")
-    .select("id, nome, cliente_id, coordenador, status, data_inicio, data_fim, descricao")
+    .select("id, nome, cliente_id, responsavel, coordenador, coordenador_nome, status, data_inicio, data_fim, descricao")
     .eq("id", id)
     .single();
 
@@ -82,25 +91,26 @@ export default async function ProjetoHubPage({
     { data: compras },
     { data: demandas },
     { data: fornecedores },
+    { data: parametrosGlobais },
   ] = await Promise.all([
     projeto.cliente_id != null
       ? supabase.from("clientes").select("id, nome").eq("id", projeto.cliente_id).single()
       : Promise.resolve({ data: null }),
     supabase
       .from("orcamentos")
-      .select("id, tipo, status, data_orcamento, orcamento_itens(n_amostras, preco_unitario)")
+      .select("id, tipo, status, data_orcamento, demanda_id, orcamento_itens(n_amostras, custo_unitario, preco_unitario)")
       .eq("projeto_id", id)
       .order("criado_em", { ascending: false }),
     supabase
       .from("orcamento_projetos")
       .select(
-        "id, titulo, status, data_orcamento, margem_lucro, impostos, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(n_amostras, preco_unitario), orcamento_projeto_custos(rubrica, quantidade, preco_unitario, meses_selecionados)",
+        "id, demanda_id, titulo, status, data_orcamento, margem_lucro, impostos, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(n_amostras, custo_unitario, preco_unitario), orcamento_projeto_custos(rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados)",
       )
       .eq("projeto_id", id)
       .order("criado_em", { ascending: false }),
     supabase
       .from("planejamento")
-      .select("id, nome, data_alvo, criado_em, planejamento_itens(n_amostras)")
+      .select("id, nome, data_alvo, criado_em, status_operacional, planejamento_itens(n_amostras), reservas_estoque(status, quantidade_consumida)")
       .eq("projeto_id", id)
       .order("criado_em", { ascending: false }),
     supabase
@@ -110,10 +120,11 @@ export default async function ProjetoHubPage({
       .order("criado_em", { ascending: false }),
     supabase
       .from("demandas_propostas")
-      .select("id, titulo, status, data_solicitacao")
+      .select("id, titulo, status, data_solicitacao, param_impostos, param_incubacao, param_reserva, param_investimentos, param_lucro")
       .eq("projeto_id", id)
       .order("criado_em", { ascending: false }),
     supabase.from("fornecedores").select("id, nome"),
+    supabase.from("parametros").select("chave, valor"),
   ]);
 
   const fornecedorNome = new Map((fornecedores ?? []).map((f) => [f.id, f.nome]));
@@ -121,12 +132,11 @@ export default async function ProjetoHubPage({
   // --- Orçamentos (dois modelos) unificados em linhas com total ---
   type OrcLinha = { key: string; href: string; titulo: string; tipo: string; data: string; status: string; total: number };
 
+  // valores pela mesma regra da emissão (custo técnico + gross-up único com as taxas da proposta)
+  const taxasDa = criarResolvedorDeTaxas({ projetos: orcProjetos, demandas, parametrosGlobais });
+
   const orcAnalises: OrcLinha[] = (orcamentos ?? []).map((o) => {
-    const itens = o.orcamento_itens ?? [];
-    const total = itens.reduce(
-      (a, it) => a + Number(it.preco_unitario) * Number(it.n_amostras),
-      0,
-    );
+    const total = valorLaboratorioNaProposta(o.orcamento_itens ?? [], taxasDa(o.demanda_id));
     return {
       key: `a-${o.id}`,
       href: `/orcamento/${o.id}`,
@@ -139,33 +149,18 @@ export default async function ProjetoHubPage({
   });
 
   const orcProjetoLinhas: OrcLinha[] = (orcProjetos ?? []).map((o) => {
-    const analises = (o.orcamento_projeto_analises ?? []).map((it) => ({
-      rubrica: "MC",
-      quantidade: Number(it.n_amostras),
-      preco_unitario: Number(it.preco_unitario),
-      meses_selecionados: [] as number[],
-    }));
-    const custos = (o.orcamento_projeto_custos ?? []).map((c) => ({
-      rubrica: c.rubrica,
-      quantidade: Number(c.quantidade),
-      preco_unitario: Number(c.preco_unitario),
-      meses_selecionados: c.meses_selecionados,
-    }));
-    const calculo = calcularOrcamentoProjetoLegacy([...analises, ...custos], {
-      impostos_legacy: Number(o.impostos_legacy ?? o.impostos ?? 0),
-      incubacao: Number(o.incubacao ?? 0),
-      reserva: Number(o.reserva ?? 0),
-      investimentos: Number(o.investimentos ?? 0),
-      lucro: Number(o.lucro ?? o.margem_lucro ?? 0),
-    });
+    const total = valorProjetoNaProposta(
+      { custos: o.orcamento_projeto_custos, analises: o.orcamento_projeto_analises },
+      taxasDa(o.demanda_id, o),
+    );
     return {
       key: `p-${o.id}`,
-      href: `/orcamento/projetos/${o.id}`,
+      href: o.demanda_id != null ? `/orcamento/demandas/${o.demanda_id}?etapa=projeto` : `/orcamento/projetos/${o.id}`,
       titulo: o.titulo ?? `Projeto ${o.id}`,
       tipo: "projeto",
       data: o.data_orcamento ?? "",
       status: o.status,
-      total: calculo.grossTotal,
+      total,
     };
   });
 
@@ -193,8 +188,14 @@ export default async function ProjetoHubPage({
     .filter((c) => c.status !== "cancelado")
     .reduce((a, c) => a + c.total, 0);
 
+  const podeGerirPlanos = await pode("planejamento.editar");
   const planosLinhas = (planos ?? []).map((p) => ({
     id: p.id,
+    gestao: avaliarGestaoPlano({
+      status: p.status_operacional,
+      reservas: p.reservas_estoque ?? [],
+      podeGerir: podeGerirPlanos,
+    }),
     nome: p.nome ?? `Plano ${p.id}`,
     dataAlvo: p.data_alvo,
     amostras: (p.planejamento_itens ?? []).reduce((a, it) => a + Number(it.n_amostras), 0),
@@ -215,7 +216,7 @@ export default async function ProjetoHubPage({
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               {cliente?.nome ? `Cliente: ${cliente.nome}` : "Sem cliente vinculado"}
-              {projeto.coordenador ? ` · Coordenador: ${projeto.coordenador}` : ""}
+              {responsavelDoProjeto(projeto) ? ` · Responsável: ${responsavelDoProjeto(projeto)}` : ""}
               {projeto.data_inicio || projeto.data_fim
                 ? ` · ${fmtData(projeto.data_inicio)} → ${fmtData(projeto.data_fim)}`
                 : ""}
@@ -234,8 +235,26 @@ export default async function ProjetoHubPage({
 
         {/* KPIs */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi label="Orçado (aprovado)" valor={moeda(orcadoAprovado)} hint={`${orcLinhas.length} orçamento(s)`} />
-          <Kpi label="Comprometido em compras" valor={moeda(comprometidoCompras)} hint={`${comprasLinhas.length} pedido(s)`} />
+          <Kpi
+            label="Orçado (aprovado)"
+            valor={moeda(orcadoAprovado)}
+            hint={`${orcLinhas.length} orçamento(s)`}
+            ajuda={
+              <HelpTip title="Orçado (aprovado)">
+                <p>Soma dos orçamentos deste projeto com status <b>aprovado</b>. Os que estão em elaboração, recusados ou cancelados não entram.</p>
+              </HelpTip>
+            }
+          />
+          <Kpi
+            label="Comprometido em compras"
+            valor={moeda(comprometidoCompras)}
+            hint={`${comprasLinhas.length} pedido(s)`}
+            ajuda={
+              <HelpTip title="Comprometido em compras">
+                <p>Valor <b>estimado</b> dos pedidos de compra ligados ao projeto, exceto os cancelados.</p>
+              </HelpTip>
+            }
+          />
           <Kpi label="Planejamentos" valor={String(planosLinhas.length)} hint={`${planosLinhas.reduce((a, p) => a + p.amostras, 0)} amostras`} />
           <Kpi label="Demandas" valor={String((demandas ?? []).length)} hint="entradas do projeto" />
         </div>
@@ -293,6 +312,7 @@ export default async function ProjetoHubPage({
                     <th className={thCls}>Data-alvo</th>
                     <th className={`${thCls} text-right`}>Análises</th>
                     <th className={`${thCls} text-right`}>Amostras</th>
+                    <th className={`${thCls} text-right`}>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -302,6 +322,14 @@ export default async function ProjetoHubPage({
                       <td className={tdCls}>{fmtData(p.dataAlvo)}</td>
                       <td className={`${tdCls} text-right tabular-nums`}>{p.itens}</td>
                       <td className={`${tdCls} text-right tabular-nums`}>{p.amostras}</td>
+                      <td className={`${tdCls} text-right`}>
+                        <PlanoLinhaAcoes
+                          planId={p.id}
+                          nome={p.nome}
+                          editavel={p.gestao.podeEditar}
+                          gestao={{ acao: p.gestao.acao, bloqueado: p.gestao.acaoBloqueada, motivo: p.gestao.motivoAcao }}
+                        />
+                      </td>
                     </tr>
                   ))}
                 </tbody>

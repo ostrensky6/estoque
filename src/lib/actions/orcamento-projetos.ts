@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { calcularTodas } from "@/lib/costing/loader";
+import { precoCatalogoMascarado } from "@/lib/cadastros/salario";
 import { registrarEvento } from "./eventos";
 import {
   calcularQuantidadeViagem,
@@ -13,28 +14,66 @@ import {
   normalizarViagemInputs,
   type ViagemInputs,
 } from "@/lib/project-budget/travel";
-import { validarParametrosProjetoGrossUp } from "@/lib/project-budget/legacy";
+import { ratesDoOrcamentoProjeto } from "@/lib/orcamento/parametros-proposta";
+import { validarParametrosProjetoGrossUp } from "@/lib/project-budget/orcamento-projeto";
+import { linhasViagemFaltantes, normalizarMeses } from "@/lib/project-budget/editor";
 import { registrarVersaoParametrosEconomicos } from "@/lib/orcamento/parametros-versionamento";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
 import { moduloBloqueadoParaEdicao } from "@/lib/orcamento/ciclo-vida-modulo";
 
-const pathLista = "/orcamento/projetos";
+const pathDemandas = "/orcamento/demandas";
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+type ProjetoCarregado = {
+  status?: string | null;
+  demanda_id?: number | null;
+  project_months?: number | null;
+  travel_inputs?: unknown;
+};
+
+const RUBRICAS_VALIDAS = new Set(["PE", "MC", "MP", "ST", "VD", "OU"]);
+
+/** Endereço da etapa da proposta que hospeda o orçamento de projeto. */
+function caminhoEtapa(demandaId: number | null | undefined, etapa = "projeto") {
+  return demandaId ? `${pathDemandas}/${demandaId}?etapa=${etapa}` : pathDemandas;
+}
+
+function comParametro(url: string, chave: string, valor: string) {
+  return `${url}${url.includes("?") ? "&" : "?"}${chave}=${encodeURIComponent(valor)}`;
+}
+
+/** O editor de custos vive em /orcamento/demandas/[id]?etapa=projeto (o endereço antigo só redireciona). */
+function revalidarEtapaProjeto(demandaId: number | null | undefined) {
+  if (demandaId) revalidatePath(`${pathDemandas}/${demandaId}`);
+  revalidatePath(pathDemandas);
+}
+
+async function carregarProjeto(supabase: Supabase, orcamentoProjetoId: number) {
+  const { data } = await supabase
+    .from("orcamento_projetos")
+    .select("status, demanda_id, project_months")
+    .eq("id", orcamentoProjetoId)
+    .single();
+  return (data ?? null) as ProjetoCarregado | null;
+}
+
+/** Demanda do projeto: a do banco prevalece; o campo do formulário é só reserva. */
+function demandaDe(projeto: ProjetoCarregado | null, formData: FormData) {
+  if (projeto?.demanda_id) return Number(projeto.demanda_id);
+  const valor = Number(formData.get("demanda_id"));
+  return Number.isInteger(valor) && valor > 0 ? valor : null;
+}
 
 // Validação defensiva de servidor: impede edição direta de orçamento de projeto
 // revisado/enviado/aprovado/cancelado (Fase 5). Não confiar só no botão da UI.
-async function assegurarProjetoEditavel(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  orcamentoProjetoId: number,
-) {
-  const { data } = await supabase
-    .from("orcamento_projetos")
-    .select("status")
-    .eq("id", orcamentoProjetoId)
-    .single();
-  const bloqueio = moduloBloqueadoParaEdicao({ status: data?.status });
+// Devolve o projeto carregado (status, demanda, meses) para evitar outra consulta.
+async function assegurarProjetoEditavel(supabase: Supabase, orcamentoProjetoId: number) {
+  const projeto = await carregarProjeto(supabase, orcamentoProjetoId);
+  const bloqueio = moduloBloqueadoParaEdicao({ status: projeto?.status });
   if (bloqueio.bloqueado) {
     throw new Error(bloqueio.motivo ?? "Edição bloqueada.");
   }
+  return projeto;
 }
 
 function texto(formData: FormData, chave: string) {
@@ -140,7 +179,7 @@ export async function criarOrcamentoProjeto(formData: FormData) {
   const clienteId = projeto?.cliente_id ?? null;
   const cliente = await carregarCliente(clienteId);
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("orcamento_projetos")
     .insert({
       demanda_id: demandaId,
@@ -155,8 +194,8 @@ export async function criarOrcamentoProjeto(formData: FormData) {
     .single();
 
   if (error) throw new Error(error.message);
-  revalidatePath(pathLista);
-  redirect(`${pathLista}/${data.id}`);
+  revalidarEtapaProjeto(demandaId);
+  redirect(caminhoEtapa(demandaId));
 }
 
 export async function salvarOrcamentoProjeto(formData: FormData) {
@@ -170,7 +209,7 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
   const cliente = await carregarCliente(clienteId);
   const { data: anterior } = await supabase
     .from("orcamento_projetos")
-    .select("status")
+    .select("status, demanda_id")
     .eq("id", id)
     .single();
 
@@ -212,8 +251,7 @@ export async function salvarOrcamentoProjeto(formData: FormData) {
     });
     if (transicaoError) throw new Error(transicaoError.message);
   }
-  revalidatePath(`${pathLista}/${id}`);
-  revalidatePath(pathLista);
+  revalidarEtapaProjeto(demandaDe(anterior, formData));
 }
 
 export async function salvarParametrosEconomicosProjeto(formData: FormData) {
@@ -234,10 +272,10 @@ export async function salvarParametrosEconomicosProjeto(formData: FormData) {
 
   const validacao = validarParametrosProjetoGrossUp(patch);
   if (!validacao.ok) {
-    redirect(`${pathLista}/${id}?erro_parametros=${encodeURIComponent(validacao.message)}`);
+    redirect(comParametro(caminhoEtapa(demandaDe(null, formData), "parametros"), "erro_parametros", validacao.message));
   }
   const supabase = await createClient();
-  await assegurarProjetoEditavel(supabase, id);
+  const projeto = await assegurarProjetoEditavel(supabase, id);
   const { error } = await supabase.from("orcamento_projetos").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
   await registrarVersaoParametrosEconomicos(supabase, {
@@ -253,8 +291,7 @@ export async function salvarParametrosEconomicosProjeto(formData: FormData) {
     "alterado",
     "Parâmetros econômicos do orçamento de projeto atualizados com nova versão.",
   );
-  revalidatePath(`${pathLista}/${id}`);
-  revalidatePath(pathLista);
+  revalidarEtapaProjeto(demandaDe(projeto, formData));
 }
 
 export async function adicionarAnaliseProjeto(formData: FormData) {
@@ -275,7 +312,7 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
   }
   const { breakdowns } = await calcularTodas();
   const breakdown = breakdowns.find((x) => x.codigo === codigo);
-  await assegurarProjetoEditavel(supabase, id);
+  const projeto = await assegurarProjetoEditavel(supabase, id);
   const { error } = await supabase.from("orcamento_projeto_analises").insert({
     orcamento_projeto_id: id,
     codigo_analise: codigo,
@@ -284,7 +321,7 @@ export async function adicionarAnaliseProjeto(formData: FormData) {
     preco_unitario: breakdown?.preco ?? 0,
   });
   if (error) throw new Error(error.message);
-  revalidatePath(`${pathLista}/${id}`);
+  revalidarEtapaProjeto(demandaDe(projeto, formData));
 }
 
 export async function adicionarCustoProjeto(formData: FormData) {
@@ -298,8 +335,12 @@ export async function adicionarCustoProjeto(formData: FormData) {
   const rubrica = texto(formData, "rubrica") || "OU";
   const categoria = texto(formData, "categoria") || categoriaPorRubrica(rubrica);
 
+  if (!RUBRICAS_VALIDAS.has(rubrica)) throw new Error("Rubrica inválida.");
+  if (!(quantidade > 0)) throw new Error("A quantidade precisa ser maior que zero.");
+  if (custoUnitario < 0) throw new Error("O custo unitário não pode ser negativo.");
+
   const supabase = await createClient();
-  await assegurarProjetoEditavel(supabase, id);
+  const projeto = await assegurarProjetoEditavel(supabase, id);
   const { error } = await supabase.from("orcamento_projeto_custos").insert({
     orcamento_projeto_id: id,
     categoria,
@@ -309,7 +350,7 @@ export async function adicionarCustoProjeto(formData: FormData) {
     unidade: texto(formData, "unidade"),
     custo_unitario: custoUnitario,
     preco_unitario: custoUnitario,
-    meses_selecionados: inteiroArray(formData, "meses_selecionados"),
+    meses_selecionados: normalizarMeses(inteiroArray(formData, "meses_selecionados"), Number(projeto?.project_months ?? 12)),
     origem: "manual",
     etapa: texto(formData, "etapa") || etapaPorRubrica(rubrica),
     atividade: texto(formData, "atividade") || categoria,
@@ -318,7 +359,177 @@ export async function adicionarCustoProjeto(formData: FormData) {
     nomenclatura_origem: "kontrol",
   });
   if (error) throw new Error(error.message);
-  revalidatePath(`${pathLista}/${id}`);
+  revalidarEtapaProjeto(demandaDe(projeto, formData));
+}
+
+/**
+ * Edita uma linha de custo existente (descrição, unidade, quantidade, custo e classificação).
+ * Rubrica, origem e vínculo com o catálogo não mudam: para trocar de rubrica, remova e adicione.
+ */
+export async function atualizarCustoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
+  const id = numero(formData, "orcamento_projeto_id");
+  const itemId = numero(formData, "item_id");
+  const descricao = texto(formData, "descricao");
+  if (!id || !itemId || !descricao) return;
+
+  const quantidade = numero(formData, "quantidade", NaN);
+  const custoUnitario = numero(formData, "custo_unitario", NaN);
+  if (!(quantidade > 0)) throw new Error("A quantidade precisa ser maior que zero.");
+  if (!(custoUnitario >= 0)) throw new Error("O custo unitário não pode ser negativo.");
+
+  const supabase = await createClient();
+  const projeto = await assegurarProjetoEditavel(supabase, id);
+  const { error } = await supabase
+    .from("orcamento_projeto_custos")
+    .update({
+      descricao,
+      unidade: texto(formData, "unidade"),
+      quantidade,
+      custo_unitario: custoUnitario,
+      preco_unitario: custoUnitario,
+      etapa: texto(formData, "etapa"),
+      atividade: texto(formData, "atividade"),
+      entrega: texto(formData, "entrega"),
+    })
+    .eq("id", itemId)
+    .eq("orcamento_projeto_id", id);
+  if (error) throw new Error(error.message);
+  revalidarEtapaProjeto(demandaDe(projeto, formData));
+}
+
+/**
+ * Grava a grade de meses do Pessoal (PE). Cada linha envia `meses_<id>` com os meses marcados.
+ * O total da linha passa a ser meses × valor mensal; com meses marcados, a quantidade acompanha
+ * a contagem (como no app antigo). Sem meses, a quantidade anterior é mantida (a coluna exige > 0).
+ */
+export async function salvarMesesPessoalProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
+  const id = numero(formData, "orcamento_projeto_id");
+  if (!id) return;
+
+  const supabase = await createClient();
+  const projeto = await assegurarProjetoEditavel(supabase, id);
+  const mesesProjeto = Number(projeto?.project_months ?? 12);
+  const { data: itens, error: itensError } = await supabase
+    .from("orcamento_projeto_custos")
+    .select("id, quantidade, meses_selecionados")
+    .eq("orcamento_projeto_id", id)
+    .eq("rubrica", "PE");
+  if (itensError) throw new Error(itensError.message);
+
+  for (const item of (itens ?? []) as Array<{ id: number; quantidade: number; meses_selecionados: number[] | null }>) {
+    if (!formData.has(`linha_${item.id}`)) continue;
+    const meses = normalizarMeses(formData.getAll(`meses_${item.id}`), mesesProjeto);
+    const atuais = normalizarMeses(item.meses_selecionados ?? [], mesesProjeto);
+    if (meses.join(",") === atuais.join(",")) continue;
+    const { error } = await supabase
+      .from("orcamento_projeto_custos")
+      .update({
+        meses_selecionados: meses,
+        quantidade: meses.length > 0 ? meses.length : Number(item.quantidade) || 1,
+      })
+      .eq("id", item.id)
+      .eq("orcamento_projeto_id", id);
+    if (error) throw new Error(error.message);
+  }
+  revalidarEtapaProjeto(demandaDe(projeto, formData));
+}
+
+/**
+ * Altera a duração do projeto (1 a 60 meses, como no app antigo). Meses do pessoal que
+ * ficarem fora do novo prazo são retirados das linhas PE para o total não contar mês inexistente.
+ */
+export async function salvarDuracaoProjeto(formData: FormData) {
+  await exigirPapelOrcamento("preencher_custos");
+  const id = numero(formData, "orcamento_projeto_id");
+  if (!id) return;
+  const meses = numero(formData, "project_months", NaN);
+  if (!Number.isInteger(meses) || meses < 1 || meses > 60) {
+    throw new Error("A duração do projeto deve ser um número inteiro de 1 a 60 meses.");
+  }
+
+  const supabase = await createClient();
+  const projeto = await assegurarProjetoEditavel(supabase, id);
+  const { error } = await supabase.from("orcamento_projetos").update({ project_months: meses }).eq("id", id);
+  if (error) throw new Error(error.message);
+
+  const { data: itens, error: itensError } = await supabase
+    .from("orcamento_projeto_custos")
+    .select("id, quantidade, meses_selecionados")
+    .eq("orcamento_projeto_id", id)
+    .eq("rubrica", "PE");
+  if (itensError) throw new Error(itensError.message);
+  for (const item of (itens ?? []) as Array<{ id: number; quantidade: number; meses_selecionados: number[] | null }>) {
+    const atuais = item.meses_selecionados ?? [];
+    const dentro = normalizarMeses(atuais, meses);
+    if (dentro.length === atuais.length) continue;
+    const { error: itemError } = await supabase
+      .from("orcamento_projeto_custos")
+      .update({ meses_selecionados: dentro, quantidade: dentro.length > 0 ? dentro.length : Number(item.quantidade) || 1 })
+      .eq("id", item.id)
+      .eq("orcamento_projeto_id", id);
+    if (itemError) throw new Error(itemError.message);
+  }
+  revalidarEtapaProjeto(demandaDe(projeto, formData));
+}
+
+/**
+ * Conclui a revisão dos custos de projeto (rascunho → enviado pelo RPC transacional).
+ * É o que marca o módulo como "revisado" e libera parâmetros e emissão da proposta.
+ */
+export async function concluirRevisaoCustosProjeto(formData: FormData) {
+  await exigirPapelOrcamento("revisar_modulo");
+  const id = numero(formData, "orcamento_projeto_id");
+  if (!id) return;
+
+  const supabase = await createClient();
+  const { data: projeto } = await supabase
+    .from("orcamento_projetos")
+    .select("status, demanda_id, projeto_sem_custo_justificativa, orcamento_projeto_custos(id), orcamento_projeto_analises(id)")
+    .eq("id", id)
+    .single();
+  const atual = projeto as (ProjetoCarregado & {
+    projeto_sem_custo_justificativa?: string | null;
+    orcamento_projeto_custos?: unknown[] | null;
+    orcamento_projeto_analises?: unknown[] | null;
+  }) | null;
+  if (!atual) throw new Error("Orçamento de projeto não encontrado.");
+  if (atual.status !== "rascunho") {
+    throw new Error("Só é possível concluir a revisão de custos que estão em edição.");
+  }
+  const itens = (atual.orcamento_projeto_custos?.length ?? 0) + (atual.orcamento_projeto_analises?.length ?? 0);
+  if (itens === 0 && !atual.projeto_sem_custo_justificativa) {
+    throw new Error("Adicione ao menos um custo ou análise antes de concluir a revisão.");
+  }
+
+  const { error } = await supabase.rpc("transicionar_orcamento_projeto", {
+    p_orcamento_projeto_id: id,
+    p_status_destino: "enviado",
+    p_observacao: texto(formData, "observacao") ?? "Revisão dos custos de projeto concluída.",
+  });
+  if (error) throw new Error(error.message);
+  revalidarEtapaProjeto(demandaDe(atual, formData));
+}
+
+/** Reabre custos recusados para edição (recusado → rascunho). "Enviado" não volta a rascunho no RPC. */
+export async function reabrirCustosProjeto(formData: FormData) {
+  await exigirPapelOrcamento("revisar_modulo");
+  const id = numero(formData, "orcamento_projeto_id");
+  if (!id) return;
+
+  const supabase = await createClient();
+  const projeto = await carregarProjeto(supabase, id);
+  if (projeto?.status !== "recusado") {
+    throw new Error("Só custos recusados podem ser reabertos para edição.");
+  }
+  const { error } = await supabase.rpc("transicionar_orcamento_projeto", {
+    p_orcamento_projeto_id: id,
+    p_status_destino: "rascunho",
+    p_observacao: "Custos de projeto reabertos para edição.",
+  });
+  if (error) throw new Error(error.message);
+  revalidarEtapaProjeto(demandaDe(projeto, formData));
 }
 
 export async function adicionarCustoCatalogoProjeto(formData: FormData) {
@@ -328,17 +539,26 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
   if (!id || !catalogoId) return;
 
   const supabase = await createClient();
-  const { data: item, error: itemError } = await supabase
-    .from("orcamento_projeto_catalogo")
-    .select("id, rubrica, descricao, unidade, preco_unitario, categoria")
-    .eq("id", catalogoId)
-    .single();
+  // O preço não é mais legível direto da tabela (migration 0112): a RPC devolve
+  // o catálogo com o preço de PE mascarado para quem não tem permissão.
+  const { data: catalogo, error: itemError } = await supabase.rpc("orcamento_projeto_catalogo_listar");
   if (itemError) throw new Error(itemError.message);
+  const item = (catalogo ?? []).find((linha) => linha.id === catalogoId);
   if (!item) return;
+  if (precoCatalogoMascarado(item)) {
+    // Copiar o valor de PE para o orçamento o revelaria na linha de custo.
+    throw new Error(
+      "Valores de pessoal (PE) do catálogo exigem a permissão “Ver salário dos técnicos”. Lance o custo manualmente ou peça a quem tem a permissão.",
+    );
+  }
 
-  await assegurarProjetoEditavel(supabase, id);
+  const projeto = await assegurarProjetoEditavel(supabase, id);
   const quantidade = numero(formData, "quantidade", 1);
-  const mesesSelecionados = inteiroArray(formData, "meses_selecionados");
+  if (!(quantidade > 0)) throw new Error("A quantidade precisa ser maior que zero.");
+  const mesesSelecionados = normalizarMeses(
+    inteiroArray(formData, "meses_selecionados"),
+    Number(projeto?.project_months ?? 12),
+  );
   const { error } = await supabase.from("orcamento_projeto_custos").insert({
     orcamento_projeto_id: id,
     categoria: categoriaPorRubrica(item.rubrica),
@@ -358,7 +578,7 @@ export async function adicionarCustoCatalogoProjeto(formData: FormData) {
     nomenclatura_origem: item.id.includes("-") ? "orcamento_projetos_antigo" : "catalogo_institucional",
   });
   if (error) throw new Error(error.message);
-  revalidatePath(`${pathLista}/${id}`);
+  revalidarEtapaProjeto(demandaDe(projeto, formData));
 }
 
 export async function salvarViagensProjeto(formData: FormData) {
@@ -380,26 +600,73 @@ export async function salvarViagensProjeto(formData: FormData) {
   });
 
   const supabase = await createClient();
-  await assegurarProjetoEditavel(supabase, id);
-  await supabase.from("orcamento_projetos").update({ travel_inputs: inputs }).eq("id", id);
+  const projeto = await assegurarProjetoEditavel(supabase, id);
+  const { error: inputsError } = await supabase
+    .from("orcamento_projetos")
+    .update({ travel_inputs: inputs as unknown as Json })
+    .eq("id", id);
+  if (inputsError) throw new Error(inputsError.message);
 
   // Recalcula a quantidade das linhas VD automatizáveis a partir dos parâmetros.
   const { data: vdItens } = await supabase
     .from("orcamento_projeto_custos")
-    .select("id, descricao, categoria")
+    .select("id, descricao, categoria, catalogo_item_id")
     .eq("orcamento_projeto_id", id)
     .eq("rubrica", "VD");
   for (const item of vdItens ?? []) {
     const despesa = classificarDespesaViagem(item.descricao, item.categoria);
     const quantidade = calcularQuantidadeViagem(despesa, inputs);
     if (quantidade != null && quantidade > 0) {
-      await supabase
+      const { error } = await supabase
         .from("orcamento_projeto_custos")
         .update({ quantidade })
-        .eq("id", item.id);
+        .eq("id", item.id)
+        .eq("orcamento_projeto_id", id);
+      if (error) throw new Error(error.message);
     }
   }
-  revalidatePath(`${pathLista}/${id}`);
+
+  // Opcional: cria as linhas padrão de viagem do catálogo que ainda faltam (quantidade > 0).
+  if (formData.get("criar_linhas_padrao") === "1") {
+    // RPC da 0112 (SELECT direto do preço é negado); VD nunca é mascarado.
+    const { data: catalogoTodo, error: catalogoError } = await supabase.rpc("orcamento_projeto_catalogo_listar");
+    if (catalogoError) throw new Error(catalogoError.message);
+    const catalogoVD = ((catalogoTodo ?? []) as Array<{ rubrica: string; ativo: boolean | null }>).filter(
+      (item) => item.rubrica === "VD" && item.ativo !== false,
+    );
+    const catalogo = catalogoVD as unknown as Array<{
+      id: string;
+      descricao: string;
+      unidade: string | null;
+      preco_unitario: number | null;
+      categoria: string | null;
+    }>;
+    const faltantes = linhasViagemFaltantes(catalogo, vdItens ?? [], inputs);
+    if (faltantes.length > 0) {
+      const { error } = await supabase.from("orcamento_projeto_custos").insert(
+        faltantes.map(({ item, quantidade }) => ({
+          orcamento_projeto_id: id,
+          categoria: categoriaPorRubrica("VD"),
+          rubrica: "VD",
+          catalogo_item_id: item.id,
+          descricao: item.descricao,
+          quantidade,
+          unidade: item.unidade,
+          custo_unitario: Number(item.preco_unitario ?? 0),
+          preco_unitario: Number(item.preco_unitario ?? 0),
+          meses_selecionados: [],
+          origem: "catalogo",
+          etapa: etapaPorRubrica("VD"),
+          atividade: item.categoria || categoriaPorRubrica("VD"),
+          entrega: "Entrega principal",
+          categoria_institucional: categoriaInstitucionalPorRubrica("VD"),
+          nomenclatura_origem: item.id.includes("-") ? "orcamento_projetos_antigo" : "catalogo_institucional",
+        })),
+      );
+      if (error) throw new Error(error.message);
+    }
+  }
+  revalidarEtapaProjeto(demandaDe(projeto, formData));
 }
 
 export async function removerAnaliseProjeto(formData: FormData) {
@@ -408,9 +675,14 @@ export async function removerAnaliseProjeto(formData: FormData) {
   const itemId = numero(formData, "item_id");
   if (!id || !itemId) return;
   const supabase = await createClient();
-  await assegurarProjetoEditavel(supabase, id);
-  await supabase.from("orcamento_projeto_analises").delete().eq("id", itemId);
-  revalidatePath(`${pathLista}/${id}`);
+  const projeto = await assegurarProjetoEditavel(supabase, id);
+  const { error } = await supabase
+    .from("orcamento_projeto_analises")
+    .delete()
+    .eq("id", itemId)
+    .eq("orcamento_projeto_id", id);
+  if (error) throw new Error(error.message);
+  revalidarEtapaProjeto(demandaDe(projeto, formData));
 }
 
 export async function removerCustoProjeto(formData: FormData) {
@@ -419,9 +691,14 @@ export async function removerCustoProjeto(formData: FormData) {
   const itemId = numero(formData, "item_id");
   if (!id || !itemId) return;
   const supabase = await createClient();
-  await assegurarProjetoEditavel(supabase, id);
-  await supabase.from("orcamento_projeto_custos").delete().eq("id", itemId);
-  revalidatePath(`${pathLista}/${id}`);
+  const projeto = await assegurarProjetoEditavel(supabase, id);
+  const { error } = await supabase
+    .from("orcamento_projeto_custos")
+    .delete()
+    .eq("id", itemId)
+    .eq("orcamento_projeto_id", id);
+  if (error) throw new Error(error.message);
+  revalidarEtapaProjeto(demandaDe(projeto, formData));
 }
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -466,8 +743,8 @@ export async function criarLinkPublico(formData: FormData) {
   });
   if (error) throw new Error(error.message);
 
-  revalidatePath(`${pathLista}/${id}`);
-  redirect(`${pathLista}/${id}?novo_link=${token}`);
+  revalidarEtapaProjeto(projeto.demanda_id);
+  redirect(comParametro(caminhoEtapa(projeto.demanda_id, "final"), "novo_link", token));
 }
 
 export async function revogarLinkPublico(formData: FormData) {
@@ -476,8 +753,12 @@ export async function revogarLinkPublico(formData: FormData) {
   const linkId = numero(formData, "link_id");
   if (!id || !linkId) return;
   const supabase = await createClient();
-  await supabase.from("orcamento_projeto_links").update({ revogado: true }).eq("id", linkId);
-  revalidatePath(`${pathLista}/${id}`);
+  await supabase
+    .from("orcamento_projeto_links")
+    .update({ revogado: true })
+    .eq("id", linkId)
+    .eq("orcamento_projeto_id", id);
+  revalidarEtapaProjeto(demandaDe(await carregarProjeto(supabase, id), formData));
 }
 
 /** Aprovação pública (sem login) via RPC SECURITY DEFINER validando o token. */
@@ -542,7 +823,7 @@ export async function salvarComoTemplate(formData: FormData) {
   const { data: orc } = await supabase
     .from("orcamento_projetos")
     .select(
-      "project_months, impostos_legacy, incubacao, reserva, investimentos, lucro, margem_lucro, impostos, travel_inputs",
+      "demanda_id, project_months, impostos_legacy, incubacao, reserva, investimentos, lucro, margem_lucro, impostos, travel_inputs",
     )
     .eq("id", id)
     .single();
@@ -555,11 +836,7 @@ export async function salvarComoTemplate(formData: FormData) {
 
   const parametros: ParametrosTemplate = {
     project_months: Number(orc.project_months ?? 12),
-    impostos_legacy: Number(orc.impostos_legacy ?? orc.impostos ?? 0),
-    incubacao: Number(orc.incubacao ?? 0),
-    reserva: Number(orc.reserva ?? 0),
-    investimentos: Number(orc.investimentos ?? 0),
-    lucro: Number(orc.lucro ?? orc.margem_lucro ?? 0),
+    ...ratesDoOrcamentoProjeto(orc),
     travel_inputs: orc.travel_inputs ?? {},
   };
 
@@ -571,8 +848,8 @@ export async function salvarComoTemplate(formData: FormData) {
     parametros: parametros as unknown as Json,
   });
   if (error) throw new Error(error.message);
-  revalidatePath(`${pathLista}/${id}`);
-  revalidatePath(pathLista);
+  revalidarEtapaProjeto(demandaDe(orc, formData));
+  revalidatePath("/orcamento/modelos");
 }
 
 /** Cria um novo orçamento de projeto a partir de um template. */
@@ -647,8 +924,9 @@ export async function criarProjetoDeTemplate(formData: FormData) {
     if (itemError) throw new Error(itemError.message);
   }
 
-  revalidatePath(pathLista);
-  redirect(`${pathLista}/${novo.id}`);
+  // K2 (Etapa B): este fluxo ainda cria sem demanda; o endereço antigo redireciona para a etapa da proposta.
+  revalidatePath(pathDemandas);
+  redirect(`/orcamento/projetos/${novo.id}`);
 }
 
 export async function excluirTemplate(formData: FormData) {
@@ -671,7 +949,6 @@ export async function excluirTemplate(formData: FormData) {
     : `${descricaoBase}${descricaoBase ? "\n" : ""}Arquivado em ${new Date().toISOString().slice(0, 10)}.`;
   await supabase.from("orcamento_projeto_templates").update({ nome, descricao }).eq("id", templateId);
   await registrarEvento("orcamento_template", templateId, "ativo", "arquivado", "Template arquivado sem remoção física.");
-  revalidatePath(pathLista);
   revalidatePath("/orcamento/modelos");
 }
 
@@ -702,7 +979,6 @@ export async function duplicarTemplateProjeto(formData: FormData) {
     "duplicado",
     `Template duplicado a partir de #${templateId}.`,
   );
-  revalidatePath(pathLista);
   revalidatePath("/orcamento/modelos");
 }
 
@@ -718,7 +994,6 @@ export async function arquivarCatalogoProjetoItem(formData: FormData) {
   if (error) throw new Error(error.message);
   await registrarEvento("orcamento_catalogo", Number(catalogoId) || 0, "ativo", "arquivado", "Item de catálogo arquivado sem remoção física.");
   revalidatePath("/orcamento/modelos");
-  revalidatePath(pathLista);
 }
 
 const BUCKET_ANEXOS = "orcamento-anexos";
@@ -756,7 +1031,7 @@ export async function adicionarAnexoProjeto(formData: FormData) {
     await supabase.storage.from(BUCKET_ANEXOS).remove([path]);
     throw new Error(error.message);
   }
-  revalidatePath(`${pathLista}/${id}`);
+  revalidarEtapaProjeto(demandaDe(await carregarProjeto(supabase, id), formData));
 }
 
 export async function removerAnexoProjeto(formData: FormData) {
@@ -775,7 +1050,7 @@ export async function removerAnexoProjeto(formData: FormData) {
     await supabase.storage.from(BUCKET_ANEXOS).remove([anexo.path]);
   }
   await supabase.from("orcamento_projeto_anexos").delete().eq("id", anexoId);
-  revalidatePath(`${pathLista}/${id}`);
+  revalidarEtapaProjeto(demandaDe(await carregarProjeto(supabase, id), formData));
 }
 
 export async function excluirOrcamentoProjeto(formData: FormData) {
@@ -783,19 +1058,22 @@ export async function excluirOrcamentoProjeto(formData: FormData) {
   const id = numero(formData, "orcamento_projeto_id");
   if (!id) return;
   const supabase = await createClient();
-  const { data: atual } = await supabase
-    .from("orcamento_projetos")
-    .select("status")
-    .eq("id", id)
-    .single();
+  const atual = await carregarProjeto(supabase, id);
+  const demandaId = demandaDe(atual, formData);
 
-  if (atual && ["enviado", "aprovado"].includes(atual.status)) {
-    redirect(`${pathLista}/${id}?erro_exclusao=${encodeURIComponent("Orçamento enviado ou aprovado não pode ser excluído. Use cancelamento/versionamento quando disponível.")}`);
+  if (atual && ["enviado", "aprovado"].includes(atual.status ?? "")) {
+    redirect(
+      comParametro(
+        caminhoEtapa(demandaId),
+        "erro_exclusao",
+        "Orçamento enviado ou aprovado não pode ser excluído. Use cancelamento/versionamento quando disponível.",
+      ),
+    );
   }
 
   await supabase.from("orcamento_projetos").delete().eq("id", id);
-  revalidatePath(pathLista);
-  redirect(pathLista);
+  revalidarEtapaProjeto(demandaId);
+  redirect(caminhoEtapa(demandaId));
 }
 
 export async function cancelarOrcamentoProjeto(formData: FormData) {
@@ -804,11 +1082,7 @@ export async function cancelarOrcamentoProjeto(formData: FormData) {
   const motivo = texto(formData, "motivo") || "Cancelamento operacional.";
   await exigirPapelOrcamento("cancelar_documento");
   const supabase = await createClient();
-  const { data: atual } = await supabase
-    .from("orcamento_projetos")
-    .select("status")
-    .eq("id", id)
-    .single();
+  const atual = await carregarProjeto(supabase, id);
   if (!atual || atual.status === "cancelado") return;
 
   const { error } = await supabase.rpc("transicionar_orcamento_projeto", {
@@ -817,7 +1091,7 @@ export async function cancelarOrcamentoProjeto(formData: FormData) {
     p_observacao: motivo,
   });
   if (error) throw new Error(error.message);
-  revalidatePath(`${pathLista}/${id}`);
-  revalidatePath(pathLista);
-  redirect(`${pathLista}/${id}`);
+  const demandaId = demandaDe(atual, formData);
+  revalidarEtapaProjeto(demandaId);
+  redirect(caminhoEtapa(demandaId));
 }

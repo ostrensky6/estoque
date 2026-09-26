@@ -66,11 +66,11 @@ export function EtapasEditTable({
                 <th className={th}>Atividade</th>
                 <th className={th}>Exec/dia</th>
                 <th className={th}>Amostras/exec.</th>
-                <th className={th}>Maquina h</th>
+                <th className={th}>Máquina h</th>
                 <th className={th}>Bancada h</th>
-                <th className={th}>Limitacao</th>
+                <th className={th}>Limitação</th>
                 <th className={th}>Opcional</th>
-                <th className={th}>Acoes</th>
+                <th className={th}>Ações</th>
               </tr>
             </thead>
             <tbody>

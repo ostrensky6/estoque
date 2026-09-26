@@ -18,9 +18,31 @@ describe("permissoes reconciliadas", () => {
       "estoque.lote.aceitar",
       "estoque.lote.gerir",
       "orcamento.parametros.editar",
-      "backups.gerenciar",
-      "privilegios.gerenciar",
+      "planejamento.executar",
+      "orcamentos.fundos",
+      "orcamentos.modelos",
     ]));
+  });
+
+  it("gestão de acessos não é delegável por caixinha: fica só com o admin", () => {
+    const keys = PERMISSOES.map((permissao) => permissao.key as string);
+    expect(keys).not.toContain("usuarios.gerenciar");
+    expect(keys).not.toContain("privilegios.gerenciar");
+    expect(keys).not.toContain("backups.gerenciar");
+  });
+
+  it("padrões por papel reproduzem o acesso anterior à 0124", () => {
+    expect(defaultPermissionsForRole("tecnico")).toEqual(expect.arrayContaining([
+      "recebimento.registrar",
+      "planejamento.executar",
+    ]));
+    expect(defaultPermissionsForRole("tecnico")).not.toContain("estoque.lote.aceitar");
+    expect(defaultPermissionsForRole("coordenador")).toEqual(expect.arrayContaining([
+      "orcamentos.cancelar",
+      "compras.cancelar",
+      "estoque.lote.gerir",
+    ]));
+    expect(defaultPermissionsForRole("coordenador")).not.toContain("estoque.descartar_bloquear");
   });
 
   it("documenta que o papel administrativo historico nao foi colapsado silenciosamente", () => {
@@ -47,6 +69,19 @@ describe("permissoes reconciliadas", () => {
       "estoque.descartar_bloquear",
       "auditoria.visualizar",
     ]));
+  });
+
+  it("salario dos tecnicos: configuravel nas telas e, por padrao, somente admin", () => {
+    const salario = PERMISSOES.find((permissao) => permissao.key === "tecnicos.salario.ver");
+    expect(salario).toMatchObject({ label: "Ver salário dos técnicos", modulo: "Cadastros" });
+
+    expect(normalizePermissions("admin", {})["tecnicos.salario.ver"]).toBe(true);
+    for (const papel of ["tecnico", "coordenador", "gestor"]) {
+      expect(defaultPermissionsForRole(papel)).not.toContain("tecnicos.salario.ver");
+      expect(normalizePermissions(papel, {})["tecnicos.salario.ver"]).toBe(false);
+    }
+    // concessao individual (perfis.permissoes) prevalece sobre o padrao da categoria
+    expect(normalizePermissions("tecnico", { "tecnicos.salario.ver": true })["tecnicos.salario.ver"]).toBe(true);
   });
 
   it("forca permissoes completas para formulario de admin", () => {

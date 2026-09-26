@@ -6,8 +6,16 @@ import {
 } from "@/lib/cadastros/config";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { CrudShell } from "@/components/cadastros/CrudShell";
+import { HelpTip, TextoAjuda } from "@/components/common/HelpTip";
+import { loteBaixaDeDb, somarReservasPorLote, type LoteDbBaixa } from "@/lib/estoque/baixa";
 import { equipCustoDia } from "@/lib/costing/engine";
-import { modeloQuantidadePorInsumo, projetarTotaisInsumos, type LoteInsumo, type LoteModelo } from "@/lib/cadastros/insumos";
+import { modeloQuantidadePorInsumo, projetarQuantidadeInsumos, type LoteInsumo, type LoteModelo } from "@/lib/cadastros/insumos";
+import {
+  camposTecnicosParaUsuario,
+  colunasCalculadasTecnico,
+  lerLinhasCadastro,
+} from "@/lib/cadastros/salario";
+import { podeVerSalario } from "@/lib/auth/permissao-efetiva";
 
 export const dynamic = "force-dynamic";
 
@@ -86,17 +94,8 @@ async function comColunasCalculadas(
         };
       });
     case "tecnicos":
-      return rows.map((r) => {
-        const custoHora =
-          Number(r.horas_mes_base) > 0
-            ? Number(r.valor_mes) / Number(r.horas_mes_base)
-            : 0;
-        return {
-          ...r,
-          custo_hora: custoHora,
-          valor_hh: (custoHora * Number(r.percentual_dedicado)) / 100,
-        };
-      });
+      // salário mascarado ("XXX") ⇒ derivados também mascarados (ver salario.ts)
+      return rows.map(colunasCalculadasTecnico);
     case "insumos":
       return rows.map((r) => ({
         ...r,
@@ -129,10 +128,15 @@ export default async function CadastroPage({
   if (!cfg) notFound();
 
   const supabase = await createClientUntyped();
-  const [{ data: rows }, { data: parametros }] = await Promise.all([
-    supabase.from(cfg.tabela).select("*").order("id"),
+  // Salário: decidido no servidor; sem permissão o valor real nunca é lido
+  // nem serializado para o CrudShell (cliente).
+  const podeVerSalarioTecnicos = slug === "tecnicos" ? await podeVerSalario() : false;
+  const [{ data: rows, error: rowsError }, { data: parametros }] = await Promise.all([
+    lerLinhasCadastro(supabase, cfg.tabela, { podeVerSalario: podeVerSalarioTecnicos }),
     supabase.from("parametros").select("chave, valor").eq("chave", "dias_uteis_ano"),
   ]);
+  // falha de leitura não pode virar tabela vazia ("0 registros")
+  if (rowsError) throw new Error(`Falha ao carregar ${cfg.titulo.toLowerCase()}: ${rowsError.message}`);
   const diasUteisAno = Number(parametros?.[0]?.valor ?? 222);
 
   let linhas = await comColunasCalculadas(slug, rows ?? [], diasUteisAno);
@@ -140,14 +144,28 @@ export default async function CadastroPage({
   if (slug === "insumos") {
     const { data: lotes, error: lotesError } = await supabase
       .from("lotes_estoque")
-      .select("insumo_id, status, quantidade_atual, validade, validade_apos_abertura, data_abertura, modelo_quantidade");
+      .select("id, codigo_lote, insumo_id, status, quantidade_atual, validade, validade_apos_abertura, data_abertura, modelo_quantidade");
     if (lotesError) throw new Error(lotesError.message);
-    linhas = projetarTotaisInsumos(linhas, (lotes ?? []) as LoteInsumo[]);
+    const { data: reservas } = await supabase
+      .from("reservas_estoque")
+      .select("lote_id, quantidade, quantidade_consumida, status")
+      .in("status", ["reservado", "parcial"]);
+    const reservadoPorLote = somarReservasPorLote(reservas ?? []);
+    linhas = projetarQuantidadeInsumos(linhas, (lotes ?? []) as LoteInsumo[]);
     const modelos = modeloQuantidadePorInsumo((lotes ?? []) as LoteModelo[]);
+    // lotes com saldo, para a seção "Lotes" da edição do insumo
+    const lotesPorInsumo = new Map<string, Record<string, unknown>[]>();
+    for (const lote of (lotes ?? []) as Record<string, unknown>[]) {
+      if (!(Number(lote.quantidade_atual) > 0) || ["consumido", "descartado"].includes(String(lote.status))) continue;
+      const chave = String(lote.insumo_id);
+      lotesPorInsumo.set(chave, [...(lotesPorInsumo.get(chave) ?? []), lote]);
+    }
     linhas = linhas.map((r) => ({
       ...r,
-      quantidade: Number(r.unidades_fechadas ?? 0) + Number(r.unidades_abertas ?? 0),
       quantidade_modelo: modelos.get(String(r.id)) ?? null,
+      lotes_resumo: (lotesPorInsumo.get(String(r.id)) ?? [])
+        .sort((a, b) => String(a.validade ?? "9999").localeCompare(String(b.validade ?? "9999")))
+        .map((l) => loteBaixaDeDb(l as unknown as LoteDbBaixa, reservadoPorLote)),
     }));
   }
 
@@ -164,9 +182,11 @@ export default async function CadastroPage({
       label: String((r as unknown as { nome: string | null }).nome ?? ""),
     }));
   }
-  const campos: Campo[] = cfg.campos.map((c) =>
+  const camposBase: Campo[] = cfg.campos.map((c) =>
     c.opcoesDe ? { ...c, opcoes: opcoesPorFonte[c.opcoesDe] ?? [] } : c,
   );
+  const campos =
+    slug === "tecnicos" ? camposTecnicosParaUsuario(camposBase, podeVerSalarioTecnicos) : camposBase;
 
   if (slug === "insumos") {
     const tipos = opcoesPorFonte["tipo_insumos"] ?? [];
@@ -207,8 +227,20 @@ export default async function CadastroPage({
       <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Cadastros", href: "/cadastros" }, { label: cfg.titulo }]} />
 
-        <h1 className="mt-6 text-xl font-semibold tracking-tight">{cfg.titulo}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{cfg.subtitulo}</p>
+        <div className="mt-6 flex items-center gap-1">
+          <h1 className="text-xl font-semibold tracking-tight">{cfg.titulo}</h1>
+          <HelpTip title={cfg.titulo}>
+            <p>
+              <TextoAjuda texto={cfg.subtitulo} />
+            </p>
+            {slug === "tecnicos" && !podeVerSalarioTecnicos && (
+              <p>
+                O salário aparece como <b>XXX</b>: ver e alterar exige a permissão “Ver salário dos
+                técnicos” (Governança → Privilégios).
+              </p>
+            )}
+          </HelpTip>
+        </div>
 
         <div className="mt-6">
           <CrudShell

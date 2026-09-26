@@ -1,6 +1,8 @@
 import { aprovarOrcamentoPublico } from "@/lib/actions/orcamento-projetos";
-import { formatCurrency as brl } from "@/lib/formatters";
+import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/server";
+import { montarPropostaFinalExport } from "@/lib/orcamento/proposta-final-export";
+import { rotuloStatusVersaoFinal, statusEfetivoVersaoFinal } from "@/lib/orcamento/rotulos-status";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,8 @@ type SnapshotParametro = {
 type SnapshotPublico = {
   demanda?: {
     titulo?: string | null;
+    instituicao?: string | null;
+    modalidade?: string | null;
     cliente_nome?: string | null;
     responsavel_interno?: string | null;
     escopo_preliminar?: string | null;
@@ -70,29 +74,25 @@ export default async function AprovacaoPublicaPage({
   const snapshot = payload.snapshot;
   const demanda = snapshot.demanda;
   const consolidado = snapshot.consolidado;
-  const subtotal =
-    Number(consolidado?.totalLaboratorioCusto ?? 0) +
-    Number(consolidado?.totalProjetoCusto ?? 0);
   const totalFinal = Number(payload.versao.total_final ?? consolidado?.totalFinal ?? 0);
-  const parametros = consolidado?.parametrosProjeto ?? [];
-  const itensLaboratorio = (snapshot.orcamentos_analises ?? []).reduce(
-    (total, orcamento) => total + (orcamento.orcamento_itens?.length ?? 0),
-    0,
-  );
-  const itensProjeto = (snapshot.orcamentos_projeto ?? []).reduce(
-    (total, orcamento) =>
-      total +
-      (orcamento.orcamento_projeto_analises?.length ?? 0) +
-      (orcamento.orcamento_projeto_custos?.length ?? 0),
-    0,
-  );
+  // Página do cliente: só itens com valor comercial e total. Custos internos,
+  // lucro, reserva e demais parâmetros não aparecem aqui.
+  const proposta = montarPropostaFinalExport({
+    versao: payload.versao,
+    snapshot,
+    demanda: demanda ?? null,
+  });
+  const identidade = proposta.info.identidade;
+  const itens = proposta.composicaoComercial;
+  const status = rotuloStatusVersaoFinal(statusEfetivoVersaoFinal(payload.versao));
+  const escopo = demanda?.escopo_preliminar || demanda?.descricao || demanda?.observacoes;
   const aprovado = Boolean(payload.aprovado_em);
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 font-sans text-foreground sm:px-6 sm:py-8">
       <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
-          Proposta de orçamento — ATGC Genética Ambiental
+          Proposta comercial — {identidade.nomeCurto}
         </p>
         <h1 className="mt-1 text-xl font-semibold tracking-tight">
           {demanda?.titulo ?? payload.versao.numero}
@@ -104,63 +104,62 @@ export default async function AprovacaoPublicaPage({
         <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
           <Linha rotulo="Cliente" valor={demanda?.cliente_nome} />
           <Linha rotulo="Responsável" valor={demanda?.responsavel_interno} />
-          <Linha rotulo="Validade" valor={payload.versao.valido_ate} />
-          <Linha rotulo="Status" valor={payload.versao.status} />
+          <Linha rotulo="Válida até" valor={formatDate(payload.versao.valido_ate)} />
+          <Linha rotulo="Situação" valor={status} />
         </dl>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <Resumo rotulo="Subtotal de custos" valor={subtotal} />
-          <Resumo rotulo="Total final" valor={totalFinal} destaque />
+        <div className="mt-6">
+          <Resumo rotulo="Valor total da proposta" valor={totalFinal} destaque />
         </div>
 
-        <section className="mt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Composição congelada
-          </h2>
-          <dl className="mt-2 grid gap-3 text-sm sm:grid-cols-2">
-            <Linha rotulo="Itens laboratoriais" valor={String(itensLaboratorio)} />
-            <Linha rotulo="Itens de projeto" valor={String(itensProjeto)} />
-          </dl>
-          {parametros.length > 0 && (
-            <div className="mt-3 overflow-x-auto rounded-lg border border-border">
+        {itens.length > 0 && (
+          <section className="mt-8">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Itens da proposta
+            </h2>
+            <div className="mt-2 overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-right text-sm">
                 <thead className="text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2 text-left">Parâmetro</th>
-                    <th className="px-3 py-2">Percentual</th>
+                    <th className="px-3 py-2 text-left">Item</th>
+                    <th className="px-3 py-2">Qtd.</th>
                     <th className="px-3 py-2">Valor</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/70">
-                  {parametros.map((parametro, index) => (
-                    <tr key={`${parametro.key ?? parametro.label ?? "parametro"}-${index}`}>
-                      <td className="px-3 py-2 text-left font-medium">
-                        {parametro.label ?? parametro.key ?? "Parâmetro"}
+                  {itens.map((item, index) => (
+                    <tr key={`${item.componente}-${item.descricao}-${index}`}>
+                      <td className="px-3 py-2 text-left">
+                        <span className="font-medium">{item.descricao}</span>
+                        <span className="block text-xs text-muted-foreground">{item.componente}</span>
                       </td>
-                      <td className="px-3 py-2 tabular-nums">
-                        {Number(parametro.nominalRate ?? 0).toLocaleString("pt-BR")}%
-                      </td>
-                      <td className="px-3 py-2 tabular-nums">
-                        {brl(Number(parametro.amount ?? 0))}
-                      </td>
+                      <td className="px-3 py-2 tabular-nums">{item.quantidade}</td>
+                      <td className="px-3 py-2 tabular-nums">{brl(item.valorComercial)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
-        </section>
+          </section>
+        )}
 
-        {(demanda?.escopo_preliminar || demanda?.descricao || demanda?.observacoes) && (
+        {escopo && (
           <section className="mt-6 text-sm">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Escopo e observações
             </h2>
-            <p className="mt-1 whitespace-pre-wrap leading-6 text-foreground">
-              {demanda.escopo_preliminar ?? demanda.descricao ?? demanda.observacoes}
-            </p>
+            <p className="mt-1 whitespace-pre-wrap leading-6 text-foreground">{escopo}</p>
           </section>
         )}
+
+        <section className="mt-6 text-sm">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Condições
+          </h2>
+          <p className="mt-1 leading-6 text-foreground">
+            Valores válidos até {formatDate(payload.versao.valido_ate)}. Mudanças de escopo, quantidade de amostras ou prazo podem exigir nova versão da proposta.
+          </p>
+        </section>
 
         <div className="mt-8 border-t border-border pt-6">
           {query.erro && (
@@ -172,7 +171,7 @@ export default async function AprovacaoPublicaPage({
             <div className="rounded-lg bg-leaf-50 px-4 py-3 text-sm text-leaf-800 dark:bg-leaf-950/40 dark:text-leaf-200">
               ✓ Orçamento aprovado{payload.aprovado_por ? ` por ${payload.aprovado_por}` : ""}
               {payload.aprovado_em
-                ? ` em ${new Date(payload.aprovado_em).toLocaleString("pt-BR")}`
+                ? ` em ${formatDateTime(payload.aprovado_em)}`
                 : ""}
               .
             </div>
@@ -197,7 +196,7 @@ export default async function AprovacaoPublicaPage({
         </div>
       </div>
       <p className="mt-4 text-center text-xs text-muted-foreground/80">
-        Documento gerado pelo Kontrol — ATGC. Valores em reais (BRL).
+        Documento gerado pelo Kontrol — {identidade.nomeCurto}. Valores em reais (BRL).
       </p>
     </main>
   );

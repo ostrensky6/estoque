@@ -1,10 +1,19 @@
 import { createClientUntyped } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { PedidosInternosTable, type PedidoInternoRow } from "@/components/pedido/PedidosInternosTable";
 import type { PedidoItemView } from "@/components/pedido/PedidoItensQuickView";
 import { NovoPedidoDialog } from "@/components/pedido/NovoPedidoDialog";
 import { pedidoInternoNumero, pedidoInternoStatus } from "@/lib/pedido/status";
 import { formatCurrency as brl, formatDate } from "@/lib/formatters";
+import { statusInfo } from "@/components/app/status";
+import { HelpTip } from "@/components/common/HelpTip";
+
+const URGENCIA_LABEL: Record<string, string> = {
+  baixa: "Baixa",
+  normal: "Normal",
+  alta: "Alta",
+  critica: "Crítica",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +110,7 @@ export default async function PedidoPage() {
       .select("id, titulo, status, solicitante, data_necessidade, urgencia, tipo_demanda, modalidade_compra, pedido_compra_id, criado_em, coordenador_projeto_nome, coordenador_projeto_email, projetos(nome, coordenador, coordenador_nome, coordenador_email), pedidos_compra(id, status), pedidos_internos_itens(id, tipo, especificacao, modelo, volume, quantidade, unidade, orcamento_previo, fornecedor_sugerido, recebido_em), pedidos_internos_anexos(id, tipo)")
       .order("criado_em", { ascending: false }),
     supabase.from("projetos").select("id, nome, coordenador, coordenador_nome, coordenador_email").order("nome"),
-    temPapel("coordenador"),
+    pode("pedido.aprovar"),
   ]);
   const { data: pedidos } = pedidosFull.error
     ? await supabase
@@ -133,7 +142,7 @@ export default async function PedidoPage() {
     const docsCotacao = pedido.pedidos_internos_anexos.some((doc) => ["orcamento_previo", "proposta", "print", "email"].includes(doc.tipo));
     const recebidos = pedido.pedidos_internos_itens.filter((item) => item.recebido_em).length;
     const proxima = proximaAcao(pedido.status);
-    const compraFormal = compraRow?.id ? `#${compraRow.id} · ${compraRow.status}` : "—";
+    const compraFormal = compraRow?.id ? `#${compraRow.id} · ${statusInfo(compraRow.status).label}` : "—";
     return {
       id: pedido.id,
       numero: pedidoInternoNumero(pedido.id),
@@ -143,7 +152,7 @@ export default async function PedidoPage() {
       coordenador,
       solicitante: pedido.solicitante ?? "—",
       necessidade: formatDate(pedido.data_necessidade),
-      urgencia: pedido.urgencia ?? "normal",
+      urgencia: URGENCIA_LABEL[pedido.urgencia ?? "normal"] ?? pedido.urgencia ?? "Normal",
       itens: itens.length,
       itensDetalhe: itens,
       total: brl(total),
@@ -170,9 +179,19 @@ export default async function PedidoPage() {
       <main className="app-page-container">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Pedido</h1>
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Pedido</h1>
+              <HelpTip title="Pedido interno">
+                <p>
+                  Solicitação de materiais, serviços ou equipamentos feita pela equipe. Passa pela{" "}
+                  <b>validação do coordenador</b>, pela análise administrativa e pela cotação antes de
+                  virar compra formal.
+                </p>
+                <p>Abra um pedido para ver em que etapa ele está e qual é a próxima ação.</p>
+              </HelpTip>
+            </div>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Demandas internas do GATGF para materiais e serviços antes da compra formal.
+              Pedidos internos do GATGF de materiais e serviços, antes da compra formal.
             </p>
           </div>
           <div className="flex items-center gap-2">

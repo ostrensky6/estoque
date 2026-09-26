@@ -38,21 +38,37 @@ function mensagemErroExclusaoUsuario(error: { message?: string; code?: string } 
   return "Não foi possível excluir o usuário. A exclusão não foi confirmada; verifique vínculos e arquivos associados antes de tentar novamente.";
 }
 
-async function permissoesDaCategoria(papel: string, formData?: FormData) {
-  if (
-    formData &&
-    (formData.get("permissoes_presentes") === "1" || formData.getAll("permissoes").length > 0)
-  ) {
-    return selectedPermissionsFromForm(formData, papel);
-  }
-
+/** Marcação efetiva da categoria (papel), como o banco a aplica (0124). */
+async function categoriaEfetiva(papel: string) {
   const { data } = await createAdminClient()
     .from("permissoes_categorias")
     .select("permissoes")
     .eq("papel", papel)
     .maybeSingle();
-
   return normalizePermissions(papel, papel === "admin" ? {} : data?.permissoes);
+}
+
+/**
+ * O usuário guarda só as EXCEÇÕES à categoria. Assim, mudar a categoria em
+ * Privilégios alcança todos que não têm exceção, e trocar o papel não deixa
+ * para trás uma cópia das permissões do papel antigo.
+ */
+function soExcecoes(selecionadas: Record<string, boolean>, categoria: Record<string, boolean>) {
+  return Object.fromEntries(
+    Object.entries(selecionadas).filter(([chave, valor]) => categoria[chave] !== valor),
+  );
+}
+
+async function permissoesDoUsuario(papel: string, formData?: FormData) {
+  if (papel === "admin") return {};
+  const categoria = await categoriaEfetiva(papel);
+  if (
+    formData &&
+    (formData.get("permissoes_presentes") === "1" || formData.getAll("permissoes").length > 0)
+  ) {
+    return soExcecoes(selectedPermissionsFromForm(formData, papel), categoria);
+  }
+  return {};
 }
 
 // ban "permanente" para suspensão; o GoTrue aceita uma duração em horas.
@@ -74,7 +90,7 @@ export async function criarUsuario(_prev: FormState, formData: FormData): Promis
     const papel = String(formData.get("papel") ?? "tecnico");
     if (!email) return { ok: false, message: "Informe o e-mail do usuário." };
     if (!isPapelValido(papel)) return { ok: false, message: "Papel inválido." };
-    const permissoes = await permissoesDaCategoria(papel, formData);
+    const permissoes = await permissoesDoUsuario(papel, formData);
 
     const admin = createAdminClient();
     const { data, error } = await admin.auth.admin.createUser({
@@ -132,7 +148,7 @@ export async function editarUsuario(_prev: FormState, formData: FormData): Promi
     const supabase = await createClient();
     const { error } = await supabase
       .from("perfis")
-      .update({ nome: nome || null, papel, permissoes: selectedPermissionsFromForm(formData, papel) })
+      .update({ nome: nome || null, papel, permissoes: await permissoesDoUsuario(papel, formData) })
       .eq("id", id);
 
     // mantém o nome também no Auth (user_metadata)
@@ -238,6 +254,7 @@ export async function salvarPermissoesCategoria(_prev: FormState, formData: Form
 
     if (error) return { ok: false, message: error.message };
     revalidatePath("/usuarios");
+    revalidatePath("/governanca/privilegios");
     return { ok: true, message: "Permissões da categoria atualizadas." };
   } catch (error) {
     return { ok: false, message: mensagemErroAcao(error) };
@@ -288,7 +305,10 @@ export async function criarUsuarioPreAprovado(_prev: FormState, formData: FormDa
       .update({
         nome: nome || null,
         papel,
-        permissoes: normalizePermissions(papel, pre.permissoes ?? (await permissoesDaCategoria(papel))),
+        permissoes:
+          papel === "admin"
+            ? {}
+            : soExcecoes(normalizePermissions(papel, pre.permissoes ?? {}), await categoriaEfetiva(papel)),
         senha_provisoria: true,
         suspenso: false,
       })
@@ -326,39 +346,6 @@ export async function alternarSuspensao(formData: FormData) {
     revalidatePath("/usuarios");
   } catch {
     return;
-  }
-}
-
-/**
- * Reseta a senha de um usuário para a senha provisória e força a troca no
- * próximo acesso (senha_provisoria=true).
- */
-export async function resetarSenha(_prev: FormState, formData: FormData): Promise<FormState> {
-  try {
-    if (!(await temPapel("admin"))) {
-      return { ok: false, message: "Sem permissão para resetar senhas." };
-    }
-    const id = String(formData.get("id") ?? "");
-    const email = String(formData.get("email") ?? "");
-    if (!id) return { ok: false, message: "Usuário inválido." };
-
-    const { error } = await createAdminClient().auth.admin.updateUserById(id, {
-      password: SENHA_PROVISORIA,
-      user_metadata: { senha_provisoria: true },
-      app_metadata: APP_METADATA_SENHA_PROVISORIA,
-    });
-    if (error) return { ok: false, message: mensagemErroAdminSupabase(error) };
-
-    const supabase = await createClient();
-    await supabase.from("perfis").update({ senha_provisoria: true }).eq("id", id);
-
-    revalidatePath("/usuarios");
-    return {
-      ok: true,
-      message: `Senha de ${email || "usuário"} redefinida. Ele definirá uma nova senha no próximo acesso.`,
-    };
-  } catch (error) {
-    return { ok: false, message: mensagemErroAcao(error) };
   }
 }
 

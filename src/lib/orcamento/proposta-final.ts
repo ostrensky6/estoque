@@ -7,7 +7,7 @@
 //   - detecta custos técnicos <= 0 (bloqueio de emissão);
 //   - padroniza o status da etapa final.
 import { roundMoney } from "@/lib/costing/pricing";
-import { itemProjetoTotal } from "@/lib/project-budget/legacy";
+import { itemProjetoTotal } from "@/lib/project-budget/orcamento-projeto";
 
 // ---------------------------------------------------------------------
 // Status padronizado da etapa final

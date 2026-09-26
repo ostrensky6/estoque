@@ -109,45 +109,6 @@ async function atualizarOperacionalLaboratorio(
   }).eq("id", id);
 }
 
-/** Cria um orçamento em rascunho e abre a tela de edição. */
-export async function criarOrcamento(formData: FormData) {
-  await exigirPapelOrcamento("preencher_custos");
-  const demandaId = formData.get("demanda_id") ? Number(formData.get("demanda_id")) : null;
-  if (!demandaId) {
-    redirect("/orcamento/demandas");
-  }
-
-  const tipo = String(formData.get("tipo") ?? "analises");
-  const cliente_nome =
-    String(formData.get("cliente_nome") ?? "").trim() || "Cliente sem nome";
-  const projeto_id = formData.get("projeto_id") ? Number(formData.get("projeto_id")) : null;
-  const supabase = await createClient();
-
-  if (tipo === "projeto" || tipo === "analises_projeto") {
-    const titulo =
-      String(formData.get("titulo") ?? "").trim() ||
-      (tipo === "analises_projeto" ? `Projeto com análises - ${cliente_nome}` : `Projeto - ${cliente_nome}`);
-    const { error } = await supabase
-      .from("orcamento_projetos")
-      .insert({
-        demanda_id: demandaId,
-        projeto_id,
-        titulo,
-        cliente_nome,
-      });
-    if (error) throw new Error(error.message);
-    redirect(`/orcamento/demandas/${demandaId}?etapa=projeto`);
-  }
-
-  const { data, error } = await supabase
-    .from("orcamentos")
-    .insert({ demanda_id: demandaId, cliente_nome, projeto_id, tipo: "analises" })
-    .select("id")
-    .single();
-  if (error) throw new Error(error.message);
-  redirect(`/orcamento/${data.id}`);
-}
-
 /** Salva o cabeçalho (cliente/projeto + dados) do orçamento. Se um cliente
  *  cadastrado for vinculado, os dados do documento são preenchidos a partir dele. */
 export async function salvarCabecalho(formData: FormData) {
@@ -224,13 +185,12 @@ export async function revisarOrcamentoLaboratorio(formData: FormData) {
   await exigirPapelOrcamento("revisar_modulo");
   const id = Number(formData.get("orcamento_id"));
   const responsavel = String(formData.get("responsavel") ?? "").trim();
-  const novoStatus = String(formData.get("status") ?? "enviado");
+  // A revisão interna só marca o módulo como revisado ("enviado"). Aprovação
+  // é decisão do cliente e fica na proposta (versão final), não aqui.
+  const novoStatus = "enviado";
   if (!id) return;
   if (!responsavel) {
     throw new Error("Informe o responsável técnico antes de revisar os custos laboratoriais.");
-  }
-  if (!["enviado", "aprovado"].includes(novoStatus)) {
-    throw new Error("Status de revisão inválido.");
   }
 
   const supabase = await createClient();
@@ -249,6 +209,17 @@ export async function revisarOrcamentoLaboratorio(formData: FormData) {
     throw new Error("Adicione ao menos uma análise antes de revisar os custos laboratoriais.");
   }
 
+  // Transição primeiro: se o banco recusar, nada foi gravado e o módulo não
+  // fica "revisado" com o documento ainda em rascunho.
+  const statusFinal = anterior?.status === "rascunho" ? novoStatus : anterior?.status ?? novoStatus;
+  if (anterior?.status === "rascunho") {
+    const { error: transicaoError } = await supabase.rpc("transicionar_orcamento", {
+      p_orcamento_id: id,
+      p_status_destino: novoStatus,
+      p_observacao: "Revisão do módulo laboratorial.",
+    });
+    if (transicaoError) throw new Error(transicaoError.message);
+  }
   const { error } = await supabase
     .from("orcamentos")
     .update({
@@ -258,15 +229,7 @@ export async function revisarOrcamentoLaboratorio(formData: FormData) {
     })
     .eq("id", id);
   if (error) throw new Error(error.message);
-  if (anterior && anterior.status !== novoStatus) {
-    const { error: transicaoError } = await supabase.rpc("transicionar_orcamento", {
-      p_orcamento_id: id,
-      p_status_destino: novoStatus,
-      p_observacao: "Revisão do módulo laboratorial.",
-    });
-    if (transicaoError) throw new Error(transicaoError.message);
-  }
-  await atualizarOperacionalLaboratorio(supabase, id, novoStatus);
+  await atualizarOperacionalLaboratorio(supabase, id, statusFinal);
   revalidatePath(`/orcamento/${id}`);
   revalidatePath("/orcamento");
 }
@@ -393,11 +356,12 @@ export async function alternarAnaliseOrcamento(formData: FormData) {
   if (!incluir) {
     const supabase = await createClient();
     await assegurarLaboratorioEditavel(supabase, id);
-    await supabase
+    const { error } = await supabase
       .from("orcamento_itens")
       .delete()
       .eq("orcamento_id", id)
       .eq("codigo_analise", codigo);
+    if (error) throw new Error(`Não foi possível remover a análise: ${error.message}`);
     await atualizarOperacionalLaboratorio(supabase, id);
     revalidatePath(`/orcamento/${id}`);
     return;
@@ -409,10 +373,16 @@ export async function removerItemOrcamento(formData: FormData) {
   await exigirPapelOrcamento("preencher_custos");
   const id = Number(formData.get("orcamento_id"));
   const itemId = Number(formData.get("item_id"));
-  if (!itemId) return;
+  if (!itemId || !id) return;
   const supabase = await createClient();
   await assegurarLaboratorioEditavel(supabase, id);
-  await supabase.from("orcamento_itens").delete().eq("id", itemId);
+  // Filtra também pelo orçamento: a trava acima vale só para este orçamento.
+  const { error } = await supabase
+    .from("orcamento_itens")
+    .delete()
+    .eq("id", itemId)
+    .eq("orcamento_id", id);
+  if (error) throw new Error(`Não foi possível remover a análise: ${error.message}`);
   await atualizarOperacionalLaboratorio(supabase, id);
   revalidatePath(`/orcamento/${id}`);
 }
@@ -535,7 +505,10 @@ export async function excluirOrcamento(formData: FormData) {
     redirect(`/orcamento/${id}?erro_exclusao=${encodeURIComponent("Orçamento enviado ou aprovado não pode ser excluído. Use cancelamento/versionamento quando disponível.")}`);
   }
 
-  await supabase.from("orcamentos").delete().eq("id", id);
+  const { error } = await supabase.from("orcamentos").delete().eq("id", id);
+  if (error) {
+    redirect(`/orcamento/${id}?erro_exclusao=${encodeURIComponent(`Não foi possível excluir o orçamento: ${error.message}`)}`);
+  }
   revalidatePath("/orcamento");
   redirect("/orcamento");
 }

@@ -51,6 +51,22 @@ export function projetarTotaisInsumos(insumos: InsumoRow[], lotes: LoteInsumo[],
   });
 }
 
+/**
+ * Quantidade exibida no cadastro (coluna "Quantidade" e planilha XLSX):
+ * saldo dos lotes aceitos/em uso e não vencidos. No modelo de embalagens
+ * fechadas corresponde ao número de embalagens fechadas.
+ */
+export function projetarQuantidadeInsumos(
+  insumos: InsumoRow[],
+  lotes: LoteInsumo[],
+  hoje = hojeEmSaoPaulo(),
+): InsumoRow[] {
+  return projetarTotaisInsumos(insumos, lotes, hoje).map((linha) => {
+    const { unidades_fechadas, unidades_abertas, ...resto } = linha;
+    return { ...resto, quantidade: Number(unidades_fechadas ?? 0) + Number(unidades_abertas ?? 0) };
+  });
+}
+
 export type ModeloQuantidade = "LEGADO" | "EMBALAGEM_FECHADA";
 
 export type LoteModelo = {

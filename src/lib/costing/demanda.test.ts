@@ -70,4 +70,52 @@ describe("demanda liquida do planejamento", () => {
 
     expect(demanda).toMatchObject({ demanda: 10, disponivel: 6, falta: 2 });
   });
+
+  it("compara na unidade física quando o lote conta embalagens fechadas", async () => {
+    const store = getMockSupabaseStore();
+    store.planejamento_itens = [{
+      planejamento_id: 8,
+      codigo_analise: "E2-FRASCO",
+      n_amostras: 250,
+      n_controles: 0,
+      repeticoes: 1,
+      perda_percentual: 0,
+    }];
+    store.etapas = [];
+    store.insumo_analise = [{
+      codigo_analise: "E2-FRASCO",
+      nome_etapa: "Preparo",
+      nome_atividade: "Consumo",
+      especificacao_insumo: "Tampão 100 mL",
+      grupo_escolha: null,
+      quantidade_por_amostra: 1000, // µL por amostra
+      modo_cobranca: "por_amostra",
+      insumo_id: 43,
+      insumos: { custo_unitario: 5 },
+    }];
+    // 3 frascos de 100 mL: a view crua mostra "3"; a unidade física, 300 mL.
+    store.v_estoque_saldo = [{ insumo_id: 43, unidade: "mL", disponivel: 3 }];
+    store.v_estoque_disponivel_unidade = [{ insumo_id: 43, disponivel_unidade: 200 }];
+    store.insumos = [{
+      id: 43,
+      fator_conversao: 1000,
+      custo_unitario: 5,
+      quantidade_minima_compra: null,
+      quantidade_embalagem: 100,
+    }];
+    store.lotes_estoque = [{ id: 501, modelo_quantidade: "EMBALAGEM_FECHADA", conteudo_embalagem_snapshot: 100 }];
+    store.reservas_estoque = [{
+      planejamento_id: 8,
+      insumo_id: 43,
+      lote_id: 501,
+      quantidade: 1, // 1 frasco reservado para este plano
+      quantidade_consumida: 0,
+      status: "reservado",
+    }];
+
+    const [demanda] = await computarDemandaPlano(createMockSupabaseClient() as never, 8);
+
+    // 250 mL necessários; 100 mL já reservados (1 frasco) + 200 mL livres → sem falta
+    expect(demanda).toMatchObject({ demanda: 250, disponivel: 200, falta: 0 });
+  });
 });

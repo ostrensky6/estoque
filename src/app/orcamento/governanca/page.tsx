@@ -1,10 +1,19 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { HelpTip } from "@/components/common/HelpTip";
 import { formatDateTime } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/server";
-import { temPapel, usuarioAtual } from "@/lib/auth/roles";
+import { usuarioAtual } from "@/lib/auth/roles";
+import { pode, podeVerSalario } from "@/lib/auth/permissao-efetiva";
+import { mascararAuditoriaSigilosa } from "@/lib/cadastros/salario";
 import { LABEL_PAPEL, PERMISSOES_ORCAMENTO } from "@/lib/orcamento/governanca";
+import { PERMISSOES } from "@/lib/auth/permissions";
+
+function rotuloPermissao(chave: string) {
+  const permissao = PERMISSOES.find((item) => item.key === chave);
+  return permissao ? `${permissao.modulo}: ${permissao.label}` : chave;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -71,7 +80,7 @@ type Auditoria = {
 };
 
 export default async function GovernancaOrcamentoPage() {
-  const permitido = await temPapel("gestor");
+  const permitido = await pode("auditoria.visualizar");
   const usuario = await usuarioAtual();
 
   if (!permitido) {
@@ -107,7 +116,11 @@ export default async function GovernancaOrcamentoPage() {
   ]);
 
   const eventosRecentes = (eventos ?? []) as Evento[];
-  const auditoriaRecente = (auditorias ?? []) as Auditoria[];
+  // Preço PE do catálogo: escondido pela policy da 0112 e mascarado aqui também.
+  const podeVerSalarios = await podeVerSalario();
+  const auditoriaRecente = ((auditorias ?? []) as Auditoria[]).map((item) =>
+    mascararAuditoriaSigilosa(item, podeVerSalarios),
+  );
   const eventosComMotivo = eventosRecentes.filter((evento) => Boolean(evento.observacao?.trim())).length;
   const acoesCriticas = eventosRecentes.filter((evento) =>
     ["cancelado", "alterado", "duplicado"].includes(evento.para_status) || evento.entidade === "orcamento_final",
@@ -121,10 +134,13 @@ export default async function GovernancaOrcamentoPage() {
             <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
               Orçamentos
             </p>
-            <h1 className="text-xl font-semibold tracking-tight">Governança e permissões</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Matriz de papéis, eventos sensíveis e auditoria por campo para reconstruir o caminho de cada valor final.
-            </p>
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Governança e permissões</h1>
+              <HelpTip title="Governança e permissões">
+                <p>Mostra <b>quem pode fazer</b> cada ação sensível do orçamento e o registro de cada mudança, para reconstruir a origem de qualquer valor final.</p>
+                <p><b>Críticas</b> são cancelamentos, alterações, duplicações e ações sobre propostas emitidas; <b>Com motivo</b> são eventos registrados com justificativa.</p>
+              </HelpTip>
+            </div>
           </div>
           <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm shadow-sm">
             <span className="block text-xs text-muted-foreground">Sessão atual</span>
@@ -150,7 +166,7 @@ export default async function GovernancaOrcamentoPage() {
               <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">Ação</th>
-                  <th className="px-4 py-3">Papel mínimo</th>
+                  <th className="px-4 py-3">Quem pode</th>
                   <th className="px-4 py-3">Motivo</th>
                   <th className="px-4 py-3">Evidência</th>
                   <th className="px-4 py-3">Regra</th>
@@ -163,10 +179,17 @@ export default async function GovernancaOrcamentoPage() {
                       <strong>{permissao.titulo}</strong>
                       <span className="mt-1 block text-xs text-muted-foreground">{permissao.descricao}</span>
                     </td>
-                    <td className="px-4 py-3">{LABEL_PAPEL[permissao.papelMinimo]}</td>
+                    <td className="px-4 py-3">
+                      {permissao.chave
+                        ? `Quem tiver “${rotuloPermissao(permissao.chave)}”`
+                        : `${LABEL_PAPEL[permissao.papelMinimo]} ou superior`}
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        Marcada por padrão para {LABEL_PAPEL[permissao.papelMinimo].toLowerCase()} e acima
+                      </span>
+                    </td>
                     <td className="px-4 py-3">{permissao.motivoObrigatorio ? "Obrigatório" : "Quando aplicável"}</td>
                     <td className="px-4 py-3">{permissao.eventoAuditavel}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">Bloqueio em Server Action e RLS de apoio no banco.</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">Conferido na ação do servidor e no banco.</td>
                   </tr>
                 ))}
               </tbody>

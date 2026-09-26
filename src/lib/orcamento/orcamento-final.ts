@@ -1,10 +1,10 @@
-import type { ProjetoBudgetRates } from "@/lib/project-budget/legacy";
+import type { ProjetoBudgetRates } from "@/lib/project-budget/orcamento-projeto";
 import { roundMoney } from "@/lib/costing/pricing";
 import {
   totalLaboratorioCusto as calcularTotalLaboratorioCusto,
   totalLaboratorioPreco as calcularTotalLaboratorioPreco,
   totalProjetoCusto as calcularTotalProjetoCusto,
-} from "./parametros-adapter";
+} from "./bases-custo";
 import { calcularPropostaEconomica, parametrosDeRates } from "./engine-economica";
 
 export type ItemLaboratorioFinal = {
@@ -118,6 +118,7 @@ export function consolidarOrcamentoFinal(args: {
 
   return {
     pronto: pendencias.length === 0 && economia.valido,
+    // `origens` fica no snapshot para auditoria; na tela use explicarOrigem().
     pendencias: economia.valido ? pendencias : [...pendencias, economia.alertas[0]],
     // Bases técnicas
     totalLaboratorioCusto: custoLaboratorioTecnico,
@@ -137,4 +138,17 @@ export function consolidarOrcamentoFinal(args: {
     markupProjeto: economia.somaPercentual, // compat de exibição (Σ parâmetros)
     origens,
   };
+}
+
+// Texto de tela para cada linha de `origens` (sem nomes de tabela nem jargão).
+const EXPLICACAO_ORIGEM: Record<string, string> = {
+  totalLaboratorioCusto: "Custo de cada análise × número de amostras.",
+  totalLaboratorioPreco: "Preço de tabela das análises; só referência, não entra no total.",
+  totalProjetoCusto: "Soma dos custos e das análises do projeto.",
+  subtotalTecnico: "Custo do laboratório + custo do projeto.",
+  totalFinal: "Subtotal técnico ÷ (1 − soma dos % dos parâmetros).",
+};
+
+export function explicarOrigem(origem: { campo?: string | null; regra?: string | null }) {
+  return (origem.campo && EXPLICACAO_ORIGEM[origem.campo]) || origem.regra || "Valor registrado na emissão.";
 }

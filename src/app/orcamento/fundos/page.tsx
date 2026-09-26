@@ -1,8 +1,9 @@
 import Link from "next/link";
 
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { salvarAcompanhamentoFundos } from "@/lib/actions/orcamento-fundos";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { formatCurrency as brl, formatDate, formatPercent } from "@/lib/formatters";
 import {
   calcularFundos,
@@ -68,7 +69,7 @@ const inputCls = "h-8 w-full min-w-0 rounded-md border border-input bg-card px-2
 
 export default async function FundosPage() {
   const supabase = await createClient();
-  const podeEditar = await temPapel("gestor");
+  const podeEditar = await pode("orcamentos.fundos");
   const db = supabase as unknown as {
     from: (table: string) => {
       select: (columns: string) => {
@@ -184,10 +185,20 @@ export default async function FundosPage() {
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Fundos e taxas</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Acompanhamento financeiro de orçamentos aprovados: recebimentos, impostos, incubação, baixas e saldos de fundos.
-            </p>
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Fundos e taxas</h1>
+              <HelpTip title="Fundos e taxas">
+                <p>Acompanha as <b>propostas aprovadas</b>: quanto o cliente já pagou e quanto disso vai para impostos, incubação, reserva e investimento.</p>
+                <HelpLegend
+                  items={[
+                    { tom: "neutro", rotulo: "Liberado", texto: "valor previsto × percentual já recebido do cliente." },
+                    { tom: "neutro", rotulo: "Executado", texto: "o que já foi pago ou gasto, lançado aqui." },
+                    { tom: "neutro", rotulo: "Saldo", texto: "liberado − executado." },
+                  ]}
+                />
+                <HelpExample>Reserva prevista de R$ 1.000 e cliente pagou 50% → liberado R$ 500; gasto de R$ 200 → saldo de R$ 300.</HelpExample>
+              </HelpTip>
+            </div>
           </div>
           <Link href="/orcamento/historico" className="rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted">
             Histórico de orçamentos
@@ -220,10 +231,13 @@ export default async function FundosPage() {
 
         <section className="mt-6 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div className="border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold">Acompanhamento por orçamento final</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Informe os recebimentos e a execução financeira para liberar os saldos na mesma proporção do pagamento recebido.
-            </p>
+            <div className="flex items-center gap-1">
+              <h2 className="text-sm font-semibold">Acompanhamento por orçamento final</h2>
+              <HelpTip title="Lançamentos por proposta">
+                <p>Informe o <b>valor recebido</b> e o que já foi pago ou gasto. Os fundos são liberados na mesma proporção do pagamento recebido.</p>
+                <p><b>Saldo reserva</b> e <b>Saldo invest.</b> são ajustes manuais: deixe em branco para usar o saldo calculado e, ao corrigir, informe o motivo.</p>
+              </HelpTip>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-[1480px] w-full text-sm">
@@ -313,8 +327,8 @@ export default async function FundosPage() {
                 ))}
                 {linhas.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="px-3 py-6 text-center text-sm text-muted-foreground/80">
-                      Nenhum orçamento aprovado para acompanhar. Classifique uma versão final como Aprovado no Histórico de orçamentos.
+                    <td colSpan={11} className="px-3 py-6 text-left text-sm text-muted-foreground/80">
+                      <p className="sticky left-3 inline-block max-w-md">Nenhuma proposta aprovada. Classifique uma versão como Aprovada no Histórico.</p>
                     </td>
                   </tr>
                 )}
@@ -323,7 +337,7 @@ export default async function FundosPage() {
           </div>
           {!podeEditar && (
             <div className="border-t border-border bg-muted/50 px-4 py-3 text-xs text-muted-foreground">
-              Seu papel atual permite consultar fundos, mas lançamentos financeiros exigem perfil Gestor ou Administrador.
+              Somente consulta: lançamentos exigem perfil Gestor ou Administrador.
             </div>
           )}
         </section>

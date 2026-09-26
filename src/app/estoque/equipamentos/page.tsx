@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { QrCode } from "@/components/common/QrCode";
 import { formatDate } from "@/lib/formatters";
+import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
+import { origemPublicaKontrol } from "@/lib/scanner/origem";
 import { gerarUrlCurtaKontrol } from "@/lib/scanner/urls";
 import { createClientUntyped } from "@/lib/supabase/server";
 
@@ -8,6 +10,8 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = {
   tab?: string;
+  focus?: string;
+  /** formato antigo dos links do scanner; mantido para links já impressos */
   scan?: string;
 };
 
@@ -65,9 +69,9 @@ type StatusLogEquipamento = {
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   operacional: { label: "Operacional", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
-  em_manutencao: { label: "Em manutencao", cls: "bg-warning-soft text-warning-strong" },
-  calibracao_pendente: { label: "Calibracao pendente", cls: "bg-info-soft text-info-strong" },
-  calibracao_vencida: { label: "Calibracao vencida", cls: "bg-danger-soft text-danger-strong" },
+  em_manutencao: { label: "Em manutenção", cls: "bg-warning-soft text-warning-strong" },
+  calibracao_pendente: { label: "Calibração pendente", cls: "bg-info-soft text-info-strong" },
+  calibracao_vencida: { label: "Calibração vencida", cls: "bg-danger-soft text-danger-strong" },
   reservado: { label: "Reservado", cls: "bg-muted text-foreground" },
   inativo: { label: "Inativo", cls: "bg-muted text-muted-foreground" },
   descartado: { label: "Descartado", cls: "bg-muted text-muted-foreground" },
@@ -123,7 +127,9 @@ export default async function EquipamentosPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const { scan } = await searchParams;
+  const { focus, scan: scanAntigo } = await searchParams;
+  const scan = focus ?? scanAntigo;
+  const origem = await origemPublicaKontrol();
   const scanId = scan != null && /^\d+$/.test(scan) ? Number(scan) : null;
   const supabase = await createClientUntyped();
 
@@ -168,14 +174,21 @@ export default async function EquipamentosPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Estoque · Patrimonio fisico
+              Estoque · Patrimônio físico
             </p>
-            <h1 className="mt-1 text-xl font-semibold tracking-tight">
-              Equipamentos físicos
-            </h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Lista mínima de unidades patrimoniais cadastradas. Esta página é somente leitura e serve de base para identificação patrimonial futura.
-            </p>
+            <div className="mt-1 flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Equipamentos físicos</h1>
+              <HelpTip title="Equipamentos físicos">
+                <p>
+                  Cada aparelho do laboratório (com patrimônio ou número de série) e a etiqueta QR dele.
+                  Escaneie o QR colado no aparelho para abrir a ficha.
+                </p>
+                <p>
+                  Esta página <b>só consulta</b>: manutenção e mudança de situação são feitas no
+                  cadastro.
+                </p>
+              </HelpTip>
+            </div>
           </div>
           <Link
             href="/cadastros/equipamentos"
@@ -187,7 +200,7 @@ export default async function EquipamentosPage({
 
         {scanId && (
           <div className="mt-5 rounded-lg border border-info-strong/30 bg-info-soft px-4 py-3 text-sm text-info-strong">
-            Exibindo unidade escaneada #{scanId}. Esta visualização não altera status, manutenção, calibração ou operação.
+            Exibindo a unidade escaneada #{scanId} (somente consulta).
             <Link href="/estoque/equipamentos?tab=unidades" className="ml-2 font-medium underline">
               Ver todas
             </Link>
@@ -204,8 +217,24 @@ export default async function EquipamentosPage({
                 <th className="px-4 py-3 text-left">Série</th>
                 <th className="px-4 py-3 text-left">Fabricante/modelo</th>
                 <th className="px-4 py-3 text-left">Local</th>
-                <th className="px-4 py-3 text-left">Situação</th>
-                <th className="px-4 py-3 text-left">QR interno</th>
+                <th className="px-4 py-3 text-left">
+                  <span className="inline-flex items-center gap-1">
+                    Situação
+                    <HelpTip title="Situação do equipamento">
+                      <HelpLegend
+                        items={[
+                          { tom: "info", rotulo: "Operacional", texto: "pronto para uso" },
+                          { tom: "atencao", rotulo: "Em manutenção", texto: "fora de uso até concluir o serviço" },
+                          { tom: "info", rotulo: "Calibração pendente", texto: "calibração programada, ainda no prazo" },
+                          { tom: "critico", rotulo: "Calibração vencida", texto: "não usar até recalibrar" },
+                          { tom: "neutro", rotulo: "Reservado", texto: "separado para um uso específico" },
+                          { tom: "neutro", rotulo: "Inativo", texto: "fora de operação ou descartado" },
+                        ]}
+                      />
+                    </HelpTip>
+                  </span>
+                </th>
+                <th className="px-4 py-3 text-left">Etiqueta QR</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/70">
@@ -214,7 +243,7 @@ export default async function EquipamentosPage({
                 const local = asOne(unidade.locais);
                 const meta = statusMeta(unidade.status_operacional, unidade.ativo);
                 const destacado = scanId === unidade.id;
-                const urlCurta = gerarUrlCurtaKontrol("equipamento_unidade", unidade.id);
+                const urlCurta = gerarUrlCurtaKontrol("equipamento_unidade", unidade.id, origem);
 
                 return (
                   <tr
@@ -258,16 +287,13 @@ export default async function EquipamentosPage({
                             {equipamento?.nome ?? `Equipamento #${unidade.equipamento_id}`}
                           </p>
                           <p className="font-mono text-[11px] text-muted-foreground">
-                            {unidade.codigo_patrimonio ?? "Sem patrimonio"}
+                            {unidade.codigo_patrimonio ?? "Sem patrimônio"}
                           </p>
                           {unidade.numero_serie && (
                             <p className="font-mono text-[11px] text-muted-foreground">
                               Série {unidade.numero_serie}
                             </p>
                           )}
-                          <p className="break-all font-mono text-[11px] text-muted-foreground">
-                            {urlCurta}
-                          </p>
                         </div>
                       </div>
                     </td>
@@ -288,10 +314,16 @@ export default async function EquipamentosPage({
         <section className="mt-8">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Operação básica</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Leitura operacional mínima das unidades. Esta visão não registra manutenção, calibração ou mudança de status.
-              </p>
+              <div className="flex items-center gap-1">
+                <h2 className="text-lg font-semibold tracking-tight">Operação básica</h2>
+                <HelpTip title="Operação básica">
+                  <p>
+                    Resumo de cada aparelho: última manutenção, <b>próxima ação</b> prevista, plano
+                    ativo e as últimas mudanças de situação.
+                  </p>
+                  <HelpExample>Próxima ação: “calibração · 12/10/2026”.</HelpExample>
+                </HelpTip>
+              </div>
             </div>
             <Link
               href="/cadastros/equipamentos"

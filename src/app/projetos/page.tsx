@@ -1,14 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { formatDate } from "@/lib/formatters";
+import { STATUS_PROJETO } from "./_lib/status";
+import { responsavelDoProjeto } from "./_lib/responsavel";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_PROJETO: Record<string, { label: string; cls: string }> = {
-  proposto: { label: "Proposto", cls: "bg-warning-soft text-warning-strong" },
-  ativo: { label: "Ativo", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
-  concluido: { label: "Concluído", cls: "bg-info-soft text-info-strong" },
-  cancelado: { label: "Cancelado", cls: "bg-muted text-muted-foreground" },
-};
 
 const thCls =
   "px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground";
@@ -19,7 +15,7 @@ export default async function ProjetosPage() {
   const [{ data: projetos }, { data: clientes }] = await Promise.all([
     supabase
       .from("projetos")
-      .select("id, nome, cliente_id, coordenador, status, data_inicio, data_fim")
+      .select("id, nome, cliente_id, responsavel, coordenador, coordenador_nome, status, data_inicio, data_fim")
       .order("criado_em", { ascending: false }),
     supabase.from("clientes").select("id, nome"),
   ]);
@@ -33,7 +29,7 @@ export default async function ProjetosPage() {
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Projetos</h1>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Visão 360° por projeto: orçamentos, planejamentos, compras e demandas num só lugar.
+              Orçamentos, planejamentos e compras de cada projeto num só lugar.
             </p>
           </div>
           <Link
@@ -59,7 +55,7 @@ export default async function ProjetosPage() {
                 <tr>
                   <th className={thCls}>Projeto</th>
                   <th className={thCls}>Cliente</th>
-                  <th className={thCls}>Coordenador</th>
+                  <th className={thCls}>Responsável</th>
                   <th className={thCls}>Período</th>
                   <th className={thCls}>Status</th>
                 </tr>
@@ -76,10 +72,10 @@ export default async function ProjetosPage() {
                       </Link>
                     </td>
                     <td className={tdCls}>{p.cliente_id != null ? clienteNome.get(p.cliente_id) ?? "—" : "—"}</td>
-                    <td className={tdCls}>{p.coordenador ?? "—"}</td>
+                    <td className={tdCls}>{responsavelDoProjeto(p) ?? "—"}</td>
                     <td className={tdCls}>
                       {p.data_inicio || p.data_fim
-                        ? `${p.data_inicio ?? "—"} → ${p.data_fim ?? "—"}`
+                        ? `${formatDate(p.data_inicio)} → ${formatDate(p.data_fim)}`
                         : "—"}
                     </td>
                     <td className={tdCls}>

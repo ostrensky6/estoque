@@ -21,7 +21,7 @@ export function Breadcrumbs({
           <Link
             href="/"
             className="inline-flex items-center gap-1 font-medium hover:text-foreground"
-            aria-label="Inicio"
+            aria-label="Início"
           >
             <Home className="h-3.5 w-3.5" />
           </Link>

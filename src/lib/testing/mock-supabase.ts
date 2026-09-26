@@ -115,6 +115,7 @@ const MOCK_PERMISSOES_CATEGORIAS = [
       "recebimento.ver": true,
       "projetos.ver": true,
       "cadastros.ver": true,
+      "tecnicos.salario.ver": false,
     },
   },
   {
@@ -146,6 +147,7 @@ const MOCK_PERMISSOES_CATEGORIAS = [
       "projetos.ver": true,
       "projetos.editar": true,
       "cadastros.ver": true,
+      "tecnicos.salario.ver": false,
     },
   },
   {
@@ -183,6 +185,7 @@ const MOCK_PERMISSOES_CATEGORIAS = [
       "projetos.ver": true,
       "projetos.editar": true,
       "cadastros.ver": true,
+      "tecnicos.salario.ver": false,
       "configuracoes.ver": true,
     },
   },
@@ -222,6 +225,7 @@ const MOCK_PERMISSOES_CATEGORIAS = [
       "projetos.ver": true,
       "projetos.editar": true,
       "cadastros.ver": true,
+      "tecnicos.salario.ver": true,
       "backups.gerenciar": true,
       "privilegios.gerenciar": true,
       "configuracoes.ver": true,
@@ -284,6 +288,7 @@ const baseStore = (): Store => {
   eventos_status: [],
   orcamento_projeto_analises: [],
   orcamento_projeto_custos: [],
+  orcamento_projeto_catalogo: [],
   demanda_analises: [],
   demanda_grupos_amostras: [],
   projetos: [{ id: 1, nome: "Projeto E2E" }],
@@ -352,6 +357,18 @@ const baseStore = (): Store => {
       disponivel: 0,
       ponto_reposicao: 10,
     },
+    {
+      // Insumo no modelo de embalagens fechadas (0109), com dois lotes
+      // aceitos para exercitar a baixa por embalagens e a escolha FEFO.
+      insumo_id: 900,
+      especificacao: "Kit extração E2E",
+      unidade: "kit",
+      em_maos: 60,
+      em_quarentena: 0,
+      reservado: 0,
+      disponivel: 60,
+      ponto_reposicao: 0,
+    },
   ],
   v_alertas_estoque: [
     {
@@ -369,7 +386,34 @@ const baseStore = (): Store => {
   demandas: [],
   compras: [],
   movimentacoes_estoque: [],
-  lotes_estoque: [],
+  lotes_estoque: [
+    {
+      id: 1,
+      insumo_id: 900,
+      codigo_lote: "EMB-E2E-A",
+      validade: "2099-06-30",
+      validade_apos_abertura: null,
+      quantidade_inicial: 40,
+      quantidade_atual: 40,
+      custo_unitario: 100,
+      status: "aceito",
+      modelo_quantidade: "EMBALAGEM_FECHADA",
+    },
+    {
+      id: 2,
+      insumo_id: 900,
+      codigo_lote: "EMB-E2E-B",
+      validade: "2099-12-31",
+      validade_apos_abertura: null,
+      quantidade_inicial: 20,
+      quantidade_atual: 20,
+      custo_unitario: 100,
+      status: "aceito",
+      modelo_quantidade: "EMBALAGEM_FECHADA",
+    },
+  ],
+  estoque_movimentacoes: [],
+  reservas_estoque: [],
   perfis: [{ id: "user-e2e", nome: "Admin E2E", email: "admin@example.com", papel: "admin" }],
   permissoes_categorias: MOCK_PERMISSOES_CATEGORIAS,
   notificacoes: [
@@ -525,11 +569,135 @@ const baseStore = (): Store => {
         id: 1,
         orcamento_projeto_id: 1,
         rubrica: "MC",
+        categoria: "materiais",
+        descricao: "Material de coleta",
         quantidade: 1,
         custo_unitario: 500,
         preco_unitario: 500,
         meses_selecionados: [],
+        origem: "manual",
       },
+    ];
+    // Salário sigiloso (migration 0112). Dedicação 0: o técnico não altera o
+    // valor-hora de pessoal usado pelas demais fixtures de custeio/orçamento.
+    seed.tecnicos = [
+      {
+        id: 1,
+        nome: "Técnica E2E",
+        processo: "Laboratório",
+        valor_mes: 8123.45,
+        horas_mes_base: 160,
+        percentual_dedicado: 0,
+      },
+    ];
+
+    // Proposta só de projeto com custos em edição (rascunho): usada pelo editor da
+    // etapa "Custos do projeto" (e2e/orcamento-projeto-editor.spec.ts). A demanda 1
+    // continua com o projeto revisado para a emissão.
+    seed.demandas_propostas.push({
+      id: 2,
+      titulo: "Proposta Demo — Custos de projeto",
+      cliente_id: 1,
+      cliente_nome: "Cliente Demo",
+      modalidade: "projeto",
+      projeto_id: 1,
+      descricao: "Proposta de demonstração para o editor de custos de projeto.",
+      escopo_preliminar: "Campanha de campo com equipe e viagens.",
+      criado_em: "2026-06-22T10:00:00.000Z",
+    });
+    seed.orcamento_projetos.push({
+      id: 2,
+      demanda_id: 2,
+      titulo: "Projeto de campo demo",
+      status: "rascunho",
+      data_orcamento: "2026-06-22",
+      project_months: 18,
+      impostos: 0,
+      margem_lucro: 0,
+      impostos_legacy: 10,
+      incubacao: 5,
+      reserva: 5,
+      investimentos: 5,
+      lucro: 20,
+      travel_inputs: {},
+      projeto_sem_custo_justificativa: null,
+      criado_em: "2026-06-22T10:00:00.000Z",
+    });
+    seed.orcamento_projeto_custos.push({
+      id: 2,
+      orcamento_projeto_id: 2,
+      rubrica: "PE",
+      categoria: "mao_obra",
+      descricao: "Pesquisador bolsista",
+      unidade: "mês",
+      quantidade: 1,
+      custo_unitario: 3000,
+      preco_unitario: 3000,
+      meses_selecionados: [],
+      origem: "manual",
+      etapa: "Equipe",
+    });
+    // Recorte do catálogo importado do app antigo (migration 0012).
+    seed.orcamento_projeto_catalogo = [
+      { id: "PE-1", rubrica: "PE", descricao: "Pesquisador sênior", unidade: "mês", preco_unitario: 8000, categoria: "Equipe técnica", ativo: true },
+      { id: "MC-12", rubrica: "MC", descricao: "Alcool", unidade: "L", preco_unitario: 380, categoria: "Geral (coleta)", ativo: true },
+      { id: "MC-30", rubrica: "MC", descricao: "Luvas nitrílicas", unidade: "cx", preco_unitario: 45, categoria: "Geral (coleta)", ativo: true },
+      { id: "MC-99", rubrica: "MC", descricao: "Item arquivado", unidade: "un", preco_unitario: 1, categoria: "Geral", ativo: false },
+      { id: "VD-1", rubrica: "VD", descricao: "Alimentação", unidade: "refeições", preco_unitario: 130, categoria: "Alimentação", ativo: true },
+      { id: "VD-2", rubrica: "VD", descricao: "Hospedagem", unidade: "diárias de hotel", preco_unitario: 250, categoria: "Hospedagem", ativo: true },
+      { id: "VD-3", rubrica: "VD", descricao: "Combustível", unidade: "L", preco_unitario: 7.2, categoria: "Deslocamento", ativo: true },
+      { id: "VD-4", rubrica: "VD", descricao: "Seguro viagem", unidade: "diárias", preco_unitario: 15, categoria: "Outros", ativo: true },
+      { id: "VD-5", rubrica: "VD", descricao: "Aluguel de veículo + taxa de limpeza + seguro", unidade: "diárias", preco_unitario: 390, categoria: "Deslocamento", ativo: true },
+      { id: "VD-6", rubrica: "VD", descricao: "Pedágio", unidade: "un", preco_unitario: 25, categoria: "Deslocamento", ativo: true },
+      // Itens E2E do salário (0112): preço PE sigiloso.
+      {
+        id: "PE-E2E",
+        rubrica: "PE",
+        descricao: "Pessoa E2E - Pesquisadora",
+        unidade: "mês",
+        preco_unitario: 7654.32,
+        categoria: "Doutora",
+        ativo: true,
+        valid_from: null,
+        origem: "kontrol",
+        criado_em: "2026-06-21T10:00:00.000Z",
+        atualizado_em: "2026-06-21T10:00:00.000Z",
+      },
+      {
+        id: "MC-E2E",
+        rubrica: "MC",
+        descricao: "Material E2E",
+        unidade: "un",
+        preco_unitario: 12.5,
+        categoria: "Geral",
+        ativo: true,
+        valid_from: null,
+        origem: "kontrol",
+        criado_em: "2026-06-21T10:00:00.000Z",
+        atualizado_em: "2026-06-21T10:00:00.000Z",
+      },
+    ];
+    // Plano que já teve baixa de material: só pode ser cancelado (0111).
+    seed.planejamento = [
+      {
+        id: 900,
+        nome: "Plano com baixa E2E",
+        projeto_id: 1,
+        status_operacional: "em_execucao",
+        reserva_desatualizada: false,
+        prioridade: "normal",
+        origem_planejamento: "manual",
+        data_inicio_prevista: "2026-06-22",
+        data_fim_prevista: "2026-06-30",
+        data_alvo: "2026-06-30",
+        criado_em: "2026-06-21T10:00:00.000Z",
+      },
+    ];
+    seed.planejamento_itens = [
+      { id: 900, planejamento_id: 900, codigo_analise: "qPCR_F", n_amostras: 5, n_controles: 0, repeticoes: 1, perda_percentual: 0 },
+    ];
+    seed.reservas_estoque = [
+      { id: 900, planejamento_id: 900, insumo_id: 1, lote_id: null, quantidade: 5, quantidade_consumida: 5, status: "consumido" },
     ];
   }
 
@@ -577,6 +745,12 @@ function withRelations(table: string, row: Row): Row {
       orcamento_projeto_custos: store.orcamento_projeto_custos.filter((item) => item.orcamento_projeto_id === row.id),
     };
   }
+  if (table === "planejamento") {
+    return {
+      ...row,
+      reservas_estoque: (store.reservas_estoque ?? []).filter((item) => valoresIguais(item.planejamento_id, row.id)),
+    };
+  }
   if (table === "lotes_estoque") {
     const saldo = store.v_estoque_saldo.find((item) => item.insumo_id === row.insumo_id);
     return {
@@ -587,6 +761,99 @@ function withRelations(table: string, row: Row): Row {
   return row;
 }
 
+type MockErro = { message: string; code?: string };
+type MockResultado = { data: unknown; error: MockErro | null };
+
+/**
+ * Sessão simulada. `papel` troca SOMENTE a avaliação de permissão granular
+ * (tem_permissao / salário) — as checagens de papel do app continuam lendo o
+ * perfil admin do mock. Usado pelo E2E via cookie `kontrol_e2e_papel`.
+ */
+export type SessaoMock = { papel?: string };
+
+const MOCK_USER_ID = "user-e2e";
+
+/** Colunas sem SELECT direto para authenticated (migration 0112). */
+const COLUNAS_SIGILOSAS: Record<string, string[]> = {
+  tecnicos: ["valor_mes"],
+  orcamento_projeto_catalogo: ["preco_unitario"],
+};
+
+/** Mesma regra de kontrol_private.tem_permissao_efetiva (0112). */
+function mockTemPermissao(chave: unknown, sessao: SessaoMock): boolean {
+  if (typeof chave !== "string" || !/^[a-z_]+(\.[a-z_]+)+$/.test(chave)) return false;
+  const perfil = (store.perfis ?? []).find((item) => item.id === MOCK_USER_ID);
+  if (!perfil || perfil.suspenso === true) return false;
+  const papel = String(sessao.papel ?? perfil.papel ?? "");
+  if (papel === "admin") return true;
+  if (!["tecnico", "coordenador", "gestor"].includes(papel)) return false;
+  // Com papel simulado, vale só a categoria (perfil individual é do admin).
+  const individuais = sessao.papel ? {} : ((perfil.permissoes ?? {}) as Row);
+  const valor =
+    chave in individuais
+      ? individuais[chave]
+      : ((store.permissoes_categorias ?? []).find((item) => item.papel === papel)?.permissoes as Row | undefined)?.[chave];
+  return valor === true;
+}
+
+/** Mesma regra de public.minhas_permissoes (0124). */
+function mockMinhasPermissoes(sessao: SessaoMock) {
+  const perfil = (store.perfis ?? []).find((item) => item.id === MOCK_USER_ID);
+  const papel = String(sessao.papel ?? perfil?.papel ?? "");
+  if (!perfil || perfil.suspenso === true) return { admin: false, permissoes: {} };
+  if (papel === "admin") return { admin: true, permissoes: {} };
+  const categoria = ((store.permissoes_categorias ?? []).find((item) => item.papel === papel)?.permissoes ?? {}) as Row;
+  const individuais = sessao.papel ? {} : ((perfil.permissoes ?? {}) as Row);
+  return { admin: false, permissoes: { ...categoria, ...individuais } };
+}
+
+function podeVerSalarioMock(sessao: SessaoMock) {
+  return mockTemPermissao("tecnicos.salario.ver", sessao);
+}
+
+/** Emula os triggers de proteção de salário/preço PE da 0112. */
+function violacaoSalario(
+  table: string,
+  op: "insert" | "update",
+  payload: Row | undefined,
+  sessao: SessaoMock,
+  afetadas: Row[] = [],
+): MockErro | null {
+  if (!payload || !COLUNAS_SIGILOSAS[table] || podeVerSalarioMock(sessao)) return null;
+  if (table === "tecnicos" && "valor_mes" in payload) {
+    const alterou =
+      op === "insert"
+        ? Number(payload.valor_mes) !== 0
+        : afetadas.some((row) => Number(row.valor_mes) !== Number(payload.valor_mes));
+    if (alterou) {
+      return { message: "Sem permissão para alterar o salário do técnico (Ver salário dos técnicos).", code: "42501" };
+    }
+  }
+  if (table === "orcamento_projeto_catalogo") {
+    const alterou =
+      op === "insert"
+        ? payload.rubrica === "PE" && Number(payload.preco_unitario ?? 0) !== 0
+        : afetadas.some(
+            (row) =>
+              (row.rubrica === "PE" || payload.rubrica === "PE") &&
+              (("rubrica" in payload && payload.rubrica !== row.rubrica) ||
+                ("preco_unitario" in payload && Number(payload.preco_unitario) !== Number(row.preco_unitario))),
+          );
+    if (alterou) {
+      return { message: "Sem permissão para alterar valores de pessoal (PE) do catálogo.", code: "42501" };
+    }
+  }
+  return null;
+}
+
+function valorHoraPessoalTotalMock() {
+  return (store.tecnicos ?? []).reduce((acc, tecnico) => {
+    const horas = Number(tecnico.horas_mes_base);
+    if (!(horas > 0)) return acc;
+    return acc + ((Number(tecnico.valor_mes) / horas) * Number(tecnico.percentual_dedicado)) / 100;
+  }, 0);
+}
+
 class MockQuery {
   private filters: { column: string; value: unknown }[] = [];
   private neqFilters: { column: string; value: unknown }[] = [];
@@ -595,11 +862,25 @@ class MockQuery {
   private isFilters: { column: string; value: null }[] = [];
   private comparisonFilters: { column: string; operator: "gt" | "gte" | "lt" | "lte"; value: unknown }[] = [];
   private mutation: null | { type: "insert" | "update" | "delete" | "upsert"; payload?: Row | Row[] } = null;
+  private columns: string[] | null = null;
+  private erro: MockErro | null = null;
 
-  constructor(private table: string) {}
+  constructor(
+    private table: string,
+    private sessao: SessaoMock = {},
+  ) {}
 
-  select(_columns?: string) {
-    void _columns;
+  select(columns?: string) {
+    // `select()` sem argumento equivale a "*" no supabase-js.
+    this.columns = (columns ?? "*").split(",").map((coluna) => coluna.trim()).filter(Boolean);
+    const sigilosas = COLUNAS_SIGILOSAS[this.table];
+    if (sigilosas && this.columns.some((coluna) => coluna === "*" || sigilosas.includes(coluna))) {
+      // Emula o privilégio de coluna da migration 0112 (vale até para admin).
+      this.erro = {
+        message: `permission denied for table ${this.table}`,
+        code: "42501",
+      };
+    }
     return this;
   }
 
@@ -668,13 +949,32 @@ class MockQuery {
 
   insert(payload: Row | Row[]) {
     const rows = Array.isArray(payload) ? payload : [payload];
+    for (const row of rows) {
+      const erroSalario = violacaoSalario(this.table, "insert", row, this.sessao);
+      if (erroSalario) {
+        this.erro = erroSalario;
+        return this;
+      }
+    }
     const inserted = rows.map((row) => ({
       id: row.id ?? nextId(this.table),
       criado_em: row.criado_em ?? new Date().toISOString(),
       status: row.status ?? "rascunho",
+      // Espelha os defaults da tabela planejamento (0029/0111).
+      ...(this.table === "planejamento"
+        ? { status_operacional: "rascunho", reserva_desatualizada: false }
+        : {}),
       ...row,
     }));
+    if (this.table === "planejamento_itens") {
+      this.erro = guardarItensPlanejamento(inserted);
+      if (this.erro) {
+        this.mutation = { type: "insert", payload: [] };
+        return this;
+      }
+    }
     store[this.table] = [...(store[this.table] ?? []), ...inserted];
+    if (this.table === "reservas_estoque") limparReservaDesatualizada(inserted);
     this.mutation = { type: "insert", payload: inserted };
     return this;
   }
@@ -705,20 +1005,43 @@ class MockQuery {
     return this.single();
   }
 
-  then<TResult1 = { data: unknown; error: null }, TResult2 = never>(
-    onfulfilled?: ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+  then<TResult1 = MockResultado, TResult2 = never>(
+    onfulfilled?: ((value: MockResultado) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ) {
     return Promise.resolve(this.execute()).then(onfulfilled, onrejected);
   }
 
-  private execute() {
+  private execute(): MockResultado {
+    if (this.erro) return { data: null, error: this.erro };
+    if (
+      this.table === "planejamento_itens" &&
+      (this.mutation?.type === "update" || this.mutation?.type === "delete")
+    ) {
+      const afetados = (store[this.table] ?? []).filter((row) => this.matches(row));
+      const destino = this.mutation.type === "update" ? (this.mutation.payload as Row) : {};
+      const erro = guardarItensPlanejamento([
+        ...afetados,
+        ...afetados.map((row) => ({ ...row, ...destino })),
+      ]);
+      if (erro) return { data: null, error: erro };
+    }
     if (this.mutation?.type === "update") {
+      const erroSalario = violacaoSalario(
+        this.table,
+        "update",
+        this.mutation.payload as Row,
+        this.sessao,
+        (store[this.table] ?? []).filter((row) => this.matches(row)),
+      );
+      if (erroSalario) return { data: null, error: erroSalario };
       store[this.table] = (store[this.table] ?? []).map((row) =>
         this.matches(row) ? { ...row, ...(this.mutation?.payload as Row) } : row,
       );
     }
+    let removidos: Row[] = [];
     if (this.mutation?.type === "delete") {
+      removidos = (store[this.table] ?? []).filter((row) => this.matches(row));
       store[this.table] = (store[this.table] ?? []).filter((row) => !this.matches(row));
     }
     if (this.mutation?.type === "upsert") {
@@ -731,11 +1054,24 @@ class MockQuery {
       }
     }
 
+    // como o PostgREST com .select(): delete devolve as linhas removidas
     const source =
       this.mutation?.type === "insert"
         ? (this.mutation.payload as Row[])
-        : (store[this.table] ?? []).filter((row) => this.matches(row));
-    return { data: source.map((row) => withRelations(this.table, row)), error: null };
+        : this.mutation?.type === "delete"
+          ? removidos
+          : (store[this.table] ?? []).filter((row) => this.matches(row));
+    const linhas = source.map((row) => withRelations(this.table, row));
+    // Tabelas com coluna sigilosa: devolve só as colunas pedidas, como o
+    // PostgREST faria (as demais tabelas mantêm o comportamento anterior).
+    if (COLUNAS_SIGILOSAS[this.table] && this.columns) {
+      const colunas = this.columns;
+      return {
+        data: linhas.map((row) => Object.fromEntries(colunas.map((coluna) => [coluna, row[coluna]]))),
+        error: null,
+      };
+    }
+    return { data: linhas, error: null };
   }
 
   private matches(row: Row) {
@@ -778,13 +1114,127 @@ function setLotStatus(loteId: number, status: string) {
   if (lote) lote.status = status;
 }
 
+function hojeMock() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function reservadoNoLote(loteId: number) {
+  return (store.reservas_estoque ?? [])
+    .filter((r) => Number(r.lote_id) === loteId && ["reservado", "parcial"].includes(String(r.status)))
+    .reduce((acc, r) => acc + Number(r.quantidade ?? 0) - Number(r.quantidade_consumida ?? 0), 0);
+}
+
+function registrarSaidaManual(lote: Row, quantidade: number, motivo: string, referencia: string) {
+  store.estoque_movimentacoes = [
+    ...(store.estoque_movimentacoes ?? []),
+    {
+      id: nextId("estoque_movimentacoes"),
+      insumo_id: lote.insumo_id,
+      lote_id: lote.id,
+      tipo: "saida",
+      quantidade,
+      custo_unitario: lote.custo_unitario ?? null,
+      motivo: `baixa manual: ${motivo.trim()}`,
+      referencia,
+      data: hojeMock(),
+    },
+  ];
+  const saldo = store.v_estoque_saldo.find((item) => item.insumo_id === lote.insumo_id);
+  if (saldo) {
+    saldo.em_maos = Math.max(0, Number(saldo.em_maos ?? 0) - quantidade);
+    saldo.disponivel = Math.max(0, Number(saldo.disponivel ?? 0) - quantidade);
+  }
+}
+
+/** Espelha baixa_manual_lote (0028 + guardas de 0110). */
 function baixarManualLote(args: Row) {
-  const lote = store.lotes_estoque.find((row) => row.id === args.p_lote_id);
-  if (!lote) return;
+  const lote = store.lotes_estoque.find((row) => Number(row.id) === Number(args.p_lote_id));
+  if (!lote) throw new Error("Lote não encontrado.");
   const quantidade = Number(args.p_quantidade);
   const atual = Number(lote.quantidade_atual ?? 0);
-  lote.quantidade_atual = Math.max(0, atual - quantidade);
+  if (!(quantidade > 0)) throw new Error("Quantidade deve ser maior que zero.");
+  if (!String(args.p_motivo ?? "").trim()) throw new Error("Informe o motivo da baixa manual.");
+  if (lote.modelo_quantidade === "EMBALAGEM_FECHADA") {
+    throw new Error("Lote de embalagens fechadas: use a baixa por embalagens (baixa_manual_embalagens).");
+  }
+  if (!["aceito", "em_uso"].includes(String(lote.status))) throw new Error("Só é possível baixar lote aceito ou em uso.");
+  const vencimento = /^vencimento/i.test(String(args.p_motivo ?? "").trim());
+  if (lote.validade && String(lote.validade) < hojeMock() && !vencimento) {
+    throw new Error("Lote vencido: registre a baixa com o motivo Vencimento.");
+  }
+  if (quantidade > atual) throw new Error("Quantidade maior que o saldo atual do lote.");
+  if (reservadoNoLote(Number(lote.id)) > atual - quantidade) {
+    throw new Error("Há reserva ativa neste lote: é possível baixar no máximo o saldo não reservado.");
+  }
+  lote.quantidade_atual = atual - quantidade;
   lote.status = Number(lote.quantidade_atual) <= 0 ? "consumido" : "em_uso";
+  registrarSaidaManual(lote, quantidade, String(args.p_motivo), `lote ${lote.id}`);
+}
+
+/** Espelha baixa_manual_embalagens (0110), incluindo a idempotência por operacao_id. */
+function baixarManualEmbalagens(args: Row) {
+  const operacaoId = String(args.p_operacao_id ?? "");
+  const quantidade = Number(args.p_quantidade);
+  const esperada = Number(args.p_quantidade_esperada);
+  const motivo = String(args.p_motivo ?? "").trim();
+  if (!operacaoId || !Number.isInteger(quantidade) || quantidade <= 0 || !Number.isInteger(esperada) || esperada <= 0) {
+    throw new Error("Informe o lote e uma quantidade inteira de embalagens maior que zero.");
+  }
+  if (!motivo) throw new Error("Informe o motivo da baixa.");
+  const requisicao = { lote_id: Number(args.p_lote_id), quantidade, quantidade_esperada: esperada, motivo };
+  const anterior = (store.eventos_status ?? []).find(
+    (evento) => evento.entidade === "lote_embalagem_fechada" && evento.operacao_id === operacaoId,
+  );
+  if (anterior) {
+    const payload = anterior.operacao_payload as { requisicao: unknown; resultado: Row };
+    if (JSON.stringify(payload.requisicao) !== JSON.stringify(requisicao)) {
+      throw new Error("Esta operação já foi registrada com dados diferentes.");
+    }
+    return { ...payload.resultado, repetido: true };
+  }
+
+  const lote = store.lotes_estoque.find((row) => Number(row.id) === Number(args.p_lote_id));
+  if (!lote) throw new Error("Lote não encontrado.");
+  if (lote.modelo_quantidade !== "EMBALAGEM_FECHADA") {
+    throw new Error("Este lote é controlado por volume (modelo legado); use a baixa manual do lote.");
+  }
+  if (lote.status !== "aceito") throw new Error("Só é possível dar baixa em lote aceito.");
+  if (lote.validade && String(lote.validade) < hojeMock() && !/^vencimento/i.test(String(args.p_motivo ?? "").trim())) {
+    throw new Error("Lote vencido: registre a baixa com o motivo Vencimento.");
+  }
+  const atual = Number(lote.quantidade_atual ?? 0);
+  if (atual !== esperada) throw new Error("A quantidade do lote mudou; recarregue e tente novamente.");
+  if (quantidade > atual) throw new Error(`Quantidade maior que o saldo do lote (${atual} embalagens).`);
+  const reservado = reservadoNoLote(Number(lote.id));
+  if (reservado > atual - quantidade) {
+    throw new Error(`Há reserva ativa neste lote: é possível baixar no máximo ${Math.max(0, Math.floor(atual - reservado))} embalagem(ns).`);
+  }
+
+  const restante = atual - quantidade;
+  lote.quantidade_atual = restante;
+  lote.status = restante === 0 ? "consumido" : "aceito";
+  registrarSaidaManual(lote, quantidade, motivo, operacaoId);
+  const resultado = {
+    lote_id: lote.id,
+    insumo_id: lote.insumo_id,
+    quantidade_baixada: quantidade,
+    quantidade_embalagens: restante,
+    repetido: false,
+  };
+  store.eventos_status = [
+    ...(store.eventos_status ?? []),
+    {
+      id: nextId("eventos_status"),
+      entidade: "lote_embalagem_fechada",
+      entidade_id: lote.id,
+      de_status: String(atual),
+      para_status: String(restante),
+      observacao: `baixa manual: ${motivo}`,
+      operacao_id: operacaoId,
+      operacao_payload: { requisicao, resultado },
+    },
+  ];
+  return resultado;
 }
 
 function ajustarSaldoLote(args: Row) {
@@ -1009,6 +1459,163 @@ function excluirPlanejamentoRascunho(args: Row) {
   return { planejamento_id: planId, nome: plano.nome ?? null, itens_removidos: itens };
 }
 
+const STATUS_ITENS_EDITAVEIS = ["rascunho", "reservado"];
+
+/**
+ * Espelha o gatilho `trg_guardar_itens_planejamento_editavel` (0111): itens
+ * só mudam com o plano em rascunho/reservado; mudança em plano reservado
+ * marca `reserva_desatualizada`. Devolve o erro ou `null`.
+ */
+function guardarItensPlanejamento(itens: Row[]) {
+  const planos = new Set(itens.map((item) => Number(item.planejamento_id)));
+  const alvos: Row[] = [];
+  for (const planId of planos) {
+    const plano = store.planejamento?.find((row) => Number(row.id) === planId);
+    if (!plano) return { message: `Planejamento ${planId} não encontrado.`, code: "P0002" };
+    const status = String(plano.status_operacional ?? "rascunho");
+    if (!STATUS_ITENS_EDITAVEIS.includes(status)) {
+      return {
+        message: `Itens só podem ser alterados com o plano em rascunho ou reservado (status atual: ${status}).`,
+        code: "22023",
+      };
+    }
+    alvos.push(plano);
+  }
+  for (const plano of alvos) {
+    if (plano.status_operacional === "reservado") plano.reserva_desatualizada = true;
+  }
+  return null;
+}
+
+/** Espelha `trg_limpar_reserva_desatualizada` (0111). */
+function limparReservaDesatualizada(reservas: Row[]) {
+  for (const reserva of reservas) {
+    if (!["reservado", "parcial"].includes(String(reserva.status))) continue;
+    const plano = store.planejamento?.find((row) => valoresIguais(row.id, reserva.planejamento_id));
+    if (plano) plano.reserva_desatualizada = false;
+  }
+}
+
+function papelMockAtual() {
+  const perfil = (store.perfis ?? []).find((row) => row.id === "user-e2e");
+  return String(perfil?.papel ?? "tecnico");
+}
+
+function exigirCoordenadorMock() {
+  if (!["coordenador", "gestor", "admin"].includes(papelMockAtual())) {
+    throw Object.assign(new Error(`Sem permissão: requer papel coordenador ou superior (atual: ${papelMockAtual()}).`), { code: "42501" });
+  }
+}
+
+function motivoMock(args: Row, acao: string) {
+  const motivo = String(args.p_motivo ?? "").trim();
+  if (motivo.length < 3) {
+    throw Object.assign(new Error(`Informe o motivo ${acao}.`), { code: "22023" });
+  }
+  return motivo;
+}
+
+function registrarEventoPlanoMock(planId: number, de: unknown, para: string, observacao: string) {
+  store.eventos_status = [
+    ...(store.eventos_status ?? []),
+    {
+      id: nextId("eventos_status"),
+      entidade: "planejamento",
+      entidade_id: planId,
+      de_status: de ?? null,
+      para_status: para,
+      usuario: "admin@example.com",
+      observacao,
+      criado_em: new Date().toISOString(),
+    },
+  ];
+}
+
+/** Espelha `excluir_planejamento` (migration 0111): "Excluir se não houve baixa". */
+function excluirPlanejamento(args: Row) {
+  exigirCoordenadorMock();
+  const motivo = motivoMock(args, "da exclusão");
+  const planId = Number(args.p_planejamento_id);
+  const plano = store.planejamento?.find((row) => Number(row.id) === planId);
+  if (!plano) throw Object.assign(new Error(`Planejamento ${planId} não encontrado.`), { code: "P0002" });
+
+  const status = String(plano.status_operacional ?? "rascunho");
+  const doPlano = (tabela: string) =>
+    (store[tabela] ?? []).filter((row) => Number(row.planejamento_id) === planId);
+  const movimentos = [...(store.estoque_movimentacoes ?? []), ...(store.movimentacoes_estoque ?? [])];
+  const houveBaixa =
+    status === "em_execucao" ||
+    status === "concluido" ||
+    doPlano("reservas_estoque").some(
+      (row) => row.status === "consumido" || Number(row.quantidade_consumida ?? 0) > 0,
+    ) ||
+    movimentos.some(
+      (row) =>
+        row.tipo === "saida" &&
+        (row.referencia === `plano ${planId}` || String(row.referencia ?? "").startsWith(`plano ${planId};`)),
+    );
+  if (houveBaixa) {
+    throw Object.assign(new Error("Já houve baixa de material neste plano. Só é possível cancelar."), { code: "22023" });
+  }
+
+  const pedidos = doPlano("pedidos_internos").filter((row) => row.status !== "cancelado");
+  if (pedidos.length > 0) {
+    throw Object.assign(
+      new Error(
+        `Cancele antes os pedidos internos vinculados ao plano: ${pedidos.map((row) => `#${row.id} (${row.status})`).join(", ")}.`,
+      ),
+      { code: "23503" },
+    );
+  }
+
+  let reservasLiberadas = 0;
+  for (const reserva of doPlano("reservas_estoque")) {
+    if (["reservado", "parcial"].includes(String(reserva.status))) reservasLiberadas += 1;
+  }
+  const itens = doPlano("planejamento_itens").length;
+  registrarEventoPlanoMock(planId, status, "excluido", `Plano "${plano.nome ?? "-"}" excluído. Motivo: ${motivo}`);
+
+  for (const tabela of ["planejamento_itens", "reservas_estoque", "equipamento_reservas", "planejamento_lote_conferencias"]) {
+    if (store[tabela]) store[tabela] = store[tabela].filter((row) => Number(row.planejamento_id) !== planId);
+  }
+  for (const pedido of store.pedidos_internos ?? []) {
+    if (Number(pedido.planejamento_id) === planId) pedido.planejamento_id = null;
+  }
+  store.planejamento = (store.planejamento ?? []).filter((row) => Number(row.id) !== planId);
+
+  return {
+    planejamento_id: planId,
+    nome: plano.nome ?? null,
+    itens_removidos: itens,
+    reservas_liberadas: reservasLiberadas,
+    equipamentos_liberados: 0,
+  };
+}
+
+/** Espelha `cancelar_planejamento` (migration 0111). */
+function cancelarPlanejamento(args: Row) {
+  exigirCoordenadorMock();
+  const motivo = motivoMock(args, "do cancelamento");
+  const planId = Number(args.p_planejamento_id);
+  const plano = store.planejamento?.find((row) => Number(row.id) === planId);
+  if (!plano) throw Object.assign(new Error(`Planejamento ${planId} não encontrado.`), { code: "P0002" });
+  const status = String(plano.status_operacional ?? "rascunho");
+  if (status === "concluido") {
+    throw Object.assign(new Error("Planejamento concluído não pode ser cancelado."), { code: "22023" });
+  }
+  if (status === "cancelado") {
+    throw Object.assign(new Error("Planejamento já está cancelado."), { code: "22023" });
+  }
+  for (const reserva of store.reservas_estoque ?? []) {
+    if (Number(reserva.planejamento_id) === planId && ["reservado", "parcial"].includes(String(reserva.status))) {
+      reserva.status = "cancelado";
+    }
+  }
+  plano.status_operacional = "cancelado";
+  registrarEventoPlanoMock(planId, status, "cancelado", `Plano cancelado. Motivo: ${motivo}`);
+  return { planejamento_id: planId, status_anterior: status, status: "cancelado" };
+}
+
 function sincronizarDemandaAnalises(args: Row) {
   const demandaId = Number(args.p_demanda_id);
   const itens = Array.isArray(args.p_itens) ? args.p_itens as Row[] : [];
@@ -1147,13 +1754,77 @@ function emitirOrcamentoFinalTransacional(args: Row) {
   return { versao_id: id, versao, numero };
 }
 
-export function createMockSupabaseClient() {
+// Espelha as transições de public.transicionar_orcamento_projeto (migration 0090).
+const TRANSICOES_ORCAMENTO_PROJETO: Record<string, string[]> = {
+  rascunho: ["enviado", "cancelado"],
+  enviado: ["aprovado", "recusado", "cancelado"],
+  recusado: ["rascunho", "cancelado"],
+  aprovado: ["cancelado"],
+};
+
+function transicionarOrcamentoProjeto(args: Row) {
+  const id = Number(args.p_orcamento_projeto_id);
+  const destino = String(args.p_status_destino);
+  const projeto = (store.orcamento_projetos ?? []).find((row) => Number(row.id) === id);
+  if (!projeto) throw new Error("Orçamento de projeto não encontrado.");
+  const origem = String(projeto.status ?? "rascunho");
+  if (origem === destino) return { status_origem: origem, status_destino: destino, alterado: false };
+  if (!(TRANSICOES_ORCAMENTO_PROJETO[origem] ?? []).includes(destino)) {
+    throw new Error(`Transição de status não permitida: ${origem} -> ${destino}.`);
+  }
+  projeto.status = destino;
+  store.eventos_status = [
+    ...(store.eventos_status ?? []),
+    {
+      id: nextId("eventos_status"),
+      entidade: "orcamento_projeto",
+      entidade_id: id,
+      de_status: origem,
+      para_status: destino,
+      usuario: "admin@example.com",
+      observacao: args.p_observacao ?? null,
+      criado_em: new Date().toISOString(),
+    },
+  ];
+  return { status_origem: origem, status_destino: destino, alterado: true };
+}
+
+export function createMockSupabaseClient(sessao: SessaoMock = {}) {
   return {
     auth: {
-      getUser: async () => ({ data: { user: { id: "user-e2e", email: "admin@example.com" } }, error: null }),
+      getUser: async () => ({ data: { user: { id: MOCK_USER_ID, email: "admin@example.com" } }, error: null }),
     },
-    from: (table: string) => new MockQuery(table),
-    rpc: async (fn: string, args: Row) => {
+    from: (table: string) => new MockQuery(table, sessao),
+    rpc: async (fn: string, args: Row = {}) => {
+      // Permissão efetiva e leituras sigilosas (migration 0112).
+      if (fn === "tem_permissao") return { data: mockTemPermissao(args.p_chave, sessao), error: null };
+      if (fn === "minhas_permissoes") return { data: mockMinhasPermissoes(sessao), error: null };
+      if (fn === "tecnicos_remuneracao") {
+        const pode = podeVerSalarioMock(sessao);
+        return {
+          data: [...(store.tecnicos ?? [])]
+            .sort((a, b) => Number(a.id) - Number(b.id))
+            .map((tecnico) => ({ id: tecnico.id, valor_mes: pode ? tecnico.valor_mes : null })),
+          error: null,
+        };
+      }
+      if (fn === "valor_hora_pessoal_total") return { data: valorHoraPessoalTotalMock(), error: null };
+      if (fn === "orcamento_projeto_catalogo_listar") {
+        const pode = podeVerSalarioMock(sessao);
+        return {
+          data: [...(store.orcamento_projeto_catalogo ?? [])]
+            .sort((a, b) =>
+              String(a.rubrica).localeCompare(String(b.rubrica)) ||
+              String(a.descricao).localeCompare(String(b.descricao)) ||
+              String(a.id).localeCompare(String(b.id)),
+            )
+            .map((item) => {
+              const mascarado = item.rubrica === "PE" && !pode;
+              return { ...item, preco_unitario: mascarado ? null : item.preco_unitario, preco_mascarado: mascarado };
+            }),
+          error: null,
+        };
+      }
       // Cada ramo devolve explicitamente. Antes eles apenas mutavam o
       // estado e caíam no retorno permissivo do final — o que tornava
       // indistinguível "simulado com sucesso" de "não simulado".
@@ -1178,8 +1849,19 @@ export function createMockSupabaseClient() {
         return { data: null, error: null };
       }
       if (fn === "baixa_manual_lote") {
-        baixarManualLote(args);
-        return { data: null, error: null };
+        try {
+          baixarManualLote(args);
+          return { data: null, error: null };
+        } catch (error) {
+          return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
+        }
+      }
+      if (fn === "baixa_manual_embalagens") {
+        try {
+          return { data: baixarManualEmbalagens(args), error: null };
+        } catch (error) {
+          return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
+        }
       }
       if (fn === "ajustar_saldo_lote") {
         ajustarSaldoLote(args);
@@ -1193,6 +1875,13 @@ export function createMockSupabaseClient() {
         }
       }
       if (fn === "emitir_orcamento_final_transacional") return { data: emitirOrcamentoFinalTransacional(args), error: null };
+      if (fn === "transicionar_orcamento_projeto") {
+        try {
+          return { data: transicionarOrcamentoProjeto(args), error: null };
+        } catch (error) {
+          return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
+        }
+      }
       if (fn === "sincronizar_demanda_grupos") {
         try {
           return { data: sincronizarDemandaGrupos(args), error: null };
@@ -1207,12 +1896,66 @@ export function createMockSupabaseClient() {
           return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
         }
       }
+      if (fn === "excluir_planejamento" || fn === "cancelar_planejamento") {
+        try {
+          const data = fn === "excluir_planejamento" ? excluirPlanejamento(args) : cancelarPlanejamento(args);
+          return { data, error: null };
+        } catch (error) {
+          return {
+            data: null,
+            error: {
+              message: error instanceof Error ? error.message : "Erro na RPC",
+              code: (error as { code?: string }).code ?? "P0001",
+            },
+          };
+        }
+      }
       if (fn === "excluir_planejamento_rascunho") {
         try {
           return { data: excluirPlanejamentoRascunho(args), error: null };
         } catch (error) {
           return { data: null, error: { message: error instanceof Error ? error.message : "Erro na RPC" } };
         }
+      }
+      if (fn === "registrar_entrada_manual_embalagens") {
+        const lote = {
+          id: nextId("lotes_estoque"),
+          insumo_id: args.p_insumo_id,
+          codigo_lote: args.p_codigo_lote ?? `MANUAL-${Date.now()}`,
+          validade: args.p_validade ?? null,
+          quantidade_atual: Number(args.p_quantidade_embalagens),
+          status: "aceito",
+          modelo_quantidade: "EMBALAGEM_FECHADA",
+        };
+        store.lotes_estoque.push(lote);
+        return { data: { insumo_id: args.p_insumo_id, lote_id: lote.id, repetido: false }, error: null };
+      }
+      if (fn === "duplicar_analise") {
+        const origem = (store.analises ?? []).find((a) => a.codigo === args.p_origem);
+        if (!origem) return { data: null, error: { message: "Análise de origem não encontrada." } };
+        if ((store.analises ?? []).some((a) => a.codigo === args.p_novo)) {
+          return { data: null, error: { message: `Já existe uma análise com o código ${args.p_novo}.` } };
+        }
+        store.analises.push({ ...origem, codigo: args.p_novo, nome: args.p_nome ?? `${origem.nome ?? origem.codigo} (cópia)`, ativo: true, ofertavel: false });
+        for (const tabela of ["etapas", "equipamento_analise", "insumo_analise"]) {
+          const copias = (store[tabela] ?? [])
+            .filter((linha) => linha.codigo_analise === args.p_origem)
+            .map((linha) => ({ ...linha, id: nextId(tabela), codigo_analise: args.p_novo }));
+          store[tabela] = [...(store[tabela] ?? []), ...copias];
+        }
+        return { data: { codigo: args.p_novo }, error: null };
+      }
+      if (fn === "excluir_analise_sem_historico") {
+        const usos = ["orcamento_itens", "orcamento_projeto_analises", "planejamento_itens", "demanda_analises"]
+          .reduce((acc, tabela) => acc + (store[tabela] ?? []).filter((l) => l.codigo_analise === args.p_codigo).length, 0);
+        if (usos > 0) {
+          return { data: null, error: { message: "Esta análise aparece em orçamentos ou planos. Para preservar o histórico, inative-a em vez de excluir." } };
+        }
+        for (const tabela of ["etapas", "equipamento_analise", "insumo_analise"]) {
+          store[tabela] = (store[tabela] ?? []).filter((linha) => linha.codigo_analise !== args.p_codigo);
+        }
+        store.analises = (store.analises ?? []).filter((a) => a.codigo !== args.p_codigo);
+        return { data: { codigo: args.p_codigo, excluida: true }, error: null };
       }
       // Uma RPC sem simulação precisa falhar explicitamente. O fallback
       // anterior (`{ data: null, error: null }`) devolvia sucesso para

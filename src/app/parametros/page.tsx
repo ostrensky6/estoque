@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ParametrosForm } from "@/components/parametros/ParametrosForm";
+import { HelpTip } from "@/components/common/HelpTip";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +14,21 @@ export default async function ParametrosPage() {
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
-        <h1 className="text-xl font-semibold tracking-tight">Parâmetros de custeio</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Constantes globais que dirigem o cálculo. Os <b>fatores de preço</b> transformam o custo
-          em preço de venda; alterá-los recalcula o custeio e os novos orçamentos imediatamente.
+        <div className="flex items-center gap-1">
+          <h1 className="text-xl font-semibold tracking-tight">Parâmetros de custeio</h1>
+          <HelpTip title="Parâmetros de custeio">
+            <p>
+              Valores que valem para o <b>laboratório inteiro</b>: fatores de preço e bases de
+              rateio usadas no custeio, no estoque e nos alertas.
+            </p>
+            <p>
+              A <b>taxa de incubação (UFPR)</b> daqui é o padrão das novas propostas. A mensalidade
+              fixa da incubação é custo fixo e fica em Cadastros → Overhead.
+            </p>
+          </HelpTip>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Alterar um fator recalcula custos e preços imediatamente.
         </p>
 
         <div className="mt-8">

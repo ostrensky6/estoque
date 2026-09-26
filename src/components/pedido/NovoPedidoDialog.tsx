@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { criarPedidoInterno } from "@/lib/actions/pedidos-internos";
+import { FormComMensagem } from "./FormComMensagem";
 
 type ProjetoOption = {
   id: number;
@@ -38,19 +39,19 @@ export function NovoPedidoDialog({ projetos }: { projetos: ProjetoOption[] }) {
         <DialogHeader>
           <DialogTitle>Novo pedido</DialogTitle>
           <DialogDescription>
-            Registre a demanda inicial do laboratório ou campo. Os itens entram depois, no rascunho.
+            Registre o pedido do laboratório ou do campo. Os itens entram depois, no rascunho.
           </DialogDescription>
         </DialogHeader>
-        <form action={criarPedidoInterno} className="grid gap-5">
+        <FormComMensagem action={criarPedidoInterno} className="grid gap-5">
           <section className="grid gap-3 rounded-lg border border-border p-4 md:grid-cols-12">
             <div className="md:col-span-12">
-              <h3 className="text-sm font-semibold">Identificação da demanda</h3>
+              <h3 className="text-sm font-semibold">Identificação do pedido</h3>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 O suficiente para o coordenador entender origem, urgência e contexto.
               </p>
             </div>
             <div className="md:col-span-6">
-              <label htmlFor="novo-pedido-titulo" className="block text-xs font-medium text-muted-foreground">Demanda inicial</label>
+              <label htmlFor="novo-pedido-titulo" className="block text-xs font-medium text-muted-foreground">Título do pedido</label>
               <input
                 id="novo-pedido-titulo"
                 name="titulo"
@@ -128,7 +129,7 @@ export function NovoPedidoDialog({ projetos }: { projetos: ProjetoOption[] }) {
             </DialogClose>
             <Button type="submit">Criar rascunho</Button>
           </DialogFooter>
-        </form>
+        </FormComMensagem>
       </DialogContent>
     </Dialog>
   );

@@ -4,7 +4,15 @@ const rpc = vi.fn();
 const single = vi.fn();
 const revalidatePath = vi.fn();
 let origemLote: Record<string, { data: Array<{ id: number }>; error: { message: string } | null }>;
+let loteConsultado: { data: Record<string, unknown> | null; error: { message: string } | null };
 const from = vi.fn((table: string) => {
+  if (table === "lotes_estoque") {
+    return {
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({ single: vi.fn(async () => loteConsultado) })),
+      })),
+    };
+  }
   if (table === "insumos") {
     return {
       select: vi.fn(() => ({
@@ -312,6 +320,137 @@ describe("actions de estoque", () => {
         message: "Sem permissão: requer papel coordenador ou superior.",
       });
       expect(revalidatePath).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("dar baixa (roteada pelo modelo do lote)", () => {
+    const OPERACAO = "33333333-3333-4333-8333-333333333333";
+
+    function formBaixa(overrides: Record<string, string> = {}) {
+      const formData = new FormData();
+      const base: Record<string, string> = {
+        lote_id: "12",
+        quantidade: "2",
+        quantidade_esperada: "5",
+        motivo_tipo: "Perda/quebra",
+        motivo_detalhe: "frasco trincado",
+        operacao_id: OPERACAO,
+      };
+      for (const [key, value] of Object.entries({ ...base, ...overrides })) formData.set(key, value);
+      return formData;
+    }
+
+    beforeEach(() => {
+      loteConsultado = { data: { id: 12, modelo_quantidade: "EMBALAGEM_FECHADA" }, error: null };
+      rpc.mockResolvedValue({ data: { lote_id: 12, quantidade_embalagens: 3, repetido: false }, error: null });
+    });
+
+    it("exige motivo (e detalhe quando Outro) antes de chamar qualquer RPC", async () => {
+      const { darBaixaLote } = await import("./estoque");
+
+      const semMotivo = await darBaixaLote({ ok: false }, formBaixa({ motivo_tipo: "" }));
+      expect(semMotivo.ok).toBe(false);
+      expect(semMotivo.errors?.motivo_tipo).toBe("Selecione o motivo");
+
+      const outroSemDetalhe = await darBaixaLote({ ok: false }, formBaixa({ motivo_tipo: "Outro", motivo_detalhe: "" }));
+      expect(outroSemDetalhe.errors?.motivo_detalhe).toBe("Descreva o motivo");
+
+      const zero = await darBaixaLote({ ok: false }, formBaixa({ quantidade: "0" }));
+      expect(zero.errors?.quantidade).toBe("Deve ser maior que zero");
+
+      expect(rpc).not.toHaveBeenCalled();
+    });
+
+    it("lote de embalagens fechadas usa baixa_manual_embalagens com operacao_id e quantidade esperada", async () => {
+      const { darBaixaLote } = await import("./estoque");
+
+      const result = await darBaixaLote({ ok: false }, formBaixa());
+
+      expect(result).toEqual({ ok: true, message: "Baixa registrada: 2 embalagens." });
+      expect(rpc).toHaveBeenCalledOnce();
+      expect(rpc).toHaveBeenCalledWith("baixa_manual_embalagens", {
+        p_lote_id: 12,
+        p_quantidade: 2,
+        p_quantidade_esperada: 5,
+        p_operacao_id: OPERACAO,
+        p_motivo: "Perda/quebra: frasco trincado",
+      });
+      expect(revalidatePath).toHaveBeenCalledWith("/estoque/lotes/12");
+    });
+
+    it("recusa fração de embalagem sem chamar a RPC", async () => {
+      const { darBaixaLote } = await import("./estoque");
+
+      const result = await darBaixaLote({ ok: false }, formBaixa({ quantidade: "1.5" }));
+
+      expect(result.ok).toBe(false);
+      expect(result.errors?.quantidade).toBe("Use um número inteiro de embalagens");
+      expect(rpc).not.toHaveBeenCalled();
+    });
+
+    it("lote legado continua na baixa_manual_lote (quantidade fracionada na unidade do insumo)", async () => {
+      loteConsultado = { data: { id: 12, modelo_quantidade: "LEGADO" }, error: null };
+      rpc.mockResolvedValue({ data: null, error: null });
+      const { darBaixaLote } = await import("./estoque");
+
+      const result = await darBaixaLote(
+        { ok: false },
+        formBaixa({ quantidade: "2,5", motivo_tipo: "Consumo em análise", motivo_detalhe: "" }),
+      );
+
+      expect(result).toEqual({ ok: true, message: "Baixa registrada." });
+      expect(rpc).toHaveBeenCalledWith("baixa_manual_lote", {
+        p_lote_id: 12,
+        p_quantidade: 2.5,
+        p_motivo: "Consumo em análise",
+      });
+    });
+
+    it("devolve a mensagem da RPC sem lançar e sem revalidar", async () => {
+      rpc.mockResolvedValue({ data: null, error: { message: "Há reserva ativa neste lote: é possível baixar no máximo 1 embalagem(ns)." } });
+      const { darBaixaLote } = await import("./estoque");
+
+      const result = await darBaixaLote({ ok: false }, formBaixa());
+
+      expect(result).toEqual({
+        ok: false,
+        message: "Há reserva ativa neste lote: é possível baixar no máximo 1 embalagem(ns).",
+      });
+      expect(revalidatePath).not.toHaveBeenCalled();
+    });
+
+    it("nunca lança para a UI, mesmo com falha inesperada do cliente", async () => {
+      rpc.mockRejectedValue(new Error("rede indisponível"));
+      const { baixarEmbalagens, darBaixaLote } = await import("./estoque");
+
+      await expect(darBaixaLote({ ok: false }, formBaixa())).resolves.toEqual({
+        ok: false,
+        message: "rede indisponível",
+      });
+      await expect(baixarEmbalagens({ ok: false }, formBaixa())).resolves.toEqual({
+        ok: false,
+        message: "rede indisponível",
+      });
+    });
+
+    it("lote inexistente devolve mensagem clara", async () => {
+      loteConsultado = { data: null, error: { message: "not found" } };
+      const { darBaixaLote } = await import("./estoque");
+
+      const result = await darBaixaLote({ ok: false }, formBaixa());
+
+      expect(result).toEqual({ ok: false, message: "Lote não encontrado." });
+      expect(rpc).not.toHaveBeenCalled();
+    });
+
+    it("baixarEmbalagens gera operacao_id quando o formulário não envia um UUID válido", async () => {
+      const { baixarEmbalagens } = await import("./estoque");
+
+      await baixarEmbalagens({ ok: false }, formBaixa({ operacao_id: "nao-e-uuid" }));
+
+      const [, args] = rpc.mock.calls[0];
+      expect(args.p_operacao_id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(args.p_operacao_id).not.toBe("nao-e-uuid");
     });
   });
 });

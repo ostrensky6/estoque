@@ -15,6 +15,7 @@ import { calcularAnalise, calcularAnaliseOrcamento, type Parametros } from "@/li
 import type { SimuladorAnalise } from "@/lib/costing/loader";
 import { formatCompactCurrency, formatCurrency, formatNumber } from "@/lib/formatters";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 
 const COLORS = ["#01489d", "#008e9c", "#008a00", "#d97706", "#7c3aed", "#dc2626"];
 const DEFAULT_MAX_AMOSTRAS = 192;
@@ -118,10 +119,37 @@ export function CusteioAmostrasChart({
     <section className="mt-8 rounded-lg border border-border bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-foreground dark:text-white">Custo por número de amostras</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Compare análises e veja os degraus provocados por lotes, execuções inteiras e itens cobrados por execução.
-          </p>
+          <div className="flex items-center gap-1">
+            <h2 className="text-lg font-semibold text-foreground dark:text-white">Custo por número de amostras</h2>
+            <HelpTip title="Custo por número de amostras">
+              <p>
+                Cada linha é uma análise. Os <b>degraus</b> aparecem quando as amostras passam do
+                lote e é preciso abrir mais uma corrida.
+              </p>
+              <p>
+                A curva usa só o custo técnico, <b>sem margem nem impostos</b>. Em &quot;Custo por
+                amostra&quot;, o valor cai conforme mais amostras dividem a mesma corrida.
+              </p>
+              {analisesSelecionadas.length > 0 && (
+                <ul className="space-y-1 text-xs">
+                  {analisesSelecionadas.map((analise, index) => (
+                    <li key={analise.codigo} className="flex items-center gap-2">
+                      <span
+                        aria-hidden
+                        className="h-[3px] w-4 shrink-0 rounded-full"
+                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      />
+                      <span className="text-foreground">{analise.codigo}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <HelpExample>
+                Lote de 12: da 12ª para a 13ª amostra, o custo total sobe um degrau (nova corrida).
+              </HelpExample>
+            </HelpTip>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">Compare análises lado a lado.</p>
         </div>
         <label className="block min-w-44">
           <span className="text-xs font-medium text-muted-foreground">Métrica</span>
@@ -250,9 +278,6 @@ export function CusteioAmostrasChart({
               ))}
             </div>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            A curva usa custo técnico, sem margem e impostos. Troque para custo por amostra para ver o rateio cair quando mais amostras ocupam a mesma execução.
-          </p>
         </div>
       </div>
     </section>

@@ -129,7 +129,7 @@ export async function calcularTodas(
     { data: etapas },
     { data: equipamentos },
     { data: equipAnalise },
-    { data: tecnicos },
+    { data: valorHoraPessoalTotal, error: valorHoraPessoalError },
     { data: overhead },
     { data: insumoAnalise },
     { data: parametros },
@@ -139,7 +139,8 @@ export async function calcularTodas(
     supabase.from("etapas").select("*"),
     supabase.from("equipamentos").select("*"),
     supabase.from("equipamento_analise").select("*"),
-    supabase.from("tecnicos").select("*"),
+    // Salários individuais não são lidos aqui (migration 0112): só o agregado.
+    supabase.rpc("valor_hora_pessoal_total"),
     supabase.from("overhead").select("*"),
     supabase
       .from("insumo_analise")
@@ -172,14 +173,16 @@ export async function calcularTodas(
     fundo_investimento: par.fundo_investimento ?? 0,
   };
 
-  // valor-hora de pessoal = Σ valor_hh (custo_hora × %dedicado/100)
-  const valorHoraPessoal = (tecnicos ?? []).reduce((acc, t) => {
-    const custoHora =
-      Number(t.horas_mes_base) > 0
-        ? Number(t.valor_mes) / Number(t.horas_mes_base)
-        : 0;
-    return acc + (custoHora * Number(t.percentual_dedicado)) / 100;
-  }, 0);
+  // valor-hora de pessoal = Σ valor_hh (valor_mes/horas_mes_base × %dedicado/100),
+  // calculado no banco (SECURITY DEFINER) para não expor salários individuais.
+  // Falha explícita: um zero silencioso subprecificaria todas as análises.
+  if (valorHoraPessoalError) {
+    throw new Error(`Não foi possível obter o valor-hora de pessoal: ${valorHoraPessoalError.message}`);
+  }
+  const valorHoraPessoal = Number(valorHoraPessoalTotal ?? 0);
+  if (!Number.isFinite(valorHoraPessoal)) {
+    throw new Error("Valor-hora de pessoal inválido retornado pelo banco.");
+  }
 
   // custo-hora de overhead = Σ (custo_mensal/horas_bancada_mes × %compensada/100)
   const custoHoraOverhead = (overhead ?? []).reduce((acc, o) => {

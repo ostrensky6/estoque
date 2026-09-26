@@ -1,17 +1,21 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { pode, podeVerSalario } from "@/lib/auth/permissao-efetiva";
+import { mascararAuditoriaSigilosa } from "@/lib/cadastros/salario";
 import { AuditoriaTable, type AuditoriaRow } from "@/components/auditoria/AuditoriaTable";
 import { formatDateTime } from "@/lib/formatters";
+import { HelpTip } from "@/components/common/HelpTip";
 
 export const dynamic = "force-dynamic";
 
-const TABELAS = ["", "lotes_estoque", "insumos", "reservas_estoque", "pedidos_compra"];
+const TABELAS = ["", "lotes_estoque", "insumos", "reservas_estoque", "pedidos_compra", "tecnicos"];
 const LABEL: Record<string, string> = {
   lotes_estoque: "Lotes",
   insumos: "Insumos",
   reservas_estoque: "Reservas",
   pedidos_compra: "Pedidos",
+  tecnicos: "Técnicos",
+  tecnicos_remuneracao: "Salário (técnicos)",
 };
 const ACAO: Record<string, { label: string; cls: string }> = {
   insert: { label: "Criou", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
@@ -45,7 +49,7 @@ export default async function AuditoriaPage({
 }: {
   searchParams: Promise<{ tabela?: string }>;
 }) {
-  if (!(await temPapel("gestor"))) {
+  if (!(await pode("auditoria.visualizar"))) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8 text-center font-sans">
         <p className="text-muted-foreground">
@@ -63,8 +67,18 @@ export default async function AuditoriaPage({
     .order("id", { ascending: false })
     .limit(200);
   if (tabela) q = q.eq("tabela", tabela);
-  const { data: registros } = await q;
-  const linhas: AuditoriaRow[] = (registros ?? []).map((r) => {
+  const [{ data: registros }, podeVerSalarios] = await Promise.all([q, podeVerSalario()]);
+  const linhas: AuditoriaRow[] = (registros ?? []).map((original) => {
+    // Defesa em profundidade: a policy da 0112 já esconde o salário; aqui ele
+    // nunca é serializado para o cliente sem a permissão.
+    const r = mascararAuditoriaSigilosa(
+      {
+        ...original,
+        valor_anterior: original.valor_anterior as Record<string, unknown> | null,
+        valor_novo: original.valor_novo as Record<string, unknown> | null,
+      },
+      podeVerSalarios,
+    );
     const a = ACAO[r.acao] ?? { label: r.acao, cls: "" };
     return {
       id: r.id as number,
@@ -75,22 +89,24 @@ export default async function AuditoriaPage({
       registro: `#${r.registro_id}`,
       acao: r.acao,
       acaoLabel: a.label,
-      alteracao: resumoDiff(
-        r.acao,
-        r.valor_anterior as Record<string, unknown> | null,
-        r.valor_novo as Record<string, unknown> | null,
-      ),
+      alteracao: resumoDiff(r.acao, r.valor_anterior, r.valor_novo),
     };
   });
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
-        <h1 className="text-xl font-semibold tracking-tight">Auditoria</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Trilha de alterações (quem · quando · o quê). Imutável — gravada
-          automaticamente pelo banco.
-        </p>
+        <div className="flex items-center gap-1">
+          <h1 className="text-xl font-semibold tracking-tight">Auditoria</h1>
+          <HelpTip title="Trilha de auditoria">
+            <p>
+              Cada alteração é registrada <b>automaticamente</b>, com o valor anterior e o novo.
+              Ninguém pode editar nem apagar esses registros.
+            </p>
+            <p>Use os filtros para ver só um tipo de cadastro.</p>
+          </HelpTip>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">Quem alterou o quê, e quando.</p>
 
         <nav className="mt-5 flex flex-wrap gap-2 text-xs">
           {TABELAS.map((t) => (

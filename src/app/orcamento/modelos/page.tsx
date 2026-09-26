@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
+import { HelpTip } from "@/components/common/HelpTip";
 import {
   arquivarCatalogoProjetoItem,
   criarProjetoDeTemplate,
@@ -8,10 +9,17 @@ import {
   excluirTemplate,
 } from "@/lib/actions/orcamento-projetos";
 import { formatCurrency as brl, formatDate } from "@/lib/formatters";
+import { NOTA_VALOR_MASCARADO, VALOR_MASCARADO } from "@/lib/cadastros/mascara";
+import { precoCatalogoMascarado } from "@/lib/cadastros/salario";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
+
+// "Usar" criava um orçamento de projeto sem vínculo com proposta e voltava à
+// lista em ciclo. Fica oculto até a migração do editor de projeto (protocolo
+// docs/migracao-orcamento-projetos-protocolo.md); o código segue preservado.
+const USO_DIRETO_DE_TEMPLATE = false;
 
 type SearchParams = {
   origem?: string;
@@ -35,7 +43,8 @@ type CatalogoItem = {
   rubrica: string;
   descricao: string;
   unidade: string | null;
-  preco_unitario: number;
+  preco_unitario: number | null;
+  preco_mascarado?: boolean;
   categoria: string | null;
   origem: string;
   ativo: boolean;
@@ -56,19 +65,17 @@ export default async function OrcamentoModelosPage({
 }) {
   const filtros = await searchParams;
   const supabase = await createClient();
-  const [{ data: templates }, { data: catalogo }, { data: projetos }] = await Promise.all([
+  const [{ data: templates }, { data: catalogoCompleto }, { data: projetos }] = await Promise.all([
     supabase
       .from("orcamento_projeto_templates")
       .select("id, nome, descricao, itens, parametros, origem, criado_em")
       .order("criado_em", { ascending: false }),
-    supabase
-      .from("orcamento_projeto_catalogo")
-      .select("id, rubrica, descricao, unidade, preco_unitario, categoria, origem, ativo, valid_from")
-      .order("rubrica")
-      .order("descricao")
-      .limit(300),
+    // Preço de PE (pessoas nominais) vem mascarado (NULL) do banco para quem
+    // não tem "Ver salário dos técnicos" — migration 0112. Já vem ordenado.
+    supabase.rpc("orcamento_projeto_catalogo_listar"),
     supabase.from("projetos").select("id, nome").order("nome").limit(100),
   ]);
+  const catalogo = ((catalogoCompleto ?? []) as CatalogoItem[]).slice(0, 300);
 
   const templatesFiltrados = filtrarTemplates((templates ?? []) as TemplateProjeto[], filtros);
   const catalogoFiltrado = filtrarCatalogo((catalogo ?? []) as CatalogoItem[], filtros);
@@ -84,15 +91,20 @@ export default async function OrcamentoModelosPage({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <Link href="/orcamento" className="text-xs text-muted-foreground hover:underline">Orçamentos</Link>
-            <h1 className="mt-2 text-xl font-semibold tracking-tight">Modelos e catálogo</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Área operacional para templates de projeto, catálogo institucional, parâmetros padrão e origem importada preservada.
-            </p>
+            <div className="mt-2 flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Modelos e catálogo</h1>
+              <HelpTip title="Modelos e catálogo">
+                <p>Base reutilizável para montar orçamentos de projeto: <b>modelos</b> com itens prontos, o <b>catálogo institucional</b> de custos por rubrica e os parâmetros padrão.</p>
+                <p>Nada é apagado: itens fora de uso são arquivados e continuam no histórico.</p>
+              </HelpTip>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href="/orcamento/projetos" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
-              Usar em orçamento
-            </Link>
+            {USO_DIRETO_DE_TEMPLATE && (
+              <Link href="/orcamento/projetos" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
+                Usar em orçamento
+              </Link>
+            )}
             <Link href="/orcamento" className="rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted">
               Orçamentos
             </Link>
@@ -156,9 +168,9 @@ export default async function OrcamentoModelosPage({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Templates de projeto</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Use, duplique ou arquive estruturas completas de rubricas e parâmetros.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Duplique ou arquive modelos. Usar em orçamento: em breve.</p>
             </div>
-            <Link href="/orcamento/projetos" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">Criar a partir de template</Link>
+            {USO_DIRETO_DE_TEMPLATE && <Link href="/orcamento/projetos" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">Criar a partir de template</Link>}
           </div>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[1100px] text-left text-sm">
@@ -186,7 +198,7 @@ export default async function OrcamentoModelosPage({
                     <td className="px-3 py-3">{isArquivado(template) ? <Badge tom="zinc">Arquivado</Badge> : <Badge tom="brand">Ativo</Badge>}</td>
                     <td className="px-3 py-3">
                       <div className="flex justify-end gap-2">
-                        {!isArquivado(template) && (
+                        {USO_DIRETO_DE_TEMPLATE && !isArquivado(template) && (
                           <form action={criarProjetoDeTemplate} className="flex items-center gap-1">
                             <input type="hidden" name="template_id" value={template.id} />
                             <select name="projeto_id" defaultValue="" className="rounded-md border border-input bg-card px-2 py-1 text-xs">
@@ -254,7 +266,16 @@ export default async function OrcamentoModelosPage({
                     <td className="px-3 py-3">{item.categoria ?? "—"}</td>
                     <td className="px-3 py-3">{item.descricao}</td>
                     <td className="px-3 py-3">{item.unidade ?? "un"}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{brl(Number(item.preco_unitario ?? 0))}</td>
+                    <td className="px-3 py-3 text-right tabular-nums">
+                      {precoCatalogoMascarado(item) ? (
+                        <span title={NOTA_VALOR_MASCARADO}>
+                          {VALOR_MASCARADO}
+                          <span className="sr-only"> — {NOTA_VALOR_MASCARADO}</span>
+                        </span>
+                      ) : (
+                        brl(Number(item.preco_unitario ?? 0))
+                      )}
+                    </td>
                     <td className="px-3 py-3"><Origem origem={item.origem} /></td>
                     <td className="px-3 py-3 text-muted-foreground">{formatDate(item.valid_from)}</td>
                     <td className="px-3 py-3">{item.ativo ? <Badge tom="brand">Sim</Badge> : <Badge tom="zinc">Não</Badge>}</td>
@@ -296,10 +317,12 @@ export default async function OrcamentoModelosPage({
         </section>
 
         <section id="importados" className="mt-6 scroll-mt-8 rounded-lg border border-border bg-card p-4 shadow-sm">
-          <h2 className="text-sm font-semibold">Importados do app antigo</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            A origem antiga aparece como procedência auditável. O uso operacional continua sendo catálogo institucional.
-          </p>
+          <div className="flex items-center gap-1">
+            <h2 className="text-sm font-semibold">Importados do app antigo</h2>
+            <HelpTip title="Importados do app antigo">
+              <p>Itens trazidos do sistema anterior de orçamento. A origem fica registrada para <b>auditoria</b>; no dia a dia, use o <b>catálogo institucional</b>.</p>
+            </HelpTip>
+          </div>
           <div className="mt-3 grid gap-3 md:grid-cols-4">
             {rubricas.map((rubrica) => {
               const itens = ((catalogo ?? []) as CatalogoItem[]).filter((item) => item.origem === "orcamento_projetos_antigo" && item.rubrica === rubrica);

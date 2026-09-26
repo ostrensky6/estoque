@@ -1,27 +1,26 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createClientUntyped } from "@/lib/supabase/server";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
 import { gargalo, type Etapa } from "@/lib/costing/engine";
-import {
-  adicionarItem,
-  removerItem,
-  excluirPlano,
-  atualizarPlanejamentoExecutivo,
-  reservarEquipamentoDoPlano,
-} from "@/lib/actions/planejamento";
+import { reservarEquipamentoDoPlano } from "@/lib/actions/planejamento";
 import { comprarFaltasDoPlano } from "@/lib/actions/compras";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { PlanoAcoes } from "@/components/planejamento/PlanoAcoes";
+import { PlanoContextoForm } from "@/components/planejamento/PlanoContextoForm";
+import { PlanoItensEditor } from "@/components/planejamento/PlanoItensEditor";
+import { ExcluirOuCancelarPlano } from "@/components/planejamento/PlanoGestao";
 import {
   PlanejamentoConferenciaLotes,
   type PlanoConferenciaInsumo,
   type PlanoConferenciaRegistro,
 } from "@/components/planejamento/PlanejamentoConferenciaLotes";
-import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
-import { Combobox } from "@/components/ui/combobox";
-import { formatCurrency, formatNumber as fmt } from "@/lib/formatters";
+import { HelpExample, HelpFormula, HelpLegend, HelpTip } from "@/components/common/HelpTip";
+import { formatCurrency, formatDate, formatNumber as fmt } from "@/lib/formatters";
+import { avaliarGestaoPlano, MENSAGEM_RESERVA_DESATUALIZADA } from "@/lib/planejamento/gestao";
 import {
   loteSugeridoFefo,
   type LoteConferencia,
@@ -78,14 +77,26 @@ export default async function PlanoDetalhe({
     reservado_por?: string | null;
     validado_por?: string | null;
     validado_em?: string | null;
+    reserva_desatualizada?: boolean | null;
   };
 
-  const [{ data: itens }, { data: analises }, { data: reservas }, { data: projetos }, { data: margemRealRows }] = await Promise.all([
+  const [
+    { data: itens },
+    { data: analises },
+    { data: reservas },
+    { data: projetos },
+    { data: margemRealRows },
+    { data: pedidosAtivos },
+    podeGerir,
+  ] = await Promise.all([
     supabase.from("planejamento_itens").select("id, codigo_analise, n_amostras, n_controles, repeticoes, perda_percentual").eq("planejamento_id", planId).order("id"),
-    supabase.from("analises").select("codigo, nome").order("codigo"),
+    // Só análises ativas podem entrar em um plano novo; itens antigos continuam listados.
+    supabase.from("analises").select("codigo, nome").eq("ativo", true).order("codigo"),
     consultarReservasPlano(supabaseUntyped, planId),
     supabase.from("projetos").select("id, nome").order("nome"),
     supabase.from("v_margem_real_planejamento").select("*").eq("planejamento_id", planId).limit(1),
+    supabaseUntyped.from("pedidos_internos").select("id, status").eq("planejamento_id", planId).neq("status", "cancelado"),
+    pode("planejamento.editar"),
   ]);
   const margemReal = margemRealRows?.[0] ?? null;
 
@@ -163,6 +174,13 @@ export default async function PlanoDetalhe({
           : statusOperacional === "reservado"
             ? "Reservado"
             : status;
+  const gestao = avaliarGestaoPlano({
+    status: statusOperacional,
+    reservas: rs,
+    podeGerir,
+    pedidosAtivos: (pedidosAtivos ?? []).map((pedido) => `#${pedido.id} (${String(pedido.status ?? "").replaceAll("_", " ")})`),
+  });
+  const reservaDesatualizada = statusOperacional === "reservado" && Boolean(planoOperacional.reserva_desatualizada);
   const temFalta = demanda.some((d) => d.falta > 0);
   const demandaTotal = demanda.reduce((sum, item) => sum + item.demanda, 0);
   const fisicoDisponivelTotal = demanda.reduce((sum, item) => sum + item.disponivel, 0);
@@ -271,17 +289,45 @@ export default async function PlanoDetalhe({
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
         <Breadcrumbs items={[{ label: "Planejamento", href: "/planejamento" }, { label: plano.nome ?? `Plano #${planId}` }]} />
-        <div className="mt-2 flex items-center justify-between">
-          <h1 className="text-xl font-semibold tracking-tight">{plano.nome}</h1>
-          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
-            {statusLabel}
-          </span>
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">{plano.nome}</h1>
+              <HelpTip title="Planejamento de execução">
+                <p>
+                  Organiza a execução: projeto, período, análises, lotes reservados, faltas e
+                  compras.
+                </p>
+                <p>
+                  Pode nascer de um orçamento, mas é <b>independente</b> dele: o que vale para
+                  reservar, comprar e dar baixa é o que está <b>neste plano</b>.
+                </p>
+              </HelpTip>
+            </div>
+            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
+              {statusLabel}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-start gap-2" aria-label="Ações do plano" role="group">
+            {gestao.podeEditar && (
+              <a
+                href="#editar"
+                className="inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+              >
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+                Editar
+              </a>
+            )}
+            <ExcluirOuCancelarPlano
+              planId={planId}
+              nome={plano.nome ?? `Plano #${planId}`}
+              gestao={{ acao: gestao.acao, bloqueado: gestao.acaoBloqueada, motivo: gestao.motivoAcao }}
+              redirecionarPara="/planejamento"
+            />
+          </div>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Planejamento executivo independente do orçamento: projeto, período,
-          estoque físico, reservas de lote, faltas e compras.
-        </p>
-        <nav className="sticky top-0 z-10 mt-4 overflow-x-auto border-y border-border bg-background/95 py-2 backdrop-blur" aria-label="Etapas do planejamento">
+        {/* no celular fica logo abaixo da barra superior fixa (57px), em vez de passar por baixo dela */}
+        <nav className="sticky top-[57px] z-10 mt-4 md:top-0 overflow-x-auto border-y border-border bg-background/95 py-2 backdrop-blur" aria-label="Etapas do planejamento">
           <div className="flex min-w-max gap-2">
             {[
               ["#contexto", "Resumo", statusLabel],
@@ -299,27 +345,51 @@ export default async function PlanoDetalhe({
           </div>
         </nav>
         {!contextoCompleto && (
-          <p className="mt-3 rounded-lg border border-warning-strong/30 bg-warning-soft px-4 py-2 text-sm text-warning-strong">
-            Informe projeto e período previsto antes de reservar insumos. O orçamento pode ser origem, mas a execução nasce aqui.
+          <p className="mt-3 flex items-center gap-1 rounded-lg border border-warning-strong/30 bg-warning-soft px-4 py-2 text-sm text-warning-strong">
+            Informe projeto e período previsto antes de reservar insumos.
+            <HelpTip title="Projeto e período">
+              <p>
+                A reserva de lotes e de equipamentos usa o <b>projeto e as datas</b> deste plano. Sem
+                eles, não há como saber para quando separar o material.
+              </p>
+            </HelpTip>
           </p>
         )}
-        {baixaPendente && (
-          <p className="mt-3 rounded-lg border border-warning-strong/30 bg-warning-soft px-4 py-2 text-sm text-warning-strong">
-            Insumos reservados, mas a baixa definitiva ainda não foi feita. Use Iniciar quando a análise entrar em execução.
+        {reservaDesatualizada && (
+          <p role="status" className="mt-3 rounded-lg border border-warning-strong/30 bg-warning-soft px-4 py-2 text-sm font-medium text-warning-strong">
+            {MENSAGEM_RESERVA_DESATUALIZADA}
+          </p>
+        )}
+        {baixaPendente && !reservaDesatualizada && (
+          <p className="mt-3 flex items-center gap-1 rounded-lg border border-warning-strong/30 bg-warning-soft px-4 py-2 text-sm text-warning-strong">
+            Insumos reservados, ainda sem baixa.
+            <HelpTip title="Reserva × baixa">
+              <p>
+                A <b>reserva</b> só separa os lotes. A <b>baixa</b>, saída definitiva do estoque,
+                acontece ao clicar em <b>Iniciar</b>, quando a análise entra em execução.
+              </p>
+            </HelpTip>
           </p>
         )}
         {plano.data_alvo && (
-          <p className="mt-1 text-sm text-muted-foreground">Data alvo: {plano.data_alvo}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Data alvo: {formatDate(plano.data_alvo)}</p>
         )}
 
         {margemReal && (
           <section id="margem" className="mt-4 scroll-mt-24 rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold">Margem prevista × realizada</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  A realização usa somente as baixas por lote deste plano; mão de obra, equipamentos e overhead ainda não possuem apontamento por execução.
-                </p>
+                <div className="flex items-center gap-1">
+                  <h2 className="text-sm font-semibold">Margem prevista × realizada</h2>
+                  <HelpTip title="Margem realizada (parcial)">
+                    <p>
+                      O realizado considera só os <b>insumos baixados</b> neste plano. Mão de obra,
+                      equipamentos e overhead ainda não são apontados por execução.
+                    </p>
+                    <HelpFormula>margem parcial = receita orçada − insumos baixados</HelpFormula>
+                    <HelpExample>Receita de R$ 10.000 e R$ 2.500 em insumos baixados → margem parcial de R$ 7.500 (75%).</HelpExample>
+                  </HelpTip>
+                </div>
               </div>
               <Link href={`/orcamento/${margemReal.orcamento_id}`} className="text-xs font-medium text-primary hover:underline">
                 Abrir orçamento de origem
@@ -342,10 +412,23 @@ export default async function PlanoDetalhe({
         <section id="capacidade" className="mt-4 scroll-mt-24 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold">Capacidade e equipamentos do plano</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                As unidades abaixo vêm da receita das análises. A reserva é bloqueada se houver manutenção, calibração vencida ou sobreposição de agenda.
-              </p>
+              <div className="flex items-center gap-1">
+                <h2 className="text-sm font-semibold">Capacidade e equipamentos do plano</h2>
+                <HelpTip title="Capacidade e equipamentos">
+                  <p>
+                    Os equipamentos vêm da ficha técnica de cada análise. O <b>prazo projetado</b>
+                    divide as amostras planejadas pela capacidade por dia.
+                  </p>
+                  <HelpLegend
+                    items={[
+                      { tom: "info", rotulo: "disponível", texto: "pode ser reservado para o período (ou já está reservado neste plano)." },
+                      { tom: "atencao", rotulo: "agenda ocupada", texto: "já reservado por outro plano." },
+                      { tom: "critico", rotulo: "bloqueado", texto: "em manutenção, com calibração vencida ou inativo." },
+                    ]}
+                  />
+                  <HelpExample>48 amostras planejadas e capacidade de 24/dia → 2 dias.</HelpExample>
+                </HelpTip>
+              </div>
             </div>
             <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
               {codigosPlano.length} análise(s) · {unidadesEquipamento?.length ?? 0} unidade(s) candidata(s)
@@ -421,12 +504,15 @@ export default async function PlanoDetalhe({
         <section id="contexto" className="mt-6 scroll-mt-24 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Contexto operacional
-              </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Estes dados comandam reserva, compra e baixa. Orçamento fica apenas como origem auditável.
-              </p>
+              <div className="flex items-center gap-1">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Contexto operacional</h2>
+                <HelpTip title="Contexto operacional">
+                  <p>
+                    Projeto, datas e responsável deste plano definem <b>para quando</b> reservar,
+                    comprar e dar baixa. O orçamento de origem fica só como referência.
+                  </p>
+                </HelpTip>
+              </div>
             </div>
             <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
               <span>Planejado por: <b className="text-foreground">{planoOperacional.planejado_por ?? "—"}</b></span>
@@ -434,125 +520,53 @@ export default async function PlanoDetalhe({
             </div>
           </div>
 
-          <form action={atualizarPlanejamentoExecutivo} className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <input type="hidden" name="planejamento_id" value={planId} />
-            <div className="md:col-span-2">
-              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Nome</label>
-              <input name="nome" defaultValue={plano.nome ?? ""} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Projeto</label>
-              <select name="projeto_id" defaultValue={plano.projeto_id ?? ""} className={`${inp} mt-1 w-full`}>
-                <option value="">—</option>
-                {(projetos ?? []).map((p) => (
-                  <option key={p.id} value={p.id}>{p.nome}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Prioridade</label>
-              <select name="prioridade" defaultValue={planoOperacional.prioridade ?? "normal"} className={`${inp} mt-1 w-full`}>
-                <option value="baixa">Baixa</option>
-                <option value="normal">Normal</option>
-                <option value="alta">Alta</option>
-                <option value="urgente">Urgente</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Início previsto</label>
-              <input name="data_inicio_prevista" type="date" defaultValue={planoOperacional.data_inicio_prevista ?? ""} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Fim previsto</label>
-              <input name="data_fim_prevista" type="date" defaultValue={planoOperacional.data_fim_prevista ?? ""} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Data alvo</label>
-              <input name="data_alvo" type="date" defaultValue={plano.data_alvo ?? ""} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Responsável</label>
-              <input name="responsavel" defaultValue={plano.responsavel ?? ""} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div className="md:col-span-2 xl:col-span-3">
-              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Observação operacional</label>
-              <input name="observacao" defaultValue={plano.observacao ?? ""} className={`${inp} mt-1 w-full`} />
-            </div>
-            <div className="flex items-end justify-start">
-              <button className="app-action-compact bg-primary text-primary-foreground hover:bg-primary/90">
-                Salvar
-              </button>
-            </div>
-          </form>
+          <span id="editar" className="block scroll-mt-24" aria-hidden="true" />
+          <PlanoContextoForm
+            planId={planId}
+            editavel={gestao.podeEditar}
+            motivoSemEdicao={gestao.motivoSemEdicao}
+            projetos={projetos ?? []}
+            valores={{
+              nome: plano.nome ?? "",
+              projetoId: plano.projeto_id ?? null,
+              prioridade: planoOperacional.prioridade ?? "normal",
+              dataInicioPrevista: planoOperacional.data_inicio_prevista ?? "",
+              dataFimPrevista: planoOperacional.data_fim_prevista ?? "",
+              dataAlvo: plano.data_alvo ?? "",
+              responsavel: plano.responsavel ?? "",
+              observacao: plano.observacao ?? "",
+            }}
+          />
         </section>
 
         {/* itens do plano */}
         <section id="analises" className="mt-8 scroll-mt-24">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Análises do plano
-          </h2>
-          <div className="mt-3 space-y-2">
-            {(itens ?? []).map((it) => (
-              <div key={it.id} className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-2 text-sm">
-                <span>
-                  <span className="font-medium">{it.codigo_analise}</span>
-                  <span className="text-muted-foreground">
-                    {" · "}{fmt(it.n_amostras)} amostras
-                    {(it.n_controles ?? 0) > 0 ? ` + ${fmt(it.n_controles)} controles` : ""}
-                    {(it.repeticoes ?? 1) !== 1 ? ` × ${fmt(it.repeticoes)} rep.` : ""}
-                    {(it.perda_percentual ?? 0) > 0 ? ` · ${fmt(it.perda_percentual)}% perda` : ""}
-                  </span>
-                </span>
-                <form action={removerItem}>
-                  <input type="hidden" name="item_id" value={it.id} />
-                  <input type="hidden" name="planejamento_id" value={planId} />
-                  <button className="text-xs text-danger-strong hover:underline">Remover</button>
-                </form>
-              </div>
-            ))}
-            {(itens ?? []).length === 0 && (
-              <p className="text-sm text-muted-foreground/80">Nenhuma análise. Adicione abaixo.</p>
-            )}
+          <div className="flex items-center gap-1">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Análises do plano
+            </h2>
+            <HelpTip title="Quantidade planejada">
+              <p>
+                O consumo de insumos e o prazo usam as amostras mais os controles, multiplicados
+                pelas <b>repetições</b> e acrescidos do <b>% de perda</b>.
+              </p>
+              <HelpExample>(10 amostras + 2 controles) × 2 repetições + 10% de perda = 26,4.</HelpExample>
+            </HelpTip>
           </div>
-
-          <form action={adicionarItem} className="mt-3 flex flex-wrap items-end gap-2">
-            <input type="hidden" name="planejamento_id" value={planId} />
-            <div>
-              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Análise</label>
-              <div className="w-64">
-                <Combobox
-                  name="codigo_analise"
-                  placeholder="Selecione…"
-                  searchPlaceholder="Buscar análise…"
-                  emptyText="Nenhuma análise."
-                  options={(analises ?? []).map((a) => ({
-                    value: a.codigo,
-                    label: a.codigo,
-                    hint: a.nome ?? undefined,
-                  }))}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Amostras</label>
-              <input name="n_amostras" type="number" min="1" step="1" className={`${inp} w-24`} />
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Controles</label>
-              <input name="n_controles" type="number" min="0" step="1" defaultValue="0" className={`${inp} w-24`} />
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">Repetições</label>
-              <input name="repeticoes" type="number" min="1" step="1" defaultValue="1" className={`${inp} w-24`} />
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-wide text-muted-foreground/80">% perda</label>
-              <input name="perda_percentual" type="number" min="0" step="1" defaultValue="0" className={`${inp} w-20`} />
-            </div>
-            <button className="app-action-compact bg-primary text-primary-foreground hover:bg-primary/90">
-              Adicionar
-            </button>
-          </form>
+          <PlanoItensEditor
+            planId={planId}
+            itens={(itens ?? []).map((item) => ({
+              id: Number(item.id),
+              codigo_analise: String(item.codigo_analise),
+              n_amostras: item.n_amostras == null ? null : Number(item.n_amostras),
+              n_controles: item.n_controles == null ? null : Number(item.n_controles),
+              repeticoes: item.repeticoes == null ? null : Number(item.repeticoes),
+              perda_percentual: item.perda_percentual == null ? null : Number(item.perda_percentual),
+            }))}
+            analises={(analises ?? []).map((a) => ({ codigo: a.codigo, nome: a.nome ?? null }))}
+            editavel={gestao.podeEditar}
+            motivoSemEdicao={gestao.motivoSemEdicao}
+          />
         </section>
 
         {/* demanda */}
@@ -563,8 +577,15 @@ export default async function PlanoDetalhe({
                 Demanda de insumos {temFalta && <span className="text-warning-strong">· há faltas</span>}
               </h2>
               {temFalta && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Faltas não viram compra direta: elas abrem um pedido interno para seguir validação, compras e recebimento.
+                <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  Faltas viram pedido interno, não compra direta.
+                  <HelpTip title="O que acontece com as faltas">
+                    <p>
+                      <b>Gerar pedido interno</b> cria um pedido com os itens em falta. Ele segue o
+                      caminho normal: validação, compra e recebimento no estoque.
+                    </p>
+                    <p>A <b>Qtd. pedido</b> arredonda a falta para a embalagem ou a compra mínima do insumo.</p>
+                  </HelpTip>
                 </p>
               )}
             </div>
@@ -696,17 +717,8 @@ export default async function PlanoDetalhe({
             temFalta={temFalta}
             contextoCompleto={contextoCompleto}
             temBloqueioEquipamentos={temBloqueioEquipamentos}
+            reservaDesatualizada={reservaDesatualizada}
           />
-          <div className="mt-6">
-            <ConfirmActionButton
-              action={excluirPlano}
-              fields={{ planejamento_id: planId }}
-              trigger="Excluir plano"
-              titulo="Excluir plano"
-              mensagem={`Excluir o plano “${plano.nome}”? Esta ação não pode ser desfeita.`}
-              confirmLabel="Excluir plano"
-            />
-          </div>
         </section>
       </main>
     </div>

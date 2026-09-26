@@ -17,6 +17,7 @@ import {
   validarConferenciaLote,
 } from "@/lib/planejamento/conferencia-lotes";
 import type { FormState } from "@/lib/actions/cadastros";
+import { HelpTip } from "@/components/common/HelpTip";
 
 type StatusCamera = "parada" | "iniciando" | "ativa" | "erro";
 
@@ -100,7 +101,7 @@ export function PlanejamentoConferenciaLotes({
   function resolverScanner(codigo: string) {
     const codigoLimpo = codigo.trim();
     if (!codigoLimpo) {
-      setResultadoScanner({ ok: false, message: "Informe um codigo para resolver." });
+      setResultadoScanner({ ok: false, message: "Informe um código para resolver." });
       return;
     }
 
@@ -131,7 +132,7 @@ export function PlanejamentoConferenciaLotes({
       setCameraMessage(
         error instanceof Error
           ? error.message
-          : "Nao foi possivel acessar a camera. Use a entrada manual.",
+          : "Não foi possível acessar a câmera. Use a entrada manual.",
       );
     }
   }
@@ -153,24 +154,26 @@ export function PlanejamentoConferenciaLotes({
     <section className="mt-8 rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Separar material
-          </h2>
+          <div className="flex items-center gap-1">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Separar material</h2>
+            <HelpTip title="Separar material">
+              <p>
+                A baixa acontece ao clicar em <b>Iniciar</b> e consome sempre os lotes{" "}
+                <b>reservados</b>. Se o lote separado for outro, justifique aqui e ajuste a reserva
+                antes de iniciar.
+              </p>
+            </HelpTip>
+          </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Escaneie o lote físico separado para conferir contra a reserva operacional antes de iniciar.
-            Esta etapa não baixa estoque.
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            A baixa real consome os lotes reservados no planejamento; divergências precisam ser justificadas
-            e tratadas antes da execução.
+            Escaneie o lote separado para conferir com a reserva. Não dá baixa no estoque.
           </p>
         </div>
         <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
           {cameraStatus === "ativa"
-            ? "Camera ativa"
+            ? "Câmera ativa"
             : cameraStatus === "iniciando"
-              ? "Iniciando camera"
-              : "Manual disponivel"}
+              ? "Iniciando câmera"
+              : "Digitação manual"}
         </span>
       </div>
 
@@ -225,7 +228,7 @@ export function PlanejamentoConferenciaLotes({
               ) : (
                 <Camera className="h-3.5 w-3.5" />
               )}
-              Usar camera
+              Usar câmera
             </button>
             <button
               type="button"
@@ -233,7 +236,7 @@ export function PlanejamentoConferenciaLotes({
               disabled={cameraStatus === "parada" || submitPending}
               className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
             >
-              Parar camera
+              Parar câmera
             </button>
           </div>
 
@@ -251,7 +254,7 @@ export function PlanejamentoConferenciaLotes({
                 value={codigoScanner}
                 onChange={(event) => setCodigoScanner(event.target.value)}
                 className={`${inputCls} mt-0 pl-8`}
-                placeholder="/s/lote/123 ou codigo interno"
+                placeholder="/s/lote/123 ou código interno"
               />
             </div>
             <button
@@ -275,10 +278,7 @@ export function PlanejamentoConferenciaLotes({
             >
               <p>{validacao?.message ?? resultadoScanner.message}</p>
               {validacao?.status === "excecao_fefo" && (
-                <p className="mt-1">
-                  A justificativa documenta a separação física; ela não altera automaticamente o lote que
-                  será consumido pela baixa.
-                </p>
+                <p className="mt-1">A justificativa não troca o lote da baixa.</p>
               )}
               {loteEscaneado && (
                 <p className="mt-1 font-medium">
@@ -318,12 +318,16 @@ export function PlanejamentoConferenciaLotes({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted-foreground">
+              <label className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
                 Justificativa {precisaJustificativa && <span className="text-danger-strong">*</span>}
+                <HelpTip title="Quando justificar">
+                  <p>
+                    Quando o lote separado <b>difere do reservado</b> ou não é o que vence primeiro. A
+                    justificativa só registra o motivo; para trocar o lote, ajuste a reserva antes da
+                    baixa.
+                  </p>
+                </HelpTip>
               </label>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Use apenas para documentar divergência física/FEFO. Para trocar lote, ajuste a reserva antes da baixa.
-              </p>
               <textarea
                 name="justificativa"
                 rows={3}

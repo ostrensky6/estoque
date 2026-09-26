@@ -82,7 +82,7 @@ export const PEDIDO_INTERNO_STATUS = {
   cancelado: {
     label: "Cancelado",
     etapa: "Processo encerrado",
-    className: "bg-muted text-muted-foreground/80",
+    className: "bg-danger-soft text-danger-strong",
   },
 } as const;
 

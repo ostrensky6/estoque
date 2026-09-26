@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { gargalo, insumosSelecionados, type Etapa, type InsumoLinha } from "./engine";
+import { consumoInsumo, gargalo, insumosSelecionados, type Etapa, type InsumoLinha } from "./engine";
 
 export type DemandaLinha = {
   insumo_id: number;
@@ -102,11 +102,7 @@ export async function computarDemandaPlano(
 
     for (const l of insumosSelecionados(linhas)) {
       if (l.insumo_id == null) continue;
-      const q = num(l.quantidade_por_amostra);
-      const qty =
-        l.modo_cobranca === "por_execucao"
-          ? q * (lote > 0 ? Math.ceil(n / lote) : 1)
-          : q * n;
+      const qty = consumoInsumo(l, n, lote > 0 ? Math.ceil(n / lote) : 1);
       const cur = agg.get(l.insumo_id) ?? {
         especificacao: l.especificacao_insumo ?? "",
         demanda: 0,
@@ -119,29 +115,55 @@ export async function computarDemandaPlano(
   const ids = [...agg.keys()];
   if (ids.length === 0) return [];
 
-  const [{ data: saldo }, { data: insumos }, { data: reservasPlano }] = await Promise.all([
-    supabase.from("v_estoque_saldo").select("insumo_id, unidade, disponivel").in("insumo_id", ids),
-    supabase
-      .from("insumos")
-      .select("id, fator_conversao, custo_unitario, quantidade_minima_compra, quantidade_embalagem")
-      .in("id", ids),
-    supabase
-      .from("reservas_estoque")
-      .select("insumo_id, quantidade, quantidade_consumida, lote_id")
-      .eq("planejamento_id", planId)
-      .in("status", ["reservado", "parcial"])
-      .in("insumo_id", ids),
-  ]);
+  const [{ data: saldo }, { data: saldoUnidade }, { data: insumos }, { data: reservasPlano }] =
+    await Promise.all([
+      supabase.from("v_estoque_saldo").select("insumo_id, unidade, disponivel").in("insumo_id", ids),
+      supabase
+        .from("v_estoque_disponivel_unidade")
+        .select("insumo_id, disponivel_unidade")
+        .in("insumo_id", ids),
+      supabase
+        .from("insumos")
+        .select("id, fator_conversao, custo_unitario, quantidade_minima_compra, quantidade_embalagem")
+        .in("id", ids),
+      supabase
+        .from("reservas_estoque")
+        .select("insumo_id, quantidade, quantidade_consumida, lote_id")
+        .eq("planejamento_id", planId)
+        .in("status", ["reservado", "parcial"])
+        .in("insumo_id", ids),
+    ]);
   const sMap = new Map(
     (saldo ?? []).map((s) => [s.insumo_id as number, s as { unidade: string | null; disponivel: number }]),
   );
+  // Lotes de embalagens fechadas contam embalagens; o planejamento compara na
+  // unidade física (embalagens × conteúdo). v_estoque_saldo soma a contagem crua.
+  const disponivelUnidade = new Map(
+    (saldoUnidade ?? []).map((s) => [s.insumo_id as number, num(s.disponivel_unidade)]),
+  );
+  const loteIds = [
+    ...new Set((reservasPlano ?? []).map((r) => r.lote_id).filter((id) => id != null)),
+  ] as number[];
+  const conteudoLote = new Map<number, number>();
+  if (loteIds.length > 0) {
+    const { data: lotes } = await supabase
+      .from("lotes_estoque")
+      .select("id, modelo_quantidade, conteudo_embalagem_snapshot")
+      .in("id", loteIds);
+    for (const lote of lotes ?? []) {
+      if (lote.modelo_quantidade === "EMBALAGEM_FECHADA") {
+        conteudoLote.set(lote.id as number, num(lote.conteudo_embalagem_snapshot) || 1);
+      }
+    }
+  }
   const rMap = new Map<number, number>();
   for (const reserva of reservasPlano ?? []) {
     if (reserva.lote_id == null) continue;
     const id = reserva.insumo_id as number;
+    const conteudo = conteudoLote.get(reserva.lote_id as number) ?? 1;
     rMap.set(
       id,
-      (rMap.get(id) ?? 0) + num(reserva.quantidade) - num(reserva.quantidade_consumida),
+      (rMap.get(id) ?? 0) + (num(reserva.quantidade) - num(reserva.quantidade_consumida)) * conteudo,
     );
   }
   // 2.5 — ponte de unidades: a demanda é calculada em unidades de CONSUMO; o
@@ -165,7 +187,7 @@ export async function computarDemandaPlano(
       const info = infoMap.get(id);
       const fator = info?.fatorConversao || 1;
       const demanda = fator > 0 ? d.demanda / fator : d.demanda;
-      const disponivel = Math.max(0, num(s?.disponivel));
+      const disponivel = Math.max(0, disponivelUnidade.get(id) ?? num(s?.disponivel));
       const reservadoPlano = rMap.get(id) ?? 0;
       const falta = Math.max(0, demanda - reservadoPlano - disponivel);
       const quantidadeCompra = arredondarQuantidadeCompra(

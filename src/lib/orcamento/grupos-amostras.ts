@@ -214,3 +214,15 @@ export function payloadSincronizacao(grupos: GrupoAmostraEntrada[] | null) {
     observacao: g.observacao,
   }));
 }
+
+/** Próxima identificação livre ("Grupo A", "Grupo B"…), sem repetir nomes existentes. */
+export function proximaIdentificacaoGrupo(existentes: string[]) {
+  const usadas = new Set(existentes.map((nome) => nome.trim().toLocaleLowerCase("pt-BR")));
+  for (let i = 0; i < 26; i++) {
+    const nome = `Grupo ${String.fromCharCode(65 + i)}`;
+    if (!usadas.has(nome.toLocaleLowerCase("pt-BR"))) return nome;
+  }
+  let n = existentes.length + 1;
+  while (usadas.has(`grupo ${n}`)) n++;
+  return `Grupo ${n}`;
+}

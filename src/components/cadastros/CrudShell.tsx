@@ -5,6 +5,7 @@ import {
   useActionState,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useState,
 } from "react";
@@ -22,7 +23,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp, ChevronsUpDown, MoreHorizontal, Plus, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronsUpDown, Lock, MoreHorizontal, Plus, Search } from "lucide-react";
 import type { Campo, Coluna } from "@/lib/cadastros/config";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,10 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
+import { HelpExample, HelpTip, TextoAjuda } from "@/components/common/HelpTip";
+import { DownloadButton } from "@/components/common/DownloadButton";
+import { DarBaixaDialog } from "@/components/estoque/DarBaixaDialog";
+import type { LoteBaixa } from "@/lib/estoque/baixa";
 import {
   salvarRegistro,
   excluirRegistro,
@@ -70,11 +75,14 @@ import {
 import { corrigirQuantidadeEmbalagens } from "@/lib/actions/estoque";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/formatters";
+import { NOTA_VALOR_MASCARADO, VALOR_MASCARADO, estaMascarado } from "@/lib/cadastros/mascara";
 
 type Registro = Record<string, unknown>;
 
 function fmt(value: unknown, tipo?: Coluna["tipo"]) {
   if (value == null || value === "") return "—";
+  // valor sigiloso já mascarado no servidor (ex.: salário sem permissão)
+  if (estaMascarado(value)) return VALOR_MASCARADO;
   switch (tipo) {
     case "currency":
       return formatCurrency(Number(value));
@@ -116,6 +124,10 @@ const larguraClasse: Record<NonNullable<Coluna["largura"]>, string> = {
 const numericSort: SortingFn<Registro> = (a, b, id) => {
   const x = Number(a.getValue(id) ?? 0);
   const y = Number(b.getValue(id) ?? 0);
+  // valores mascarados ("XXX") não têm ordem numérica: ficam juntos no fim
+  if (Number.isNaN(x) || Number.isNaN(y)) {
+    return Number.isNaN(x) === Number.isNaN(y) ? 0 : Number.isNaN(x) ? 1 : -1;
+  }
   return x === y ? 0 : x > y ? 1 : -1;
 };
 
@@ -145,6 +157,8 @@ export function CrudShell({
   campos,
   rows,
   initialFocusId,
+  somenteLeitura = false,
+  mascarar,
 }: {
   slug: string;
   singular: string;
@@ -153,6 +167,10 @@ export function CrudShell({
   campos: Campo[];
   rows: Registro[];
   initialFocusId?: string;
+  /** esconde criar/editar/excluir (ex.: técnicos sem permissão de remuneração) */
+  somenteLeitura?: boolean;
+  /** colunas exibidas como "XXX" */
+  mascarar?: string[];
 }) {
   const [aberto, setAberto] = useState(false);
   const [editando, setEditando] = useState<Registro | null>(null);
@@ -171,14 +189,14 @@ export function CrudShell({
   }, []);
 
   useEffect(() => {
-    if (focusApplied || !initialFocusId) return;
+    if (focusApplied || !initialFocusId || somenteLeitura) return;
     const registro = rows.find((row) => String(row.id) === initialFocusId);
     if (!registro) return;
     setGlobalFilter(initialFocusId);
     setEditando(registro);
     setAberto(true);
     setFocusApplied(true);
-  }, [focusApplied, initialFocusId, rows]);
+  }, [focusApplied, initialFocusId, rows, somenteLeitura]);
 
   const tipoPorKey = useMemo(
     () =>
@@ -202,11 +220,12 @@ export function CrudShell({
 
   const exibir = useCallback(
     (key: string, value: unknown, tipo?: Coluna["tipo"]) => {
+      if (mascarar?.includes(key)) return "XXX";
       const map = rotuloSelect[key];
       if (map && value != null && value !== "") return map.get(String(value)) ?? fmt(value, tipo);
       return fmt(value, tipo);
     },
-    [rotuloSelect],
+    [rotuloSelect, mascarar],
   );
 
   // busca global: casa contra o valor EXIBIDO (rótulo de select, "Sim", "R$", "%"…)
@@ -247,6 +266,7 @@ export function CrudShell({
         });
       }
     }
+    if (somenteLeitura) return dataCols;
     dataCols.push({
       id: "_acoes",
       header: "Ações",
@@ -262,7 +282,7 @@ export function CrudShell({
       ),
     });
     return dataCols;
-  }, [campos, colunas, slug, rotulo, editar, exibir]);
+  }, [campos, colunas, slug, rotulo, editar, exibir, somenteLeitura]);
 
   // O React Compiler não memoiza componentes que usam useReactTable (a API
   // retorna funções não-memoizáveis); o TanStack faz a própria memoização e os
@@ -399,22 +419,35 @@ export function CrudShell({
         })}
 
         <Badge variant={temFiltro ? "secondary" : "muted"}>
-          {temFiltro ? `${totalFiltrado} de ${rows.length}` : `${rows.length} registro(s)`}
+          {temFiltro
+            ? `${totalFiltrado} de ${rows.length}`
+            : `${rows.length} ${rows.length === 1 ? "registro" : "registros"}`}
         </Badge>
 
-        <Button onClick={novo} className="ml-auto">
-          <Plus />
-          Novo {singular}
-        </Button>
-      </div>
+        {slug === "insumos" && (
+          <HelpTip title="Coluna quantidade" side="bottom">
+            <p>
+              Número de <b>embalagens fechadas</b> em estoque (frascos, pacotes, kits), somando os
+              lotes aceitos. Não é o volume de cada embalagem.
+            </p>
+            <p>Para corrigir, dar entrada em um lote ou dar baixa, abra o insumo.</p>
+          </HelpTip>
+        )}
 
-      {slug === "insumos" && (
-        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-          Quantidade é o número de embalagens fechadas em mãos (frascos, pacotes, kits) — não o
-          conteúdo/volume de cada uma. É calculada pelos lotes e não é editável direto na tabela; para
-          corrigi-la, abra o insumo.
-        </p>
-      )}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <DownloadButton href={`/cadastros/${slug}/export`} fileName={`${slug}.xlsx`}>
+            Planilha
+          </DownloadButton>
+          {somenteLeitura ? (
+            <Badge variant="muted">Somente consulta</Badge>
+          ) : (
+            <Button onClick={novo}>
+              <Plus />
+              Novo {singular}
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Tabela */}
       <div className="mt-4 overflow-x-auto rounded-lg border border-border bg-card text-xs shadow-sm">
@@ -719,14 +752,18 @@ function CadastroDrawer({
           </DrawerDescription>
         </DrawerHeader>
 
-        {podeCorrigirQuantidade && (
-          <QuantidadeInsumoResumo
-            insumoId={Number(registro?.id)}
-            quantidadeAtual={Number(registro?.quantidade ?? 0)}
+        {isInsumos && registro?.id != null && (
+          <LotesInsumoResumo
+            insumoId={Number(registro.id)}
+            especificacao={String(registro.especificacao ?? singular)}
+            unidade={typeof registro.unidade === "string" ? registro.unidade : null}
+            quantidadeAtual={Number(registro.quantidade ?? 0)}
+            podeCorrigirQuantidade={podeCorrigirQuantidade}
+            lotes={(registro.lotes_resumo as LoteBaixa[] | undefined) ?? []}
           />
         )}
 
-        <form action={action} className="mt-6 grid grid-cols-2 gap-4">
+        <form action={action} className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <input type="hidden" name="_slug" value={slug} />
           <input type="hidden" name="_operacao_id" value={operacaoId} />
           {registro?.id != null && (
@@ -736,7 +773,7 @@ function CadastroDrawer({
           {campos.map((c) => (
             <Fragment key={c.name}>
               {c.grupo && (
-                <h3 className="col-span-2 mt-2 border-b border-border pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <h3 className="mt-2 sm:col-span-2 border-b border-border pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {c.grupo}
                 </h3>
               )}
@@ -749,39 +786,79 @@ function CadastroDrawer({
           ))}
 
           {isInsumos && !registro && (
-            <div className="col-span-2">
-              <Label className="block">
-                Quantidade (embalagens fechadas) <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                name="quantidade"
-                type="number"
-                min={0}
-                step="1"
-                defaultValue="0"
-                className={cn(
-                  "mt-1",
-                  state.errors?.quantidade && "border-destructive focus-visible:ring-destructive",
+            <>
+              <h3 className="mt-2 border-b border-border pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:col-span-2">
+                Estoque inicial
+              </h3>
+              <div>
+                <div className="flex min-h-5 items-center gap-0.5">
+                  <Label htmlFor="campo-quantidade" className="block">
+                    Quantidade (embalagens fechadas)
+                  </Label>
+                  <HelpTip title="Quantidade em estoque">
+                    <p>
+                      Conte <b>embalagens fechadas</b> (frascos, pacotes, kits), não o volume de cada
+                      uma. Deixe 0 se ainda não houver.
+                    </p>
+                    <p>A quantidade entra direto no estoque, sem quarentena.</p>
+                    <HelpExample>
+                      3 frascos de 500 mL → informe <b>3</b> (não 1500).
+                    </HelpExample>
+                  </HelpTip>
+                </div>
+                <Input
+                  id="campo-quantidade"
+                  name="quantidade"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  step="1"
+                  defaultValue="0"
+                  aria-invalid={state.errors?.quantidade ? true : undefined}
+                  className={cn(
+                    "mt-1",
+                    state.errors?.quantidade && "border-destructive focus-visible:ring-destructive",
+                  )}
+                />
+                {state.errors?.quantidade && (
+                  <p className="mt-1 text-xs text-destructive">{state.errors.quantidade}</p>
                 )}
-              />
-              {state.errors?.quantidade ? (
-                <p className="mt-1 text-xs text-destructive">{state.errors.quantidade}</p>
-              ) : (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Número de frascos/pacotes/kits fechados, não o volume de cada um. Ex.: 3 frascos de
-                  500 mL = 3, não 1500. Entra direto no estoque, sem quarentena.
-                </p>
-              )}
-            </div>
+              </div>
+              <div>
+                <div className="flex min-h-5 items-center gap-0.5">
+                  <Label htmlFor="campo-codigo_lote" className="block">
+                    Número do lote
+                  </Label>
+                  <HelpTip title="Número do lote">
+                    <p>
+                      Código que o <b>fabricante</b> imprime na embalagem. Liga a quantidade informada
+                      ao lado à validade e ao rastreio do lote.
+                    </p>
+                    <HelpExample>
+                      Frasco com “LOT 24B1187” → informe <b>24B1187</b>. Sem código? Deixe vazio e o
+                      sistema cria um identificador.
+                    </HelpExample>
+                  </HelpTip>
+                </div>
+                <Input
+                  id="campo-codigo_lote"
+                  name="codigo_lote"
+                  maxLength={80}
+                  placeholder="Ex.: 24B1187"
+                  autoComplete="off"
+                  className="mt-1"
+                />
+              </div>
+            </>
           )}
 
           {state.message && !state.ok && (
-            <p className="col-span-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <p className="rounded-md sm:col-span-2 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {state.message}
             </p>
           )}
 
-          <DrawerFooter className="col-span-2">
+          <DrawerFooter className="sm:col-span-2">
             <Button
               type="button"
               variant="ghost"
@@ -799,38 +876,106 @@ function CadastroDrawer({
   );
 }
 
-function QuantidadeInsumoResumo({
+const ROTULO_STATUS_LOTE: Record<string, string> = {
+  quarentena: "Quarentena",
+  aceito: "Aceito",
+  em_uso: "Em uso",
+  bloqueado: "Bloqueado",
+};
+
+/** Seção "Lotes" da edição do insumo: saldo por lote, entrada de novo lote e saída. */
+function LotesInsumoResumo({
   insumoId,
+  especificacao,
+  unidade,
   quantidadeAtual,
+  podeCorrigirQuantidade,
+  lotes,
 }: {
   insumoId: number;
+  especificacao: string;
+  unidade: string | null;
   quantidadeAtual: number;
+  podeCorrigirQuantidade: boolean;
+  lotes: LoteBaixa[];
 }) {
   const [corrigindo, setCorrigindo] = useState(false);
 
   return (
-    <div className="mt-4 flex flex-col gap-3 rounded-md bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-sm font-medium">Quantidade atual: {quantidadeAtual}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Embalagens fechadas. Corrigir exige motivo e fica registrado na auditoria.
-        </p>
+    <section className="mt-4 rounded-md border border-border bg-muted/40 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1">
+          <h3 className="text-sm font-semibold">Lotes em estoque</h3>
+          <HelpTip title="Lotes do insumo">
+            <p>
+              Cada entrada vira um lote, com número, validade e saldo próprios. O uso segue{" "}
+              <b>FEFO</b>: o lote que vence primeiro sai primeiro.
+            </p>
+            <p>
+              <b>+ Entrada</b> registra um lote novo. <b>Dar baixa</b> retira material com motivo,
+              que fica no histórico do lote.
+            </p>
+          </HelpTip>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild size="sm" variant="outline">
+            <a href={`/estoque?entrada=${insumoId}`}>+ Entrada</a>
+          </Button>
+          <DarBaixaDialog
+            lotes={lotes}
+            unidade={unidade ?? ""}
+            especificacao={especificacao}
+            mostrarIndisponivel={false}
+            triggerClassName="inline-flex h-8 items-center rounded-md border border-danger-strong/40 bg-card px-3 text-xs font-medium text-danger-strong hover:bg-danger-soft"
+          />
+          {podeCorrigirQuantidade && (
+            <Button type="button" size="sm" variant="ghost" onClick={() => setCorrigindo(true)}>
+              Corrigir quantidade
+            </Button>
+          )}
+        </div>
       </div>
-      <Button
-        type="button"
-        variant="outline"
-        className="shrink-0"
-        onClick={() => setCorrigindo(true)}
-      >
-        Corrigir quantidade
-      </Button>
-      <CorrigirQuantidadeDialog
-        open={corrigindo}
-        onOpenChange={setCorrigindo}
-        insumoId={insumoId}
-        quantidadeAtual={quantidadeAtual}
-      />
-    </div>
+
+      {lotes.length > 0 ? (
+        <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-card text-xs">
+          {lotes.slice(0, 6).map((lote) => (
+            <li key={lote.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-2.5 py-1.5">
+              <a
+                href={`/estoque/lotes/${lote.id}`}
+                className="font-medium text-brand-700 hover:underline dark:text-brand-400"
+              >
+                Lote {lote.codigoLote}
+              </a>
+              <span className="text-muted-foreground">
+                validade {lote.validade ? formatDate(lote.validade) : "—"}
+              </span>
+              <span className="tabular-nums">
+                {formatNumber(lote.quantidadeAtual)} {lote.modeloQuantidade === "EMBALAGEM_FECHADA" ? "emb." : unidade ?? ""}
+              </span>
+              <Badge variant="muted">{ROTULO_STATUS_LOTE[lote.status] ?? lote.status}</Badge>
+            </li>
+          ))}
+          {lotes.length > 6 && (
+            <li className="px-2.5 py-1.5 text-muted-foreground">
+              +{lotes.length - 6} lote(s) — veja todos em Estoque.
+            </li>
+          )}
+        </ul>
+      ) : (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Nenhum lote com saldo. Quantidade atual: {quantidadeAtual}.
+        </p>
+      )}
+
+      {podeCorrigirQuantidade && corrigindo && (
+        <CorrigirQuantidadeDialog
+          open={corrigindo}
+          onOpenChange={setCorrigindo}
+          insumoId={insumoId}
+          quantidadeAtual={quantidadeAtual}
+        />
+      )}
+    </section>
   );
 }
 
@@ -846,6 +991,7 @@ function CorrigirQuantidadeDialog({
   quantidadeAtual: number;
 }) {
   const router = useRouter();
+  // o diálogo monta a cada abertura: cada correção é uma operação nova
   const [operacaoId] = useState(() => crypto.randomUUID());
   const [state, action, pending] = useActionState<FormState, FormData>(
     corrigirQuantidadeEmbalagens,
@@ -944,19 +1090,65 @@ function CampoInput({
     (erro
       ? "border-destructive focus-visible:ring-destructive"
       : "");
-  const span = campo.colSpan === 2 ? "col-span-2" : "col-span-1";
+  const span = campo.colSpan === 2 ? "sm:col-span-2" : "sm:col-span-1";
   const valorInicial = valor == null ? campo.valorPadrao : valor;
   const v = valorInicial == null ? "" : String(valorInicial);
+  const idBase = useId();
+  const inputId = `campo-${campo.name}`;
+  const erroId = erro ? `${inputId}-erro` : undefined;
+
+  if (campo.mascarado) {
+    // Sem permissão: o servidor já trocou o valor por "XXX". O input não tem
+    // `name`, então nada é enviado e o valor atual é preservado no banco.
+    const mascaradoId = `${idBase}-valor`;
+    const notaId = `${idBase}-nota`;
+    return (
+      <div className={span}>
+        <Label htmlFor={mascaradoId} className="block">
+          {campo.label}
+        </Label>
+        <Input
+          id={mascaradoId}
+          value={VALOR_MASCARADO}
+          readOnly
+          disabled
+          aria-describedby={notaId}
+          className="mt-1"
+        />
+        <p id={notaId} className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+          <Lock className="h-3 w-3" aria-hidden="true" />
+          {NOTA_VALOR_MASCARADO}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className={span}>
-      <Label className="block">
-        {campo.label}
-        {campo.obrigatorio && <span className="text-destructive"> *</span>}
-      </Label>
+      <div className="flex min-h-5 items-center gap-0.5">
+        <Label htmlFor={inputId} className="block">
+          {campo.label}
+          {campo.obrigatorio && <span className="text-destructive"> *</span>}
+        </Label>
+        {campo.ajuda && (
+          <HelpTip title={campo.label}>
+            <p>
+              <TextoAjuda texto={campo.ajuda} />
+            </p>
+            {campo.exemplo && (
+              <HelpExample>
+                <TextoAjuda texto={campo.exemplo} />
+              </HelpExample>
+            )}
+          </HelpTip>
+        )}
+      </div>
 
       {campo.tipo === "textarea" ? (
         <Textarea
+          id={inputId}
+          aria-invalid={erro ? true : undefined}
+          aria-describedby={erroId}
           name={campo.name}
           defaultValue={v}
           rows={3}
@@ -968,6 +1160,9 @@ function CampoInput({
         />
       ) : campo.tipo === "select" ? (
         <Select
+          id={inputId}
+          aria-invalid={erro ? true : undefined}
+          aria-describedby={erroId}
           name={campo.name}
           defaultValue={v}
           className={cn(
@@ -985,12 +1180,16 @@ function CampoInput({
       ) : campo.tipo === "checkbox" ? (
         <div className="mt-2">
           <Checkbox
+            id={inputId}
             name={campo.name}
             defaultChecked={valor === undefined ? Boolean(campo.padraoLigado) : Boolean(valor)}
           />
         </div>
       ) : (
         <Input
+          id={inputId}
+          aria-invalid={erro ? true : undefined}
+          aria-describedby={erroId}
           name={campo.name}
           defaultValue={v}
           placeholder={campo.placeholder}
@@ -1015,11 +1214,11 @@ function CampoInput({
         />
       )}
 
-      {erro ? (
-        <p className="mt-1 text-xs text-destructive">{erro}</p>
-      ) : campo.ajuda ? (
-        <p className="mt-1 text-xs text-muted-foreground">{campo.ajuda}</p>
-      ) : null}
+      {erro && (
+        <p id={erroId} className="mt-1 text-xs text-destructive">
+          {erro}
+        </p>
+      )}
     </div>
   );
 }
