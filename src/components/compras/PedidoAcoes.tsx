@@ -11,6 +11,7 @@ import {
 import type { FormState } from "@/lib/actions/cadastros";
 import { ConfirmSubmitButton } from "@/components/common/ConfirmSubmitButton";
 import { SubmitButton } from "@/components/common/SubmitButton";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 type Action = (prev: FormState, fd: FormData) => Promise<FormState>;
 type Confirmacao = { titulo: string; mensagem: string; confirmLabel: string };
@@ -38,7 +39,7 @@ function Botao({
   }, [state, router]);
   return (
     <div className="flex flex-col gap-1">
-      <form action={formAction} className="flex flex-wrap items-end gap-2">
+      <form action={formAction} {...formularioSemPerda(state)} className="flex flex-wrap items-end gap-2">
         <input type="hidden" name="pedido_id" value={pedidoId} />
         {motivo && (
           <div>
@@ -88,7 +89,7 @@ function EncerrarComPendencia({ pedidoId }: { pedidoId: number }) {
   }, [state, router]);
   return (
     <div className="flex flex-col gap-1">
-      <form action={formAction} className="flex flex-wrap items-end gap-2">
+      <form action={formAction} {...formularioSemPerda(state)} className="flex flex-wrap items-end gap-2">
         <input type="hidden" name="pedido_id" value={pedidoId} />
         <div>
           <label htmlFor={`motivo-encerrar-${pedidoId}`} className="block text-xs text-muted-foreground">

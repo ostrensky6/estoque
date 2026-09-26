@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ESTADO_INICIAL, type EstadoAcao } from "@/lib/erros";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 /**
  * Cancelamento com motivo digitado (UI-9). O motivo vai para o histórico;
@@ -59,7 +60,7 @@ export function CancelarComMotivo({
               <div>{mensagem}</div>
             </DialogDescription>
           </DialogHeader>
-          <form action={enviar} className="grid gap-2">
+          <form action={enviar} {...formularioSemPerda(estado)} className="grid gap-2">
             {Object.entries(fields).map(([chave, valor]) => (
               <input key={chave} type="hidden" name={chave} value={String(valor)} />
             ))}

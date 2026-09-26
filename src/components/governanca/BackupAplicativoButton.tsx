@@ -7,6 +7,7 @@ import {
   executarBackupAplicativo,
   type BackupActionState,
 } from "@/lib/actions/backups";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 const initialState: BackupActionState = {
   ok: false,
@@ -21,7 +22,7 @@ export function BackupAplicativoButton() {
 
   return (
     <div className="space-y-3">
-      <form action={action}>
+      <form action={action} {...formularioSemPerda(state)}>
         <button
           type="submit"
           disabled={pending}

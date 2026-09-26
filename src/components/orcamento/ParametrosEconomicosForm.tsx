@@ -6,6 +6,7 @@ import {
   type ParametrosEconomicosState,
 } from "@/lib/actions/orcamentos";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 type ParametroCampo = {
   chave:
@@ -94,7 +95,7 @@ export function ParametrosEconomicosForm({
     `mt-1 w-full rounded-md border bg-card px-3 py-2 text-sm font-medium tabular-nums focus:outline-none focus:ring-1 focus:ring-brand-500 ${TOM_ENTRADA}`;
 
   return (
-    <form action={action} className="space-y-6">
+    <form action={action} {...formularioSemPerda(state)} className="space-y-6">
       <div className="grid gap-3 sm:grid-cols-2">
         {CAMPOS.map((campo) => {
           const erro = state.errors?.[campo.chave];

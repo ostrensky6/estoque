@@ -7,6 +7,7 @@ import { SubmitButton } from "@/components/common/SubmitButton";
 import { FormEstado } from "@/components/orcamento/FormEstado";
 import { ESTADO_INICIAL, type EstadoAcao } from "@/lib/erros";
 import { formatDateTime } from "@/lib/formatters";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 export type EstadoLinkPublico = EstadoAcao & { caminho?: string };
 
@@ -55,7 +56,7 @@ export function LinkPublicoPainel({
   return (
     <div className="grid gap-3">
       {podeCriar ? (
-        <form action={enviar} className="flex flex-wrap items-center gap-2">
+        <form action={enviar} {...formularioSemPerda(estado)} className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="versao_id" value={versaoId} />
           <SubmitButton size="sm" pendingLabel="Criando…">Criar link de aprovação</SubmitButton>
           <MensagemAcao estado={estado.ok ? { ok: true } : estado} />

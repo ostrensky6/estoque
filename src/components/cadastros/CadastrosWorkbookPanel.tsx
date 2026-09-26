@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { HelpTip } from "@/components/common/HelpTip";
 import { MensagemAcao } from "@/components/common/MensagemAcao";
 import { SubmitButton } from "@/components/common/SubmitButton";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 const initialState: ImportCadastrosState = { ok: false };
 const LIMITE_MENSAGENS = 50;
@@ -61,7 +62,7 @@ export function CadastrosWorkbookPanel({ podeImportar = true }: { podeImportar?:
       </CardHeader>
       <CardContent>
         {podeImportar ? (
-        <form ref={formRef} action={action} className="flex flex-wrap items-end gap-3">
+        <form ref={formRef} action={action} {...formularioSemPerda(state)} className="flex flex-wrap items-end gap-3">
           <div className="min-w-64 flex-1">
             <Label htmlFor="cadastros-xlsx">Planilha preenchida</Label>
             <Input

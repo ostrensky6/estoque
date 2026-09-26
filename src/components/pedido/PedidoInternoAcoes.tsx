@@ -21,6 +21,7 @@ import {
 } from "@/lib/actions/pedidos-internos";
 import type { FormState } from "@/lib/actions/cadastros";
 import { SubmitButton } from "@/components/common/SubmitButton";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 type Action = (prev: FormState, fd: FormData) => Promise<FormState>;
 
@@ -60,7 +61,7 @@ function Botao({
 
   return (
     <div className="flex flex-col gap-1">
-      <form action={formAction} className="flex flex-wrap items-center gap-2">
+      <form action={formAction} {...formularioSemPerda(state)} className="flex flex-wrap items-center gap-2">
         <input type="hidden" name="pedido_interno_id" value={pedidoId} />
         {observacao && <input type="hidden" name="observacao" value={observacao} />}
         {comentarioPlaceholder && (

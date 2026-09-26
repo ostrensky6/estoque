@@ -10,6 +10,7 @@ import { HelpExample, HelpFormula, HelpTip } from "@/components/common/HelpTip";
 import { MensagemAcao } from "@/components/common/MensagemAcao";
 import { SubmitButton } from "@/components/common/SubmitButton";
 import { formatCurrency as brl, APP_LOCALE } from "@/lib/formatters";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 export type Param = {
   chave: string;
@@ -137,7 +138,7 @@ export function ParametrosForm({ params, podeEditar = true }: { params: Param[];
   }
 
   return (
-    <form action={action} className="space-y-6">
+    <form action={action} {...formularioSemPerda(state)} className="space-y-6">
       <input suppressHydrationWarning type="hidden" name="chaves" value={editaveis.join(",")} />
 
       <section>

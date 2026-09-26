@@ -12,6 +12,7 @@ import type { FormState } from "@/lib/actions/cadastros";
 import { HelpTip } from "@/components/common/HelpTip";
 import { ConfirmSubmitButton } from "@/components/common/ConfirmSubmitButton";
 import { SubmitButton } from "@/components/common/SubmitButton";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 type Action = (prev: FormState, fd: FormData) => Promise<FormState>;
 type Confirmacao = { titulo: string; mensagem: string; confirmLabel: string; destrutivo?: boolean };
@@ -39,7 +40,7 @@ function Botao({
 
   return (
     <div className="flex flex-col gap-1">
-      <form action={formAction}>
+      <form action={formAction} {...formularioSemPerda(state)}>
         <input type="hidden" name="planejamento_id" value={planId} />
         {confirmacao ? (
           <ConfirmSubmitButton className={cls} {...confirmacao}>

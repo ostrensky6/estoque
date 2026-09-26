@@ -39,6 +39,7 @@ import { LoteAcoes } from "@/components/estoque/LoteAcoes";
 import { DarBaixaDialog } from "@/components/estoque/DarBaixaDialog";
 import type { LoteBaixa, ModeloQuantidadeLote } from "@/lib/estoque/baixa";
 import { HelpExample, HelpTip } from "@/components/common/HelpTip";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 type Notificacao = {
   id: number;
@@ -887,7 +888,7 @@ function GerarPedidoInsumoButton({ insumoId }: { insumoId: number | null }) {
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <form action={action}>
+      <form action={action} {...formularioSemPerda(state)}>
         <input type="hidden" name="insumo_id" value={insumoId} />
         <button
           disabled={pending}

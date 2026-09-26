@@ -2,6 +2,7 @@
 
 import { useActionState, type ReactNode } from "react";
 import { salvarDemanda, type DemandaFormState } from "@/lib/actions/demandas";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 const initialState: DemandaFormState = { ok: false };
 const salvarComEstado: (
@@ -19,6 +20,7 @@ export function SalvarDemandaForm({ children }: { children: ReactNode }) {
   return (
     <form
       action={formAction}
+      {...formularioSemPerda(salvamentoConfirmado ? state : { ok: false, message: mensagem })}
       aria-busy={pending}
       className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"
     >

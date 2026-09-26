@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { OPCOES_INSTITUICAO, opcaoInstituicao } from "@/lib/orcamento/identidade-institucional";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 type Option = { id: number; nome: string };
 type Demanda = {
@@ -206,7 +207,7 @@ export function DemandaForm({
     .filter((reagente) => reagente.status_vinculo_insumo === "insumo_sem_cadastro_correspondente");
 
   return (
-    <form action={formAction} className="mt-3 space-y-4">
+    <form action={formAction} {...formularioSemPerda(state)} className="mt-3 space-y-4">
       {demanda.id > 0 ? <input type="hidden" name="demanda_id" value={demanda.id} /> : null}
       <input type="hidden" name="escopo_salvamento" value={modo} />
       {!mostraDemanda && (

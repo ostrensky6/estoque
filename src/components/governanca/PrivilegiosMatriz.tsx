@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 const initial: FormState = { ok: false, message: "" };
 
@@ -124,7 +125,7 @@ export function PrivilegiosMatriz({ permissoesPorCategoria }: { permissoesPorCat
             </DialogDescription>
           </DialogHeader>
           {papel && (
-            <form action={action} className="space-y-4">
+            <form action={action} {...formularioSemPerda(state)} className="space-y-4">
               <input type="hidden" name="papel" value={papel.value} />
               {/* sem isto, desmarcar tudo voltaria aos padrões do código */}
               <input type="hidden" name="permissoes_presentes" value="1" />

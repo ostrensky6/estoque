@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { EstadoAcao } from "@/lib/erros";
 import { MensagemAcao } from "@/components/common/MensagemAcao";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 type AcaoComEstado = (prev: EstadoAcao, formData: FormData) => Promise<EstadoAcao>;
 
@@ -36,7 +37,7 @@ export function FormComMensagem({
 
   const visivel = state.ok && !mostrarSucesso ? null : state;
   return (
-    <form action={formAction} className={className} encType={encType}>
+    <form action={formAction} {...formularioSemPerda(state)} className={className} encType={encType}>
       {children}
       <MensagemAcao estado={visivel} className="basis-full text-xs font-medium md:col-span-2" />
       {!state.ok && state.errors && Object.keys(state.errors).length > 0 && (

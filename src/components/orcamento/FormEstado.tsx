@@ -4,6 +4,7 @@ import { useActionState, type ReactNode } from "react";
 
 import { MensagemAcao } from "@/components/common/MensagemAcao";
 import { ESTADO_INICIAL, type EstadoAcao } from "@/lib/erros";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 /**
  * Formulário ligado a uma Server Action que devolve `EstadoAcao`. A recusa
@@ -25,7 +26,7 @@ export function FormEstado({
 }) {
   const [estado, enviar] = useActionState(action, ESTADO_INICIAL);
   return (
-    <form action={enviar} className={className} aria-label={ariaLabel}>
+    <form action={enviar} {...formularioSemPerda(estado)} className={className} aria-label={ariaLabel}>
       {children}
       <MensagemAcao estado={estado} className={mensagemClassName} />
     </form>

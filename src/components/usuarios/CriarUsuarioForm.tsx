@@ -10,6 +10,7 @@ import type { FormState } from "@/lib/actions/cadastros";
 import { HelpTip } from "@/components/common/HelpTip";
 import { MensagemAcao } from "@/components/common/MensagemAcao";
 import { SubmitButton } from "@/components/common/SubmitButton";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 const initialState: FormState = { ok: false, message: "" };
 
@@ -19,6 +20,7 @@ export function CriarUsuarioForm() {
   return (
     <form
       action={action}
+      {...formularioSemPerda(state)}
       className="mt-6 rounded-lg border border-info-strong/30 bg-info-soft p-4"
     >
       <div className="flex flex-wrap items-end gap-3">

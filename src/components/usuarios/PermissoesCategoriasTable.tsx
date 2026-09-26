@@ -18,6 +18,7 @@ import type { FormState } from "@/lib/actions/cadastros";
 import { HelpTip } from "@/components/common/HelpTip";
 import { MensagemAcao } from "@/components/common/MensagemAcao";
 import { SubmitButton } from "@/components/common/SubmitButton";
+import { formularioSemPerda } from "@/lib/formulario-sem-perda";
 
 const initial: FormState = { ok: false, message: "" };
 
@@ -93,7 +94,7 @@ export function PermissoesCategoriasTable({ permissoesPorCategoria }: { permisso
             </DialogDescription>
           </DialogHeader>
           {categoria && (
-            <form action={action} className="space-y-4">
+            <form action={action} {...formularioSemPerda(state)} className="space-y-4">
               <input type="hidden" name="papel" value={categoria.value} />
               <input type="hidden" name="permissoes_presentes" value="1" />
               <div className="grid gap-2 md:grid-cols-2">
