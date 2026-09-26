@@ -265,7 +265,9 @@ begin
     raise exception '0128: tecnico marcou leitura por outro usuario';
   exception when insufficient_privilege then null;
   end;
-  if public.aguardando_voce() <> '[]'::jsonb then
+  -- 0127: o tecnico registra chegada de compra (linha com zero itens); nada pendente de fato
+  if exists (select 1 from jsonb_array_elements(public.aguardando_voce()) e
+             where (e ->> 'quantidade')::bigint > 0) then
     raise exception '0128: tecnico nao deveria ter nada aguardando: %', public.aguardando_voce();
   end if;
 end $$;
