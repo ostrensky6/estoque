@@ -25,7 +25,7 @@ export const FORMULA_ECONOMICA =
 /** Parâmetros econômicos da proposta, na ordem canônica. */
 export const PARAMETROS_PROPOSTA = [
   { chave: "impostos_legacy", label: "Impostos" },
-  { chave: "incubacao", label: "Taxa de incubação" },
+  { chave: "incubacao", label: "Taxa de incubação (UFPR)" },
   { chave: "reserva", label: "Reserva" },
   { chave: "investimentos", label: "Investimentos" },
   { chave: "lucro", label: "Lucro" },

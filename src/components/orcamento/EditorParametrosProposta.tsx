@@ -74,7 +74,7 @@ export function EditorParametrosProposta({
               Custo R$ 1.000 com 16,33% de impostos e 20% de lucro (soma 36,33%) → preço R$ 1.570,60.
             </HelpExample>
             <p>
-              <b>Taxa de incubação</b>: percentual da UFPR sobre o valor dos serviços de cada nota fiscal
+              <b>Taxa de incubação (UFPR)</b>: percentual da UFPR sobre o valor dos serviços de cada nota fiscal
               (padrão 2%, em Parâmetros de custeio). O <b>valor fixo mensal</b> da incubação é custo fixo:
               fica em Cadastros → Overhead e já entra no custo das análises.
             </p>

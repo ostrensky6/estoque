@@ -21,7 +21,7 @@ set local statement_timeout = '60s';
 insert into public.parametros (chave, valor, unidade, descricao)
 values (
   'taxa_incubacao', 2, '%',
-  'Taxa de incubação UFPR sobre o valor dos serviços de cada nota fiscal.'
+  'Taxa de incubação (UFPR) sobre o valor dos serviços de cada nota fiscal.'
 )
 on conflict (chave) do nothing;
 

@@ -27,7 +27,7 @@ const LABELS: Record<string, string> = {
   taxas: "Taxas administrativas",
   fundo_reserva: "Fundo de reserva",
   fundo_investimento: "Fundo de investimento",
-  taxa_incubacao: "Taxa de incubação UFPR (% por nota fiscal)",
+  taxa_incubacao: "Taxa de incubação (UFPR) — % por nota fiscal",
   dias_uteis_ano: "Dias úteis por ano",
   horas_mes_tecnico: "Horas-base mensais por técnico",
   horas_bancada_mes: "Horas de bancada por mês",
