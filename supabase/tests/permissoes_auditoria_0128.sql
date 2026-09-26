@@ -78,9 +78,11 @@ begin
 
   insert into public.insumos (especificacao, unidade, fator_conversao) values ('TS-0128 Insumo', 'un', 1);
   insert into public.equipamentos (nome) values ('TS-0128 Eq base');
-  insert into public.demandas_propostas (titulo) values ('TS-0128 proposta');
+  -- Um orçamento por proposta: a 0126 proíbe dois módulos ativos na mesma proposta.
+  insert into public.demandas_propostas (titulo)
+  values ('TS-0128 proposta rascunho'), ('TS-0128 proposta enviado');
   insert into public.orcamentos (cliente_nome, status, demanda_id)
-  select c, s, (select id from public.demandas_propostas where titulo = 'TS-0128 proposta')
+  select c, s, (select id from public.demandas_propostas where titulo = 'TS-0128 proposta ' || s)
   from (values ('TS-0128 rascunho', 'rascunho'), ('TS-0128 enviado', 'enviado')) v(c, s);
   insert into public.notificacoes (tipo, titulo, papel_destino, dedupe_key)
   values ('sistema', 'TS-0128 aviso do gestor', 'gestor', 'ts-0128-gestor'),
