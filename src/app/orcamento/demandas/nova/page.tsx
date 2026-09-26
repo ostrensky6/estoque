@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
-import { HelpTip } from "@/components/common/HelpTip";
 import {
   DemandaForm,
   type AnaliseCatalogoDemanda,
@@ -148,10 +147,7 @@ export default async function NovaDemandaPage() {
               Entrada comercial
             </p>
             <div className="mt-1 flex items-center gap-1">
-              <h1 className="text-xl font-semibold tracking-tight">Novo Orçamento</h1>
-              <HelpTip title="Novo orçamento">
-                <p>Preencha os dados <b>uma única vez</b>: eles seguem para os custos do laboratório, do projeto e para a proposta final.</p>
-              </HelpTip>
+              <h1 className="text-xl font-semibold tracking-tight">Novo orçamento</h1>
             </div>
           </div>
           <Link
