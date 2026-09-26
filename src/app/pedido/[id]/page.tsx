@@ -44,6 +44,9 @@ type PedidoInternoItem = {
   volume: string | null;
   quantidade: number;
   unidade: string | null;
+  /** 0123: "embalagem" = quantidade em frascos fechados de conteudo_embalagem. */
+  quantidade_em?: string | null;
+  conteudo_embalagem?: number | null;
   orcamento_previo: number | null;
   fornecedor_sugerido: string | null;
   observacao: string | null;
@@ -79,6 +82,7 @@ type InsumoPedidoRaw = {
   codigo_fabricante?: string | null;
   custo_unitario?: number | null;
   quantidade_embalagem?: number | null;
+  custo_total_embalagem?: number | null;
   tipo_insumos?: { nome: string | null } | { nome: string | null }[] | null;
   fornecedores?: { nome: string | null } | { nome: string | null }[] | null;
 };
@@ -222,7 +226,11 @@ function primeiraRelacao<T>(value: T | T[] | null | undefined): T | null {
   return value ?? null;
 }
 
-function montarCatalogoItens(insumos: InsumoPedidoRaw[], historico: PedidoItemHistorico[]): PedidoItemCatalogo[] {
+function montarCatalogoItens(
+  insumos: InsumoPedidoRaw[],
+  historico: PedidoItemHistorico[],
+  insumosLegado: Set<number>,
+): PedidoItemCatalogo[] {
   const unidades = new Map<number, Set<string>>();
   const modelos = new Map<number, Set<string>>();
   const volumes = new Map<number, Set<string>>();
@@ -255,6 +263,15 @@ function montarCatalogoItens(insumos: InsumoPedidoRaw[], historico: PedidoItemHi
     tipoInsumo: primeiraRelacao(insumo.tipo_insumos)?.nome,
     unidade: insumo.unidade,
     custoUnitario: insumo.custo_unitario,
+    // Mesma regra de kontrol_private.modelo_quantidade_insumo (0123): conta em frascos
+    // quando há volume do frasco e unidade, e não restam lotes antigos por volume.
+    emFrascos: !insumosLegado.has(insumo.id) && Number(insumo.quantidade_embalagem) > 0 && Boolean(insumo.unidade?.trim()),
+    conteudoEmbalagem: insumo.quantidade_embalagem ?? null,
+    custoEmbalagem:
+      insumo.custo_total_embalagem ??
+      (insumo.custo_unitario != null && insumo.quantidade_embalagem
+        ? insumo.custo_unitario * insumo.quantidade_embalagem
+        : null),
     unidades: [...(unidades.get(insumo.id) ?? [])],
     modelos: [...(modelos.get(insumo.id) ?? [])],
     volumes: [...(volumes.get(insumo.id) ?? [])],
@@ -326,12 +343,12 @@ export default async function PedidoInternoDetalhe({
   ] = await Promise.all([
     supabase
       .from("pedidos_internos_itens")
-      .select("id, tipo, especificacao, modelo, volume, quantidade, unidade, orcamento_previo, fornecedor_sugerido, observacao, insumo_id, quantidade_recebida, divergencia_recebimento, recebido_em, recebido_por, lote_id, insumos(especificacao, unidade), pedidos_internos_item_recebimentos(id, lote_id, quantidade, codigo_lote, fornecedor, validade, responsavel, recebido_em)")
+      .select("id, tipo, especificacao, modelo, volume, quantidade, unidade, quantidade_em, conteudo_embalagem, orcamento_previo, fornecedor_sugerido, observacao, insumo_id, quantidade_recebida, divergencia_recebimento, recebido_em, recebido_por, lote_id, insumos(especificacao, unidade), pedidos_internos_item_recebimentos(id, lote_id, quantidade, codigo_lote, fornecedor, validade, responsavel, recebido_em)")
       .eq("pedido_interno_id", pedidoId)
       .order("id"),
     supabase
       .from("insumos")
-      .select("id, especificacao, nome_item, categoria_compra, unidade, unidade_consumo, fabricante, codigo_fabricante, custo_unitario, quantidade_embalagem, tipo_insumos(nome), fornecedores!insumos_fornecedor_id_fkey(nome)")
+      .select("id, especificacao, nome_item, categoria_compra, unidade, unidade_consumo, fabricante, codigo_fabricante, custo_unitario, quantidade_embalagem, custo_total_embalagem, tipo_insumos(nome), fornecedores!insumos_fornecedor_id_fkey(nome)")
       .order("especificacao"),
     supabase
       .from("pedidos_internos_itens")
@@ -388,9 +405,15 @@ export default async function PedidoInternoDetalhe({
   const linhas = ((itens ?? []) as unknown as PedidoInternoItem[]) ?? [];
   const insumoRows = ((insumos ?? []) as unknown as InsumoPedidoRaw[]) ?? [];
   const historicoRows = ((historicoItens ?? []) as unknown as PedidoItemHistorico[]) ?? [];
+  const { data: lotesLegado } = await supabase
+    .from("lotes_estoque")
+    .select("insumo_id")
+    .neq("modelo_quantidade", "EMBALAGEM_FECHADA")
+    .gt("quantidade_atual", 0);
   const catalogoItens = montarCatalogoItens(
     insumoRows,
     historicoRows,
+    new Set(((lotesLegado ?? []) as { insumo_id: number }[]).map((lote) => lote.insumo_id)),
   );
   const fornecedoresPedido = montarFornecedoresPedido(((fornecedores ?? []) as unknown as FornecedorRaw[]) ?? [], insumoRows, historicoRows);
   const aprovacaoRows = ((aprovacoes ?? []) as unknown as PedidoInternoAprovacao[]) ?? [];
@@ -602,7 +625,9 @@ export default async function PedidoInternoDetalhe({
                       {[item.modelo, item.volume].filter(Boolean).join(" · ") || "—"}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
-                      {fmt(item.quantidade)} {item.unidade ?? item.insumos?.unidade ?? ""}
+                      {item.quantidade_em === "embalagem" && item.conteudo_embalagem
+                        ? `${fmt(item.quantidade)} ${Number(item.quantidade) === 1 ? "frasco" : "frascos"} de ${fmt(item.conteudo_embalagem)} ${item.insumos?.unidade ?? ""}`.trim()
+                        : `${fmt(item.quantidade)} ${item.unidade ?? item.insumos?.unidade ?? ""}`}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{brl(item.orcamento_previo)}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{item.fornecedor_sugerido ?? "—"}</td>
