@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { KontrolLogo } from "@/components/brand/KontrolLogo";
 import { definirSenhaDefinitiva, sair } from "@/lib/actions/auth";
 import type { FormState } from "@/lib/actions/cadastros";
+import { MensagemAcao } from "@/components/common/MensagemAcao";
 
 export default function TrocarSenhaPage() {
   const [state, action, pending] = useActionState<FormState, FormData>(definirSenhaDefinitiva, {
@@ -26,8 +27,9 @@ export default function TrocarSenhaPage() {
 
         <form action={action} className="mt-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-muted-foreground">Nova senha</label>
+            <label htmlFor="nova-senha" className="block text-xs font-medium text-muted-foreground">Nova senha</label>
             <input
+              id="nova-senha"
               name="senha"
               type="password"
               autoComplete="new-password"
@@ -35,8 +37,9 @@ export default function TrocarSenhaPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted-foreground">Confirmar senha</label>
+            <label htmlFor="confirmar-senha" className="block text-xs font-medium text-muted-foreground">Confirmar senha</label>
             <input
+              id="confirmar-senha"
               name="confirmar"
               type="password"
               autoComplete="new-password"
@@ -44,14 +47,11 @@ export default function TrocarSenhaPage() {
             />
           </div>
 
-          {state.message && (
-            <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong">
-              {state.message}
-            </p>
-          )}
+          <MensagemAcao estado={state} />
 
           <button
             disabled={pending}
+            aria-busy={pending || undefined}
             className="w-full rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-500 disabled:opacity-50"
           >
             {pending ? "Salvando…" : "Salvar e continuar"}

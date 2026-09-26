@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { Archive } from "lucide-react";
+import { MensagemAcao } from "@/components/common/MensagemAcao";
 import {
   executarBackupAplicativo,
   type BackupActionState,
@@ -24,24 +25,15 @@ export function BackupAplicativoButton() {
         <button
           type="submit"
           disabled={pending}
+          aria-busy={pending || undefined}
           className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Archive className="h-4 w-4" aria-hidden="true" />
-          {pending ? "Gerando backup..." : "Fazer backup do aplicativo"}
+          {pending ? "Gerando backup…" : "Fazer backup do aplicativo"}
         </button>
       </form>
 
-      {state.message && (
-        <p
-          className={`text-sm ${
-            state.ok
-              ? "text-brand-700 dark:text-brand-300"
-              : "text-danger-strong"
-          }`}
-        >
-          {state.message}
-        </p>
-      )}
+      <MensagemAcao estado={state} />
     </div>
   );
 }

@@ -1642,6 +1642,7 @@ export type Database = {
           id: number
           lida_em: string | null
           papel_destino: string | null
+          permissao_destino: string | null
           status: string
           tipo: string
           titulo: string
@@ -1660,6 +1661,7 @@ export type Database = {
           id?: never
           lida_em?: string | null
           papel_destino?: string | null
+          permissao_destino?: string | null
           status?: string
           tipo: string
           titulo: string
@@ -1678,12 +1680,42 @@ export type Database = {
           id?: never
           lida_em?: string | null
           papel_destino?: string | null
+          permissao_destino?: string | null
           status?: string
           tipo?: string
           titulo?: string
           usuario_destino?: string | null
         }
         Relationships: []
+      }
+      notificacoes_leituras: {
+        Row: {
+          arquivada_em: string | null
+          lida_em: string | null
+          notificacao_id: number
+          user_id: string
+        }
+        Insert: {
+          arquivada_em?: string | null
+          lida_em?: string | null
+          notificacao_id: number
+          user_id?: string
+        }
+        Update: {
+          arquivada_em?: string | null
+          lida_em?: string | null
+          notificacao_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_leituras_notificacao_id_fkey"
+            columns: ["notificacao_id"]
+            isOneToOne: false
+            referencedRelation: "notificacoes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       orcamento_final_versoes: {
         Row: {
@@ -4309,6 +4341,25 @@ export type Database = {
           },
         ]
       }
+      v_minhas_notificacoes: {
+        Row: {
+          arquivada_em: string | null
+          canal: string | null
+          corpo: string | null
+          criado_em: string | null
+          entidade_id: number | null
+          entidade_tipo: string | null
+          id: number | null
+          lida_em: string | null
+          papel_destino: string | null
+          permissao_destino: string | null
+          status: string | null
+          tipo: string | null
+          titulo: string | null
+          usuario_destino: string | null
+        }
+        Relationships: []
+      }
       v_planejamento_compromissos_estoque: {
         Row: {
           data_alvo: string | null
@@ -4414,6 +4465,7 @@ export type Database = {
         Args: { p_lote_id: number; p_motivo: string; p_quantidade_nova: number }
         Returns: undefined
       }
+      aguardando_voce: { Args: never; Returns: Json }
       aplicar_ajuste_inventario_contagem: {
         Args: { p_contagem_id: number }
         Returns: Json
@@ -4467,6 +4519,10 @@ export type Database = {
         Returns: Json
       }
       desbloquear_lote: { Args: { p_lote_id: number }; Returns: undefined }
+      destinatarios_notificacao: {
+        Args: { p_notificacao_id: number }
+        Returns: string[]
+      }
       descartar_lote: {
         Args: { p_justificativa: string; p_lote_id: number }
         Returns: undefined
@@ -4521,6 +4577,7 @@ export type Database = {
       gerar_reposicao_automatica: { Args: never; Returns: Json }
       ler_orcamento_publico: { Args: { p_token: string }; Returns: Json }
       liberar_plano: { Args: { p_planejamento_id: number }; Returns: undefined }
+      marcar_todas_notificacoes_lidas: { Args: never; Returns: number }
       marcar_planejamento_em_execucao: {
         Args: { p_planejamento_id: number }
         Returns: undefined
