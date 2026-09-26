@@ -32,6 +32,8 @@ export function LoteAcoes({
   estornoDiretoPermitido = false,
   podeAceitar,
   podeGerir,
+  podeCorrigir = podeAceitar,
+  podeBaixar = true,
 }: {
   loteId: number;
   codigoLote?: string;
@@ -47,10 +49,14 @@ export function LoteAcoes({
   reservado?: number;
   modeloQuantidade?: ModeloQuantidadeLote;
   estornoDiretoPermitido?: boolean;
-  /** coordenador ou acima: aceita lotes e ajusta saldo (ajustar_saldo_lote exige coordenador) */
+  /** permissão "Aceitar lotes" */
   podeAceitar: boolean;
-  /** gestor ou acima: bloqueia/desbloqueia e descarta */
+  /** permissão "Bloquear e descartar lotes" */
   podeGerir: boolean;
+  /** permissão "Corrigir estoque": ajustar saldo e estornar entrada */
+  podeCorrigir?: boolean;
+  /** permissão "Dar baixa e registrar entradas" */
+  podeBaixar?: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -123,12 +129,14 @@ export function LoteAcoes({
 
   return (
     <span className="inline-flex flex-wrap gap-1">
-      {status === "quarentena" && podeAceitar && (
+      {status === "quarentena" && (
         <>
-          <button disabled={pending} onClick={() => setModal("aceitar")} className={`${btn} text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/30`}>
-            Aceitar
-          </button>
-          {estornoDiretoPermitido && (
+          {podeAceitar && (
+            <button disabled={pending} onClick={() => setModal("aceitar")} className={`${btn} text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/30`}>
+              Aceitar
+            </button>
+          )}
+          {estornoDiretoPermitido && podeCorrigir && (
             <button disabled={pending} onClick={() => setModal("estornar")} className={`${btn} text-danger-strong hover:bg-danger-soft`}>
               Estornar entrada
             </button>
@@ -141,7 +149,7 @@ export function LoteAcoes({
         </button>
       )}
       {/* vencido também: o diálogo só aceita o motivo Vencimento (0117) */}
-      {loteAtivo && (
+      {loteAtivo && podeBaixar && (
         <DarBaixaDialog
           lotes={[{ id: loteId, codigoLote, validade, quantidadeAtual, reservado, modeloQuantidade, status }]}
           unidade={unidade}
@@ -149,7 +157,7 @@ export function LoteAcoes({
           triggerClassName={`${btn} text-danger-strong hover:bg-danger-soft`}
         />
       )}
-      {loteAtivo && podeAceitar && (
+      {loteAtivo && podeCorrigir && (
         <button disabled={pending} onClick={() => setModal("ajuste")} className={`${btn} text-info-strong hover:bg-info-soft`}>
           Ajustar
         </button>

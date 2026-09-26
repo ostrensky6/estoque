@@ -18,6 +18,10 @@ vi.mock("@/lib/auth/roles", () => ({
   temPapel: vi.fn(async () => true),
   usuarioAtual: vi.fn(async () => ({ nome: "Coordenador", email: "coord@example.com", papel: "coordenador" })),
 }));
+vi.mock("@/lib/auth/permissao-efetiva", () => ({
+  pode: vi.fn(async () => true),
+  temPermissao: vi.fn(async () => true),
+}));
 vi.mock("./eventos", () => ({ registrarEvento }));
 vi.mock("@/lib/costing/demanda", () => ({ computarDemandaPlano: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({
@@ -119,8 +123,8 @@ describe("recebimento de pedido formal de compra", () => {
   });
 
   it("devolve mensagem (sem fechar como sucesso) quando falta permissão", async () => {
-    const roles = await import("@/lib/auth/roles");
-    vi.mocked(roles.temPapel).mockResolvedValueOnce(false);
+    const permissoes = await import("@/lib/auth/permissao-efetiva");
+    vi.mocked(permissoes.pode).mockResolvedValueOnce(false);
     const { receberItemPedido } = await import("./compras");
 
     const resultado = await receberItemPedido(formRecebimento({ validade: "2026-12-31" }));

@@ -126,7 +126,7 @@ begin
       'recalcular_orcamento_transacional', 'duplicar_orcamento_final_transacional',
       'emitir_orcamento_final_transacional'
     )
-    and pg_get_functiondef(p.oid) like '%kontrol_private.exigir_papel_ou_permissao(%';
+    and case when p.prokind = 'f' then pg_get_functiondef(p.oid) end like '%kontrol_private.exigir_papel_ou_permissao(%';
   if v_qtd < 6 then
     raise exception '0121: esperadas ao menos 6 funções convertidas (obtidas %)', v_qtd;
   end if;

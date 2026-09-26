@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, createClientUntyped } from "@/lib/supabase/server";
-import { temPapel, usuarioAtual } from "@/lib/auth/roles";
+import { usuarioAtual } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
 import { registrarEvento } from "./eventos";
 import type { FormState } from "./cadastros";
@@ -59,7 +60,7 @@ export async function criarPedido(_prev: FormState, formData: FormData): Promise
 
 export async function gerarRascunhosReposicao(_prev: FormState): Promise<FormState> {
   void _prev;
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.solicitar"))) return SEM_PERMISSAO;
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("gerar_reposicao_automatica");
   if (error) return { ok: false, message: error.message };
@@ -241,7 +242,7 @@ function revalidarPedidoCompra(pedidoId: number) {
 }
 
 export async function aprovarPedido(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.aprovar"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const supabase = await createClient();
 
@@ -289,7 +290,7 @@ export async function aprovarPedido(_prev: FormState, formData: FormData): Promi
 }
 
 export async function marcarEnviado(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.aprovar"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const supabase = await createClient();
   const { error } = await supabase.rpc("transicionar_pedido_compra", {
@@ -303,7 +304,7 @@ export async function marcarEnviado(_prev: FormState, formData: FormData): Promi
 }
 
 export async function cancelarPedido(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.cancelar"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const supabase = await createClient();
   const { error } = await supabase.rpc("transicionar_pedido_compra", {
@@ -321,7 +322,7 @@ export async function encerrarPedidoComPendencia(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.aprovar"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const motivo = String(formData.get("motivo") ?? "").trim();
   if (!motivo) return { ok: false, message: "Informe por que o restante não será recebido." };
@@ -338,7 +339,7 @@ export async function encerrarPedidoComPendencia(
 
 /** Recebe um item do pedido: cria lote em quarentena (FEFO) e vincula. */
 export async function receberItemPedido(formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.receber"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const item_id = Number(formData.get("item_id"));
   const operacaoId = String(formData.get("operacao_id") ?? "").trim();

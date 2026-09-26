@@ -28,7 +28,7 @@ begin
         and p.proname in ('transicionar_orcamento', 'transicionar_orcamento_projeto',
           'transicionar_orcamento_final', 'recalcular_orcamento_transacional',
           'duplicar_orcamento_final_transacional', 'emitir_orcamento_final_transacional')
-        and pg_get_functiondef(p.oid) like '%fn_exige_papel(''coordenador'')%') > 0 then
+        and case when p.prokind = 'f' then pg_get_functiondef(p.oid) end like '%fn_exige_papel(''coordenador'')%') > 0 then
     raise exception '0121: ainda ha RPC de orcamento exigindo so o papel';
   end if;
 end $$;

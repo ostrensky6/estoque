@@ -7,7 +7,7 @@ import { computarDemandaPlano } from "@/lib/costing/demanda";
 import { gargalo, type Etapa } from "@/lib/costing/engine";
 import { reservarEquipamentoDoPlano } from "@/lib/actions/planejamento";
 import { comprarFaltasDoPlano } from "@/lib/actions/compras";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { PlanoAcoes } from "@/components/planejamento/PlanoAcoes";
 import { PlanoContextoForm } from "@/components/planejamento/PlanoContextoForm";
 import { PlanoItensEditor } from "@/components/planejamento/PlanoItensEditor";
@@ -96,7 +96,7 @@ export default async function PlanoDetalhe({
     supabase.from("projetos").select("id, nome").order("nome"),
     supabase.from("v_margem_real_planejamento").select("*").eq("planejamento_id", planId).limit(1),
     supabaseUntyped.from("pedidos_internos").select("id, status").eq("planejamento_id", planId).neq("status", "cancelado"),
-    temPapel("coordenador"),
+    pode("planejamento.editar"),
   ]);
   const margemReal = margemRealRows?.[0] ?? null;
 

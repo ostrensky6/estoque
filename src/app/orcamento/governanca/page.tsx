@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import { HelpTip } from "@/components/common/HelpTip";
 import { formatDateTime } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/server";
-import { temPapel, usuarioAtual } from "@/lib/auth/roles";
-import { podeVerSalario } from "@/lib/auth/permissao-efetiva";
+import { usuarioAtual } from "@/lib/auth/roles";
+import { pode, podeVerSalario } from "@/lib/auth/permissao-efetiva";
 import { mascararAuditoriaSigilosa } from "@/lib/cadastros/salario";
 import { LABEL_PAPEL, PERMISSOES_ORCAMENTO } from "@/lib/orcamento/governanca";
 import { PERMISSOES } from "@/lib/auth/permissions";
@@ -80,7 +80,7 @@ type Auditoria = {
 };
 
 export default async function GovernancaOrcamentoPage() {
-  const permitido = await temPapel("gestor");
+  const permitido = await pode("auditoria.visualizar");
   const usuario = await usuarioAtual();
 
   if (!permitido) {
@@ -180,12 +180,12 @@ export default async function GovernancaOrcamentoPage() {
                       <span className="mt-1 block text-xs text-muted-foreground">{permissao.descricao}</span>
                     </td>
                     <td className="px-4 py-3">
-                      {LABEL_PAPEL[permissao.papelMinimo]} ou superior
-                      {permissao.chave && (
-                        <span className="mt-1 block text-xs text-muted-foreground">
-                          ou quem tiver “{rotuloPermissao(permissao.chave)}” em Usuários
-                        </span>
-                      )}
+                      {permissao.chave
+                        ? `Quem tiver “${rotuloPermissao(permissao.chave)}”`
+                        : `${LABEL_PAPEL[permissao.papelMinimo]} ou superior`}
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        Marcada por padrão para {LABEL_PAPEL[permissao.papelMinimo].toLowerCase()} e acima
+                      </span>
                     </td>
                     <td className="px-4 py-3">{permissao.motivoObrigatorio ? "Obrigatório" : "Quando aplicável"}</td>
                     <td className="px-4 py-3">{permissao.eventoAuditavel}</td>

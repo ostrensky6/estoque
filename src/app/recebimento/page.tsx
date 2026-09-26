@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import {
   PEDIDO_INTERNO_AGUARDANDO_CHEGADA,
   pedidoInternoNumero,
@@ -80,7 +80,7 @@ export default async function RecebimentoPage() {
       .select("id, pedido_id, insumo_id, quantidade, quantidade_recebida, quantidade_em, conteudo_embalagem, insumos(especificacao, unidade), pedidos_compra!inner(id, status, fornecedores(nome))")
       .is("pedido_interno_item_id", null)
       .order("id", { ascending: false }),
-    temPapel("coordenador"),
+    pode("compras.receber"),
   ]);
 
   const itens = ((itensData ?? []) as unknown as ItemRaw[]).filter(

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { HelpTip } from "@/components/common/HelpTip";
 import { PlanoLinhaAcoes } from "@/components/planejamento/PlanoGestao";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { avaliarGestaoPlano } from "@/lib/planejamento/gestao";
 import { criarResolvedorDeTaxas, valorLaboratorioNaProposta, valorProjetoNaProposta } from "@/lib/orcamento/valores-modulos";
 import { formatCurrency as moeda, formatDate as fmtData } from "@/lib/formatters";
@@ -188,7 +188,7 @@ export default async function ProjetoHubPage({
     .filter((c) => c.status !== "cancelado")
     .reduce((a, c) => a + c.total, 0);
 
-  const podeGerirPlanos = await temPapel("coordenador");
+  const podeGerirPlanos = await pode("planejamento.editar");
   const planosLinhas = (planos ?? []).map((p) => ({
     id: p.id,
     gestao: avaliarGestaoPlano({

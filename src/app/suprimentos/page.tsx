@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClientUntyped } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { GerarPedidoReposicaoButton } from "@/components/pedido/GerarPedidoReposicaoButton";
 import { PlanoLinhaAcoes } from "@/components/planejamento/PlanoGestao";
 import { avaliarGestaoPlano } from "@/lib/planejamento/gestao";
@@ -271,7 +271,7 @@ async function consultarPedidosSuprimentos(supabase: Awaited<ReturnType<typeof c
 
 export default async function SuprimentosPage() {
   const supabase = await createClientUntyped();
-  const podeGerarReposicao = await temPapel("coordenador");
+  const podeGerarReposicao = await pode("compras.solicitar");
   const hoje = new Date().toISOString().slice(0, 10);
   const limiteVencimento = adicionarDias(hoje, 30);
 

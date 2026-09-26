@@ -1,5 +1,5 @@
 import { createClientUntyped } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { criarCicloInventario } from "@/lib/actions/inventario";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { HelpExample, HelpTip } from "@/components/common/HelpTip";
@@ -39,8 +39,8 @@ function firstRelation<T>(value: T | T[] | null | undefined): T | null {
 
 export default async function InventarioPage() {
   const supabase = await createClientUntyped();
-  const podeCriar = await temPapel("coordenador");
-  const podeAjustar = await temPapel("gestor");
+  const podeCriar = await pode("estoque.lote.gerir");
+  const podeAjustar = await pode("estoque.lote.gerir");
 
   const [{ data: ciclos }, { data: locais }, { data: lotes }, { data: contagens }] = await Promise.all([
     supabase

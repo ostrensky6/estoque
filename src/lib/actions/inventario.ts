@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { temPapel, usuarioAtual } from "@/lib/auth/roles";
+import { usuarioAtual } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { createClientUntyped } from "@/lib/supabase/server";
 import {
   calcularDivergenciaInventario,
@@ -57,7 +58,7 @@ export async function criarCicloInventario(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("estoque.lote.gerir"))) return SEM_PERMISSAO;
 
   const parsed = criarCicloSchema.safeParse({
     nome: formData.get("nome"),
@@ -84,7 +85,7 @@ export async function registrarContagemInventario(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("estoque.lote.gerir"))) return SEM_PERMISSAO;
 
   const parsed = registrarContagemSchema.safeParse({
     ciclo_id: formData.get("ciclo_id"),
@@ -158,7 +159,7 @@ export async function aplicarAjusteContagemInventario(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  if (!(await temPapel("gestor"))) return {
+  if (!(await pode("estoque.lote.gerir"))) return {
     ok: false,
     message: "Sem permissão — requer papel gestor ou superior.",
   };

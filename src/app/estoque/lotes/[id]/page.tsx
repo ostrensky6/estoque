@@ -7,7 +7,7 @@ import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 import { QrCode } from "@/components/common/QrCode";
 import { formatNumber as fmt, formatDate as fdata, formatCurrency } from "@/lib/formatters";
 import { LoteAcoes } from "@/components/estoque/LoteAcoes";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { origemPublicaKontrol } from "@/lib/scanner/origem";
 import { gerarUrlCurtaKontrol } from "@/lib/scanner/urls";
 import { loteBaixaDeDb, loteVencido, somarReservasPorLote, type LoteDbBaixa } from "@/lib/estoque/baixa";
@@ -57,6 +57,8 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
     { data: reservas },
     podeAceitar,
     podeGerir,
+    podeCorrigir,
+    podeBaixar,
     origem,
     vinculoCompra,
     vinculoInterno,
@@ -75,8 +77,10 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
       .select("lote_id, quantidade, quantidade_consumida, status")
       .eq("lote_id", id)
       .in("status", ["reservado", "parcial"]),
-    temPapel("coordenador"),
-    temPapel("gestor"),
+    pode("estoque.lote.aceitar"),
+    pode("estoque.descartar_bloquear"),
+    pode("estoque.lote.gerir"),
+    pode("estoque.movimentar"),
     origemPublicaKontrol(),
     supabase.from("pedidos_compra_item_recebimentos").select("lote_id").eq("lote_id", id).limit(1),
     supabase.from("pedidos_internos_item_recebimentos").select("lote_id").eq("lote_id", id).limit(1),
@@ -158,6 +162,8 @@ export default async function LoteDetalhe({ params }: { params: Promise<{ id: st
             estornoDiretoPermitido={estornoDiretoPermitido}
             podeAceitar={podeAceitar}
             podeGerir={podeGerir}
+            podeCorrigir={podeCorrigir}
+            podeBaixar={podeBaixar}
           />
         </div>
 

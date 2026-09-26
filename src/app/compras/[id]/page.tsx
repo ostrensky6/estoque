@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClientUntyped } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import {
   adicionarItemPedido,
   removerItemPedido,
@@ -73,18 +73,21 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
     .single();
   if (!pedido) notFound();
 
-  const [{ data: itens }, { data: insumos }, podeGerir] = await Promise.all([
+  const [{ data: itens }, { data: insumos }, podeAprovar, podeReceber, podeCancelar, podeSolicitar] = await Promise.all([
     (supabase.from("pedidos_compra_itens") as unknown as PedidoCompraItensQuery)
       .select("id, quantidade, quantidade_recebida, divergencia_recebimento, custo_unitario_estimado, lote_id, pedido_interno_item_id, insumo_id, quantidade_em, conteudo_embalagem, insumos(especificacao, unidade), pedidos_internos_itens(pedido_interno_id), pedidos_compra_item_recebimentos(id, lote_id, quantidade, codigo_lote, validade, responsavel, recebido_em)")
       .eq("pedido_id", pedidoId)
       .order("id"),
     supabase.from("insumos").select("id, especificacao").order("especificacao"),
-    temPapel("coordenador"),
+    pode("compras.aprovar"),
+    pode("compras.receber"),
+    pode("compras.cancelar"),
+    pode("compras.solicitar"),
   ]);
 
   const eventos = await listarEventos("pedido_compra", pedidoId);
-  const editavel = pedido.status === "solicitado";
-  const recebivel = ["aprovado", "enviado", "em_transito"].includes(pedido.status) && podeGerir;
+  const editavel = pedido.status === "solicitado" && podeSolicitar;
+  const recebivel = ["aprovado", "enviado", "em_transito"].includes(pedido.status) && podeReceber;
   const forn = (pedido.fornecedores as { nome: string | null } | null)?.nome;
   const total = (itens ?? []).reduce(
     (a, it) => a + Number(it.quantidade) * Number(it.custo_unitario_estimado ?? 0),
@@ -256,7 +259,8 @@ export default async function PedidoDetalhe({ params }: { params: Promise<{ id: 
           <PedidoAcoes
             pedidoId={pedidoId}
             status={pedido.status}
-            podeGerir={podeGerir}
+            podeAprovar={podeAprovar}
+            podeCancelar={podeCancelar}
             temRecebimento={(itens ?? []).some(
               (item) => Number(item.quantidade_recebida ?? 0) > 0 || item.lote_id != null,
             )}

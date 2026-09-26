@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient, createClientUntyped } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { GerarPedidoReposicaoButton } from "@/components/pedido/GerarPedidoReposicaoButton";
 import { HelpTip } from "@/components/common/HelpTip";
 import { hojeIso, loteBaixaDeDb, loteVencido, somarReservasPorLote, type LoteDbBaixa } from "@/lib/estoque/baixa";
@@ -62,9 +62,12 @@ export default async function EstoqueControlePage() {
     ...(vinculosInternos ?? []).map((r) => Number(r.lote_id)),
   ]);
 
-  const [podeAceitar, podeGerir] = await Promise.all([
-    temPapel("coordenador"),
-    temPapel("gestor"),
+  const [podeAceitar, podeGerir, podeCorrigir, podeBaixar, podeCriarPedido] = await Promise.all([
+    pode("estoque.lote.aceitar"),
+    pode("estoque.descartar_bloquear"),
+    pode("estoque.lote.gerir"),
+    pode("estoque.movimentar"),
+    pode("pedido.criar"),
   ]);
 
   const notificacoes = notificacoesRaw ?? [];
@@ -123,7 +126,7 @@ export default async function EstoqueControlePage() {
             </nav>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {podeAceitar && <GerarPedidoReposicaoButton />}
+            {podeCriarPedido && <GerarPedidoReposicaoButton />}
             <span className="rounded-md border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground shadow-sm">
               {saldo.length} insumos monitorados
             </span>
@@ -138,6 +141,8 @@ export default async function EstoqueControlePage() {
             lotes={lotesParsed}
             podeAceitar={podeAceitar}
             podeGerir={podeGerir}
+            podeCorrigir={podeCorrigir}
+            podeBaixar={podeBaixar}
           />
         </div>
       </main>

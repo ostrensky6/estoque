@@ -796,6 +796,17 @@ function mockTemPermissao(chave: unknown, sessao: SessaoMock): boolean {
   return valor === true;
 }
 
+/** Mesma regra de public.minhas_permissoes (0124). */
+function mockMinhasPermissoes(sessao: SessaoMock) {
+  const perfil = (store.perfis ?? []).find((item) => item.id === MOCK_USER_ID);
+  const papel = String(sessao.papel ?? perfil?.papel ?? "");
+  if (!perfil || perfil.suspenso === true) return { admin: false, permissoes: {} };
+  if (papel === "admin") return { admin: true, permissoes: {} };
+  const categoria = ((store.permissoes_categorias ?? []).find((item) => item.papel === papel)?.permissoes ?? {}) as Row;
+  const individuais = sessao.papel ? {} : ((perfil.permissoes ?? {}) as Row);
+  return { admin: false, permissoes: { ...categoria, ...individuais } };
+}
+
 function podeVerSalarioMock(sessao: SessaoMock) {
   return mockTemPermissao("tecnicos.salario.ver", sessao);
 }
@@ -1787,6 +1798,7 @@ export function createMockSupabaseClient(sessao: SessaoMock = {}) {
     rpc: async (fn: string, args: Row = {}) => {
       // Permissão efetiva e leituras sigilosas (migration 0112).
       if (fn === "tem_permissao") return { data: mockTemPermissao(args.p_chave, sessao), error: null };
+      if (fn === "minhas_permissoes") return { data: mockMinhasPermissoes(sessao), error: null };
       if (fn === "tecnicos_remuneracao") {
         const pode = podeVerSalarioMock(sessao);
         return {

@@ -18,9 +18,31 @@ describe("permissoes reconciliadas", () => {
       "estoque.lote.aceitar",
       "estoque.lote.gerir",
       "orcamento.parametros.editar",
-      "backups.gerenciar",
-      "privilegios.gerenciar",
+      "planejamento.executar",
+      "orcamentos.fundos",
+      "orcamentos.modelos",
     ]));
+  });
+
+  it("gestão de acessos não é delegável por caixinha: fica só com o admin", () => {
+    const keys = PERMISSOES.map((permissao) => permissao.key as string);
+    expect(keys).not.toContain("usuarios.gerenciar");
+    expect(keys).not.toContain("privilegios.gerenciar");
+    expect(keys).not.toContain("backups.gerenciar");
+  });
+
+  it("padrões por papel reproduzem o acesso anterior à 0124", () => {
+    expect(defaultPermissionsForRole("tecnico")).toEqual(expect.arrayContaining([
+      "recebimento.registrar",
+      "planejamento.executar",
+    ]));
+    expect(defaultPermissionsForRole("tecnico")).not.toContain("estoque.lote.aceitar");
+    expect(defaultPermissionsForRole("coordenador")).toEqual(expect.arrayContaining([
+      "orcamentos.cancelar",
+      "compras.cancelar",
+      "estoque.lote.gerir",
+    ]));
+    expect(defaultPermissionsForRole("coordenador")).not.toContain("estoque.descartar_bloquear");
   });
 
   it("documenta que o papel administrativo historico nao foi colapsado silenciosamente", () => {

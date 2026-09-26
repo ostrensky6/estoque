@@ -1,7 +1,7 @@
 import { createClientUntyped } from "@/lib/supabase/server";
 import { criarPlano } from "@/lib/actions/planejamento";
 import { PlanosTable, type PlanoRow } from "@/components/planejamento/PlanosTable";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { avaliarGestaoPlano } from "@/lib/planejamento/gestao";
 
@@ -69,7 +69,7 @@ export default async function PlanejamentoPage({
       .select("id, nome, data_alvo, data_inicio_prevista, data_fim_prevista, prioridade, responsavel, planejado_por, reservado_por, criado_em, projeto_id, status_operacional, planejamento_itens(count), reservas_estoque(status, quantidade_consumida)")
       .order("criado_em", { ascending: false }),
     supabase.from("projetos").select("id, nome").order("nome"),
-    temPapel("coordenador"),
+    pode("planejamento.editar"),
   ]);
   const { data: planos } = erroSchemaCache(planosResult.error)
     ? await planejamentoQuery

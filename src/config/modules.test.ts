@@ -61,17 +61,38 @@ describe("APP_MODULES", () => {
     expect(moduleIsActive(modulo("orcamentos"), "/projetosx")).toBe(false);
   });
 
-  it("parâmetros de custeio só aparecem para gestor ou acima", () => {
-    const hrefsTecnico = getCommandGroups({ papel: "tecnico" }).flatMap((g) => g.links.map((l) => l.href));
-    const hrefsGestor = getCommandGroups({ papel: "gestor" }).flatMap((g) => g.links.map((l) => l.href));
-    expect(hrefsTecnico).not.toContain("/parametros");
-    expect(hrefsGestor).toContain("/parametros");
-    expect(hrefsTecnico).toEqual(expect.arrayContaining(["/estoque/inventario", "/projetos"]));
+  // A caixinha manda (0124): cada área aparece só com a permissão "Acessar …".
+  const comPermissoes = (papel: string, chaves: string[]) => ({
+    papel,
+    permissoes: { admin: false, permissoes: Object.fromEntries(chaves.map((chave) => [chave, true])) },
   });
 
-  it("governança continua restrita a gestor ou acima", () => {
-    expect(getModulesForProfile({ papel: "tecnico" }).map((m) => m.id)).not.toContain("governanca");
-    expect(getModulesForProfile({ papel: "gestor" }).map((m) => m.id)).toContain("governanca");
+  it("parâmetros de custeio aparecem só com a permissão da área", () => {
+    const sem = comPermissoes("tecnico", ["estoque.ver", "projetos.ver"]);
+    const com = comPermissoes("tecnico", ["estoque.ver", "projetos.ver", "configuracoes.ver"]);
+    const hrefsSem = getCommandGroups(sem).flatMap((g) => g.links.map((l) => l.href));
+    const hrefsCom = getCommandGroups(com).flatMap((g) => g.links.map((l) => l.href));
+    expect(hrefsSem).not.toContain("/parametros");
+    expect(hrefsCom).toContain("/parametros");
+    expect(hrefsSem).toEqual(expect.arrayContaining(["/estoque/inventario", "/projetos"]));
+  });
+
+  it("área sem permissão some do menu, mesmo para quem tem o papel", () => {
+    const hrefs = getCommandGroups(comPermissoes("gestor", ["compras.ver"])).flatMap((g) => g.links.map((l) => l.href));
+    expect(hrefs).toContain("/compras");
+    expect(hrefs).not.toContain("/orcamento/demandas");
+    expect(hrefs).not.toContain("/estoque");
+  });
+
+  it("governança aparece com a auditoria liberada; usuários e backups seguem só do admin", () => {
+    expect(getModulesForProfile(comPermissoes("tecnico", [])).map((m) => m.id)).not.toContain("governanca");
+    const gestor = getModulesForProfile(comPermissoes("gestor", ["auditoria.visualizar"]));
+    const governanca = gestor.find((m) => m.id === "governanca");
+    expect(governanca?.children.map((c) => c.href)).toEqual(["/auditoria"]);
+    const admin = getModulesForProfile({ papel: "admin", permissoes: { admin: true, permissoes: {} } });
+    expect(admin.find((m) => m.id === "governanca")?.children.map((c) => c.href)).toEqual(
+      expect.arrayContaining(["/auditoria", "/usuarios", "/governanca/backups"]),
+    );
   });
 });
 

@@ -102,6 +102,8 @@ type StockControlHubProps = {
   lotes: LoteDbRow[];
   podeAceitar: boolean;
   podeGerir: boolean;
+  podeCorrigir?: boolean;
+  podeBaixar?: boolean;
 };
 
 export function StockControlHub({
@@ -111,6 +113,8 @@ export function StockControlHub({
   lotes,
   podeAceitar,
   podeGerir,
+  podeCorrigir,
+  podeBaixar,
 }: StockControlHubProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedAlertType, setSelectedAlertType] = useState<string>("todos");
@@ -772,6 +776,8 @@ export function StockControlHub({
                           estornoDiretoPermitido={lote.estornoDiretoPermitido}
                           podeAceitar={podeAceitar}
                           podeGerir={podeGerir}
+                          podeCorrigir={podeCorrigir}
+                          podeBaixar={podeBaixar}
                         />
                       </td>
                     </tr>
