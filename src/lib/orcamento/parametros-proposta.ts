@@ -60,6 +60,17 @@ export function propostaTemParametrosGravados(proposta: PropostaRates | null | u
   ].some((v) => v != null && v !== "");
 }
 
+/** Percentuais gravados num orçamento de projeto (colunas novas com as antigas como reserva). */
+export function ratesDoOrcamentoProjeto(projeto: ProjetoRates): Required<{ [K in keyof RatesProposta]: number }> {
+  return {
+    impostos_legacy: num(projeto.impostos_legacy ?? projeto.impostos),
+    incubacao: num(projeto.incubacao),
+    reserva: num(projeto.reserva),
+    investimentos: num(projeto.investimentos),
+    lucro: num(projeto.lucro ?? projeto.margem_lucro),
+  };
+}
+
 export function resolverParametrosProposta(args: {
   projeto: ProjetoRates | null | undefined;
   proposta: PropostaRates | null | undefined;
@@ -67,16 +78,7 @@ export function resolverParametrosProposta(args: {
 }): { rates: Required<{ [K in keyof RatesProposta]: number }>; origem: OrigemParametros } {
   const { projeto, proposta, padroes } = args;
   if (projeto) {
-    return {
-      origem: "projeto",
-      rates: {
-        impostos_legacy: num(projeto.impostos_legacy ?? projeto.impostos),
-        incubacao: num(projeto.incubacao),
-        reserva: num(projeto.reserva),
-        investimentos: num(projeto.investimentos),
-        lucro: num(projeto.lucro ?? projeto.margem_lucro),
-      },
-    };
+    return { origem: "projeto", rates: ratesDoOrcamentoProjeto(projeto) };
   }
   if (propostaTemParametrosGravados(proposta)) {
     return {

@@ -1,4 +1,5 @@
-import { calcularOrcamentoProjetoLegacy, itemProjetoTotal } from "@/lib/project-budget/legacy";
+import { itemProjetoTotal } from "@/lib/project-budget/orcamento-projeto";
+import { criarResolvedorDeTaxas, valorLaboratorioNaProposta, valorProjetoNaProposta } from "@/lib/orcamento/valores-modulos";
 import { createClient } from "@/lib/supabase/server";
 import type { OrcamentoRow } from "@/components/orcamento/OrcamentosTable";
 
@@ -56,12 +57,19 @@ export type OrcamentoFila = OrcamentoRow & {
 
 export async function carregarLinhasOrcamentos(): Promise<OrcamentoFila[]> {
   const supabase = await createClient();
-  const [{ data: orcamentos }, { data: orcProjetos }, { data: projetos }, { data: demandas }, { data: versoesFinais }] =
+  const [
+    { data: orcamentos },
+    { data: orcProjetos },
+    { data: projetos },
+    { data: demandas },
+    { data: versoesFinais },
+    { data: parametrosGlobais },
+  ] =
     await Promise.all([
       supabase
         .from("orcamentos")
         .select(
-          "id, tipo, demanda_id, cliente_nome, data_orcamento, status, status_operacional, status_operacional_atualizado_em, criado_em, projeto_id, responsavel, orcamento_itens(n_amostras, preco_unitario)",
+          "id, tipo, demanda_id, cliente_nome, data_orcamento, status, status_operacional, status_operacional_atualizado_em, criado_em, projeto_id, responsavel, orcamento_itens(n_amostras, custo_unitario, preco_unitario)",
         )
         .order("criado_em", { ascending: false }),
       supabase
@@ -71,20 +79,25 @@ export async function carregarLinhasOrcamentos(): Promise<OrcamentoFila[]> {
         )
         .order("criado_em", { ascending: false }),
       supabase.from("projetos").select("id, nome").order("nome"),
-      supabase.from("demandas_propostas").select("id, modalidade, titulo, cliente_nome, responsavel_interno"),
+      supabase
+        .from("demandas_propostas")
+        .select("id, modalidade, titulo, cliente_nome, responsavel_interno, param_impostos, param_incubacao, param_reserva, param_investimentos, param_lucro"),
       supabase
         .from("orcamento_final_versoes")
         .select("id, demanda_id, versao, numero, status, valido_ate, total_final, criado_em, criado_por")
         .order("criado_em", { ascending: false }),
+      supabase.from("parametros").select("chave, valor"),
     ]);
 
   const projetoNome = new Map((projetos ?? []).map((p) => [p.id, p.nome]));
   const demandaPorId = new Map((demandas ?? []).map((d) => [d.id, d as Demanda]));
   const modalidadePorDemanda = new Map((demandas ?? []).map((d) => [d.id, d.modalidade]));
+  // valores pela mesma regra da emissão (custo técnico + gross-up único com as taxas da proposta)
+  const taxasDa = criarResolvedorDeTaxas({ projetos: orcProjetos, demandas, parametrosGlobais });
 
   const linhasAnalises: OrcamentoFila[] = (orcamentos ?? []).map((o) => {
     const itens = (o.orcamento_itens as ItemAnalise[]) ?? [];
-    const total = itens.reduce((a, it) => a + Number(it.preco_unitario) * Number(it.n_amostras), 0);
+    const total = valorLaboratorioNaProposta(itens, taxasDa(o.demanda_id));
     const demanda = o.demanda_id ? demandaPorId.get(o.demanda_id) : null;
     const statusOperacional = o.status_operacional ?? (itens.length > 0 ? "preenchido" : "pendente");
     return {
@@ -113,23 +126,9 @@ export async function carregarLinhasOrcamentos(): Promise<OrcamentoFila[]> {
   });
 
   const linhasProjeto: OrcamentoFila[] = (orcProjetos ?? []).map((o) => {
-    const analises = ((o.orcamento_projeto_analises as ItemAnalise[]) ?? []).map((it) => ({
-      rubrica: "MC",
-      quantidade: Number(it.n_amostras),
-      preco_unitario: Number(it.custo_unitario ?? it.preco_unitario ?? 0),
-      meses_selecionados: [],
-    }));
-    const custos = (((o.orcamento_projeto_custos as CustoProjeto[]) ?? [])).map((it) => ({
-      ...it,
-      preco_unitario: Number(it.custo_unitario ?? it.preco_unitario ?? 0),
-    }));
-    const calculo = calcularOrcamentoProjetoLegacy([...analises, ...custos], {
-      impostos_legacy: Number(o.impostos_legacy ?? o.impostos ?? 0),
-      incubacao: Number(o.incubacao ?? 0),
-      reserva: Number(o.reserva ?? 0),
-      investimentos: Number(o.investimentos ?? 0),
-      lucro: Number(o.lucro ?? o.margem_lucro ?? 0),
-    });
+    const analises = (o.orcamento_projeto_analises as ItemAnalise[]) ?? [];
+    const custos = (o.orcamento_projeto_custos as CustoProjeto[]) ?? [];
+    const totalProjeto = valorProjetoNaProposta({ custos, analises }, taxasDa(o.demanda_id, o));
     const demanda = o.demanda_id ? demandaPorId.get(o.demanda_id) : null;
     const tipoDaDemanda = o.demanda_id != null ? MODALIDADE_TIPO[modalidadePorDemanda.get(o.demanda_id) ?? ""] : undefined;
     const tipo = tipoDaDemanda ?? (analises.length > 0 ? "analises_projeto" : "projeto");
@@ -144,8 +143,11 @@ export async function carregarLinhasOrcamentos(): Promise<OrcamentoFila[]> {
       tipo,
       tipoLabel: TIPO[tipo],
       analises: analises.length,
-      custosProjeto: custos.reduce((a, it) => a + itemProjetoTotal(it), 0),
-      total: calculo.grossTotal,
+      custosProjeto: custos.reduce(
+        (a, it) => a + itemProjetoTotal({ ...it, preco_unitario: Number(it.custo_unitario ?? it.preco_unitario ?? 0) }),
+        0,
+      ),
+      total: totalProjeto,
       status: o.status,
       statusLabel: STATUS[o.status] ?? o.status,
       etapaAtual,

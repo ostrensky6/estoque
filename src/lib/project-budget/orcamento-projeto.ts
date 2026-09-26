@@ -1,3 +1,19 @@
+// Orçamento de projeto: rubricas, base de custo e cálculo.
+//
+// O cálculo NÃO tem fórmula própria: usa a engine autoritativa da proposta
+// (Política A, `engine-economica.ts`), com laboratório = 0 e o subtotal do
+// projeto como custo direto. Assim o total do projeto é o mesmo em todas as
+// telas e na emissão.
+import { roundMoney } from "@/lib/costing/pricing";
+import {
+  calcularPropostaEconomica,
+  parametrosDeRates,
+  PARAMETROS_PROPOSTA,
+  type RatesProposta,
+} from "@/lib/orcamento/engine-economica";
+
+export { roundMoney };
+
 export const RUBRICAS_PROJETO = {
   PE: "Pessoal",
   MC: "Material de Consumo",
@@ -16,24 +32,47 @@ export type ProjetoBudgetItem = {
   meses_selecionados?: number[] | null;
 };
 
-export type ProjetoBudgetRates = {
-  impostos_legacy?: number | null;
-  incubacao?: number | null;
-  reserva?: number | null;
-  investimentos?: number | null;
-  lucro?: number | null;
+export type ProjetoBudgetRates = RatesProposta;
+
+const PARAMETROS_ECONOMICOS_PROJETO = PARAMETROS_PROPOSTA.map((p) => ({ key: p.chave, label: p.label }));
+
+type ItemCustoProjeto = {
+  rubrica?: string | null;
+  quantidade?: number | string | null;
+  custo_unitario?: number | string | null;
+  preco_unitario?: number | string | null;
+  meses_selecionados?: number[] | null;
 };
 
-const PARAMETROS_ECONOMICOS_PROJETO = [
-  { key: "impostos_legacy", label: "Impostos" },
-  { key: "incubacao", label: "Incubação" },
-  { key: "reserva", label: "Reserva" },
-  { key: "investimentos", label: "Investimentos" },
-  { key: "lucro", label: "Lucro" },
-] as const;
+type ItemAnaliseProjeto = {
+  n_amostras?: number | string | null;
+  custo_unitario?: number | string | null;
+  preco_unitario?: number | string | null;
+};
 
-export function roundMoney(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+/**
+ * Itens do módulo de projeto na base de custo única (a mesma da emissão):
+ * valor unitário = custo (o preço só entra se não houver custo) e análises
+ * do projeto como material de consumo (MC).
+ */
+export function itensProjetoNaBaseDeCusto(args: {
+  custos?: ItemCustoProjeto[] | null;
+  analises?: ItemAnaliseProjeto[] | null;
+}): ProjetoBudgetItem[] {
+  return [
+    ...(args.custos ?? []).map((item) => ({
+      rubrica: item.rubrica ?? null,
+      quantidade: Number(item.quantidade ?? 0),
+      preco_unitario: Number(item.custo_unitario ?? item.preco_unitario ?? 0),
+      meses_selecionados: item.meses_selecionados ?? [],
+    })),
+    ...(args.analises ?? []).map((item) => ({
+      rubrica: "MC",
+      quantidade: Number(item.n_amostras ?? 0),
+      preco_unitario: Number(item.custo_unitario ?? item.preco_unitario ?? 0),
+      meses_selecionados: [] as number[],
+    })),
+  ];
 }
 
 export function itemProjetoTotal(item: ProjetoBudgetItem) {
@@ -74,7 +113,7 @@ export function validarParametrosProjetoGrossUp(rates: ProjetoBudgetRates) {
   };
 }
 
-export function calcularOrcamentoProjetoLegacy(
+export function calcularOrcamentoProjeto(
   itens: ProjetoBudgetItem[],
   rates: ProjetoBudgetRates,
 ) {
@@ -89,16 +128,17 @@ export function calcularOrcamentoProjetoLegacy(
     };
   });
   const subtotal = roundMoney(summaries.reduce((acc, item) => acc + item.total, 0));
-  const economicParameters = PARAMETROS_ECONOMICOS_PROJETO;
-  const rateSum =
-    economicParameters.reduce((acc, param) => acc + Math.max(0, Number(rates[param.key] ?? 0)), 0) /
-    100;
+  const economia = calcularPropostaEconomica({
+    custoLaboratorioTecnico: 0,
+    custoDiretoProjeto: subtotal,
+    parametros: parametrosDeRates(rates),
+  });
 
-  if (rateSum >= 1) {
+  if (!economia.valido) {
     return {
       subtotal,
       grossTotal: 0,
-      markupRate: roundMoney(rateSum * 100),
+      markupRate: roundMoney(economia.somaPercentual),
       grossUpFactor: 0,
       taxesTotal: 0,
       legalTaxes: 0,
@@ -109,30 +149,25 @@ export function calcularOrcamentoProjetoLegacy(
       netRevenue: 0,
       preTaxSubtotal: 0,
       summaries,
-      economicParameters: economicParameters.map((param) => ({
-        key: param.key,
+      economicParameters: economia.parametros.map((param) => ({
+        key: param.chave,
         label: param.label,
-        nominalRate: Math.max(0, Number(rates[param.key] ?? 0)),
+        nominalRate: param.percentual,
         effectiveRate: 0,
         amount: 0,
       })),
-      validationError: "A soma dos parâmetros econômicos deve ser menor que 100%.",
+      validationError: economia.alertas[0] ?? "A soma dos parâmetros econômicos deve ser menor que 100%.",
     };
   }
 
-  const grossUpFactor = rateSum > 0 ? 1 / (1 - rateSum) : 1;
-  const grossTotal = roundMoney(subtotal * grossUpFactor);
-  const params = economicParameters.map((param) => {
-    const nominalRate = Math.max(0, Number(rates[param.key] ?? 0));
-    const amount = roundMoney((nominalRate / 100) * grossTotal);
-    return {
-      key: param.key,
-      label: param.label,
-      nominalRate,
-      effectiveRate: subtotal > 0 ? (amount / subtotal) * 100 : 0,
-      amount,
-    };
-  });
+  const grossTotal = economia.totalFinal;
+  const params = economia.parametros.map((param) => ({
+    key: param.chave,
+    label: param.label,
+    nominalRate: param.percentual,
+    effectiveRate: subtotal > 0 ? (param.valorNominal / subtotal) * 100 : 0,
+    amount: param.valorNominal,
+  }));
   const amount = (key: string) => params.find((param) => param.key === key)?.amount ?? 0;
   const legalTaxes = amount("impostos_legacy");
   const incubationFee = amount("incubacao");
@@ -146,8 +181,8 @@ export function calcularOrcamentoProjetoLegacy(
   return {
     subtotal,
     grossTotal,
-    markupRate: roundMoney(rateSum * 100),
-    grossUpFactor,
+    markupRate: roundMoney(economia.somaPercentual),
+    grossUpFactor: economia.fatorGrossUp,
     taxesTotal,
     legalTaxes,
     incubationFee,

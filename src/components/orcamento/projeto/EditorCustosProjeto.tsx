@@ -24,7 +24,8 @@ import {
   situacaoQuantidadeViagem,
   subtotalCusto,
 } from "@/lib/project-budget/editor";
-import { calcularOrcamentoProjetoLegacy, roundMoney, RUBRICAS_PROJETO } from "@/lib/project-budget/legacy";
+import { ratesDoOrcamentoProjeto } from "@/lib/orcamento/parametros-proposta";
+import { calcularOrcamentoProjeto, roundMoney, RUBRICAS_PROJETO } from "@/lib/project-budget/orcamento-projeto";
 import { normalizarViagemInputs, type ViagemInputs } from "@/lib/project-budget/travel";
 import type { ProjetoExportItem } from "@/lib/project-budget/exporters";
 import { formatCurrency as brl } from "@/lib/formatters";
@@ -179,20 +180,14 @@ export async function EditorCustosProjeto({
       total: roundMoney(item.custo_unitario * item.n_amostras),
     })),
   ];
-  const calculoExport = calcularOrcamentoProjetoLegacy(
+  const calculoExport = calcularOrcamentoProjeto(
     exportItens.map((item) => ({
       rubrica: item.rubrica,
       quantidade: item.quantidade,
       preco_unitario: item.preco_unitario,
       meses_selecionados: item.meses_selecionados ?? [],
     })),
-    {
-      impostos_legacy: Number(orc.impostos_legacy ?? orc.impostos ?? 0),
-      incubacao: Number(orc.incubacao ?? 0),
-      reserva: Number(orc.reserva ?? 0),
-      investimentos: Number(orc.investimentos ?? 0),
-      lucro: Number(orc.lucro ?? orc.margem_lucro ?? 0),
-    },
+    ratesDoOrcamentoProjeto(orc),
   );
   const exportInfo = {
     numero: orc.numero ?? null,

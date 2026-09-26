@@ -2,7 +2,7 @@
  * Regras puras do editor de custos de projeto (etapa "Custos do projeto" da proposta).
  * Sem I/O: usadas pela tela, pelas server actions e pelos testes.
  */
-import { itemProjetoTotal, roundMoney, RUBRICAS_PROJETO, type RubricaProjeto } from "./legacy";
+import { itemProjetoTotal, roundMoney, RUBRICAS_PROJETO, type RubricaProjeto } from "./orcamento-projeto";
 import {
   calcularQuantidadeViagem,
   classificarDespesaViagem,

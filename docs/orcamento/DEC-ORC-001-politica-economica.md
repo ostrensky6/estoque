@@ -127,10 +127,18 @@ Materialidade: spread de **340 → 375** (~10%) só pela política. A escolha é
 `totalFinal = subtotal / (1 − Σ/100)`; cada parâmetro = `totalFinal × %`; bloqueio
 quando Σ ≥ 100%. `consolidarOrcamentoFinal` e a emissão usam **esta** engine.
 
-Engines/adapters rebaixados a **legado** (`@deprecated`, só compat./testes):
-`consolidarEconomiaOrcamento` (Alt. B) e `aplicarParametrosDoOrcamento`/
-`adaptarOrcamentoParaEntradaParametros` (Alt. C). **Não recalculam** propostas
-históricas; snapshots antigos são lidos no modo legado em `/orcamento/final/[id]`.
+**Fonte única (2026-09-26).** Não existe outra fórmula no código:
+- o orçamento de projeto (`project-budget/orcamento-projeto.ts`, `calcularOrcamentoProjeto`)
+  calcula pela mesma engine, com laboratório = 0;
+- listas e painéis (`/orcamento/demandas`, `/projetos/[id]`, `/orcamento/parametros`) usam
+  `lib/orcamento/valores-modulos.ts`: base de custo técnico e as taxas da proposta pela
+  mesma ordem da emissão (projeto mais recente → percentuais da proposta → padrões);
+- as bases de custo ficam em `lib/orcamento/bases-custo.ts` e o arredondamento em
+  `costing/pricing.ts` (`roundMoney`).
+
+As alternativas B (`consolidarEconomiaOrcamento`) e C (`aplicarParametrosDoOrcamento`,
+`aplicarParametrosEconomicos`) foram **removidas**. Propostas históricas não são
+recalculadas: `/orcamento/final/[id]` lê o snapshot gravado na emissão.
 
 ## 7. Respostas às perguntas (decididas)
 
@@ -143,7 +151,7 @@ históricas; snapshots antigos são lidos no modo legado em `/orcamento/final/[i
 - Vocabulário de parâmetros da proposta: `impostos_legacy, incubacao, reserva,
   investimentos, lucro` (ordem canônica em `engine-economica.PARAMETROS_PROPOSTA`).
 - Bloqueio Σ ≥ 100% centralizado na engine autoritativa.
-- Engine B e adapters C ficam como compatibilidade histórica (`@deprecated`).
+- Engine B e adapters C removidos em 2026-09-26 (nenhuma tela os usava).
 
 ## 8.1 Decisão de 26/09/2026: taxa de incubação (UFPR)
 

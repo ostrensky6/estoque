@@ -66,7 +66,7 @@ describe("KONTROL-DIAG-005 — aprovação pública", () => {
 describe("KONTROL-DIAG-006 — terminologia e engine autoritativa", () => {
   it("rotula Σ parâmetros sem alterar a matemática e não recalcula a página pública pela engine legada", () => {
     expect.soft(historyPage).not.toContain('<Delta titulo="Markup"');
-    expect.soft(publicApprovalPage).not.toContain("calcularOrcamentoProjetoLegacy");
+    expect.soft(publicApprovalPage).not.toContain("calcularOrcamentoProjeto(");
   });
 });
 

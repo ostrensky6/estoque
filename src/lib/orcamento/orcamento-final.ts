@@ -1,10 +1,10 @@
-import type { ProjetoBudgetRates } from "@/lib/project-budget/legacy";
+import type { ProjetoBudgetRates } from "@/lib/project-budget/orcamento-projeto";
 import { roundMoney } from "@/lib/costing/pricing";
 import {
   totalLaboratorioCusto as calcularTotalLaboratorioCusto,
   totalLaboratorioPreco as calcularTotalLaboratorioPreco,
   totalProjetoCusto as calcularTotalProjetoCusto,
-} from "./parametros-adapter";
+} from "./bases-custo";
 import { calcularPropostaEconomica, parametrosDeRates } from "./engine-economica";
 
 export type ItemLaboratorioFinal = {

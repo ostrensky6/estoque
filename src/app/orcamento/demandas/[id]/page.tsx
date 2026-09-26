@@ -10,6 +10,7 @@ import {
   gerarOrcamentoProjetoDaDemanda,
 } from "@/lib/actions/demandas";
 import { planejarModulosProposta, type PlanoModulo } from "@/lib/orcamento/garantir-modulos";
+import { totalLaboratorioCusto, totalLaboratorioPreco } from "@/lib/orcamento/bases-custo";
 import { avaliarCompletudeDemanda } from "@/lib/orcamento/demanda-completude";
 import { avaliarModuloOperacional } from "@/lib/orcamento/modulo-status";
 import { consolidarOrcamentoFinal, explicarOrigem } from "@/lib/orcamento/orcamento-final";
@@ -336,16 +337,9 @@ export default async function DemandaDetalhe({
       acao: `/orcamento/demandas/${demandaId}?etapa=final`,
     },
   ];
-  const totalAnalisesCusto = orcamentosAnalises.reduce(
-    (total, orcamento) =>
-      total + (orcamento.orcamento_itens ?? []).reduce((subtotal, item) => subtotal + Number(item.custo_unitario ?? 0) * Number(item.n_amostras ?? 0), 0),
-    0,
-  );
-  const totalAnalisesPreco = orcamentosAnalises.reduce(
-    (total, orcamento) =>
-      total + (orcamento.orcamento_itens ?? []).reduce((subtotal, item) => subtotal + Number(item.preco_unitario ?? 0) * Number(item.n_amostras ?? 0), 0),
-    0,
-  );
+  const itensLaboratorioRecebidos = orcamentosAnalises.flatMap((orcamento) => orcamento.orcamento_itens ?? []);
+  const totalAnalisesCusto = totalLaboratorioCusto(itensLaboratorioRecebidos);
+  const totalAnalisesPreco = totalLaboratorioPreco(itensLaboratorioRecebidos);
 
   // §8.2: valor digitado/escolhido pelo usuário aparece em azul (TOM_ENTRADA).
   const inp =
@@ -544,14 +538,8 @@ export default async function DemandaDetalhe({
                 colunas={["Orçamento", "Status", "Data", "Itens", "Custo", "Preço", "Ação"]}
                 vazio="Nenhum orçamento laboratorial gerado."
                 linhas={todosOrcamentosAnalises.map((orcamento) => {
-                  const custo = (orcamento.orcamento_itens ?? []).reduce(
-                    (total, item) => total + Number(item.custo_unitario ?? 0) * Number(item.n_amostras ?? 0),
-                    0,
-                  );
-                  const preco = (orcamento.orcamento_itens ?? []).reduce(
-                    (total, item) => total + Number(item.preco_unitario ?? 0) * Number(item.n_amostras ?? 0),
-                    0,
-                  );
+                  const custo = totalLaboratorioCusto(orcamento.orcamento_itens ?? []);
+                  const preco = totalLaboratorioPreco(orcamento.orcamento_itens ?? []);
                   return [
                     `#${orcamento.id}`,
                     rotuloStatusModulo(orcamento.status),

@@ -6,7 +6,7 @@ import { HelpTip } from "@/components/common/HelpTip";
 import { PlanoLinhaAcoes } from "@/components/planejamento/PlanoGestao";
 import { temPapel } from "@/lib/auth/roles";
 import { avaliarGestaoPlano } from "@/lib/planejamento/gestao";
-import { calcularOrcamentoProjetoLegacy } from "@/lib/project-budget/legacy";
+import { criarResolvedorDeTaxas, valorLaboratorioNaProposta, valorProjetoNaProposta } from "@/lib/orcamento/valores-modulos";
 import { formatCurrency as moeda, formatDate as fmtData } from "@/lib/formatters";
 import { responsavelDoProjeto } from "../_lib/responsavel";
 
@@ -97,19 +97,20 @@ export default async function ProjetoHubPage({
     { data: compras },
     { data: demandas },
     { data: fornecedores },
+    { data: parametrosGlobais },
   ] = await Promise.all([
     projeto.cliente_id != null
       ? supabase.from("clientes").select("id, nome").eq("id", projeto.cliente_id).single()
       : Promise.resolve({ data: null }),
     supabase
       .from("orcamentos")
-      .select("id, tipo, status, data_orcamento, orcamento_itens(n_amostras, preco_unitario)")
+      .select("id, tipo, status, data_orcamento, demanda_id, orcamento_itens(n_amostras, custo_unitario, preco_unitario)")
       .eq("projeto_id", id)
       .order("criado_em", { ascending: false }),
     supabase
       .from("orcamento_projetos")
       .select(
-        "id, demanda_id, titulo, status, data_orcamento, margem_lucro, impostos, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(n_amostras, preco_unitario), orcamento_projeto_custos(rubrica, quantidade, preco_unitario, meses_selecionados)",
+        "id, demanda_id, titulo, status, data_orcamento, margem_lucro, impostos, impostos_legacy, incubacao, reserva, investimentos, lucro, orcamento_projeto_analises(n_amostras, custo_unitario, preco_unitario), orcamento_projeto_custos(rubrica, quantidade, custo_unitario, preco_unitario, meses_selecionados)",
       )
       .eq("projeto_id", id)
       .order("criado_em", { ascending: false }),
@@ -125,10 +126,11 @@ export default async function ProjetoHubPage({
       .order("criado_em", { ascending: false }),
     supabase
       .from("demandas_propostas")
-      .select("id, titulo, status, data_solicitacao")
+      .select("id, titulo, status, data_solicitacao, param_impostos, param_incubacao, param_reserva, param_investimentos, param_lucro")
       .eq("projeto_id", id)
       .order("criado_em", { ascending: false }),
     supabase.from("fornecedores").select("id, nome"),
+    supabase.from("parametros").select("chave, valor"),
   ]);
 
   const fornecedorNome = new Map((fornecedores ?? []).map((f) => [f.id, f.nome]));
@@ -136,12 +138,11 @@ export default async function ProjetoHubPage({
   // --- Orçamentos (dois modelos) unificados em linhas com total ---
   type OrcLinha = { key: string; href: string; titulo: string; tipo: string; data: string; status: string; total: number };
 
+  // valores pela mesma regra da emissão (custo técnico + gross-up único com as taxas da proposta)
+  const taxasDa = criarResolvedorDeTaxas({ projetos: orcProjetos, demandas, parametrosGlobais });
+
   const orcAnalises: OrcLinha[] = (orcamentos ?? []).map((o) => {
-    const itens = o.orcamento_itens ?? [];
-    const total = itens.reduce(
-      (a, it) => a + Number(it.preco_unitario) * Number(it.n_amostras),
-      0,
-    );
+    const total = valorLaboratorioNaProposta(o.orcamento_itens ?? [], taxasDa(o.demanda_id));
     return {
       key: `a-${o.id}`,
       href: `/orcamento/${o.id}`,
@@ -154,25 +155,10 @@ export default async function ProjetoHubPage({
   });
 
   const orcProjetoLinhas: OrcLinha[] = (orcProjetos ?? []).map((o) => {
-    const analises = (o.orcamento_projeto_analises ?? []).map((it) => ({
-      rubrica: "MC",
-      quantidade: Number(it.n_amostras),
-      preco_unitario: Number(it.preco_unitario),
-      meses_selecionados: [] as number[],
-    }));
-    const custos = (o.orcamento_projeto_custos ?? []).map((c) => ({
-      rubrica: c.rubrica,
-      quantidade: Number(c.quantidade),
-      preco_unitario: Number(c.preco_unitario),
-      meses_selecionados: c.meses_selecionados,
-    }));
-    const calculo = calcularOrcamentoProjetoLegacy([...analises, ...custos], {
-      impostos_legacy: Number(o.impostos_legacy ?? o.impostos ?? 0),
-      incubacao: Number(o.incubacao ?? 0),
-      reserva: Number(o.reserva ?? 0),
-      investimentos: Number(o.investimentos ?? 0),
-      lucro: Number(o.lucro ?? o.margem_lucro ?? 0),
-    });
+    const total = valorProjetoNaProposta(
+      { custos: o.orcamento_projeto_custos, analises: o.orcamento_projeto_analises },
+      taxasDa(o.demanda_id, o),
+    );
     return {
       key: `p-${o.id}`,
       href: o.demanda_id != null ? `/orcamento/demandas/${o.demanda_id}?etapa=projeto` : `/orcamento/projetos/${o.id}`,
@@ -180,7 +166,7 @@ export default async function ProjetoHubPage({
       tipo: "projeto",
       data: o.data_orcamento ?? "",
       status: o.status,
-      total: calculo.grossTotal,
+      total,
     };
   });
 

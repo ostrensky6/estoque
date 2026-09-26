@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calcularPropostaEconomica, parametrosDeRates } from "./engine-economica";
-import { itemProjetoTotal } from "@/lib/project-budget/legacy";
+import { itemProjetoTotal } from "@/lib/project-budget/orcamento-projeto";
 
 // Política A (DEC-ORC-001): total = (lab técnico + projeto direto) / (1 - Σ%/100).
 

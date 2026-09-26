@@ -2,10 +2,10 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { calcularTodas } from "@/lib/costing/loader";
 import {
-  calcularOrcamentoProjetoLegacy,
-  type ProjetoBudgetItem,
-  type ProjetoBudgetRates,
-} from "@/lib/project-budget/legacy";
+  calcularOrcamentoProjeto,
+  itensProjetoNaBaseDeCusto,
+} from "@/lib/project-budget/orcamento-projeto";
+import { criarResolvedorDeTaxas, type ProjetoComTaxas } from "@/lib/orcamento/valores-modulos";
 import { ParametrosEconomicosForm } from "@/components/orcamento/ParametrosEconomicosForm";
 import { HelpExample, HelpFormula, HelpTip } from "@/components/common/HelpTip";
 import {
@@ -54,8 +54,6 @@ type ProjetoResumo = {
   status: string | null;
   cliente_nome: string | null;
   data_orcamento: string | null;
-  rates: ProjetoBudgetRates;
-  itens: ProjetoBudgetItem[];
   analisesCount: number;
   custosCount: number;
 };
@@ -147,24 +145,18 @@ export default async function ParametrosEconomicosPage() {
     versao: versaoMaisRecente(versoes as VersaoParametro[] | null | undefined, "laboratorio_global"),
   }));
 
+  const taxasDa = criarResolvedorDeTaxas({
+    projetos: orcamentosProjeto as unknown as ProjetoComTaxas[] | null,
+    demandas: [],
+    parametrosGlobais: parametros,
+  });
   const projetos = ((orcamentosProjeto ?? []) as unknown as ProjetoResumo[]).map((orcamento) => {
     const analises = (orcamento as unknown as { orcamento_projeto_analises?: ProjetoAnalise[] | null })
       .orcamento_projeto_analises ?? [];
     const custos = (orcamento as unknown as { orcamento_projeto_custos?: ProjetoCusto[] | null })
       .orcamento_projeto_custos ?? [];
-    const itens: ProjetoBudgetItem[] = [
-      ...analises.map((item) => ({
-        rubrica: "ST",
-        quantidade: Number(item.n_amostras ?? 0),
-        preco_unitario: Number(item.custo_unitario ?? 0),
-      })),
-      ...custos.map((item) => ({
-        rubrica: item.rubrica,
-        quantidade: item.quantidade,
-        preco_unitario: Number(item.custo_unitario ?? item.preco_unitario ?? 0),
-        meses_selecionados: item.meses_selecionados,
-      })),
-    ];
+    // mesma base e mesmas taxas da emissão da proposta
+    const itens = itensProjetoNaBaseDeCusto({ custos, analises });
     const demandaId = (orcamento as unknown as { demanda_id?: number | null }).demanda_id;
     return {
       id: orcamento.id,
@@ -174,13 +166,7 @@ export default async function ParametrosEconomicosPage() {
       status: orcamento.status,
       cliente_nome: orcamento.cliente_nome,
       data_orcamento: orcamento.data_orcamento,
-      rates: {
-        impostos_legacy: Number(orcamento.rates?.impostos_legacy ?? (orcamento as unknown as { impostos_legacy?: number | null }).impostos_legacy ?? (orcamento as unknown as { impostos?: number | null }).impostos ?? 0),
-        incubacao: Number(orcamento.rates?.incubacao ?? (orcamento as unknown as { incubacao?: number | null }).incubacao ?? 0),
-        reserva: Number(orcamento.rates?.reserva ?? (orcamento as unknown as { reserva?: number | null }).reserva ?? 0),
-        investimentos: Number(orcamento.rates?.investimentos ?? (orcamento as unknown as { investimentos?: number | null }).investimentos ?? 0),
-        lucro: Number(orcamento.rates?.lucro ?? (orcamento as unknown as { lucro?: number | null }).lucro ?? (orcamento as unknown as { margem_lucro?: number | null }).margem_lucro ?? 0),
-      },
+      rates: taxasDa(demandaId, orcamento as unknown as ProjetoComTaxas),
       itens,
       analisesCount: analises.length,
       custosCount: custos.length,
@@ -188,7 +174,7 @@ export default async function ParametrosEconomicosPage() {
   });
   const projetosCalculados = projetos.map((projeto) => ({
     ...projeto,
-    calculo: calcularOrcamentoProjetoLegacy(projeto.itens, projeto.rates),
+    calculo: calcularOrcamentoProjeto(projeto.itens, projeto.rates),
   }));
   const totalProjetoCusto = projetosCalculados.reduce((acc, projeto) => acc + projeto.calculo.subtotal, 0);
   const totalProjetoFinal = projetosCalculados.reduce((acc, projeto) => acc + projeto.calculo.grossTotal, 0);
@@ -574,7 +560,7 @@ function versaoMaisRecente(
 }
 
 function somarParametrosProjeto(
-  projetos: Array<{ calculo: ReturnType<typeof calcularOrcamentoProjetoLegacy> }>,
+  projetos: Array<{ calculo: ReturnType<typeof calcularOrcamentoProjeto> }>,
 ) {
   const mapa = new Map<string, { label: string; impacto: number; percentual: number; count: number }>();
   for (const projeto of projetos) {

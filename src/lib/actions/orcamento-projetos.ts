@@ -14,7 +14,8 @@ import {
   normalizarViagemInputs,
   type ViagemInputs,
 } from "@/lib/project-budget/travel";
-import { validarParametrosProjetoGrossUp } from "@/lib/project-budget/legacy";
+import { ratesDoOrcamentoProjeto } from "@/lib/orcamento/parametros-proposta";
+import { validarParametrosProjetoGrossUp } from "@/lib/project-budget/orcamento-projeto";
 import { linhasViagemFaltantes, normalizarMeses } from "@/lib/project-budget/editor";
 import { registrarVersaoParametrosEconomicos } from "@/lib/orcamento/parametros-versionamento";
 import { exigirPapelOrcamento } from "@/lib/orcamento/governanca";
@@ -835,11 +836,7 @@ export async function salvarComoTemplate(formData: FormData) {
 
   const parametros: ParametrosTemplate = {
     project_months: Number(orc.project_months ?? 12),
-    impostos_legacy: Number(orc.impostos_legacy ?? orc.impostos ?? 0),
-    incubacao: Number(orc.incubacao ?? 0),
-    reserva: Number(orc.reserva ?? 0),
-    investimentos: Number(orc.investimentos ?? 0),
-    lucro: Number(orc.lucro ?? orc.margem_lucro ?? 0),
+    ...ratesDoOrcamentoProjeto(orc),
     travel_inputs: orc.travel_inputs ?? {},
   };
 

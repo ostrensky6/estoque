@@ -357,6 +357,11 @@ export type Database = {
           instituicao: string | null
           matriz_amostra: string | null
           modalidade: string
+          param_impostos: number | null
+          param_incubacao: number | null
+          param_investimentos: number | null
+          param_lucro: number | null
+          param_reserva: number | null
           observacoes: string | null
           origem: string | null
           prazo_esperado: string | null
@@ -383,6 +388,11 @@ export type Database = {
           instituicao?: string | null
           matriz_amostra?: string | null
           modalidade?: string
+          param_impostos?: number | null
+          param_incubacao?: number | null
+          param_investimentos?: number | null
+          param_lucro?: number | null
+          param_reserva?: number | null
           observacoes?: string | null
           origem?: string | null
           prazo_esperado?: string | null
@@ -409,6 +419,11 @@ export type Database = {
           instituicao?: string | null
           matriz_amostra?: string | null
           modalidade?: string
+          param_impostos?: number | null
+          param_incubacao?: number | null
+          param_investimentos?: number | null
+          param_lucro?: number | null
+          param_reserva?: number | null
           observacoes?: string | null
           origem?: string | null
           prazo_esperado?: string | null
