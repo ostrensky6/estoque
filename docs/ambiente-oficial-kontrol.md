@@ -5,7 +5,7 @@ Atualizado e verificado em 2026-09-26.
 ## Identidade
 
 - App: **Kontrol** (com K)
-- Versão em produção na data da verificação: `1.1.0`
+- Versão em produção: `1.1.2` (publicada em 2026-09-26 junto com esta ficha)
 - Produção: https://kontrol-atgc.vercel.app
 - Admin: `ostrensky@ufpr.br`
 - Papel do admin: `admin`
@@ -81,6 +81,12 @@ Nota operacional (2026-07-05): `gkcjzwfsnoknxgpsumxi` é o Supabase atual do
 projeto Vercel `kontrol`. O ref `hhxwdcwphitfxywbgtju` era legado, foi removido
 após validação de produção e não deve ser usado como alvo de produção,
 homologação, migrations ou exemplos ativos.
+
+Migrations (2026-09-26): a nuvem está com as migrations até `0124` aplicadas e
+registradas em `supabase_migrations`. A `0109` está registrada na nuvem com a
+versão `20260922185946`, por isso **não usar `supabase db push`** sem antes
+alinhar esse histórico; conferir o estado real com `psql` antes de qualquer
+migration nova.
 
 ## Serviços desativados — NÃO USAR
 
