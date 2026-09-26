@@ -15,11 +15,11 @@ import {
   WidthType,
 } from "docx";
 import { saveAs } from "file-saver";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatPercent } from "@/lib/formatters";
 import { rotuloModalidade } from "./orcamento-economico";
 import type { PropostaFinalExport } from "./proposta-final-export";
 
-const pct = (v: number) => `${v.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
+const pct = (v: number) => formatPercent(v, 2);
 
 const FONT_FAMILY = "Helvetica";
 const INK = "1B3530";

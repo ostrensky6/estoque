@@ -5,7 +5,6 @@ import { Trash2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { DataTable } from "@/components/common/DataTable";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogClose,
@@ -18,8 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { HelpTip } from "@/components/common/HelpTip";
 import { excluirPedidoInterno } from "@/lib/actions/pedidos-internos";
-import { pedidoInternoStatus } from "@/lib/pedido/status";
 import { FormComMensagem } from "./FormComMensagem";
+import { StatusBadge } from "@/components/app/StatusBadge";
 import { PedidoItensQuickView, type PedidoItemView } from "./PedidoItensQuickView";
 
 export type PedidoInternoRow = {
@@ -45,11 +44,6 @@ export type PedidoInternoRow = {
   recebimento: string;
   pendencias: string;
 };
-
-function StatusBadge({ status }: { status: string }) {
-  const meta = pedidoInternoStatus(status);
-  return <Badge className={meta.className}>{meta.label}</Badge>;
-}
 
 function ExcluirPedido({ row }: { row: PedidoInternoRow }) {
   return (

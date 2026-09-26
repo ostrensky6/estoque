@@ -6,6 +6,7 @@ import { criarDemandaCompleta, salvarDemanda } from "@/lib/actions/demandas";
 import { modalidadeExigeLaboratorio } from "@/lib/orcamento/orcamento-economico";
 import { proximaIdentificacaoGrupo } from "@/lib/orcamento/grupos-amostras";
 import { TOM_ENTRADA } from "@/lib/orcamento/tom-valor";
+import { formatCurrency } from "@/lib/formatters";
 import { Pencil, Trash2 } from "lucide-react";
 import {
   Dialog,
@@ -750,10 +751,6 @@ function lerQuantidade(valor: string): number | "" {
 
 function formatNumber(valor: number) {
   return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3 }).format(valor);
-}
-
-function formatCurrency(valor: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
 }
 
 function Legenda({ texto, classe }: { texto: string; classe: string }) {

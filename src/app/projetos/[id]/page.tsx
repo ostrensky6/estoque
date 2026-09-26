@@ -8,16 +8,10 @@ import { temPapel } from "@/lib/auth/roles";
 import { avaliarGestaoPlano } from "@/lib/planejamento/gestao";
 import { criarResolvedorDeTaxas, valorLaboratorioNaProposta, valorProjetoNaProposta } from "@/lib/orcamento/valores-modulos";
 import { formatCurrency as moeda, formatDate as fmtData } from "@/lib/formatters";
+import { STATUS_PROJETO } from "../_lib/status";
 import { responsavelDoProjeto } from "../_lib/responsavel";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_PROJETO: Record<string, { label: string; cls: string }> = {
-  proposto: { label: "Proposto", cls: "bg-warning-soft text-warning-strong" },
-  ativo: { label: "Ativo", cls: "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300" },
-  concluido: { label: "Concluído", cls: "bg-info-soft text-info-strong" },
-  cancelado: { label: "Cancelado", cls: "bg-muted text-muted-foreground" },
-};
 
 const STATUS_ORC: Record<string, { label: string; cls: string }> = {
   rascunho: { label: "Rascunho", cls: "bg-warning-soft text-warning-strong" },

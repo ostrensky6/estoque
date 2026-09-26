@@ -1,4 +1,4 @@
-import { formatCurrency as brl } from "@/lib/formatters";
+import { formatCurrency as brl, formatPercent } from "@/lib/formatters";
 import {
   ValorEntrada,
   ValorCalculado,
@@ -28,7 +28,7 @@ export type ParametroAplicadoView = {
   amount: number;
 };
 
-const pct = (v: number) => `${v.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
+const pct = (v: number) => formatPercent(v, 2);
 
 function Bloco({ titulo, ajuda, children }: { titulo: string; ajuda?: React.ReactNode; children: React.ReactNode }) {
   return (

@@ -12,16 +12,12 @@ import {
   formatCurrency as brl,
   formatNumber,
   formatDateTime,
-  APP_LOCALE,
+  formatPercent,
 } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
-const pct = (v: number) =>
-  `${v.toLocaleString(APP_LOCALE, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })}%`;
+const pct = (v: number) => formatPercent(v, 2);
 
 const PARAM_KEYS = [
   "dias_uteis_ano",

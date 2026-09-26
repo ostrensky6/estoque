@@ -47,8 +47,13 @@ export function formatInteger(value: number | null | undefined) {
   return integerFormatter.format(value ?? 0);
 }
 
-export function formatPercent(value: number | null | undefined) {
-  return `${percentFormatter.format(value ?? 0)}%`;
+/** Percentual pt-BR; `casas` = máximo de casas decimais (padrão 1; parâmetros econômicos usam 2). */
+export function formatPercent(value: number | null | undefined, casas = 1) {
+  const formatter =
+    casas === 1
+      ? percentFormatter
+      : new Intl.NumberFormat(APP_LOCALE, { maximumFractionDigits: casas, minimumFractionDigits: 0 });
+  return `${formatter.format(value ?? 0)}%`;
 }
 
 export function formatCurrency(value: number | null | undefined) {
