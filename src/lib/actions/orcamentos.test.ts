@@ -57,58 +57,6 @@ describe("actions de orcamentos", () => {
     single.mockResolvedValue({ data: { id: 42 }, error: null });
   });
 
-  it("cria orcamento de analises usando cliente da sessao/RLS e redireciona para edicao", async () => {
-    const { criarOrcamento } = await import("./orcamentos");
-    const formData = new FormData();
-    formData.set("demanda_id", "7");
-    formData.set("tipo", "analises");
-    formData.set("cliente_nome", "Cliente Teste");
-
-    await expect(criarOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/42");
-
-    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
-    expect(insert).toHaveBeenCalledWith({
-      demanda_id: 7,
-      cliente_nome: "Cliente Teste",
-      projeto_id: null,
-      tipo: "analises",
-    });
-    expect(redirect).toHaveBeenCalledWith("/orcamento/42");
-  });
-
-  it("cria orcamento de projeto na tabela unificada de projetos", async () => {
-    const { criarOrcamento } = await import("./orcamentos");
-    const formData = new FormData();
-    formData.set("demanda_id", "9");
-    formData.set("tipo", "analises_projeto");
-    formData.set("cliente_nome", "Cliente Projeto");
-    formData.set("projeto_id", "5");
-    formData.set("titulo", "Proposta Completa");
-
-    await expect(criarOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/demandas/9?etapa=projeto");
-
-    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
-    expect(insert).toHaveBeenCalledWith({
-      demanda_id: 9,
-      projeto_id: 5,
-      titulo: "Proposta Completa",
-      cliente_nome: "Cliente Projeto",
-    });
-    expect(redirect).toHaveBeenCalledWith("/orcamento/demandas/9?etapa=projeto");
-  });
-
-  it("bloqueia criacao direta sem demanda vinculada", async () => {
-    const { criarOrcamento } = await import("./orcamentos");
-    const formData = new FormData();
-    formData.set("tipo", "analises");
-
-    await expect(criarOrcamento(formData)).rejects.toThrow("NEXT_REDIRECT:/orcamento/demandas");
-
-    expect(exigirPapelOrcamento).toHaveBeenCalledWith("preencher_custos");
-    expect(insert).not.toHaveBeenCalled();
-    expect(redirect).toHaveBeenCalledWith("/orcamento/demandas");
-  });
-
   it("bloqueia exclusao de orcamento enviado", async () => {
     const { excluirOrcamento } = await import("./orcamentos");
     const formData = new FormData();

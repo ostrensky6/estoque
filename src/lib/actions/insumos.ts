@@ -23,27 +23,3 @@ export async function atualizarInsumoLinha(formData: FormData) {
   revalidatePath("/insumos");
   revalidatePath("/custeio");
 }
-
-/**
- * Marca em lote todas as linhas de um insumo (por especificação) como um
- * grupo de escolha por_execucao — atalho para reagentes de sequenciamento.
- */
-export async function marcarGrupoPorExecucao(formData: FormData) {
-  const codigo_analise = formData.get("codigo_analise") as string;
-  const grupo = (formData.get("grupo") as string).trim();
-  const especificacoes = (formData.getAll("spec") as string[]).filter(Boolean);
-
-  if (!grupo || especificacoes.length === 0) return;
-
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("insumo_analise")
-    .update({ grupo_escolha: grupo, modo_cobranca: "por_execucao" })
-    .eq("codigo_analise", codigo_analise)
-    .in("especificacao_insumo", especificacoes);
-
-  if (error) throw new Error(error.message);
-
-  revalidatePath("/insumos");
-  revalidatePath("/custeio");
-}
