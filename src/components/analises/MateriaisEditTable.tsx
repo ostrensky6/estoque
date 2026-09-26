@@ -65,15 +65,15 @@ export function MateriaisEditTable({
             <tr>
               <th className={th}>Etapa</th>
               <th className={th}>Atividade</th>
-              <th className={th}>Material tecnico</th>
+              <th className={th}>Material técnico</th>
               <th className={th}>Item de estoque</th>
               <th className={th}>Qtd/amostra</th>
               <th className={th}>Unidade</th>
-              <th className={th}>Cobranca</th>
+              <th className={th}>Cobrança</th>
               <th className={th}>Grupo</th>
               <th className={th}>Pref.</th>
               <th className={th}>Custo unit.</th>
-              <th className={th}>Acoes</th>
+              <th className={th}>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -230,7 +230,7 @@ function CellSelect({
 
   return (
     <select form={formId} name={name} defaultValue={value ?? ""} className={`${inputClass} w-56`}>
-      <option value="">Sem vinculo</option>
+      <option value="">Sem vínculo</option>
       {options.map((option) => (
         <option key={option.id} value={option.id}>
           {option.label}
@@ -247,7 +247,7 @@ function ModoSelect({ formId, value, editing }: { formId: string; value: string;
     <select form={formId} name="modo_cobranca" defaultValue={value} className={`${inputClass} w-32`}>
       <option value="">por amostra</option>
       <option value="por_amostra">por amostra</option>
-      <option value="por_execucao">por execucao</option>
+      <option value="por_execucao">por execução</option>
     </select>
   );
 }
@@ -261,11 +261,11 @@ function AdicionarMaterialForm({ codigo, insumos }: { codigo: string; insumos: I
         <div className="grid items-end gap-1.5 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[minmax(100px,0.9fr)_minmax(120px,1fr)_minmax(140px,1.25fr)_minmax(170px,1.45fr)_minmax(84px,0.7fr)_70px_minmax(90px,0.8fr)_minmax(110px,0.9fr)_36px]">
           <Field name="nome_etapa" label="Etapa" />
           <Field name="nome_atividade" label="Atividade" />
-          <Field name="especificacao_insumo" label="Material tecnico" />
+          <Field name="especificacao_insumo" label="Material técnico" />
           <label className="block">
             <span className={labelClass}>Item de estoque</span>
             <select name="insumo_id" className={inputClass}>
-              <option value="">Sem vinculo</option>
+              <option value="">Sem vínculo</option>
               {insumos.map((insumo) => (
                 <option key={insumo.id} value={insumo.id}>
                   {insumo.label}
@@ -277,11 +277,11 @@ function AdicionarMaterialForm({ codigo, insumos }: { codigo: string; insumos: I
           <Field name="unidade" label="Unidade" />
           <Field name="grupo_escolha" label="Grupo" />
           <label className="block">
-            <span className={labelClass}>Cobranca</span>
+            <span className={labelClass}>Cobrança</span>
             <select name="modo_cobranca" className={inputClass}>
               <option value="">por amostra</option>
               <option value="por_amostra">por amostra</option>
-              <option value="por_execucao">por execucao</option>
+              <option value="por_execucao">por execução</option>
             </select>
           </label>
           <button className={iconButtonClass} title="Adicionar material" aria-label="Adicionar material">

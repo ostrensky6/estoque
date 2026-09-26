@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HelpExample, HelpTip } from "@/components/common/HelpTip";
 import { createClient } from "@/lib/supabase/server";
 import {
   InsumosAnaliseTable,
@@ -66,13 +67,24 @@ export default async function InsumosPage({
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
-        <h1 className="text-xl font-semibold tracking-tight">
-          Insumos por análise
-        </h1>
+        <div className="flex items-center gap-1">
+          <h1 className="text-xl font-semibold tracking-tight">
+            Insumos por análise
+          </h1>
+          <HelpTip title="Grupo e cobrança">
+            <p>
+              <b>Grupo</b>: linhas do mesmo grupo são alternativas; entra só uma, por padrão a mais
+              barata.
+            </p>
+            <p>
+              <b>Cobrança</b>: “por amostra” multiplica o consumo pelo número de amostras; “por
+              execução” cobra o item uma vez por corrida e divide entre as amostras do lote.
+            </p>
+            <HelpExample>Controle de R$ 60 por execução e lote de 12: R$ 5 por amostra.</HelpExample>
+          </HelpTip>
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Edite <b>grupo de escolha</b> (alternativas mutuamente exclusivas) e{" "}
-          <b>modo de cobrança</b> (por amostra ou por execução). As mudanças
-          recalculam o custeio.
+          Edite grupo e modo de cobrança dos insumos; as mudanças recalculam o custeio.
         </p>
 
         <nav className="mt-6 flex flex-wrap gap-2">

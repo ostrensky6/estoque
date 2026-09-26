@@ -9,13 +9,13 @@ async function alternarTema(page: import("@playwright/test").Page, tema: "light"
 
 test("shell modular preserva sidebar, top-nav, collapse e temas nas telas principais", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("navigation", { name: "Navegacao principal" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Navegação principal" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Kontrol App" })).toBeVisible();
 
   await page.getByRole("button", { name: "Colapsar menu" }).click();
-  await expect(page.getByRole("navigation", { name: "Navegacao compacta" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Navegação compacta" })).toBeVisible();
   await page.getByRole("button", { name: "Expandir menu" }).click();
-  await expect(page.getByRole("navigation", { name: "Navegacao principal" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Navegação principal" })).toBeVisible();
 
   for (const tema of ["light", "dark"] as const) {
     await alternarTema(page, tema);
@@ -24,11 +24,11 @@ test("shell modular preserva sidebar, top-nav, collapse e temas nas telas princi
     await expect(page.getByRole("heading", { name: /Dashboard/i })).toBeVisible();
 
     await page.goto("/orcamento/demandas");
-    await expect(page.getByRole("navigation", { name: "Navegacao de Orçamentos" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Navegação de Orçamentos" })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Demandas|Propostas|Orçamentos/i })).toBeVisible();
 
     await page.goto("/pedido");
-    await expect(page.getByRole("navigation", { name: "Navegacao de Suprimentos" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Navegação de Suprimentos" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Pedido" })).toBeVisible();
   }
 });

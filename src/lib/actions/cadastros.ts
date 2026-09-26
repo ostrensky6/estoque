@@ -3,8 +3,28 @@
 import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getCadastrosOrdenados, type CadastroConfig, type Campo } from "@/lib/cadastros/config";
-import { TECH_ID_HEADER, TECH_SUFFIX, opcoesParaCampos } from "@/lib/cadastros/xlsx";
+import { getCadastrosOrdenados, type CadastroConfig } from "@/lib/cadastros/config";
+import {
+  QUANTIDADE_INSUMO_KEY,
+  QUANTIDADE_INSUMO_LABEL,
+  aplicarPadroesCadastro,
+  diferencas,
+  erroLinha,
+  hashConteudo,
+  lerAbaCadastro,
+  normalizarChave,
+  operacaoIdDeterministico,
+  payloadRpcInsumo,
+  registroAtualizado,
+  registroNovo,
+  rotuloCampo,
+  valoresEquivalentes,
+} from "@/lib/cadastros/importacao";
+import { projetarQuantidadeInsumos, type LoteInsumo } from "@/lib/cadastros/insumos";
+import { opcoesParaCampos } from "@/lib/cadastros/xlsx";
+import { lerLinhasCadastro, prepararSalarioTecnico } from "@/lib/cadastros/salario";
+import { podeVerSalario } from "@/lib/auth/permissao-efetiva";
+import { dadosCriacaoInsumo } from "@/lib/cadastros/insumo-rpc";
 import { createClientUntyped } from "@/lib/supabase/server";
 
 export type FormState = {
@@ -18,10 +38,12 @@ export type ImportCadastroResumo = {
   aba: string;
   inseridos: number;
   atualizados: number;
-  removidos: number;
+  /** linhas que batem com um registro existente sem nenhuma diferença */
+  inalterados: number;
+  /** linhas não importadas por erro */
   ignorados: number;
   erros: string[];
-  naoRemovidosPorVinculo: string[];
+  avisos: string[];
 };
 
 export type ImportCadastrosState = {
@@ -89,6 +111,16 @@ function addYears(dateText: unknown, years: unknown): string | null {
   if (!Number.isFinite(n) || n <= 0) return null;
   return addDays(dateText, n * 365.2425);
 }
+
+const tecnicosSchema = z.object({
+  nome: reqStr,
+  processo: optStr,
+  valor_mes: reqNum({ min: 0 }),
+  horas_mes_base: reqNum({ min: 1 }),
+  percentual_dedicado: reqNum({ min: 0, max: 100 }),
+});
+/** Sem permissão (ou valor "XXX"): o salário não é validado nem gravado. */
+const tecnicosSemSalarioSchema = tecnicosSchema.omit({ valor_mes: true });
 
 const SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
   clientes: z.object({
@@ -180,13 +212,7 @@ const SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
     observacoes: optStr,
     ativo: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
   }),
-  tecnicos: z.object({
-    nome: reqStr,
-    processo: optStr,
-    valor_mes: reqNum({ min: 0 }),
-    horas_mes_base: reqNum({ min: 1 }),
-    percentual_dedicado: reqNum({ min: 0, max: 100 }),
-  }),
+  tecnicos: tecnicosSchema,
   overhead: z.object({
     item: reqStr,
     custo_mensal: reqNum({ min: 0 }),
@@ -253,22 +279,37 @@ function formToObject(formData: FormData): Record<string, unknown> {
   return o;
 }
 
-function aplicarPadroesCadastro(slug: string, obj: Record<string, unknown>) {
-  if (slug === "equipamentos" && !("possui" in obj)) obj.possui = "false";
-  if (slug === "tipo_insumos" && !("ativo" in obj)) obj.ativo = "false";
-  if ((slug === "clientes" || slug === "fornecedores") && !("ativo" in obj)) obj.ativo = "false";
-  if (slug === "insumos") {
-    if (!("fator_conversao" in obj) || obj.fator_conversao === "") obj.fator_conversao = "1";
-    if (
-      (!("unidade_consumo" in obj) || obj.unidade_consumo === "") &&
-      typeof obj.unidade === "string" &&
-      obj.unidade.trim()
-    ) {
-      obj.unidade_consumo = obj.unidade;
-    }
-  }
-  return obj;
+/**
+ * Técnicos: aplica a regra do salário (ver prepararSalarioTecnico) e escolhe o
+ * schema. Os demais cadastros passam direto.
+ */
+function schemaEObjeto(
+  slug: string,
+  obj: Record<string, unknown>,
+  opcoes: { podeVerSalario: boolean; contexto: "formulario" | "importacao" },
+): { schema: z.ZodType<Record<string, unknown>> | undefined; obj: Record<string, unknown> } {
+  if (slug !== "tecnicos") return { schema: SCHEMAS[slug], obj };
+  const preparado = prepararSalarioTecnico(obj, {
+    podeVer: opcoes.podeVerSalario,
+    contexto: opcoes.contexto,
+  });
+  return {
+    schema: preparado.semSalario ? tecnicosSemSalarioSchema : tecnicosSchema,
+    obj: preparado.obj,
+  };
 }
+
+/** Mensagem legível para recusas do banco (RLS, vínculo, duplicidade). */
+function mensagemErroBanco(error: { code?: string | null; message: string }) {
+  if (error.code === "42501" || /row-level security|permission denied/i.test(error.message)) {
+    return "Seu perfil não tem permissão para alterar este cadastro.";
+  }
+  if (error.code === "23505") return "Já existe um registro com esses dados.";
+  return error.message;
+}
+
+const NADA_ALTERADO =
+  "Nada foi alterado: o registro não existe mais ou seu perfil não tem permissão para alterá-lo.";
 
 function errosZod(error: z.ZodError) {
   const errors: Record<string, string> = {};
@@ -287,12 +328,15 @@ export async function salvarRegistro(
   const idRaw = formData.get("_id");
   const id = idRaw ? Number(idRaw) : null;
 
-  const schema = SCHEMAS[slug];
   const tabela = TABELAS[slug];
-  if (!schema || !tabela) return { ok: false, message: "Cadastro inválido." };
+  if (!SCHEMAS[slug] || !tabela) return { ok: false, message: "Cadastro inválido." };
 
   // checkbox ausente não vem no FormData
-  const obj = aplicarPadroesCadastro(slug, formToObject(formData));
+  const { schema, obj } = schemaEObjeto(slug, aplicarPadroesCadastro(slug, formToObject(formData)), {
+    podeVerSalario: slug === "tecnicos" ? await podeVerSalario() : false,
+    contexto: "formulario",
+  });
+  if (!schema) return { ok: false, message: "Cadastro inválido." };
 
   const parsed = schema.safeParse(obj);
   if (!parsed.success) {
@@ -303,8 +347,10 @@ export async function salvarRegistro(
   const payload = parsed.data;
 
   if (id) {
-    const { error } = await supabase.from(tabela).update(payload).eq("id", id);
-    if (error) return { ok: false, message: error.message };
+    // o RLS recusa sem erro (0 linhas): sem esta conferência a tela diria "Atualizado."
+    const { data, error } = await supabase.from(tabela).update(payload).eq("id", id).select("id");
+    if (error) return { ok: false, message: mensagemErroBanco(error) };
+    if (!data?.length) return { ok: false, message: NADA_ALTERADO };
 
     revalidarDependentes(slug);
     return { ok: true, message: "Atualizado." };
@@ -323,12 +369,15 @@ export async function salvarRegistro(
       };
     }
     const operacaoId = String(formData.get("_operacao_id") ?? "").trim() || crypto.randomUUID();
+    // A RPC recusa chaves fora da lista de 0109 (ex.: custo_unitario, que ela
+    // mesma deriva da embalagem): envia só os campos aceitos.
     const { data, error } = await supabase.rpc("criar_insumo_com_quantidade", {
-      p_dados_insumo: payload,
+      // campos aceitos pela RPC + número do lote informado no cadastro (0113)
+      p_dados_insumo: dadosCriacaoInsumo(payloadRpcInsumo(payload), formData),
       p_quantidade_embalagens: quantidadeParsed.data,
       p_operacao_id: operacaoId,
     });
-    if (error) return { ok: false, message: error.message };
+    if (error) return { ok: false, message: mensagemErroBanco(error) };
 
     const createdId = (data as { insumo_id?: number } | null)?.insumo_id;
     if (typeof createdId !== "number" || !Number.isSafeInteger(createdId) || createdId <= 0) {
@@ -343,7 +392,7 @@ export async function salvarRegistro(
   }
 
   const { data, error } = await supabase.from(tabela).insert(payload).select("id").single();
-  if (error) return { ok: false, message: error.message };
+  if (error) return { ok: false, message: mensagemErroBanco(error) };
 
   const createdId = data?.id;
   if (typeof createdId !== "number" || !Number.isSafeInteger(createdId) || createdId <= 0) {
@@ -367,135 +416,22 @@ export async function excluirRegistro(
   if (!tabela || !id) return { ok: false, message: "Registro inválido." };
 
   const supabase = await createClientUntyped();
-  const { error } = await supabase.from(tabela).delete().eq("id", id);
+  const { data, error } = await supabase.from(tabela).delete().eq("id", id).select("id");
 
   if (error) {
     const msg =
       error.code === "23503"
-        ? "Não é possível excluir: está em uso por outra tabela (ex.: alocação em análise)."
-        : error.message;
+        ? "Não é possível excluir: o registro está em uso (ex.: em uma análise, lote ou pedido)."
+        : mensagemErroBanco(error);
     return { ok: false, message: msg };
   }
+  if (!data?.length) return { ok: false, message: NADA_ALTERADO };
 
   revalidarDependentes(slug);
   return { ok: true, message: "Excluído." };
 }
 
-function normalizarChave(value: unknown) {
-  return String(value ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
-function valorCelula(cell: ExcelJS.Cell) {
-  const value = cell.value;
-  if (value == null) return null;
-  if (value instanceof Date) return dateToInput(value);
-  if (typeof value !== "object") return value;
-  if ("text" in value && typeof value.text === "string") return value.text;
-  if ("hyperlink" in value && "text" in value && typeof value.text === "string") return value.text;
-  if ("result" in value) return value.result ?? null;
-  if ("richText" in value && Array.isArray(value.richText)) {
-    return value.richText.map((part) => part.text).join("");
-  }
-  return String(cell.text ?? "");
-}
-
-function valorParaCampo(value: unknown, campo: Campo, opcoes?: Map<string, string>) {
-  if (value == null || value === "") return "";
-  if (campo.tipo === "checkbox") {
-    const normalized = normalizarChave(value);
-    return ["sim", "true", "1", "x", "yes", "on"].includes(normalized) ? "true" : "false";
-  }
-  if (campo.tipo === "date") {
-    if (value instanceof Date) return dateToInput(value);
-    return String(value).slice(0, 10);
-  }
-  if (campo.tipo === "percent") {
-    const n = Number(value);
-    return Number.isFinite(n) && n > 0 && n <= 1 ? n * 100 : value;
-  }
-  if (campo.tipo === "select") {
-    const raw = String(value).trim();
-    if (!opcoes) return raw;
-    if (opcoes.has(raw)) return raw;
-    const idPorLabel = new Map(
-      [...opcoes.entries()].map(([id, label]) => [normalizarChave(label), id]),
-    );
-    return idPorLabel.get(normalizarChave(raw)) ?? raw;
-  }
-  return value;
-}
-
-function mapaCabecalhos(cfg: CadastroConfig) {
-  const mapa = new Map<string, string>();
-  mapa.set(normalizarChave(TECH_ID_HEADER), "id");
-  mapa.set("id", "id");
-  for (const campo of cfg.campos) {
-    mapa.set(normalizarChave(campo.label), campo.name);
-    mapa.set(normalizarChave(campo.name), campo.name);
-    if (campo.tipo === "select" && campo.opcoesDe) {
-      mapa.set(normalizarChave(`${campo.label} ID`), `${campo.name}${TECH_SUFFIX}`);
-      mapa.set(normalizarChave(`${campo.name}${TECH_SUFFIX}`), `${campo.name}${TECH_SUFFIX}`);
-    }
-  }
-  return mapa;
-}
-
-function registrosDaAba(
-  sheet: ExcelJS.Worksheet,
-  cfg: CadastroConfig,
-  opcoes: Record<string, Map<string, string>>,
-) {
-  const headers: string[] = [];
-  const headerMap = mapaCabecalhos(cfg);
-  sheet.getRow(1).eachCell((cell, colNumber) => {
-    headers[colNumber] = headerMap.get(normalizarChave(valorCelula(cell))) ?? "";
-  });
-
-  const campoPorNome = new Map(cfg.campos.map((campo) => [campo.name, campo]));
-  const rows: { excelRow: number; id: number | null; obj: Record<string, unknown> }[] = [];
-
-  sheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
-    const obj: Record<string, unknown> = {};
-    const technicalIds: Record<string, unknown> = {};
-
-    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-      const key = headers[colNumber];
-      if (!key) return;
-      const value = valorCelula(cell);
-      if (value == null || value === "") return;
-      if (key === "id") {
-        obj.id = value;
-        return;
-      }
-      if (key.endsWith(TECH_SUFFIX)) {
-        technicalIds[key.slice(0, -TECH_SUFFIX.length)] = value;
-        return;
-      }
-      const campo = campoPorNome.get(key);
-      obj[key] = campo ? valorParaCampo(value, campo, opcoes[key]) : value;
-    });
-
-    for (const [key, value] of Object.entries(technicalIds)) {
-      if (value != null && value !== "") obj[key] = value;
-    }
-
-    const temValor = Object.entries(obj).some(([key, value]) => key !== "id" && value != null && value !== "");
-    if (!temValor) return;
-
-    rows.push({
-      excelRow: rowNumber,
-      id: obj.id == null || obj.id === "" ? null : Number(obj.id),
-      obj: aplicarPadroesCadastro(cfg.slug, obj),
-    });
-  });
-
-  return rows;
-}
+// ---- importação XLSX ("só adicionar e atualizar") ----
 
 function mapaNatural(existingRows: Record<string, unknown>[], rotulo: string) {
   const map = new Map<string, Record<string, unknown> | null>();
@@ -507,74 +443,59 @@ function mapaNatural(existingRows: Record<string, unknown>[], rotulo: string) {
   return map;
 }
 
-const REFERENCIAS_CADASTROS: Record<string, { tabela: string; coluna: string; label: string }[]> = {
-  clientes: [{ tabela: "projetos", coluna: "cliente_id", label: "projetos" }],
-  projetos: [
-    { tabela: "orcamentos", coluna: "projeto_id", label: "orçamentos" },
-    { tabela: "demandas_propostas", coluna: "projeto_id", label: "demandas" },
-  ],
-  tipo_insumos: [{ tabela: "insumos", coluna: "tipo_insumo_id", label: "insumos" }],
-  insumos: [
-    { tabela: "insumo_analise", coluna: "insumo_id", label: "insumos por análise" },
-    { tabela: "lotes_estoque", coluna: "insumo_id", label: "lotes de estoque" },
-  ],
-  equipamentos: [
-    { tabela: "equipamento_analise", coluna: "equipamento_id", label: "equipamentos por análise" },
-    { tabela: "equipamentos_unidades", coluna: "equipamento_id", label: "unidades de equipamento" },
-  ],
-  fornecedores: [
-    { tabela: "insumos", coluna: "fornecedor_id", label: "insumos" },
-    { tabela: "insumos", coluna: "fornecedor_alt_id", label: "insumos" },
-    { tabela: "pedidos_compra", coluna: "fornecedor_id", label: "pedidos de compra" },
-  ],
-  locais: [
-    { tabela: "locais", coluna: "parent_id", label: "locais filhos" },
-    { tabela: "lotes_estoque", coluna: "local_id", label: "lotes de estoque" },
-    { tabela: "equipamentos_unidades", coluna: "local_id", label: "unidades de equipamento" },
-    { tabela: "inventario_ciclos", coluna: "local_id", label: "inventário" },
-    { tabela: "inventario_contagens", coluna: "local_id", label: "contagens de inventário" },
-  ],
-};
+function errosDaLinha(cfg: CadastroConfig, excelRow: number, error: z.ZodError) {
+  const erros = Object.entries(errosZod(error)).map(([campo, mensagem]) =>
+    erroLinha(excelRow, rotuloCampo(cfg, campo), mensagem),
+  );
+  return erros.length ? erros : [`Linha ${excelRow}: dados inválidos.`];
+}
 
-async function motivoVinculoExistente(
+function localizarAba(workbook: ExcelJS.Workbook, cfg: CadastroConfig) {
+  const nomes = new Set([normalizarChave(cfg.titulo), normalizarChave(cfg.titulo.slice(0, 31))]);
+  return workbook.worksheets.find((sheet) => nomes.has(normalizarChave(sheet.name)));
+}
+
+async function quantidadesAtuaisInsumos(
   supabase: Awaited<ReturnType<typeof createClientUntyped>>,
-  slug: string,
-  id: number,
+  existingRows: Record<string, unknown>[],
 ) {
-  for (const referencia of REFERENCIAS_CADASTROS[slug] ?? []) {
-    const { data, error } = await supabase
-      .from(referencia.tabela)
-      .select("id")
-      .eq(referencia.coluna, id)
-      .limit(1);
-    if (error) continue;
-    if (Array.isArray(data) && data.length > 0) return referencia.label;
-  }
-  return null;
+  const { data: lotes, error } = await supabase
+    .from("lotes_estoque")
+    .select("insumo_id, status, quantidade_atual, validade, validade_apos_abertura, data_abertura");
+  if (error) return null;
+  return new Map(
+    projetarQuantidadeInsumos(
+      existingRows.map((row) => ({ id: row.id })),
+      (lotes ?? []) as LoteInsumo[],
+    ).map((row) => [String(row.id), Number(row.quantidade ?? 0)]),
+  );
 }
 
 async function importarCadastro(
   cfg: CadastroConfig,
   sheet: ExcelJS.Worksheet,
+  arquivoHash: string,
 ): Promise<ImportCadastroResumo> {
   const resumo: ImportCadastroResumo = {
     aba: cfg.titulo,
     inseridos: 0,
     atualizados: 0,
-    removidos: 0,
+    inalterados: 0,
     ignorados: 0,
     erros: [],
-    naoRemovidosPorVinculo: [],
+    avisos: [],
   };
-  const schema = SCHEMAS[cfg.slug];
   const tabela = TABELAS[cfg.slug];
-  if (!schema || !tabela) {
+  if (!SCHEMAS[cfg.slug] || !tabela) {
     resumo.erros.push("Cadastro sem schema/tabela configurado.");
     return resumo;
   }
 
   const supabase = await createClientUntyped();
-  const { data: existing, error: selectError } = await supabase.from(tabela).select("*").order("id");
+  const podeVerSalarioTecnicos = cfg.slug === "tecnicos" ? await podeVerSalario() : false;
+  const { data: existing, error: selectError } = await lerLinhasCadastro(supabase, tabela, {
+    podeVerSalario: podeVerSalarioTecnicos,
+  });
   if (selectError) {
     resumo.erros.push(selectError.message);
     return resumo;
@@ -583,95 +504,156 @@ async function importarCadastro(
   const existingRows = (existing ?? []) as Record<string, unknown>[];
   const existingById = new Map(existingRows.map((row) => [Number(row.id), row]));
   const existingByNatural = mapaNatural(existingRows, cfg.rotulo);
-  const opcoes = await opcoesParaCampos(cfg.campos, existingRows);
-  const importedRows = registrosDaAba(sheet, cfg, opcoes);
-  const vistos = new Set<number>();
+  const opcoes = await opcoesParaCampos(cfg.campos);
+  const { linhas, colunas } = lerAbaCadastro(sheet, cfg, opcoes);
+  const rotuloNatural = rotuloCampo(cfg, cfg.rotulo);
+  const quantidadeAtual =
+    cfg.slug === "insumos" && colunas.has(QUANTIDADE_INSUMO_KEY) && existingRows.length > 0
+      ? await quantidadesAtuaisInsumos(supabase, existingRows)
+      : null;
+
   const naturaisImportados = new Set<string>();
+  const idsTocados = new Set<number>();
+  let houveMudanca = false;
+  const falhar = (mensagens: string[]) => {
+    resumo.ignorados += 1;
+    resumo.erros.push(...mensagens);
+  };
 
-  for (const row of importedRows) {
-    const parsed = schema.safeParse(row.obj);
-    if (!parsed.success) {
-      resumo.ignorados += 1;
-      const fields = Object.entries(errosZod(parsed.error))
-        .map(([field, message]) => `${field}: ${message}`)
-        .join("; ");
-      resumo.erros.push(`Linha ${row.excelRow}: ${fields || "dados inválidos"}`);
+  // Técnicos: "XXX"/em branco no salário = manter o atual; sem permissão o
+  // salário da planilha é sempre ignorado (o banco rejeitaria a alteração).
+  const validar = (registro: Record<string, unknown>) => {
+    const { schema, obj } = schemaEObjeto(cfg.slug, registro, {
+      podeVerSalario: podeVerSalarioTecnicos,
+      contexto: "importacao",
+    });
+    return schema!.safeParse(obj);
+  };
+
+  for (const linha of linhas) {
+    if (linha.erros.length > 0) {
+      falhar(linha.erros);
       continue;
     }
 
-    const naturalKey = normalizarChave(row.obj[cfg.rotulo]);
-    if (!row.id && naturalKey && naturaisImportados.has(naturalKey)) {
-      resumo.ignorados += 1;
-      resumo.erros.push(`Linha ${row.excelRow}: chave natural repetida na planilha.`);
-      continue;
-    }
-    const naturalMatch = naturalKey ? existingByNatural.get(naturalKey) : null;
-    if (!row.id && naturalKey && existingByNatural.has(naturalKey) && naturalMatch == null) {
-      resumo.ignorados += 1;
-      resumo.erros.push(
-        `Linha ${row.excelRow}: chave natural duplicada em ${cfg.titulo}; informe o ID para atualizar com segurança.`,
-      );
-      continue;
-    }
-    const targetId =
-      row.id && existingById.has(row.id)
-        ? row.id
-        : naturalMatch && naturalMatch.id != null
-          ? Number(naturalMatch.id)
-          : null;
-
-    if (targetId) {
-      const { error } = await supabase.from(tabela).update(parsed.data).eq("id", targetId);
-      if (error) {
-        resumo.ignorados += 1;
-        resumo.erros.push(`Linha ${row.excelRow}: ${error.message}`);
+    const naturalKey = normalizarChave(linha.valores[cfg.rotulo]);
+    let alvo: Record<string, unknown> | null = null;
+    if (linha.id != null && existingById.has(linha.id)) {
+      alvo = existingById.get(linha.id) ?? null;
+    } else if (naturalKey && existingByNatural.has(naturalKey)) {
+      alvo = existingByNatural.get(naturalKey) ?? null;
+      if (!alvo) {
+        falhar([
+          `Linha ${linha.excelRow}: ${rotuloNatural} "${String(linha.valores[cfg.rotulo])}" aparece mais de uma vez em ${cfg.titulo}; informe o ID para atualizar com segurança.`,
+        ]);
         continue;
       }
-      vistos.add(targetId);
+    }
+
+    if (alvo) {
+      const alvoId = Number(alvo.id);
+      if (idsTocados.has(alvoId)) {
+        falhar([`Linha ${linha.excelRow}: o registro ID ${alvoId} já foi atualizado por outra linha da planilha.`]);
+        continue;
+      }
+      const parsed = validar(registroAtualizado(cfg, alvo, linha.valores));
+      if (!parsed.success) {
+        falhar(errosDaLinha(cfg, linha.excelRow, parsed.error));
+        continue;
+      }
+      idsTocados.add(alvoId);
       if (naturalKey) naturaisImportados.add(naturalKey);
+
+      if (quantidadeAtual && linha.quantidade != null) {
+        const atual = quantidadeAtual.get(String(alvoId)) ?? 0;
+        if (!valoresEquivalentes(linha.quantidade, atual)) {
+          resumo.avisos.push(
+            `Linha ${linha.excelRow}: ${QUANTIDADE_INSUMO_LABEL} ignorada para item existente (atual ${atual}, planilha ${linha.quantidade}). Registre entradas e baixas em Estoque.`,
+          );
+        }
+      }
+
+      const payload = diferencas(parsed.data, alvo);
+      if (Object.keys(payload).length === 0) {
+        resumo.inalterados += 1;
+        continue;
+      }
+      const { error } = await supabase.from(tabela).update(payload).eq("id", alvoId);
+      if (error) {
+        falhar([`Linha ${linha.excelRow}: ${error.message}`]);
+        continue;
+      }
       resumo.atualizados += 1;
+      houveMudanca = true;
       continue;
     }
 
-    const { data, error } = await supabase.from(tabela).insert(parsed.data).select("id").single();
-    if (error) {
-      resumo.ignorados += 1;
-      resumo.erros.push(`Linha ${row.excelRow}: ${error.message}`);
+    if (naturalKey && naturaisImportados.has(naturalKey)) {
+      falhar([`Linha ${linha.excelRow}: ${rotuloNatural} repetido na planilha.`]);
       continue;
     }
-    if (data && typeof data === "object" && "id" in data) vistos.add(Number(data.id));
+    const parsed = validar(registroNovo(cfg, linha.valores));
+    if (!parsed.success) {
+      falhar(errosDaLinha(cfg, linha.excelRow, parsed.error));
+      continue;
+    }
+
+    if (cfg.slug === "insumos") {
+      // Mesmo caminho do formulário: criação atômica com a quantidade inicial
+      // (embalagens fechadas). operacao_id determinístico por arquivo+linha
+      // torna o reenvio do mesmo arquivo idempotente (sem estoque duplicado).
+      const quantidade = quantidadeInsumoSchema.safeParse(linha.quantidade ?? 0);
+      if (!quantidade.success) {
+        falhar([
+          erroLinha(
+            linha.excelRow,
+            QUANTIDADE_INSUMO_LABEL,
+            quantidade.error.issues[0]?.message ?? "inválida",
+          ),
+        ]);
+        continue;
+      }
+      const { data, error } = await supabase.rpc("criar_insumo_com_quantidade", {
+        p_dados_insumo: payloadRpcInsumo(parsed.data),
+        p_quantidade_embalagens: quantidade.data,
+        p_operacao_id: operacaoIdDeterministico(arquivoHash, cfg.slug, linha.excelRow),
+      });
+      if (error) {
+        falhar([`Linha ${linha.excelRow}: ${error.message}`]);
+        continue;
+      }
+      if (naturalKey) naturaisImportados.add(naturalKey);
+      if ((data as { repetido?: boolean } | null)?.repetido) {
+        resumo.inalterados += 1;
+        resumo.avisos.push(
+          `Linha ${linha.excelRow}: já importada antes com este mesmo arquivo; nada foi criado de novo.`,
+        );
+        continue;
+      }
+      resumo.inseridos += 1;
+      houveMudanca = true;
+      continue;
+    }
+
+    const { error } = await supabase.from(tabela).insert(parsed.data);
+    if (error) {
+      falhar([`Linha ${linha.excelRow}: ${error.message}`]);
+      continue;
+    }
     if (naturalKey) naturaisImportados.add(naturalKey);
     resumo.inseridos += 1;
+    houveMudanca = true;
   }
 
-  if (resumo.erros.length === 0) {
-    for (const existingRow of existingRows) {
-      const id = Number(existingRow.id);
-      if (!id || vistos.has(id)) continue;
-      const label = String(existingRow[cfg.rotulo] ?? `ID ${id}`);
-      const vinculo = await motivoVinculoExistente(supabase, cfg.slug, id);
-      if (vinculo) {
-        resumo.naoRemovidosPorVinculo.push(`${label}: não removido por vínculo existente (${vinculo}).`);
-        continue;
-      }
-      const { error } = await supabase.from(tabela).delete().eq("id", id);
-      if (error) {
-        const msg =
-          error.code === "23503"
-            ? `${label}: não removido por vínculo existente.`
-            : `${label}: ${error.message}`;
-        if (error.code === "23503") resumo.naoRemovidosPorVinculo.push(msg);
-        else resumo.erros.push(msg);
-        continue;
-      }
-      resumo.removidos += 1;
-    }
-  }
-
-  revalidarDependentes(cfg.slug);
+  if (houveMudanca) revalidarDependentes(cfg.slug);
   return resumo;
 }
 
+/**
+ * Importa a planilha de cadastros. Só adiciona e atualiza: nunca exclui
+ * registros; em registros existentes, células vazias e colunas ausentes
+ * mantêm o valor atual. Abas ausentes são ignoradas.
+ */
 export async function importarCadastrosWorkbook(
   _prev: ImportCadastrosState,
   formData: FormData,
@@ -682,34 +664,39 @@ export async function importarCadastrosWorkbook(
   }
 
   try {
+    const conteudo = await file.arrayBuffer();
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(await file.arrayBuffer());
+    await workbook.xlsx.load(conteudo);
+    const arquivoHash = hashConteudo(conteudo);
 
     const resumo: ImportCadastroResumo[] = [];
     for (const cfg of getCadastrosOrdenados()) {
-      const sheet = workbook.getWorksheet(cfg.titulo) ?? workbook.getWorksheet(cfg.titulo.slice(0, 31));
-      if (!sheet) {
-        resumo.push({
-          aba: cfg.titulo,
-          inseridos: 0,
-          atualizados: 0,
-          removidos: 0,
-          ignorados: 0,
-          erros: ["Aba não encontrada; cadastro ignorado."],
-          naoRemovidosPorVinculo: [],
-        });
-        continue;
-      }
-      resumo.push(await importarCadastro(cfg, sheet));
+      const sheet = localizarAba(workbook, cfg);
+      if (!sheet) continue;
+      resumo.push(await importarCadastro(cfg, sheet, arquivoHash));
     }
 
+    if (resumo.length === 0) {
+      return {
+        ok: false,
+        message:
+          'Nenhuma aba de cadastro encontrada. Use os nomes de aba da planilha modelo (Baixar XLSX), por exemplo "Insumos".',
+      };
+    }
+
+    const soma = (campo: "inseridos" | "atualizados" | "inalterados" | "ignorados") =>
+      resumo.reduce((acc, item) => acc + item[campo], 0);
     const totalErros = resumo.reduce((acc, item) => acc + item.erros.length, 0);
+    const partes = [
+      `${soma("inseridos")} inserido(s)`,
+      `${soma("atualizados")} atualizado(s)`,
+      `${soma("inalterados")} sem alteração`,
+    ];
+    if (soma("ignorados") > 0) partes.push(`${soma("ignorados")} linha(s) com erro não importada(s)`);
+
     return {
       ok: totalErros === 0,
-      message:
-        totalErros === 0
-          ? "Importação concluída."
-          : "Importação concluída com avisos ou erros. Revise o relatório.",
+      message: `${totalErros === 0 ? "Importação concluída" : "Importação concluída com erros"}: ${partes.join(", ")}. Nada foi excluído; células vazias mantêm o valor atual.`,
       resumo,
     };
   } catch (error) {
@@ -719,3 +706,4 @@ export async function importarCadastrosWorkbook(
     };
   }
 }
+

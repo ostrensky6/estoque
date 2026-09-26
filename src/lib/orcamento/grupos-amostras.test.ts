@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   GruposAmostrasInvalidosError,
   lerGruposAmostras,
+  proximaIdentificacaoGrupo,
   matrizesConcatenadas,
   payloadSincronizacao,
   totalAmostras,
@@ -192,5 +193,18 @@ describe("derivados que alimentam as colunas legadas", () => {
       unidade: "amostras",
       observacao: null,
     });
+  });
+});
+
+describe("proximaIdentificacaoGrupo", () => {
+  it("usa a primeira letra livre, sem repetir nomes após uma remoção", () => {
+    expect(proximaIdentificacaoGrupo([])).toBe("Grupo A");
+    expect(proximaIdentificacaoGrupo(["Grupo A", "Grupo C"])).toBe("Grupo B");
+    expect(proximaIdentificacaoGrupo(["grupo a", "Grupo B"])).toBe("Grupo C");
+  });
+
+  it("passa a números quando as letras acabam", () => {
+    const todas = Array.from({ length: 26 }, (_, i) => `Grupo ${String.fromCharCode(65 + i)}`);
+    expect(proximaIdentificacaoGrupo(todas)).toBe("Grupo 27");
   });
 });

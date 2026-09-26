@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import Link from "next/link";
 
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { DownloadButton } from "@/components/common/DownloadButton";
+import { HelpExample, HelpLegend, HelpTip } from "@/components/common/HelpTip";
 import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import {
   atualizarOrcamentosFinaisVencidos,
@@ -12,6 +14,9 @@ import {
 import { formatCurrency as brl, formatDate, formatDateTime } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
+import { rotuloModalidade } from "@/lib/orcamento/orcamento-economico";
+import { hojeCalendario, rotuloStatusVersaoFinal, statusEfetivoVersaoFinal } from "@/lib/orcamento/rotulos-status";
+import { podeOrcamento } from "@/lib/orcamento/governanca";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +65,7 @@ type SnapshotFinal = {
     totalFinal?: number;
     markupProjeto?: number;
     parametrosProjeto?: SnapshotParametro[];
+    economia?: { parametros?: Array<{ chave?: string; label?: string; valorNominal?: number }> };
     origens?: Array<{ campo?: string; titulo?: string; regra?: string; valor?: number }>;
   };
   orcamentos_analises?: Array<{ id?: number; orcamento_itens?: unknown[] }>;
@@ -130,7 +136,9 @@ export default async function HistoricoOrcamentosPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  await atualizarOrcamentosFinaisVencidos();
+  // Gravar "vencido" exige papel de coordenador; sem ele (ou em falha) a página
+  // segue e o status é derivado na leitura por statusEfetivoVersaoFinal.
+  await atualizarOrcamentosFinaisVencidos().catch(() => undefined);
 
   const filtros = await searchParams;
   const supabase = await createClient();
@@ -149,9 +157,14 @@ export default async function HistoricoOrcamentosPage({
     .order("criado_em", { ascending: false });
   if (error) throw new Error(error.message);
 
-  const todas = ((data ?? []) as unknown as VersaoFinal[]).map((versao) => ({
+  const hoje = hojeCalendario();
+  const lidas = ((data ?? []) as unknown as VersaoFinal[]).map((versao) => ({
     ...versao,
-    anterior: encontrarAnterior((data ?? []) as unknown as VersaoFinal[], versao),
+    status: statusEfetivoVersaoFinal(versao, hoje),
+  }));
+  const todas = lidas.map((versao) => ({
+    ...versao,
+    anterior: encontrarAnterior(lidas, versao),
   }));
   const versoes = filtrarVersoes(todas, filtros);
   const comparada = todas.find((item) => item.id === Number(filtros.comparar));
@@ -162,6 +175,10 @@ export default async function HistoricoOrcamentosPage({
   const cancelados = versoes.filter((item) => item.status === "cancelado").length;
   const totalHistorico = versoes.reduce((total, item) => total + Number(item.total_final ?? 0), 0);
   const operacoesDuplicacao = new Map(versoes.map((item) => [item.id, randomUUID()]));
+  const [podeDuplicar, podeCancelar] = await Promise.all([
+    podeOrcamento("duplicar_final"),
+    podeOrcamento("cancelar_documento"),
+  ]);
 
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
@@ -170,15 +187,20 @@ export default async function HistoricoOrcamentosPage({
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Histórico de Orçamentos</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Área de consulta para registros fechados. Versões finais preservam snapshot técnico, parâmetros e valores emitidos.
-            </p>
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Histórico de Orçamentos</h1>
+              <HelpTip title="Histórico de orçamentos">
+                <p>
+                  Versões de proposta já emitidas. Cada versão guarda os <b>custos, parâmetros e valores
+                  do dia da emissão</b>; mudanças posteriores nos cadastros não a alteram.
+                </p>
+              </HelpTip>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href={exportHref} className="rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted">
+            <DownloadButton href={exportHref} fileName="historico-orcamentos.csv">
               Exportar CSV
-            </Link>
+            </DownloadButton>
             <Link href="/orcamento/demandas/nova" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500">
               + Novo Orçamento
             </Link>
@@ -271,18 +293,49 @@ export default async function HistoricoOrcamentosPage({
                 <th className="px-3 py-3">Cliente</th>
                 <th className="px-3 py-3">Modalidade</th>
                 <th className="px-3 py-3">Responsável</th>
-                <th className="px-3 py-3">Criado em</th>
-                <th className="px-3 py-3">Emissão/conclusão</th>
+                <th className="px-3 py-3">Emitida em</th>
+                <th className="px-3 py-3">Conclusão</th>
                 <th className="px-3 py-3">Validade</th>
-                <th className="px-3 py-3">Status</th>
+                <th className="px-3 py-3">
+                  <span className="flex items-center gap-1">
+                    Status
+                    <HelpTip title="Status da proposta">
+                      <HelpLegend
+                        items={[
+                          { tom: "info", rotulo: "Emitida", texto: "documento gerado, ainda sem retorno do cliente." },
+                          { tom: "ok", rotulo: "Aprovada", texto: "o cliente aceitou a proposta." },
+                          { tom: "atencao", rotulo: "Vencida", texto: "passou da validade sem resposta." },
+                          { tom: "critico", rotulo: "Recusada", texto: "recusada pelo cliente ou cancelada; o registro fica no histórico." },
+                          { tom: "neutro", rotulo: "Substituída", texto: "uma versão mais nova tomou o lugar." },
+                        ]}
+                      />
+                      <p>Use <b>Classificar</b> para registrar o retorno do cliente.</p>
+                    </HelpTip>
+                  </span>
+                </th>
                 <th className="px-3 py-3 text-right">Custo análises</th>
                 <th className="px-3 py-3 text-right">Custo projeto</th>
                 <th className="px-3 py-3 text-right">Subtotal custos</th>
                 <th className="px-3 py-3 text-right">Taxas/impostos</th>
-                <th className="px-3 py-3 text-right">Margem/lucro</th>
+                <th className="px-3 py-3 text-right">
+                  <span className="inline-flex items-center gap-1">
+                    Margem/lucro
+                    <HelpTip title="Valores dos parâmetros">
+                      <p>As colunas <b>Taxas/impostos</b>, <b>Margem/lucro</b> e <b>Fundos/equip.</b> somam, em R$, os parâmetros de cada proposta: impostos e incubação; lucro; reserva e investimentos.</p>
+                    </HelpTip>
+                  </span>
+                </th>
                 <th className="px-3 py-3 text-right">Fundos/equip.</th>
                 <th className="px-3 py-3 text-right">Preço final</th>
-                <th className="px-3 py-3 text-right">Delta</th>
+                <th className="px-3 py-3 text-right">
+                  <span className="inline-flex items-center gap-1">
+                    Delta
+                    <HelpTip title="Delta" align="end">
+                      <p>Diferença do preço final em relação à <b>versão anterior</b> da mesma proposta, em R$ e em %.</p>
+                      <HelpExample>v1 de R$ 10.000 e v2 de R$ 11.000 → +R$ 1.000 (+10%).</HelpExample>
+                    </HelpTip>
+                  </span>
+                </th>
                 <th className="px-3 py-3 text-right">Ações</th>
               </tr>
             </thead>
@@ -304,13 +357,13 @@ export default async function HistoricoOrcamentosPage({
                       </Link>
                     </td>
                     <td className="px-3 py-3">{snapshot.demanda?.cliente_nome ?? item.demandas_propostas?.cliente_nome ?? "Cliente não informado"}</td>
-                    <td className="px-3 py-3"><Badge>{modalidadeLabel(snapshot.demanda?.modalidade ?? item.demandas_propostas?.modalidade)}</Badge></td>
+                    <td className="px-3 py-3"><Badge>{rotuloModalidade(snapshot.demanda?.modalidade ?? item.demandas_propostas?.modalidade)}</Badge></td>
                     <td className="px-3 py-3">
                       <p>{snapshot.demanda?.responsavel_interno ?? item.demandas_propostas?.responsavel_interno ?? item.criado_por ?? "—"}</p>
                       <p className="text-xs text-muted-foreground">{item.criado_por ? `usuário ${item.criado_por}` : "sem usuário registrado"}</p>
                     </td>
                     <td className="px-3 py-3">{formatDateTime(item.criado_em)}</td>
-                    <td className="px-3 py-3">{formatDateTime(item.criado_em)}</td>
+                    <td className="px-3 py-3">{formatDateTime(item.classificado_em ?? item.cancelado_em)}</td>
                     <td className="px-3 py-3">
                       <p>{formatDate(item.valido_ate)}</p>
                       <p className="text-xs text-muted-foreground">{item.validade_dias} dias</p>
@@ -345,19 +398,21 @@ export default async function HistoricoOrcamentosPage({
                         <Link href={`/orcamento/historico?${new URLSearchParams({ ...limparFiltros(filtros), comparar: String(item.id) }).toString()}`} className="text-xs text-brand-700 hover:underline dark:text-brand-300">
                           Comparar
                         </Link>
+                        {podeDuplicar && (
                         <form action={duplicarVersaoFinal}>
                           <input type="hidden" name="versao_id" value={item.id} />
                           <input type="hidden" name="validade_dias" value={item.validade_dias || 30} />
                           <input type="hidden" name="operacao_id" value={operacoesDuplicacao.get(item.id)} />
                           <button className="text-xs text-brand-700 hover:underline dark:text-brand-300">Duplicar</button>
                         </form>
-                        {!["cancelado", "substituido"].includes(item.status) && (
+                        )}
+                        {podeCancelar && !["cancelado", "substituido"].includes(item.status) && (
                           <ConfirmActionButton
                             action={cancelarVersaoFinal}
                             fields={{ versao_id: item.id, motivo: "Cancelamento operacional pelo histórico." }}
                             trigger="Cancelar"
                             titulo="Cancelar versão final"
-                            mensagem={`Cancelar a versão ${item.numero}? O snapshot continuará preservado no histórico.`}
+                            mensagem={`Cancelar a versão ${item.numero}? O registro continuará no histórico.`}
                             confirmLabel="Cancelar versão"
                             triggerClassName="text-xs text-danger-strong hover:underline"
                           />
@@ -369,8 +424,8 @@ export default async function HistoricoOrcamentosPage({
               })}
               {versoes.length === 0 && (
                 <tr>
-                  <td colSpan={18} className="px-3 py-6 text-center text-muted-foreground/80">
-                    Nenhuma versão final encontrada para os filtros atuais.
+                  <td colSpan={18} className="px-3 py-6 text-left text-muted-foreground/80">
+                    <p className="sticky left-3 inline-block">Nenhuma versão final encontrada para os filtros atuais.</p>
                   </td>
                 </tr>
               )}
@@ -439,7 +494,7 @@ function normalizarSnapshot(snapshot: Json): SnapshotFinal {
 function resumoParametros(snapshot: SnapshotFinal) {
   const markup = Number(snapshot.consolidado?.markupProjeto ?? 0);
   const params = snapshot.consolidado?.parametrosProjeto ?? [];
-  if (params.length === 0 && markup === 0) return "sem parâmetros no snapshot";
+  if (params.length === 0 && markup === 0) return "sem parâmetros registrados";
   const nomes = params.slice(0, 3).map((item) => `${item.label ?? item.key}: ${Number(item.nominalRate ?? 0).toLocaleString("pt-BR")}%`);
   return [`Σ parâmetros ${markup.toLocaleString("pt-BR")}%`, ...nomes].join(" · ");
 }
@@ -448,7 +503,11 @@ function composicaoEconomica(item: VersaoFinal, snapshot: SnapshotFinal) {
   const custoAnalises = Number(snapshot.consolidado?.totalLaboratorioCusto ?? item.total_laboratorio_custo ?? 0);
   const custoProjeto = Number(snapshot.consolidado?.totalProjetoCusto ?? item.total_projeto_custo ?? 0);
   const subtotalCustos = custoAnalises + custoProjeto;
-  const parametros = snapshot.consolidado?.parametrosProjeto ?? [];
+  // Engine atual grava economia.parametros ({chave, label, valorNominal}); versões antigas, parametrosProjeto.
+  const economia = snapshot.consolidado?.economia?.parametros;
+  const parametros: SnapshotParametro[] = Array.isArray(economia)
+    ? economia.map((p) => ({ key: p.chave, label: p.label, amount: p.valorNominal }))
+    : snapshot.consolidado?.parametrosProjeto ?? [];
   const totalParametros = (predicado: (parametro: SnapshotParametro) => boolean) =>
     parametros
       .filter(predicado)
@@ -464,7 +523,7 @@ function composicaoEconomica(item: VersaoFinal, snapshot: SnapshotFinal) {
     }) || Math.max(0, Number(item.total_final ?? 0) - subtotalCustos - taxasImpostos);
   const fundosInvestimentos = totalParametros((parametro) => {
     const chave = `${parametro.key ?? ""} ${parametro.label ?? ""}`.toLocaleLowerCase("pt-BR");
-    return ["fundo", "invest", "equip"].some((token) => chave.includes(token));
+    return ["fundo", "invest", "equip", "reserva"].some((token) => chave.includes(token));
   });
 
   return {
@@ -475,16 +534,6 @@ function composicaoEconomica(item: VersaoFinal, snapshot: SnapshotFinal) {
     margemLucro,
     fundosInvestimentos,
   };
-}
-
-function modalidadeLabel(modalidade: string | null | undefined) {
-  const labels: Record<string, string> = {
-    analises: "Apenas análises laboratoriais",
-    projeto: "Apenas projeto",
-    analises_projeto: "Projeto com análises laboratoriais",
-    projeto_analises_custos: "Projeto com análises laboratoriais",
-  };
-  return modalidade ? labels[modalidade] ?? modalidade : "—";
 }
 
 function limparFiltros(filtros: SearchParams) {
@@ -570,7 +619,7 @@ function PainelComparado({ titulo, versao, snapshot }: { titulo: string; versao:
       <h3 className="text-sm font-semibold">{titulo}</h3>
       <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
         <Info label="Número" value={`${versao.numero} · v${versao.versao}`} />
-        <Info label="Status" value={versao.status} />
+        <Info label="Status" value={rotuloStatusVersaoFinal(versao.status)} />
         <Info label="Criado em" value={formatDateTime(versao.criado_em)} />
         <Info label="Validade" value={formatDate(versao.valido_ate)} />
         <Info label="Itens laboratório" value={String(analises)} />
@@ -624,18 +673,6 @@ function ClassificacaoForm({ versaoId, statusAtual }: { versaoId: number; status
 }
 
 function Status({ status }: { status: string }) {
-  const labels: Record<string, string> = {
-    emitido: "Emitido",
-    enviado: "Enviado",
-    alterado_reenviado: "Alterado e reenviado",
-    aprovado: "Aprovado",
-    rejeitado: "Rejeitado",
-    recusado: "Recusado",
-    substituido: "Substituído",
-    cancelado: "Cancelado",
-    vencido: "Vencido",
-    convertido_projeto: "Convertido em projeto",
-  };
   const cls =
     ["emitido", "enviado", "alterado_reenviado"].includes(status)
       ? "bg-brand-100 text-brand-800 dark:bg-brand-950/50 dark:text-brand-300"
@@ -646,5 +683,5 @@ function Status({ status }: { status: string }) {
         : ["cancelado", "rejeitado", "recusado"].includes(status)
           ? "bg-danger-soft text-danger-strong"
           : "bg-muted text-muted-foreground";
-  return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{labels[status] ?? status}</span>;
+  return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{rotuloStatusVersaoFinal(status)}</span>;
 }

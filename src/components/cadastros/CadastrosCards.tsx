@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TextoAjuda } from "@/components/common/HelpTip";
 
 const GRUPOS = [
   { value: "todos", label: "Todos", slugs: [] },
@@ -47,7 +48,9 @@ export function CadastrosCards({ cadastros }: { cadastros: CadastroConfig[] }) {
                       <CardTitle className="text-lg">{cadastro.titulo}</CardTitle>
                       <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
                     </div>
-                    <CardDescription>{cadastro.subtitulo}</CardDescription>
+                    <CardDescription>
+                      <TextoAjuda texto={cadastro.subtitulo} />
+                    </CardDescription>
                   </CardHeader>
                 </Card>
               </Link>

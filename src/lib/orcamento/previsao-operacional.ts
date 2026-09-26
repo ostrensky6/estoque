@@ -1,4 +1,4 @@
-import { gargalo } from "@/lib/costing/engine";
+import { consumoInsumo, gargalo, insumosSelecionados } from "@/lib/costing/engine";
 
 export type AnaliseSolicitadaOperacao = {
   codigo_analise: string;
@@ -23,6 +23,9 @@ export type InsumoOperacao = {
   modo_cobranca: string | null;
   nome_etapa?: string | null;
   nome_atividade?: string | null;
+  grupo_escolha?: string | null;
+  custo_unitario?: number | null;
+  insumos?: { custo_unitario?: number | null } | null;
 };
 
 export type PrevisaoOperacionalAnalise = {
@@ -67,17 +70,25 @@ export function calcularPrevisaoOperacionalDemanda(args: {
     const capacidadeDia = capacidade.amostrasDia > 0 ? capacidade.amostrasDia : lotePadrao;
     const lotes = Math.max(1, Math.ceil(quantidade / lotePadrao));
     const prazoDias = capacidadeDia > 0 ? Math.max(1, Math.ceil(quantidade / capacidadeDia)) : null;
-    const reagentes = args.insumos
+    // mesma seleção do custeio e do planejamento: sem grupo entra sempre;
+    // em cada grupo de escolha, só uma alternativa (a mais barata por amostra)
+    const linhas = args.insumos
       .filter((insumo) => insumo.codigo_analise === analise.codigo_analise)
-      .map((insumo) => {
-        const porExecucao = insumo.modo_cobranca === "por_execucao";
-        return {
-          especificacao: insumo.especificacao_insumo ?? "Insumo sem especificação",
-          unidade: insumo.unidade ?? "un",
-          modo_cobranca: porExecucao ? "por_execucao" as const : "por_amostra" as const,
-          consumo_total: numero(insumo.quantidade_por_amostra) * (porExecucao ? lotes : quantidade),
-        };
-      })
+      .map((insumo) => ({
+        ...insumo,
+        nome_etapa: insumo.nome_etapa ?? "",
+        nome_atividade: insumo.nome_atividade ?? "",
+        grupo_escolha: insumo.grupo_escolha ?? null,
+        quantidade_por_amostra: numero(insumo.quantidade_por_amostra),
+        custo_unitario: insumo.custo_unitario ?? insumo.insumos?.custo_unitario ?? null,
+      }));
+    const reagentes = insumosSelecionados(linhas)
+      .map((insumo) => ({
+        especificacao: insumo.especificacao_insumo ?? "Insumo sem especificação",
+        unidade: (insumo as (typeof linhas)[number]).unidade ?? "un",
+        modo_cobranca: insumo.modo_cobranca === "por_execucao" ? "por_execucao" as const : "por_amostra" as const,
+        consumo_total: consumoInsumo(insumo, quantidade, lotes),
+      }))
       .filter((insumo) => insumo.consumo_total > 0);
 
     return {

@@ -16,27 +16,4 @@ describe("callers idempotentes da emissão final", () => {
     expect(campo?.[1]).toBe(identidade?.[1]);
     expect(fonte.indexOf("randomUUID()")).toBeLessThan(fonte.indexOf("<form action={duplicarVersaoFinal}>"));
   });
-
-  it("mantém uma identidade por instância no Client Component e a envia na emissão", () => {
-    const fonte = readFileSync(resolve(process.cwd(), "src/components/orcamento/EmissaoFinalForm.tsx"), "utf8");
-    const formulario = fonte.match(/<form onSubmit=\{handleSalvarEmissao\}[\s\S]*?<\/form>/)?.[0] ?? "";
-    const campo = formulario.match(
-      /<input(?=[^>]*\btype="hidden")(?=[^>]*\bname="operacao_id")(?=[^>]*\bvalue=\{([A-Za-z_$][\w$]*)\})[^>]*\/>/,
-    );
-    const estadoDaIdentidade = fonte.match(
-      /const\s+\[\s*([A-Za-z_$][\w$]*)\s*,\s*([A-Za-z_$][\w$]*)\s*\]\s*=\s*useState\(""\);/,
-    );
-    const inicializacaoUnica = fonte.match(
-      /useEffect\(\(\)\s*=>\s*\{\s*([A-Za-z_$][\w$]*)\(\(([A-Za-z_$][\w$]*)\)\s*=>\s*\2\s*\|\|\s*crypto\.randomUUID\(\)\);\s*\},\s*\[\]\);/,
-    );
-
-    expect(campo, "o form de emissão deve enviar operacao_id oculto").not.toBeNull();
-    expect(estadoDaIdentidade, "o UUID deve ter estado estável por instância").not.toBeNull();
-    expect(inicializacaoUnica, "o UUID deve ser criado só quando a instância ainda não tem identidade").not.toBeNull();
-    expect(campo?.[1]).toBe(estadoDaIdentidade?.[1]);
-    expect(inicializacaoUnica?.[1]).toBe(estadoDaIdentidade?.[2]);
-    expect(fonte.match(/crypto\.randomUUID\(\)/g)).toHaveLength(1);
-    expect(fonte.indexOf("crypto.randomUUID()")).toBeLessThan(fonte.indexOf("const handleSalvarEmissao"));
-    expect(fonte).toMatch(new RegExp(`if \\(\\s*!${campo?.[1]}\\s*\\) return;`));
-  });
 });

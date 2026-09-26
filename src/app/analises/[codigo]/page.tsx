@@ -12,8 +12,8 @@ import {
   type InsumoLinha,
 } from "@/lib/costing/engine";
 import { calcularTodas } from "@/lib/costing/loader";
-import { ConfirmActionButton } from "@/components/common/ConfirmActionButton";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { HelpExample, HelpFormula, HelpTip } from "@/components/common/HelpTip";
 import { CustoAnaliseChart } from "@/components/analises/CustoAnaliseChart";
 import {
   EquipamentosEditTable,
@@ -26,7 +26,9 @@ import {
   type InsumoOption,
   type MaterialEditRowData,
 } from "@/components/analises/MateriaisEditTable";
-import { atualizarCatalogoAnalise, inativarAnalise } from "@/lib/actions/receita";
+import { atualizarCatalogoAnalise } from "@/lib/actions/receita";
+import { AnaliseSituacao } from "@/components/analises/AnaliseCatalogoAcoes";
+import { podeEditarAnalises } from "@/lib/auth/permissao-efetiva";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -99,12 +101,12 @@ const primaryButtonClass = "rounded-md bg-primary px-3 py-1.5 text-xs font-mediu
 const editablePanelClass = "rounded-md border border-blue-200 bg-blue-50/35 p-2 dark:border-blue-900 dark:bg-blue-950/15";
 const navItems = [
   ["Resumo", "resumo"],
-  ["Ficha tecnica", "ficha-tecnica"],
+  ["Ficha técnica", "ficha-tecnica"],
   ["Insumos", "materiais-insumos"],
   ["Equipamentos", "equipamentos"],
   ["Custo", "custeio"],
   ["Estoque", "estoque"],
-  ["Historico", "historico-versoes"],
+  ["Histórico", "historico-versoes"],
 ] as const;
 type ViewId = (typeof navItems)[number][1];
 
@@ -218,14 +220,14 @@ export default async function AnaliseDetalhe({
     materiaisT.length === 0 ? "Sem materiais/insumos vinculados." : null,
     equipamentosT.length === 0 ? "Sem equipamentos vinculados." : null,
     materiaisT.some((m) => Number(m.quantidade_por_amostra ?? 0) > 0 && !m.insumo_id)
-      ? "Ha materiais com consumo tecnico sem vinculo com item de estoque."
+      ? "Há materiais com consumo técnico sem vínculo com item de estoque."
       : null,
-    analise.ativo && !analise.ofertavel ? "Analise ativa, mas fora da oferta comercial." : null,
+    analise.ativo && !analise.ofertavel ? "Análise ativa, mas fora da oferta comercial." : null,
     analise.ativo && /experimental|experimento|revis|avali|pend|todo/i.test(analise.status ?? "")
-      ? "Analise ativa com status textual de revisao."
+      ? "Análise ativa com observação pendente de revisão."
       : null,
     posAnaliseSemParametros
-      ? "Bioinformatica classificada como pos-analise, mas ainda sem parametros de custo/prazo cadastrados."
+      ? "Bioinformática classificada como pós-análise, mas ainda sem parâmetros de custo/prazo cadastrados."
       : null,
     !custo || custo.custoTotal <= 0 ? "Custeio calculado ausente ou zerado." : null,
   ].filter(Boolean) as string[];
@@ -233,7 +235,7 @@ export default async function AnaliseDetalhe({
   return (
     <div className="min-h-dvh bg-transparent font-sans text-foreground">
       <main className="app-page-container">
-        <Breadcrumbs items={[{ label: "Analises", href: "/analises" }, { label: codigo }]} />
+        <Breadcrumbs items={[{ label: "Análises", href: "/analises" }, { label: codigo }]} />
 
         <section className="mt-3 rounded-lg border border-border bg-card shadow-sm">
           <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -241,7 +243,7 @@ export default async function AnaliseDetalhe({
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-semibold tracking-tight">{analise.codigo}</h1>
                 <Badge>{analise.ativo ? "Ativa" : "Inativa"}</Badge>
-                <Badge muted>{analise.ofertavel ? "Ofertavel" : "Nao ofertavel"}</Badge>
+                <Badge muted>{analise.ofertavel ? "Ofertável" : "Não ofertável"}</Badge>
                 {analise.status && <Badge muted>{analise.status}</Badge>}
               </div>
               <p className="mt-1 text-lg font-medium">{analise.nome_simplificado || analise.nome || "Sem nome"}</p>
@@ -251,7 +253,7 @@ export default async function AnaliseDetalhe({
                 <MiniStat label="Insumos" value={String(materiaisT.length)} />
                 <MiniStat label="Equip." value={String(equipamentosT.length)} />
                 <MiniStat label="Capacidade" value={g.amostrasDia > 0 ? `${formatNumber(g.amostrasDia)}/dia` : "-"} />
-                <MiniStat label="Preco" value={custo ? formatCurrency(custo.preco) : "-"} />
+                <MiniStat label="Preço" value={custo ? formatCurrency(custo.preco) : "-"} />
               </div>
             </div>
 
@@ -268,25 +270,21 @@ export default async function AnaliseDetalhe({
                 </label>
               </div>
               <label className="block">
-                <span className={labelClass}>Descricao</span>
+                <span className={labelClass}>Descrição</span>
                 <textarea name="descricao" defaultValue={analise.descricao ?? ""} className={`${inputClass} h-16 min-h-16 resize-y`} />
               </label>
               <div className="flex flex-wrap items-center gap-2">
                 <button className={primaryButtonClass}>Salvar cadastro</button>
-                {analise.ativo ? (
-                  <ConfirmActionButton
-                    action={inativarAnalise}
-                    fields={{ codigo }}
-                    trigger="Inativar"
-                    titulo="Inativar analise"
-                    mensagem={`Inativar "${analise.codigo}"? A receita e o historico permanecem preservados.`}
-                    confirmLabel="Inativar"
-                  />
-                ) : (
-                  <span className="text-xs text-muted-foreground">Analise ja inativa.</span>
-                )}
               </div>
             </form>
+            <div className="lg:col-start-2">
+              <AnaliseSituacao
+                codigo={codigo}
+                ativo={analise.ativo}
+                ofertavel={analise.ofertavel}
+                podeEditar={await podeEditarAnalises()}
+              />
+            </div>
           </div>
         </section>
 
@@ -319,37 +317,76 @@ export default async function AnaliseDetalhe({
 
         {activeView === "resumo" && (
           <section className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-            <Stat label="Execucoes/dia" value={g.execucoesDia > 0 ? formatNumber(g.execucoesDia) : "-"} compact />
+            <Stat label="Execuções/dia" value={g.execucoesDia > 0 ? formatNumber(g.execucoesDia) : "-"} compact />
             <Stat label="Amostras/exec." value={g.amostrasPorExecucao > 0 ? formatNumber(g.amostrasPorExecucao) : "-"} compact />
-            <Stat label="Bancada/amostra" value={tempoBancada > 0 ? `${formatNumber(tempoBancada)} h` : "-"} compact />
+            <Stat
+              label="Bancada/amostra"
+              value={tempoBancada > 0 ? `${formatNumber(tempoBancada)} h` : "-"}
+              compact
+              ajuda={
+                <HelpTip title="Bancada por amostra">
+                  <p>Horas de <b>trabalho manual</b> por amostra: horas de bancada de uma corrida ÷ amostras por corrida.</p>
+                  <HelpExample>3 h por corrida e 12 amostras por corrida → 0,25 h por amostra.</HelpExample>
+                </HelpTip>
+              }
+            />
             <Stat label="Prazo lab." value={prazoLaboratorio > 0 ? `${prazoLaboratorio} dias` : "-"} compact />
-            <Stat label="Prazo total" value={prazoTotal > 0 ? `${prazoTotal} dias` : "-"} compact />
+            <Stat
+              label="Prazo total"
+              value={prazoTotal > 0 ? `${prazoTotal} dias` : "-"}
+              compact
+              ajuda={
+                <HelpTip title="Prazo total">
+                  <p>Dia em que termina a <b>última etapa</b>, contando o laboratório e a pós-análise (bioinformática).</p>
+                </HelpTip>
+              }
+            />
             <Stat label="Materiais" value={String(materiaisT.length)} compact />
             <Stat label="Equipamentos" value={String(equipamentosT.length)} compact />
             <Stat label="Custo total" value={custo ? formatCurrency(custo.custoTotal) : "-"} compact />
-            <Stat label="Preco atual" value={custo ? formatCurrency(custo.preco) : "-"} compact />
+            <Stat label="Preço atual" value={custo ? formatCurrency(custo.preco) : "-"} compact />
           </section>
         )}
 
         {activeView === "ficha-tecnica" && (
-        <Section title="Ficha tecnica" description="Tempos, capacidade e etapas editaveis da analise selecionada.">
+        <Section
+          title="Ficha técnica"
+          description="Tempos, capacidade e etapas editáveis da análise selecionada."
+          help={
+            <HelpTip title="Ficha técnica">
+              <p><b>Exec/dia</b> é o número de corridas por dia e <b>Amostras/exec.</b>, quantas amostras cabem em cada corrida. Os menores valores entre as etapas definem a capacidade e o lote da análise.</p>
+              <p><b>Bancada h</b> são as horas de trabalho manual por corrida; divididas pelo lote, formam o custo de pessoal e o overhead de cada amostra.</p>
+              <HelpExample>Etapa A: 4 corridas/dia de 96 amostras; etapa B: 2 corridas/dia de 12 → capacidade de 24 amostras/dia.</HelpExample>
+            </HelpTip>
+          }
+        >
           <EtapasEditTable
             codigo={codigo}
-            titulo="Laboratorio"
+            titulo="Laboratório"
             etapas={etapasLaboratorio.map(toEtapaEditRowData)}
             showAddForm
           />
           <EtapasEditTable
             codigo={codigo}
-            titulo="Pos-analise / Bioinformatica"
+            titulo="Pós-análise / Bioinformática"
             etapas={etapasPosAnalise.map(toEtapaEditRowData)}
-            emptyText="Nenhuma etapa pos-analise cadastrada."
+            emptyText="Nenhuma etapa pós-análise cadastrada."
           />
         </Section>
         )}
 
         {activeView === "materiais-insumos" && (
-        <Section title="Insumos" description="Materiais tecnicos, item de estoque, consumo por amostra e modo de cobranca.">
+        <Section
+          title="Insumos"
+          description="Materiais técnicos, item de estoque, consumo por amostra e modo de cobrança."
+          help={
+            <HelpTip title="Cobrança e grupos">
+              <p><b>Cobrança</b> “por amostra” multiplica o consumo pelo número de amostras; “por execução” cobra o item uma vez por corrida e divide entre as amostras do lote.</p>
+              <p>Linhas com o mesmo <b>Grupo</b> são alternativas: entra só uma, por padrão a mais barata.</p>
+              <HelpExample>Controle de R$ 60 por execução e lote de 12: R$ 5 por amostra.</HelpExample>
+            </HelpTip>
+          }
+        >
           <MateriaisEditTable
             codigo={codigo}
             materiais={materiaisT.map(toMaterialEditRowData)}
@@ -359,7 +396,16 @@ export default async function AnaliseDetalhe({
         )}
 
         {activeView === "equipamentos" && (
-        <Section title="Equipamentos" description="Equipamentos vinculados a receita e parametros usados no custo.">
+        <Section
+          title="Equipamentos"
+          description="Equipamentos vinculados à receita e parâmetros usados no custo."
+          help={
+            <HelpTip title="Custo de equipamento">
+              <p>O custo diário de cada equipamento (depreciação pela <b>vida útil</b> mais manutenção anual, ÷ dias úteis do ano) é multiplicado pelo <b>peso</b> e dividido pela capacidade diária da análise.</p>
+              <HelpExample>R$ 50/dia × peso 0,5 ÷ 24 amostras/dia ≈ R$ 1,04 por amostra.</HelpExample>
+            </HelpTip>
+          }
+        >
           <EquipamentosEditTable
             codigo={codigo}
             equipamentos={equipamentosT.map(toEquipamentoEditRowData)}
@@ -369,46 +415,53 @@ export default async function AnaliseDetalhe({
         )}
 
         {activeView === "custeio" && (
-        <Section title="Custo" description="Composicao calculada pela engine atual, sem alterar snapshots historicos.">
-          {erroCusteio && <p className="text-sm text-warning-strong">Nao foi possivel carregar o custeio atual.</p>}
+        <Section
+          title="Custo"
+          description="Composição calculada com os custos atuais."
+          help={
+            <HelpTip title="Composição do custo">
+              <p>O <b>custo analítico</b> soma reagentes, equipamento e pessoal; com o overhead, forma o custo total. O preço aplica os <b>fatores</b> de Parâmetros de custeio.</p>
+              <p>Os valores são só exibidos: nada é gravado e orçamentos já emitidos não mudam.</p>
+              <HelpFormula>preço = custo total × (1 + fatores)</HelpFormula>
+            </HelpTip>
+          }
+        >
+          {erroCusteio && <p className="text-sm text-warning-strong">Não foi possível carregar o custeio atual.</p>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Reagentes" value={custo ? formatCurrency(custo.reagentes) : "-"} compact />
             <Stat label="Equipamento" value={custo ? formatCurrency(custo.equipamento) : "-"} compact />
             <Stat label="Pessoal" value={custo ? formatCurrency(custo.pessoal) : "-"} compact />
             <Stat label="Overhead" value={custo ? formatCurrency(custo.overhead) : "-"} compact />
-            <Stat label="Custo analitico" value={custo ? formatCurrency(custo.custoAnalitico) : "-"} compact />
+            <Stat label="Custo analítico" value={custo ? formatCurrency(custo.custoAnalitico) : "-"} compact />
             <Stat label="Custo total" value={custo ? formatCurrency(custo.custoTotal) : "-"} compact />
             <Stat label="Fatores" value={custo ? `${formatNumber(custo.fatores * 100)}%` : "-"} compact />
-            <Stat label="Preco" value={custo ? formatCurrency(custo.preco) : "-"} compact />
-            <Stat label="Prazo laboratorio" value={prazoLaboratorio > 0 ? `${prazoLaboratorio} dias` : "-"} compact />
-            <Stat label="Prazo pos-analise" value={prazoPosAnalise > 0 ? `${prazoPosAnalise} dias` : "-"} compact />
+            <Stat label="Preço" value={custo ? formatCurrency(custo.preco) : "-"} compact />
+            <Stat label="Prazo laboratório" value={prazoLaboratorio > 0 ? `${prazoLaboratorio} dias` : "-"} compact />
+            <Stat label="Prazo pós-análise" value={prazoPosAnalise > 0 ? `${prazoPosAnalise} dias` : "-"} compact />
             <Stat label="Prazo total" value={prazoTotal > 0 ? `${prazoTotal} dias` : "-"} compact />
           </div>
           {posAnaliseSemParametros && (
             <p className="mt-3 text-sm text-warning-strong">
-              Bioinformatica classificada como pos-analise, mas ainda sem parametros de custo/prazo cadastrados.
+              Bioinformática classificada como pós-análise, mas ainda sem parâmetros de custo/prazo cadastrados.
             </p>
           )}
           <CustoAnaliseChart data={curvaCusto} capacidade={curvaCusto[0]?.capacidadeOperacional ?? g.amostrasDia} />
-          <p className="mt-3 text-xs text-muted-foreground">
-            Valores exibidos pela engine atual, sem gravar snapshot e sem recalcular orcamentos antigos nesta etapa.
-          </p>
         </Section>
         )}
 
         {activeView === "estoque" && (
-        <Section title="Estoque" description="Sinalizacao de disponibilidade dos insumos vinculados.">
+        <Section title="Estoque" description="Disponibilidade dos insumos vinculados.">
           <p className="mb-3 text-sm text-muted-foreground">
-            Diagnostico apenas informativo. Esta ficha nao reserva, baixa nem abre compras automaticamente.
+            Apenas informativo: esta ficha não reserva, não baixa e não abre compras.
           </p>
           <Table>
             <thead>
               <tr>
                 <th className={th}>Material</th>
                 <th className={th}>Insumo</th>
-                <th className={th}>Disponivel</th>
-                <th className={th}>Ponto reposicao</th>
-                <th className={th}>Estoque seguranca</th>
+                <th className={th}>Disponível</th>
+                <th className={th}>Ponto de reposição</th>
+                <th className={th}>Estoque de segurança</th>
                 <th className={th}>Lead time</th>
                 <th className={th}>Status</th>
               </tr>
@@ -421,12 +474,12 @@ export default async function AnaliseDetalhe({
                 return (
                   <tr key={material.id} className="border-t border-border/70">
                     <td className={td}>{material.especificacao_insumo ?? "-"}</td>
-                    <td className={td}>{material.insumos?.especificacao ?? material.insumos?.nome_item ?? "Sem vinculo"}</td>
+                    <td className={td}>{material.insumos?.especificacao ?? material.insumos?.nome_item ?? "Sem vínculo"}</td>
                     <td className={td}>{material.insumo_id ? `${fmt(disponivel)} ${saldo?.unidade ?? material.insumos?.unidade ?? ""}` : "-"}</td>
                     <td className={td}>{fmt(material.insumos?.ponto_reposicao)}</td>
                     <td className={td}>{fmt(material.insumos?.estoque_seguranca)}</td>
                     <td className={td}>{material.insumos?.lead_time_dias ? `${material.insumos.lead_time_dias} dias` : "-"}</td>
-                    <td className={td}>{!material.insumo_id ? "sem vinculo" : ponto > 0 && disponivel <= ponto ? "abaixo do ponto" : "diagnostico ok"}</td>
+                    <td className={td}>{!material.insumo_id ? "sem vínculo" : ponto > 0 && disponivel <= ponto ? "abaixo do ponto" : "ok"}</td>
                   </tr>
                 );
               })}
@@ -436,21 +489,15 @@ export default async function AnaliseDetalhe({
         )}
 
         {activeView === "historico-versoes" && (
-        <Section title="Historico/Versoes" description="Estado atual do versionamento tecnico desta ficha.">
+        <Section title="Histórico/Versões" description="Estado atual do versionamento técnico desta ficha.">
           <div className="rounded-lg border border-warning-strong/30 bg-warning-soft p-4 text-sm text-warning-strong">
-            <p className="font-medium">Ficha tecnica viva</p>
+            <p className="font-medium">Esta ficha ainda não guarda versões</p>
             <p className="mt-1">
-              O cadastro atual ainda nao possui versionamento de protocolo nem snapshot tecnico por orcamento. Alteracoes
-              futuras na receita podem afetar novos calculos; por isso, a proxima etapa deve introduzir versoes antes de
-              conectar esta ficha a orcamentos historicos.
+              Mudanças na receita valem para novos cálculos. Propostas já emitidas mantêm os valores da emissão.
             </p>
           </div>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Proposta incremental: ficha read-only, versionamento de protocolo, snapshot no orcamento, diagnostico de
-            estoque, integracao com compras e edicao administrativa controlada.
-          </p>
           <Link href="/analises" className="mt-4 inline-flex text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">
-            Voltar para analises
+            Voltar para análises
           </Link>
         </Section>
         )}
@@ -507,7 +554,7 @@ function toMaterialEditRowData(material: MaterialVinculado): MaterialEditRowData
     modo_cobranca: material.modo_cobranca,
     preferencial: material.preferencial,
     insumo_id: material.insumo_id,
-    insumo_rotulo: material.insumos?.especificacao ?? material.insumos?.nome_item ?? "Sem vinculo",
+    insumo_rotulo: material.insumos?.especificacao ?? material.insumos?.nome_item ?? "Sem vínculo",
     custo_unitario: material.insumos?.custo_unitario ?? null,
   };
 }
@@ -582,17 +629,22 @@ function Badge({ children, muted = false }: { children: ReactNode; muted?: boole
 function Section({
   title,
   description,
+  help,
   children,
 }: {
   title: string;
   description?: string;
+  help?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className="mt-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+          <div className="flex items-center gap-1">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+            {help}
+          </div>
           {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
         </div>
       </div>
@@ -601,10 +653,20 @@ function Section({
   );
 }
 
-function Stat({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
+function Stat({
+  label,
+  value,
+  compact = false,
+  ajuda,
+}: {
+  label: string;
+  value: string;
+  compact?: boolean;
+  ajuda?: ReactNode;
+}) {
   return (
     <div className={compact ? "rounded-md border border-border/60 bg-muted/35 px-3 py-2" : panel}>
-      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="flex items-center gap-1 text-[11px] text-muted-foreground">{label}{ajuda}</p>
       <p className="mt-0.5 text-base font-semibold tabular-nums">{value}</p>
     </div>
   );

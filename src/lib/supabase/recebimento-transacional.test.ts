@@ -25,6 +25,11 @@ function latestFunction(name: string) {
   return functionDefinitions(name).at(-1) ?? "";
 }
 
+/** Última versão da sobrecarga pública idempotente (a que recebe p_operacao_id). */
+function latestIdempotentFunction(name: string) {
+  return functionDefinitions(name).filter((definition) => /p_operacao_id\s+uuid/.test(definition)).at(-1) ?? "";
+}
+
 function latestView(name: string) {
   const starts = [...composition.matchAll(new RegExp(
     `create\\s+(?:or\\s+replace\\s+)?view\\s+(?:public\\.)?${name}\\s+as`,
@@ -60,7 +65,7 @@ describe("contrato transacional de recebimento", () => {
       ["receber_item_pedido_compra", "pedidos_compra_item_recebimentos"],
       ["receber_item_pedido_interno", "pedidos_internos_item_recebimentos"],
     ] as const) {
-      const definition = latestFunction(rpc);
+      const definition = latestIdempotentFunction(rpc);
       const reuse = definition.search(/operacao_id\s*=\s*p_operacao_id/i);
       const newLot = definition.indexOf("insert into lotes_estoque");
       const idempotent = definition.includes("p_operacao_id")
@@ -73,7 +78,7 @@ describe("contrato transacional de recebimento", () => {
   });
 
   it("audita o primeiro recebimento interno depois do retorno antecipado do retry", () => {
-    const definition = latestFunction("receber_item_pedido_interno");
+    const definition = latestIdempotentFunction("receber_item_pedido_interno");
     const retryReturn = definition.indexOf("return v_existente.lote_id");
     const firstReceipt = definition.indexOf("v_lote_id := public.receber_item_pedido_interno");
     const audit = definition.indexOf("insert into public.eventos_status");

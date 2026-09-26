@@ -13,6 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import Link from "next/link";
 import { ChevronDown, ChevronUp, ChevronsUpDown, Rows3, Rows4, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,10 @@ type DataTableProps<TData> = {
   getMobileTitle?: (row: TData) => React.ReactNode;
   getMobileDescription?: (row: TData) => React.ReactNode;
   getMobileMeta?: (row: TData) => React.ReactNode;
+  /** ações exibidas no cartão do celular (a coluna de ações some abaixo de 768px) */
+  getMobileActions?: (row: TData) => React.ReactNode;
+  /** torna o título do cartão do celular um link */
+  getMobileHref?: (row: TData) => string | null | undefined;
   pageSize?: number;
 };
 
@@ -100,6 +105,8 @@ export function DataTable<TData>({
   getMobileTitle,
   getMobileDescription,
   getMobileMeta,
+  getMobileActions,
+  getMobileHref,
   pageSize = 25,
 }: DataTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = React.useState("");
@@ -161,6 +168,7 @@ export function DataTable<TData>({
   });
 
   const totalFiltrado = table.getFilteredRowModel().rows.length;
+  const semLinhas = table.getRowModel().rows.length === 0;
   const temFiltro = globalFilter !== "" || columnFilters.length > 0;
   const { pageIndex } = table.getState().pagination;
   const pageCount = table.getPageCount();
@@ -225,7 +233,12 @@ export function DataTable<TData>({
         </Button>
       </div>
 
-      <div className="mt-4 hidden overflow-x-auto rounded-lg border border-border bg-card shadow-sm md:block">
+      <div
+        className={cn(
+          "mt-4 hidden overflow-x-auto border border-border bg-card shadow-sm md:block",
+          semLinhas ? "rounded-t-lg border-b-0" : "rounded-lg",
+        )}
+      >
         <Table className={cn(compact && "text-xs")}>
           <TableHeader className="bg-muted/60">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -295,26 +308,22 @@ export function DataTable<TData>({
                 })}
               </TableRow>
             ))}
-            {table.getRowModel().rows.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="py-6 text-center text-muted-foreground"
-                >
-                  <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      <Search className="h-4 w-4" aria-hidden="true" />
-                    </div>
-                    <p className="font-medium text-foreground">{emptyTitle}</p>
-                    <p className="text-sm">{emptyText}</p>
-                    {emptyAction}
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
           </TableBody>
         </Table>
       </div>
+      {/* Fora da área rolável: em tabelas largas a mensagem centralizada ficava cortada. */}
+      {semLinhas && (
+        <div className="hidden rounded-b-lg border border-t-0 border-border bg-card px-4 py-6 text-center text-muted-foreground shadow-sm md:block">
+          <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <Search className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <p className="font-medium text-foreground">{emptyTitle}</p>
+            <p className="text-sm">{emptyText}</p>
+            {emptyAction}
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 grid gap-3 md:hidden">
         {table.getRowModel().rows.map((row) => (
@@ -324,7 +333,19 @@ export function DataTable<TData>({
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="font-medium">{getMobileTitle?.(row.original) ?? row.id}</div>
+                <div className="font-medium">
+                  {(() => {
+                    const titulo = getMobileTitle?.(row.original) ?? row.id;
+                    const href = getMobileHref?.(row.original);
+                    return href ? (
+                      <Link href={href} className="text-brand-700 hover:underline dark:text-brand-400">
+                        {titulo}
+                      </Link>
+                    ) : (
+                      titulo
+                    );
+                  })()}
+                </div>
                 {getMobileDescription && (
                   <div className="mt-1 text-sm text-muted-foreground">
                     {getMobileDescription(row.original)}
@@ -333,6 +354,11 @@ export function DataTable<TData>({
               </div>
               {getMobileMeta && <div className="shrink-0">{getMobileMeta(row.original)}</div>}
             </div>
+            {getMobileActions && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                {getMobileActions(row.original)}
+              </div>
+            )}
           </div>
         ))}
         {table.getRowModel().rows.length === 0 && (

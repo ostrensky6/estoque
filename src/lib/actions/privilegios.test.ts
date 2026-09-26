@@ -43,14 +43,15 @@ describe("privilegios", () => {
   it("le matriz de privilegios para admin", async () => {
     temPapel.mockResolvedValue(true);
     select.mockResolvedValue({
-      data: [{ papel: "admin", permissoes: { "privilegios.gerenciar": true } }],
+      data: [{ papel: "gestor", permissoes: { "auditoria.visualizar": false } }],
       error: null,
     });
     const { obterMatrizPrivilegios } = await import("./privilegios");
 
     const matriz = await obterMatrizPrivilegios();
 
-    expect(matriz?.admin["privilegios.gerenciar"]).toBe(true);
+    expect(matriz?.admin["auditoria.visualizar"]).toBe(true);
+    expect(matriz?.gestor["auditoria.visualizar"]).toBe(false);
     expect(clientFrom).toHaveBeenCalledWith("permissoes_categorias");
   });
 

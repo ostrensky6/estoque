@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { PERMISSOES, PAPEIS, type PapelUsuario, type PermissaoUsuario } from "@/lib/auth/permissions";
 import type { FormState } from "@/lib/actions/cadastros";
+import { HelpTip } from "@/components/common/HelpTip";
 
 const initial: FormState = { ok: false, message: "" };
 
@@ -29,10 +30,15 @@ export function PermissoesCategoriasTable({ permissoesPorCategoria }: { permisso
     <section className="mt-8 rounded-lg border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold">Tabela de permissões por categoria</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Edite os padrões por categoria aqui. Usuários específicos continuam podendo ter ajustes em Editar.
-          </p>
+          <div className="flex items-center gap-1">
+            <h2 className="text-sm font-semibold">Tabela de permissões por categoria</h2>
+            <HelpTip title="Permissões por categoria">
+              <p>
+                Padrão aplicado a quem está em cada categoria. Para uma pessoa específica, use{" "}
+                <b>Editar</b> na linha dela: o ajuste individual vale acima do padrão.
+              </p>
+            </HelpTip>
+          </div>
         </div>
       </div>
 

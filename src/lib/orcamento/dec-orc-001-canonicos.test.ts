@@ -3,12 +3,9 @@
 // DECISÃO APROVADA: Alternativa A (gross-up único sobre lab técnico + projeto
 // direto). Os testes ATIVOS validam a Alternativa A pela engine autoritativa.
 //
-// A Alternativa C permanece apenas como COMPATIBILIDADE HISTÓRICA (leitura de
-// propostas antigas) — caracterizada aqui pela engine flexível legada
-// `aplicarParametrosEconomicos` (que segue existindo para esse fim), sem ser a
-// regra de fechamento de novas propostas.
+// As alternativas B e C foram removidas do código (2026-09-26): propostas
+// antigas são lidas pelo snapshot gravado na emissão, sem recálculo.
 import { describe, expect, it } from "vitest";
-import { aplicarParametrosEconomicos, type ParametroEconomicoAplicavel } from "@/lib/costing/pricing";
 import { calcularPropostaEconomica } from "./engine-economica";
 
 // =====================================================================
@@ -45,32 +42,5 @@ describe("DEC-ORC-001 — Alternativa A (autoritativa, novas propostas)", () => 
   it("custo zero e arredondamento", () => {
     expect(calcularPropostaEconomica({ custoLaboratorioTecnico: 0, custoDiretoProjeto: 0, parametros: params({ impostos: 10 }) }).totalFinal).toBe(0);
     expect(calcularPropostaEconomica({ custoLaboratorioTecnico: 10, custoDiretoProjeto: 0, parametros: params({ impostos: 3 }) }).totalFinal).toBe(10.31);
-  });
-});
-
-// =====================================================================
-// LEGADO — Alternativa C (compat. histórica; NÃO é a regra de fechamento).
-// Documenta o comportamento da engine flexível `aplicarParametrosEconomicos`
-// quando o laboratório entra como preço já formado e o gross-up incide só no
-// projeto. Mantido apenas para leitura de propostas antigas.
-// =====================================================================
-describe("DEC-ORC-001 — Alternativa C (LEGADA, compatibilidade histórica)", () => {
-  function paramsProjeto(map: Record<string, number>): ParametroEconomicoAplicavel[] {
-    return Object.entries(map).map(([chave, percentual]) => ({ chave, label: chave, base: "APENAS_PROJETO", percentual }));
-  }
-  const aplicarC = (lab: number, projeto: number, m: Record<string, number>) =>
-    aplicarParametrosEconomicos({
-      metodo: "GROSS_UP",
-      laboratorio: { valor: lab, modo: "PRECO_JA_FORMADO" },
-      projeto: { custo: projeto },
-      parametros: paramsProjeto(m),
-    });
-
-  it("(legado C) lab 100 + projeto 200 + 20% → 350 (lab passa direto)", () => {
-    expect(aplicarC(100, 200, { impostos: 10, reserva: 3, investimentos: 2, lucro: 5 }).totalFinal).toBeCloseTo(350, 2);
-  });
-
-  it("(legado C) soma de parâmetros >= 100% lança erro", () => {
-    expect(() => aplicarC(0, 100, { impostos: 60, lucro: 40 })).toThrow(/menor que 100%/i);
   });
 });

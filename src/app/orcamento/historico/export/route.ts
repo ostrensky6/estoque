@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
+import { formatDate, formatDateTime } from "@/lib/formatters";
+import { rotuloModalidade } from "@/lib/orcamento/orcamento-economico";
+import { hojeCalendario, rotuloStatusVersaoFinal, statusEfetivoVersaoFinal } from "@/lib/orcamento/rotulos-status";
 
 export const dynamic = "force-dynamic";
 
@@ -39,48 +42,51 @@ export async function GET(request: NextRequest) {
     )
     .order("criado_em", { ascending: false });
 
-  const linhas = filtrar((data ?? []) as VersaoFinal[], filtros).map((item) => {
+  const hoje = hojeCalendario();
+  const versoes = ((data ?? []) as VersaoFinal[]).map((item) => ({ ...item, status: statusEfetivoVersaoFinal(item, hoje) }));
+  const linhas = filtrar(versoes, filtros).map((item) => {
     const demanda = item.demandas_propostas;
     const custoTotal = Number(item.total_laboratorio_custo ?? 0) + Number(item.total_projeto_custo ?? 0);
     return [
       item.numero,
       item.versao,
-      item.status,
-      demanda?.titulo ?? `Demanda ${item.demanda_id}`,
+      rotuloStatusVersaoFinal(item.status),
+      demanda?.titulo ?? `Orçamento ${item.demanda_id}`,
       demanda?.cliente_nome ?? "",
-      demanda?.modalidade ?? "",
+      demanda?.modalidade ? rotuloModalidade(demanda.modalidade) : "",
       demanda?.responsavel_interno ?? item.criado_por ?? "",
-      item.criado_em,
-      item.valido_ate ?? "",
-      custoTotal,
-      item.total_laboratorio_preco,
-      item.total_projeto_final,
-      item.total_final,
+      formatDateTime(item.criado_em),
+      item.valido_ate ? formatDate(item.valido_ate) : "",
+      decimal(custoTotal),
+      decimal(item.total_laboratorio_preco),
+      decimal(item.total_projeto_final),
+      decimal(item.total_final),
     ];
   });
 
   const csv = [
     [
-      "numero",
-      "versao",
-      "status",
-      "demanda",
-      "cliente",
-      "modalidade",
-      "responsavel",
-      "criado_em",
-      "validade",
-      "custo_total",
-      "preco_laboratorio",
-      "preco_projeto",
-      "preco_final",
+      "Número",
+      "Versão",
+      "Status",
+      "Orçamento",
+      "Cliente",
+      "Modalidade",
+      "Responsável",
+      "Emitida em",
+      "Válida até",
+      "Custo total (R$)",
+      "Preço laboratório (R$)",
+      "Preço projeto (R$)",
+      "Preço final (R$)",
     ],
     ...linhas,
   ]
     .map((row) => row.map(csvCell).join(";"))
     .join("\r\n");
 
-  return new Response(csv, {
+  // BOM para o Excel abrir acentos em UTF-8.
+  return new Response(`﻿${csv}`, {
     headers: {
       "content-type": "text/csv; charset=utf-8",
       "content-disposition": `attachment; filename="historico-orcamentos.csv"`,
@@ -105,7 +111,7 @@ function filtrar(versoes: VersaoFinal[], filtros: Record<string, string>) {
       demanda?.cliente_nome,
       demanda?.responsavel_interno,
       demanda?.modalidade,
-      item.status,
+      rotuloStatusVersaoFinal(item.status),
     ].join(" ");
     return (
       inclui(buscaLivre, filtros.texto) &&
@@ -126,4 +132,10 @@ function filtrar(versoes: VersaoFinal[], filtros: Record<string, string>) {
 function csvCell(value: unknown) {
   const text = String(value ?? "");
   return `"${text.replaceAll('"', '""')}"`;
+}
+
+// Separador ";" + vírgula decimal: formato que o Excel em pt-BR lê como número.
+function decimal(value: unknown) {
+  const n = Number(value ?? 0);
+  return (Number.isFinite(n) ? n : 0).toFixed(2).replace(".", ",");
 }

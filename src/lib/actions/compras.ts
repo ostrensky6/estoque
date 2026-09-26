@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, createClientUntyped } from "@/lib/supabase/server";
-import { temPapel, usuarioAtual } from "@/lib/auth/roles";
+import { usuarioAtual } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { computarDemandaPlano } from "@/lib/costing/demanda";
 import { registrarEvento } from "./eventos";
 import type { FormState } from "./cadastros";
@@ -39,7 +40,7 @@ function dataPrevistaPorPrazo(prazoDias: number | null): string | null {
   return new Date(Date.now() + prazoDias * 86400000).toISOString().slice(0, 10);
 }
 
-export async function criarPedido(formData: FormData) {
+export async function criarPedido(_prev: FormState, formData: FormData): Promise<FormState> {
   const u = await usuarioAtual();
   const fornecedor_id = formData.get("fornecedor_id")
     ? Number(formData.get("fornecedor_id"))
@@ -52,13 +53,14 @@ export async function criarPedido(formData: FormData) {
     .insert({ fornecedor_id, projeto, projeto_id, solicitante: u?.email ?? null, status: "solicitado" })
     .select("id")
     .single();
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, message: `Não foi possível criar a solicitação: ${error.message}` };
+  revalidatePath("/compras");
   redirect(`/compras/${data.id}`);
 }
 
 export async function gerarRascunhosReposicao(_prev: FormState): Promise<FormState> {
   void _prev;
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.solicitar"))) return SEM_PERMISSAO;
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("gerar_reposicao_automatica");
   if (error) return { ok: false, message: error.message };
@@ -157,14 +159,21 @@ export async function comprarFaltasDoPlano(formData: FormData) {
       const regraCompra = minimoCompra
         ? ` Pedido ajustado para ${quantidadePedido} ${unidade} pela quantidade mínima/múltiplo de compra de ${minimoCompra} ${unidade}.`
         : "";
+      const custoUnidade = f.custoUnitario ?? info?.custo_unitario ?? null;
+      // Compra em frascos (unidade oficial do estoque): a falta vem na unidade
+      // física e é arredondada para frascos inteiros.
+      const conteudo = f.quantidadeEmbalagem && f.quantidadeEmbalagem > 0 ? f.quantidadeEmbalagem : null;
+      const frascos = conteudo ? Math.ceil(quantidadePedido / conteudo) : null;
       return {
         pedido_interno_id: pedido.id,
         tipo: "material",
         insumo_id: f.insumo_id,
         especificacao: f.especificacao,
-        quantidade: quantidadePedido,
-        unidade: f.unidade,
-        orcamento_previo: f.custoUnitario ?? info?.custo_unitario ?? null,
+        quantidade: frascos ?? quantidadePedido,
+        unidade: frascos ? `frasco(s) de ${conteudo} ${unidade}`.trim() : f.unidade,
+        quantidade_em: frascos ? "embalagem" : "unidade",
+        conteudo_embalagem: conteudo,
+        orcamento_previo: custoUnidade == null ? null : frascos && conteudo ? custoUnidade * conteudo : custoUnidade,
         fornecedor_sugerido: fornecedor ?? null,
         observacao: `Falta operacional gerada pelo planejamento #${planId}: falta de ${f.falta} ${unidade}.${regraCompra}`,
       };
@@ -179,34 +188,61 @@ export async function comprarFaltasDoPlano(formData: FormData) {
   redirect(`/pedido/${pedido.id}`);
 }
 
-export async function adicionarItemPedido(formData: FormData) {
+export async function adicionarItemPedido(_prev: FormState, formData: FormData): Promise<FormState> {
   const pedido_id = Number(formData.get("pedido_id"));
   const insumo_id = Number(formData.get("insumo_id"));
   const quantidade = Number(formData.get("quantidade"));
   const custo = formData.get("custo_unitario_estimado")
     ? Number(formData.get("custo_unitario_estimado"))
     : null;
-  if (!pedido_id || !insumo_id || !(quantidade > 0)) return;
+  if (!pedido_id || !insumo_id || !(quantidade > 0)) {
+    return { ok: false, message: "Escolha o insumo e informe uma quantidade maior que zero." };
+  }
   const supabase = await createClient();
-  await supabase.from("pedidos_compra_itens").insert({
+  // Compra em frascos: com embalagem cadastrada, a quantidade digitada é de
+  // frascos e o volume de cada um vem do cadastro (ajustável na chegada).
+  const { data: insumo } = await supabase
+    .from("insumos")
+    .select("quantidade_embalagem")
+    .eq("id", insumo_id)
+    .maybeSingle();
+  const conteudo = Number(insumo?.quantidade_embalagem) > 0 ? Number(insumo?.quantidade_embalagem) : null;
+  if (conteudo && !Number.isInteger(quantidade)) {
+    return { ok: false, message: "Informe a quantidade em frascos inteiros." };
+  }
+  const { error } = await supabase.from("pedidos_compra_itens").insert({
     pedido_id,
     insumo_id,
     quantidade,
     custo_unitario_estimado: custo,
+    quantidade_em: conteudo ? "embalagem" : "unidade",
+    conteudo_embalagem: conteudo,
   });
+  if (error) return { ok: false, message: `Não foi possível adicionar o item: ${error.message}` };
   revalidatePath(`/compras/${pedido_id}`);
+  return { ok: true, message: "Item adicionado." };
 }
 
-export async function removerItemPedido(formData: FormData) {
+export async function removerItemPedido(_prev: FormState, formData: FormData): Promise<FormState> {
   const id = Number(formData.get("item_id"));
   const pedido_id = Number(formData.get("pedido_id"));
+  if (!id) return { ok: false, message: "Item não informado." };
   const supabase = await createClient();
-  await supabase.from("pedidos_compra_itens").delete().eq("id", id);
+  const { error } = await supabase.from("pedidos_compra_itens").delete().eq("id", id);
+  if (error) return { ok: false, message: `Não foi possível remover o item: ${error.message}` };
   revalidatePath(`/compras/${pedido_id}`);
+  return { ok: true, message: "Item removido." };
+}
+
+function revalidarPedidoCompra(pedidoId: number) {
+  revalidatePath(`/compras/${pedidoId}`);
+  revalidatePath("/compras");
+  revalidatePath("/recebimento");
+  revalidatePath("/suprimentos");
 }
 
 export async function aprovarPedido(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.aprovar"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const supabase = await createClient();
 
@@ -249,12 +285,12 @@ export async function aprovarPedido(_prev: FormState, formData: FormData): Promi
     p_data_prevista_entrega: prevista ?? undefined,
   });
   if (error) return { ok: false, message: error.message };
-  revalidatePath(`/compras/${pedido_id}`);
+  revalidarPedidoCompra(pedido_id);
   return { ok: true, message: "Pedido aprovado." };
 }
 
 export async function marcarEnviado(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.aprovar"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const supabase = await createClient();
   const { error } = await supabase.rpc("transicionar_pedido_compra", {
@@ -263,12 +299,12 @@ export async function marcarEnviado(_prev: FormState, formData: FormData): Promi
     p_observacao: "Pedido enviado ao fornecedor.",
   });
   if (error) return { ok: false, message: error.message };
-  revalidatePath(`/compras/${pedido_id}`);
+  revalidarPedidoCompra(pedido_id);
   return { ok: true, message: "Pedido marcado como enviado." };
 }
 
 export async function cancelarPedido(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.cancelar"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const supabase = await createClient();
   const { error } = await supabase.rpc("transicionar_pedido_compra", {
@@ -277,18 +313,38 @@ export async function cancelarPedido(_prev: FormState, formData: FormData): Prom
     p_observacao: "Cancelamento administrativo da compra.",
   });
   if (error) return { ok: false, message: error.message };
-  revalidatePath(`/compras/${pedido_id}`);
+  revalidarPedidoCompra(pedido_id);
   return { ok: true, message: "Pedido cancelado." };
 }
 
+/** Encerra uma compra recebida em parte: o restante não será mais esperado. */
+export async function encerrarPedidoComPendencia(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  if (!(await pode("compras.aprovar"))) return SEM_PERMISSAO;
+  const pedido_id = Number(formData.get("pedido_id"));
+  const motivo = String(formData.get("motivo") ?? "").trim();
+  if (!motivo) return { ok: false, message: "Informe por que o restante não será recebido." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("transicionar_pedido_compra", {
+    p_pedido_id: pedido_id,
+    p_status_destino: "recebido",
+    p_observacao: motivo,
+  });
+  if (error) return { ok: false, message: error.message };
+  revalidarPedidoCompra(pedido_id);
+  return { ok: true, message: "Compra encerrada. A pendência ficou registrada nos itens." };
+}
+
 /** Recebe um item do pedido: cria lote em quarentena (FEFO) e vincula. */
-export async function receberItemPedido(formData: FormData) {
-  if (!(await temPapel("coordenador"))) return;
+export async function receberItemPedido(formData: FormData): Promise<FormState> {
+  if (!(await pode("compras.receber"))) return SEM_PERMISSAO;
   const pedido_id = Number(formData.get("pedido_id"));
   const item_id = Number(formData.get("item_id"));
   const operacaoId = String(formData.get("operacao_id") ?? "").trim();
   if (!UUID_RECEBIMENTO.test(operacaoId)) {
-    throw new Error("Identificador da operação de recebimento inválido.");
+    return { ok: false, message: "Identificador da operação de recebimento inválido." };
   }
   const validade = (formData.get("validade") as string) || null;
   const codigo = (formData.get("codigo") as string) || null;
@@ -307,7 +363,19 @@ export async function receberItemPedido(formData: FormData) {
     .single();
   const insumo = item?.insumos as { categoria_compra: string | null } | null | undefined;
   if (insumo?.categoria_compra === "critico" && !validade) {
-    throw new Error(MSG_VALIDADE_CRITICO);
+    return { ok: false, message: MSG_VALIDADE_CRITICO };
+  }
+
+  // Frasco chegou com volume diferente do cadastro: registra no item antes de
+  // receber, para o lote guardar o volume real.
+  const conteudoInformado = Number(formData.get("conteudo_embalagem"));
+  if (conteudoInformado > 0) {
+    const { error: conteudoErr } = await supabase
+      .from("pedidos_compra_itens")
+      .update({ conteudo_embalagem: conteudoInformado })
+      .eq("id", item_id)
+      .eq("pedido_id", pedido_id);
+    if (conteudoErr) return { ok: false, message: conteudoErr.message };
   }
 
   const { error } = await supabase.rpc("receber_item_pedido_compra" as never, {
@@ -319,8 +387,12 @@ export async function receberItemPedido(formData: FormData) {
     p_codigo: codigo ?? undefined,
     p_responsavel: responsavel ?? undefined,
   } as never);
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, message: error.message };
 
   revalidatePath(`/compras/${pedido_id}`);
+  revalidatePath("/compras");
+  revalidatePath("/recebimento");
+  revalidatePath("/suprimentos");
   revalidatePath("/estoque");
+  return { ok: true, message: "Item recebido. O lote entrou em quarentena." };
 }

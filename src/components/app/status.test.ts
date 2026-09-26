@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PEDIDO_INTERNO_STATUS } from "@/lib/pedido/status";
 import { statusInfo } from "./status";
 
 describe("statusInfo", () => {
@@ -11,12 +12,20 @@ describe("statusInfo", () => {
     expect(statusInfo("cancelado")).toEqual({ label: "Cancelado", tone: "danger" });
     expect(statusInfo("nao_lida")).toEqual({ label: "Não lida", tone: "warning" });
     expect(statusInfo("aguardando_pagamento_nf")).toEqual({
-      label: "Aguardando pagamento NF",
+      label: "Aguardando pagamento/NF",
       tone: "warning",
     });
   });
 
   it("faz fallback neutro com o proprio texto para status desconhecido", () => {
     expect(statusInfo("qualquer_coisa")).toEqual({ label: "qualquer_coisa", tone: "neutral" });
+  });
+
+  it("status do pedido interno tem um so rotulo e uma so cor no app inteiro", () => {
+    for (const [chave, meta] of Object.entries(PEDIDO_INTERNO_STATUS)) {
+      const info = statusInfo(chave);
+      expect(info.label, chave).toBe(meta.label);
+      expect(meta.className, chave).toContain(info.tone === "neutral" ? "bg-muted" : info.tone === "brand" ? "bg-brand-" : `bg-${info.tone}-soft`);
+    }
   });
 });

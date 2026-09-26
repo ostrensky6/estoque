@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { consolidarOrcamentoFinal } from "./orcamento-final";
+import { consolidarOrcamentoFinal, explicarOrigem } from "./orcamento-final";
 
 // Política A (DEC-ORC-001): laboratório como custo técnico + projeto como custo
 // direto, gross-up único sobre o subtotal técnico.
@@ -67,5 +67,11 @@ describe("consolidarOrcamentoFinal (Política A)", () => {
     expect(resultado.pronto).toBe(false);
     expect(resultado.totalFinal).toBe(0);
     expect(resultado.pendencias.join(" ")).toMatch(/menor que 100%/i);
+  });
+
+  it("explica cada origem em linguagem de usuário, sem nomes de tabela", () => {
+    expect(explicarOrigem({ campo: "subtotalTecnico", regra: "x" })).toBe("Custo do laboratório + custo do projeto.");
+    expect(explicarOrigem({ campo: "totalLaboratorioCusto" })).not.toMatch(/orcamento_itens|Política/);
+    expect(explicarOrigem({ campo: "outro", regra: "regra original" })).toBe("regra original");
   });
 });

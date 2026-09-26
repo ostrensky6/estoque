@@ -4,7 +4,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, createClientUntyped } from "@/lib/supabase/server";
-import { temPapel, usuarioAtual } from "@/lib/auth/roles";
+import { usuarioAtual } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { registrarEvento } from "./eventos";
 import {
   PEDIDO_INTERNO_AGUARDANDO_CHEGADA,
@@ -136,11 +137,13 @@ async function podeAprovarComoCoordenadorProjeto(pedidoId: number) {
   const usuarioEmail = u.email?.toLowerCase() ?? null;
   const coordEmail = coord.email?.toLowerCase() ?? null;
   const emailConfere = Boolean(coordEmail && usuarioEmail && coordEmail === usuarioEmail);
-  const coordenadorGlobal = await temPapel("coordenador");
-  const gestorOuAdmin = await temPapel("gestor");
-
-  if (!emailConfere && !coordenadorGlobal && !gestorOuAdmin) {
-    return { ok: false as const, message: "A aprovação exige o coordenador do projeto ou papel coordenador/superior." };
+  // A aprovação exige a permissão (o banco também exige, 0124). Ser o
+  // coordenador do projeto só fica registrado; não substitui a permissão.
+  if (!(await pode("pedido.aprovar"))) {
+    return {
+      ok: false as const,
+      message: "Sem permissão: peça ao administrador a permissão “Aprovar pedidos internos” em Usuários.",
+    };
   }
 
   return {
@@ -162,7 +165,7 @@ const STATUS_ITENS_TERMINAIS = ["cancelado", "compra_concluida"];
 async function podeMexerItens(status: string) {
   if (STATUS_ITENS_TERMINAIS.includes(status)) return false;
   if (STATUS_ITENS_LIVRES.includes(status)) return true;
-  return temPapel("coordenador");
+  return pode("pedido.aprovar");
 }
 
 async function mudarStatus({
@@ -202,7 +205,7 @@ async function mudarStatus({
   return { ok: true, message: "Etapa atualizada." };
 }
 
-export async function criarPedidoInterno(formData: FormData) {
+export async function criarPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
   const u = await usuarioAtual();
   const titulo = texto(formData, "titulo") ?? "Pedido interno sem título";
   const projeto_id = numero(formData, "projeto_id");
@@ -252,9 +255,10 @@ export async function criarPedidoInterno(formData: FormData) {
     data = retry.data;
     error = retry.error;
   }
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Não foi possível criar o pedido interno.");
+  if (error) return { ok: false, message: `Não foi possível criar o pedido: ${error.message}` };
+  if (!data) return { ok: false, message: "Não foi possível criar o pedido interno." };
   await registrarEvento("pedido_interno", data.id, null, "rascunho", "Demanda inicial registrada.");
+  revalidatePath("/pedido");
   redirect(`/pedido/${data.id}`);
 }
 
@@ -373,11 +377,11 @@ export async function gerarPedidosReposicaoEstoque(
   );
 }
 
-export async function atualizarPedidoInterno(formData: FormData) {
+export async function atualizarPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
   const pedidoId = numero(formData, "pedido_interno_id");
-  if (!pedidoId) return;
+  if (!pedidoId) return { ok: false, message: "Pedido não informado." };
   const titulo = texto(formData, "titulo");
-  if (!titulo) return;
+  if (!titulo) return { ok: false, message: "Informe a demanda (título do pedido)." };
 
   const supabase = await createClientUntyped();
   const projeto_id = numero(formData, "projeto_id");
@@ -415,15 +419,18 @@ export async function atualizarPedidoInterno(formData: FormData) {
     const retry = await supabase.from("pedidos_internos").update(legado).eq("id", pedidoId);
     error = retry.error;
   }
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, message: `Não foi possível salvar: ${error.message}` };
   revalidatePath(`/pedido/${pedidoId}`);
   revalidatePath("/pedido");
+  return { ok: true, message: "Pedido atualizado." };
 }
 
-export async function excluirPedidoInterno(formData: FormData) {
-  if (!(await temPapel("coordenador"))) return;
+export async function excluirPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!(await pode("pedido.aprovar"))) {
+    return { ok: false, message: "Sem permissão — excluir rascunho requer papel coordenador ou superior." };
+  }
   const pedidoId = numero(formData, "pedido_interno_id");
-  if (!pedidoId) return;
+  if (!pedidoId) return { ok: false, message: "Pedido não informado." };
 
   const supabase = await createClient();
   const { data: pedido } = await supabase
@@ -432,19 +439,24 @@ export async function excluirPedidoInterno(formData: FormData) {
     .eq("id", pedidoId)
     .single();
   if (!pedido || pedido.status !== "rascunho" || pedido.pedido_compra_id) {
-    throw new Error("Exclusão definitiva só é permitida para rascunhos sem compra formal. Use cancelamento para processos iniciados.");
+    return {
+      ok: false,
+      message: "Só é possível excluir rascunhos sem compra formal. Para pedidos em andamento, use Cancelar.",
+    };
   }
   const { error } = await supabase.from("pedidos_internos").delete().eq("id", pedidoId);
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, message: `Não foi possível excluir: ${error.message}` };
   revalidatePath("/pedido");
   redirect("/pedido");
 }
 
-export async function adicionarItemPedidoInterno(formData: FormData) {
+export async function adicionarItemPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
   const pedido_interno_id = numero(formData, "pedido_interno_id");
   const especificacao = texto(formData, "especificacao");
   const quantidade = numero(formData, "quantidade");
-  if (!pedido_interno_id || !especificacao || !quantidade || quantidade <= 0) return;
+  if (!pedido_interno_id || !especificacao || !quantidade || quantidade <= 0) {
+    return { ok: false, message: "Informe a especificação e uma quantidade maior que zero." };
+  }
 
   const supabase = await createClient();
   const { data: pedido } = await supabase
@@ -452,7 +464,9 @@ export async function adicionarItemPedidoInterno(formData: FormData) {
     .select("status")
     .eq("id", pedido_interno_id)
     .single();
-  if (!pedido || !["rascunho", "ajuste_solicitante", "ajuste_compras"].includes(pedido.status)) return;
+  if (!pedido || !["rascunho", "ajuste_solicitante", "ajuste_compras"].includes(pedido.status)) {
+    return { ok: false, message: "Itens só podem ser incluídos enquanto o pedido está em rascunho ou em ajuste." };
+  }
 
   const { error } = await supabase.from("pedidos_internos_itens").insert({
     pedido_interno_id,
@@ -467,8 +481,9 @@ export async function adicionarItemPedidoInterno(formData: FormData) {
     fornecedor_sugerido: texto(formData, "fornecedor_sugerido"),
     observacao: texto(formData, "observacao"),
   });
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, message: `Não foi possível adicionar o item: ${error.message}` };
   revalidatePath(`/pedido/${pedido_interno_id}`);
+  return { ok: true, message: "Item adicionado." };
 }
 
 export async function editarItemPedidoInterno(formData: FormData) {
@@ -506,19 +521,27 @@ export async function editarItemPedidoInterno(formData: FormData) {
   revalidatePath(`/pedido/${pedido_interno_id}`);
 }
 
-export async function removerItemPedidoInterno(formData: FormData) {
+export async function removerItemPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
   const itemId = numero(formData, "item_id");
   const pedidoId = numero(formData, "pedido_interno_id");
-  if (!itemId || !pedidoId) return;
+  if (!itemId || !pedidoId) return { ok: false, message: "Item não informado." };
   const supabase = await createClient();
   const { data: pedido } = await supabase
     .from("pedidos_internos")
     .select("status")
     .eq("id", pedidoId)
     .single();
-  if (!pedido || !(await podeMexerItens(pedido.status))) return;
-  await supabase.from("pedidos_internos_itens").delete().eq("id", itemId).eq("pedido_interno_id", pedidoId);
+  if (!pedido || !(await podeMexerItens(pedido.status))) {
+    return { ok: false, message: "Nesta etapa do pedido, remover itens exige papel coordenador (ou o pedido já foi encerrado)." };
+  }
+  const { error } = await supabase
+    .from("pedidos_internos_itens")
+    .delete()
+    .eq("id", itemId)
+    .eq("pedido_interno_id", pedidoId);
+  if (error) return { ok: false, message: `Não foi possível remover o item: ${error.message}` };
   revalidatePath(`/pedido/${pedidoId}`);
+  return { ok: true, message: "Item removido." };
 }
 
 export async function enviarParaValidacao(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -579,7 +602,7 @@ export async function validarInformacoes(_prev: FormState, formData: FormData): 
 }
 
 export async function devolverParaSolicitante(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   const comentario = comentarioObrigatorio(formData);
   if (!comentario.ok) return comentario;
   return mudarStatus({
@@ -593,7 +616,7 @@ export async function devolverParaSolicitante(_prev: FormState, formData: FormDa
 }
 
 export async function formalizarPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   const pedidoId = Number(formData.get("pedido_interno_id"));
   const supabase = await createClient();
   const { error } = await supabase.rpc("formalizar_pedido_interno" as never, {
@@ -607,7 +630,7 @@ export async function formalizarPedidoInterno(_prev: FormState, formData: FormDa
 }
 
 export async function registrarAnaliseAdministrativa(formData: FormData) {
-  if (!(await temPapel("coordenador"))) return;
+  if (!(await pode("pedido.aprovar"))) return;
   const pedidoId = Number(formData.get("pedido_interno_id"));
   const observacao = texto(formData, "observacao");
   const fonte_recurso = texto(formData, "fonte_recurso");
@@ -642,7 +665,7 @@ export async function registrarAnaliseAdministrativa(formData: FormData) {
 }
 
 export async function aprovarAnaliseAdministrativa(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   return mudarStatus({
     pedidoId: Number(formData.get("pedido_interno_id")),
     para: "aprovado_compra",
@@ -654,7 +677,7 @@ export async function aprovarAnaliseAdministrativa(_prev: FormState, formData: F
 }
 
 export async function devolverParaCompras(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   const comentario = comentarioObrigatorio(formData);
   if (!comentario.ok) return comentario;
   return mudarStatus({
@@ -668,7 +691,7 @@ export async function devolverParaCompras(_prev: FormState, formData: FormData):
 }
 
 export async function registrarLevantamentoOrcamentos(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   return mudarStatus({
     pedidoId: Number(formData.get("pedido_interno_id")),
     para: "orcamentos",
@@ -681,7 +704,7 @@ export async function registrarLevantamentoOrcamentos(_prev: FormState, formData
 }
 
 export async function marcarOrcamentosRecebidos(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   const pedidoId = Number(formData.get("pedido_interno_id"));
   const supabase = await createClient();
   const { data: anexos } = await supabase
@@ -704,7 +727,7 @@ export async function marcarOrcamentosRecebidos(_prev: FormState, formData: Form
 }
 
 export async function enviarAprovacaoFinal(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   return mudarStatus({
     pedidoId: Number(formData.get("pedido_interno_id")),
     para: "aguardando_aprovacao_final",
@@ -716,7 +739,7 @@ export async function enviarAprovacaoFinal(_prev: FormState, formData: FormData)
 }
 
 export async function aprovarCompraFinal(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   return mudarStatus({
     pedidoId: Number(formData.get("pedido_interno_id")),
     para: "aprovado_para_compra",
@@ -729,7 +752,7 @@ export async function aprovarCompraFinal(_prev: FormState, formData: FormData): 
 }
 
 export async function fecharComFornecedor(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   const u = await usuarioAtual();
   return mudarStatus({
     pedidoId: Number(formData.get("pedido_interno_id")),
@@ -749,7 +772,7 @@ export async function fecharComFornecedor(_prev: FormState, formData: FormData):
 }
 
 export async function encaminharInstituicao(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   const u = await usuarioAtual();
   const modalidade = texto(formData, "modalidade_compra") ?? "fundacao";
   const instituicao = texto(formData, "instituicao_destino");
@@ -780,7 +803,7 @@ export async function encaminharInstituicao(_prev: FormState, formData: FormData
 }
 
 export async function marcarAguardandoPagamentoNf(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   return mudarStatus({
     pedidoId: Number(formData.get("pedido_interno_id")),
     para: "aguardando_pagamento_nf",
@@ -793,7 +816,7 @@ export async function marcarAguardandoPagamentoNf(_prev: FormState, formData: Fo
 }
 
 export async function concluirCompra(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("pedido.aprovar"))) return SEM_PERMISSAO;
   const pedidoId = Number(formData.get("pedido_interno_id"));
   const supabase = await createClient();
   const { data: anexos } = await supabase
@@ -959,7 +982,7 @@ export async function adicionarAnexoPedidoInterno(formData: FormData) {
   const arquivo = arquivoForm instanceof File && arquivoForm.size > 0 ? arquivoForm : null;
   const titulo = texto(formData, "titulo") ?? (arquivo ? arquivo.name : null);
   if (!pedidoId || !titulo) return;
-  if (!(await temPapel("tecnico"))) throw new Error("Sem permissão para registrar documentos.");
+  if (!((await pode("pedido.criar")) || (await pode("pedido.aprovar")))) throw new Error("Sem permissão para registrar documentos.");
   if (arquivo && arquivo.size > TAMANHO_MAXIMO_ANEXO) {
     throw new Error("O arquivo excede o limite de 15 MB.");
   }
@@ -1027,7 +1050,7 @@ export async function removerAnexoPedidoInterno(formData: FormData) {
   const anexoId = Number(formData.get("anexo_id"));
   const pedidoId = Number(formData.get("pedido_interno_id"));
   if (!anexoId || !pedidoId) return;
-  if (!(await temPapel("tecnico"))) throw new Error("Sem permissão para remover documentos.");
+  if (!((await pode("pedido.criar")) || (await pode("pedido.aprovar")))) throw new Error("Sem permissão para remover documentos.");
   const supabase = await createClient();
   const { data: anexo } = await supabase
     .from("pedidos_internos_anexos")
@@ -1067,7 +1090,7 @@ export async function registrarComunicacaoPedidoInterno(formData: FormData) {
 }
 
 export async function cancelarPedidoInterno(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await temPapel("coordenador"))) return SEM_PERMISSAO;
+  if (!(await pode("compras.cancelar"))) return SEM_PERMISSAO;
   const comentario = comentarioObrigatorio(formData);
   if (!comentario.ok) return comentario;
   const pedidoId = Number(formData.get("pedido_interno_id"));

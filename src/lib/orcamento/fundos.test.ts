@@ -17,6 +17,30 @@ describe("fundos de orcamento", () => {
     });
   });
 
+  it("lê o formato real gravado na emissão ({chave, label, percentual, valorNominal})", () => {
+    // Mesmo formato de economia.parametros persistido em parametros_snapshot.
+    expect(extrairFundosPrevistos([
+      { chave: "impostos_legacy", label: "Impostos", percentual: 16, valorNominal: 160 },
+      { chave: "incubacao", label: "Incubação", percentual: 2, valorNominal: 20 },
+      { chave: "reserva", label: "Reserva", percentual: 5, valorNominal: 50 },
+      { chave: "investimentos", label: "Investimentos", percentual: 3, valorNominal: 30 },
+      { chave: "lucro", label: "Lucro", percentual: 10, valorNominal: 100 },
+    ])).toEqual({ impostos: 160, incubacao: 20, reserva: 50, investimentos: 30 });
+  });
+
+  it("usa economia.parametros do snapshot final quando não há parâmetros aplicados", () => {
+    expect(extrairFundosPrevistos(null, {
+      consolidado: {
+        economia: {
+          parametros: [
+            { chave: "impostos_legacy", label: "Impostos", percentual: 10, valorNominal: 100 },
+            { chave: "reserva", label: "Reserva", percentual: 5, valorNominal: 50 },
+          ],
+        },
+      },
+    })).toEqual({ impostos: 100, incubacao: 0, reserva: 50, investimentos: 0 });
+  });
+
   it("libera fundos proporcionalmente ao valor recebido", () => {
     const resultado = calcularFundos({
       totalFinal: 1000,

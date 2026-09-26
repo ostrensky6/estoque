@@ -108,14 +108,23 @@ describe("montarPropostaFinalExport — composição reconciliada", () => {
     expect(ex.info.responsavel).toMatch(/Grupo Integrado/);
   });
 
-  it("não usa ATGC como fallback quando a instituição está ausente", () => {
-    expect(() =>
-      montarPropostaFinalExport({
-        versao: versao({ total_final: 125 }),
-        snapshot: snapshotNovo({ lab: [{ codigo_analise: "AN1", n_amostras: 1, custo_unitario: 100 }], subtotal: 100, somaPercentual: 20, totalFinal: 125 }),
-        demanda: { ...demanda, instituicao: null, modalidade: "analises" },
-      }),
-    ).toThrow(/Identidade institucional/);
+  it("não usa ATGC como fallback quando a instituição está ausente e não quebra a exportação", () => {
+    const ex = montarPropostaFinalExport({
+      versao: versao({ total_final: 125 }),
+      snapshot: snapshotNovo({ lab: [{ codigo_analise: "AN1", n_amostras: 1, custo_unitario: 100 }], subtotal: 100, somaPercentual: 20, totalFinal: 125 }),
+      demanda: { ...demanda, instituicao: null, modalidade: "analises" },
+    });
+    expect(ex.info.identidade.id).not.toBe("ATGC");
+    expect(ex.avisoIdentidade).toMatch(/Instituição emissora não informada/);
+  });
+
+  it("não emite aviso de identidade quando a instituição é reconhecida", () => {
+    const ex = montarPropostaFinalExport({
+      versao: versao({ total_final: 125 }),
+      snapshot: snapshotNovo({ lab: [{ codigo_analise: "AN1", n_amostras: 1, custo_unitario: 100 }], subtotal: 100, somaPercentual: 20, totalFinal: 125 }),
+      demanda: { ...demanda, instituicao: "ATGC", modalidade: "analises" },
+    });
+    expect(ex.avisoIdentidade).toBeUndefined();
   });
 });
 

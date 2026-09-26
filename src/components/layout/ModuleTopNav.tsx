@@ -5,6 +5,7 @@ import {
   getModuleForProfile,
 } from "@/config/modules";
 import { ModuleTopNavClient } from "@/components/layout/ModuleTopNavClient";
+import { minhasPermissoes } from "@/lib/auth/permissao-efetiva";
 
 async function carregarPerfil() {
   const supabase = await createClient();
@@ -14,7 +15,7 @@ async function carregarPerfil() {
   if (!user) return null;
 
   const { data } = await supabase.from("perfis").select("papel").eq("id", user.id).single();
-  return data;
+  return data ? { ...data, permissoes: await minhasPermissoes() } : null;
 }
 
 export async function ModuleTopNav({

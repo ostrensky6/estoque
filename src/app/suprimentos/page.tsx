@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { createClientUntyped } from "@/lib/supabase/server";
-import { temPapel } from "@/lib/auth/roles";
+import { pode } from "@/lib/auth/permissao-efetiva";
 import { GerarPedidoReposicaoButton } from "@/components/pedido/GerarPedidoReposicaoButton";
+import { PlanoLinhaAcoes } from "@/components/planejamento/PlanoGestao";
+import { avaliarGestaoPlano } from "@/lib/planejamento/gestao";
+import { HelpTip } from "@/components/common/HelpTip";
+import { statusInfo } from "@/components/app/status";
 import { formatDate, formatNumber as fmt } from "@/lib/formatters";
 import { pedidoInternoNumero, pedidoInternoStatus } from "@/lib/pedido/status";
 
@@ -14,7 +18,7 @@ type PlanejamentoRow = {
   status_operacional: string | null;
   projeto_id: number | null;
   projetos: { nome: string | null; coordenador?: string | null; coordenador_nome?: string | null; coordenador_email?: string | null } | Array<{ nome: string | null; coordenador?: string | null; coordenador_nome?: string | null; coordenador_email?: string | null }> | null;
-  reservas_estoque: Array<{ status: string; quantidade: number; lote_id?: number | null }> | null;
+  reservas_estoque: Array<{ status: string; quantidade: number; quantidade_consumida?: number | null; lote_id?: number | null }> | null;
 };
 
 type PedidoInternoRow = {
@@ -99,6 +103,24 @@ const MODALIDADE: Record<string, string> = {
   universidade: "Universidade",
   outra: "Outra",
 };
+
+const STATUS_EXTRA: Record<string, string> = {
+  operacional: "Operacional",
+  em_manutencao: "Em manutenção",
+  calibracao_pendente: "Calibração pendente",
+  calibracao_vencida: "Calibração vencida",
+  em_transito: "Em trânsito",
+};
+
+/** Código gravado no banco (ex.: "em_manutencao") → rótulo legível. */
+function rotulo(valor: string | null | undefined) {
+  if (!valor) return "—";
+  if (STATUS_EXTRA[valor]) return STATUS_EXTRA[valor];
+  const label = statusInfo(valor).label;
+  if (label !== valor) return label;
+  const texto = valor.replaceAll("_", " ");
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
 
 function validadeEfetiva(lote: Pick<LoteRow, "validade" | "validade_apos_abertura">) {
   if (lote.validade && lote.validade_apos_abertura) {
@@ -205,11 +227,14 @@ function Kpi({ label, value, detail, href, tone }: { label: string; value: numbe
   );
 }
 
-function Section({ id, title, action, children }: { id: string; title: string; action?: React.ReactNode; children: React.ReactNode }) {
+function Section({ id, title, action, help, children }: { id: string; title: string; action?: React.ReactNode; help?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section id={id} className="border-t border-border py-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+        <div className="flex items-center gap-1">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+          {help}
+        </div>
         {action}
       </div>
       <div className="mt-4">{children}</div>
@@ -246,7 +271,7 @@ async function consultarPedidosSuprimentos(supabase: Awaited<ReturnType<typeof c
 
 export default async function SuprimentosPage() {
   const supabase = await createClientUntyped();
-  const podeGerarReposicao = await temPapel("coordenador");
+  const podeGerarReposicao = await pode("compras.solicitar");
   const hoje = new Date().toISOString().slice(0, 10);
   const limiteVencimento = adicionarDias(hoje, 30);
 
@@ -262,7 +287,7 @@ export default async function SuprimentosPage() {
   ] = await Promise.all([
     supabase
       .from("planejamento")
-      .select("id, nome, data_alvo, status_operacional, projeto_id, projetos(nome, coordenador), reservas_estoque(status, quantidade)")
+      .select("id, nome, data_alvo, status_operacional, projeto_id, projetos(nome, coordenador), reservas_estoque(status, quantidade, quantidade_consumida)")
       .order("criado_em", { ascending: false })
       .limit(60),
     consultarPedidosSuprimentos(supabase),
@@ -371,10 +396,16 @@ export default async function SuprimentosPage() {
       <main className="app-page-container">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Suprimentos</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Central operacional de planejamento, reservas, pedidos internos, compras, recebimento, quarentena e rastreabilidade.
-            </p>
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Suprimentos</h1>
+              <HelpTip title="Suprimentos">
+                <p>
+                  Painel de todo o ciclo do material: <b>reservas</b> dos planos, pedidos e compras em
+                  andamento, o que está chegando e os lotes em quarentena.
+                </p>
+                <p>Clique em um indicador para ir direto à seção correspondente.</p>
+              </HelpTip>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {podeGerarReposicao && <GerarPedidoReposicaoButton />}
@@ -394,6 +425,15 @@ export default async function SuprimentosPage() {
               {label}
             </Link>
           ))}
+        </nav>
+
+        <nav className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" aria-label="Ferramentas de estoque">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ferramentas</span>
+          <Link href="/estoque/controle" className="font-medium text-primary hover:underline">Controle de estoque</Link>
+          <Link href="/estoque/inventario" className="font-medium text-primary hover:underline">Inventário (contagem)</Link>
+          <Link href="/etiquetas" className="font-medium text-primary hover:underline">Etiquetas QR</Link>
+          <Link href="/scanner/triagem" className="font-medium text-primary hover:underline">Códigos não reconhecidos</Link>
+          <Link href="/estoque/equipamentos" className="font-medium text-primary hover:underline">Equipamentos</Link>
         </nav>
 
         <Section id="visao-geral" title="Visão geral">
@@ -417,7 +457,19 @@ export default async function SuprimentosPage() {
           </div>
         </Section>
 
-        <Section id="planejamentos" title="Planejamentos e reservas" action={<Link href="/planejamento" className="text-sm font-medium text-primary hover:underline">Abrir planejamento</Link>}>
+        <Section
+          id="planejamentos"
+          title="Planejamentos e reservas"
+          help={
+            <HelpTip title="Reserva de lotes">
+              <p>
+                Reservar separa lotes do estoque para um plano de análise. O material reservado deixa
+                de contar como <b>disponível</b> para outros usos.
+              </p>
+              <p>Reserva parcial indica que faltou estoque para o plano inteiro.</p>
+            </HelpTip>
+          }
+          action={<Link href="/planejamento" className="text-sm font-medium text-primary hover:underline">Abrir planejamento</Link>}>
           {planejamentos.length ? (
             <TableShell>
               <table className="w-full text-sm">
@@ -428,7 +480,7 @@ export default async function SuprimentosPage() {
                     <th className={th}>Data alvo</th>
                     <th className={th}>Status</th>
                     <th className={th}>Reservas</th>
-                    <th className={`${th} text-right`}>Ação</th>
+                    <th className={`${th} text-right`}>Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/70">
@@ -436,6 +488,7 @@ export default async function SuprimentosPage() {
                     const reservas = plano.reservas_estoque ?? [];
                     const reservadas = reservas.filter((r) => r.status === "reservado").length;
                     const parciais = reservas.filter((r) => r.status === "parcial").length;
+                    const gestao = avaliarGestaoPlano({ status: plano.status_operacional, reservas, podeGerir: podeGerarReposicao });
                     return (
                       <tr key={plano.id}>
                         <td className={`${td} font-medium`}><Link href={`/planejamento/${plano.id}`} className="text-primary hover:underline">{plano.nome}</Link></td>
@@ -443,7 +496,14 @@ export default async function SuprimentosPage() {
                         <td className={td}>{formatDate(plano.data_alvo)}</td>
                         <td className={td}><Pill tone={plano.status_operacional === "em_execucao" ? "blue" : plano.status_operacional === "reservado" ? "green" : "zinc"}>{STATUS_PLANO[plano.status_operacional ?? "rascunho"] ?? plano.status_operacional ?? "Rascunho"}</Pill></td>
                         <td className={td}>{reservadas} lote(s){parciais ? ` · ${parciais} parcial` : ""}</td>
-                        <td className={`${td} text-right`}><Link href={`/planejamento/${plano.id}`} className="font-medium text-primary hover:underline">Ver plano</Link></td>
+                        <td className={`${td} text-right`}>
+                          <PlanoLinhaAcoes
+                            planId={plano.id}
+                            nome={plano.nome}
+                            editavel={gestao.podeEditar}
+                            gestao={{ acao: gestao.acao, bloqueado: gestao.acaoBloqueada, motivo: gestao.motivoAcao }}
+                          />
+                        </td>
                       </tr>
                     );
                   })}
@@ -489,7 +549,7 @@ export default async function SuprimentosPage() {
                         <td className={td}><span className={`rounded-md px-2 py-1 text-xs ${status.className}`}>{status.label}</span></td>
                         <td className={td}>{prox.acao}</td>
                         <td className={td}>{prox.responsavel}</td>
-                        <td className={td}>{docsCotacao(pedido) ? <Pill tone="green">ok</Pill> : <Pill tone="amber">pendente</Pill>}</td>
+                        <td className={td}>{docsCotacao(pedido) ? <Pill tone="green">OK</Pill> : <Pill tone="amber">Pendente</Pill>}</td>
                         <td className={td}>{pedido.modalidade_compra ? MODALIDADE[pedido.modalidade_compra] ?? pedido.modalidade_compra : "—"}</td>
                         <td className={td}>{materiais.length ? `${recebidos}/${materiais.length}` : "—"}</td>
                         <td className={td}>{pendencias.length ? <span className="text-warning-strong">{pendencias.join(", ")}</span> : "—"}</td>
@@ -524,7 +584,7 @@ export default async function SuprimentosPage() {
                           <td className={`${td} font-medium`}><Link href={`/compras/${compra.id}`} className="text-primary hover:underline">Compra #{compra.id}</Link></td>
                           <td className={td}>{compra.fornecedores?.nome ?? "—"}</td>
                           <td className={td}>{compra.projetos?.nome ?? "—"}</td>
-                          <td className={td}><Pill tone={isAtrasada(compra.data_prevista_entrega, compra.status) ? "red" : "blue"}>{compra.status}</Pill></td>
+                          <td className={td}><Pill tone={isAtrasada(compra.data_prevista_entrega, compra.status) ? "red" : "blue"}>{rotulo(compra.status)}</Pill></td>
                           <td className={td}>{formatDate(compra.data_prevista_entrega)}</td>
                           <td className={td}>{compra.pedidos_compra_itens.length}</td>
                         </tr>
@@ -603,7 +663,7 @@ export default async function SuprimentosPage() {
                       <tr key={lote.id}>
                         <td className={`${td} font-mono text-xs`}><Link href={`/estoque/lotes/${lote.id}`} className="text-primary hover:underline">{lote.codigo_lote ?? `#${lote.id}`}</Link></td>
                         <td className={td}>{lote.insumos?.especificacao ?? "—"}</td>
-                        <td className={td}><Pill tone={lote.status === "quarentena" ? "amber" : validade && validade < hoje ? "red" : "blue"}>{lote.status}</Pill></td>
+                        <td className={td}><Pill tone={lote.status === "quarentena" ? "amber" : validade && validade < hoje ? "red" : "blue"}>{rotulo(lote.status)}</Pill></td>
                         <td className={td}>{formatDate(validade)}</td>
                         <td className={td}>{fmt(lote.quantidade_atual)} {lote.insumos?.unidade ?? ""}</td>
                         <td className={`${td} text-right`}><Link href={`/estoque/lotes/${lote.id}`} className="font-medium text-primary hover:underline">Ver lote</Link></td>
@@ -633,9 +693,9 @@ export default async function SuprimentosPage() {
                     const reserva = (equip.equipamento_reservas ?? []).find((r) => ["reservado", "em_uso"].includes(r.status));
                     return (
                       <tr key={equip.id}>
-                        <td className={`${td} font-medium`}><Link href={`/estoque/equipamentos?scan=${equip.id}`} className="text-primary hover:underline">{equip.equipamentos?.nome ?? `Equipamento #${equip.id}`}</Link></td>
+                        <td className={`${td} font-medium`}><Link href={`/estoque/equipamentos?focus=${equip.id}`} className="text-primary hover:underline">{equip.equipamentos?.nome ?? `Equipamento #${equip.id}`}</Link></td>
                         <td className={td}>{equip.codigo_patrimonio ?? "—"}</td>
-                        <td className={td}><Pill tone={!equip.ativo || ["em_manutencao", "calibracao_vencida", "inativo", "descartado"].includes(equip.status_operacional) ? "red" : equip.status_operacional === "reservado" ? "blue" : "green"}>{equip.status_operacional}</Pill></td>
+                        <td className={td}><Pill tone={!equip.ativo || ["em_manutencao", "calibracao_vencida", "inativo", "descartado"].includes(equip.status_operacional) ? "red" : equip.status_operacional === "reservado" ? "blue" : "green"}>{equip.ativo ? rotulo(equip.status_operacional) : "Inativo"}</Pill></td>
                         <td className={td}>{reserva ? `${formatDate(reserva.data_inicio)} → ${formatDate(reserva.data_fim)}` : "—"}</td>
                       </tr>
                     );
@@ -656,7 +716,7 @@ export default async function SuprimentosPage() {
                       <p className="font-medium">{n.titulo}</p>
                       {n.corpo && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{n.corpo}</p>}
                     </div>
-                    <Pill tone="amber">{n.tipo}</Pill>
+                    <Pill tone="amber">{rotulo(n.tipo)}</Pill>
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">{formatDate(n.criado_em)}</p>
                 </Link>
@@ -665,7 +725,18 @@ export default async function SuprimentosPage() {
           ) : <Empty>Sem notificações não lidas.</Empty>}
         </Section>
 
-        <Section id="rastreabilidade" title="Rastreabilidade">
+        <Section
+          id="rastreabilidade"
+          title="Rastreabilidade"
+          help={
+            <HelpTip title="Rastreabilidade">
+              <p>
+                Liga cada pedido interno à <b>compra formal</b> e aos lotes que entraram no estoque, para
+                saber de onde veio cada material.
+              </p>
+            </HelpTip>
+          }
+        >
           {rastreabilidade.length ? (
             <TableShell>
               <table className="w-full text-sm">
@@ -685,7 +756,7 @@ export default async function SuprimentosPage() {
                     return (
                       <tr key={pedido.id}>
                         <td className={`${td} font-medium`}><Link href={`/pedido/${pedido.id}`} className="text-primary hover:underline">{pedidoInternoNumero(pedido.id)} · {pedido.titulo}</Link></td>
-                        <td className={td}>{asOne(pedido.pedidos_compra)?.id ? <Link href={`/compras/${asOne(pedido.pedidos_compra)?.id}`} className="text-primary hover:underline">#{asOne(pedido.pedidos_compra)?.id} · {asOne(pedido.pedidos_compra)?.status}</Link> : "—"}</td>
+                        <td className={td}>{asOne(pedido.pedidos_compra)?.id ? <Link href={`/compras/${asOne(pedido.pedidos_compra)?.id}`} className="text-primary hover:underline">#{asOne(pedido.pedidos_compra)?.id} · {rotulo(asOne(pedido.pedidos_compra)?.status)}</Link> : "—"}</td>
                         <td className={td}>{pedido.pedidos_internos_itens.filter((item) => item.recebido_em).length}/{pedido.pedidos_internos_itens.length}</td>
                         <td className={td}>
                           {lotesRecebidos.length ? lotesRecebidos.map((item) => (

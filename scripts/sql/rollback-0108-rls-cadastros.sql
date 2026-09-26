@@ -1,6 +1,7 @@
 -- Recuperacao da 0108, ensaiada somente em clone descartavel.
--- Em producao, copiar para a PROXIMA migration livre (0109 se ainda livre),
--- revisar e aplicar pelo fluxo normal. Nunca executar SQL avulso, apagar o
+-- Em producao, copiar para a PROXIMA migration livre (conferir o maior numero
+-- em supabase/migrations; 0109+ ja estao ocupadas), revisar e aplicar pelo fluxo
+-- normal. Nunca executar SQL avulso, apagar o
 -- ledger 0108, reaplicar migrations antigas ou restaurar backup sobre dados vivos.
 -- Restaura a regra anterior coordenador+, reintroduzindo o bloqueio conhecido
 -- para tecnico com concessao individual. Usar apenas diante de regressao confirmada.

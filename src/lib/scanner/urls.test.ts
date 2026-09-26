@@ -1,11 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { gerarUrlCurtaKontrol, isTipoUrlCurtaKontrol } from "./urls";
+import { gerarUrlCurtaKontrol, isTipoUrlCurtaKontrol, normalizarOrigem } from "./urls";
+import { parseRotaCurtaKontrol } from "./resolver";
 
 describe("urls curtas Kontrol", () => {
   it("gera URLs internas para entidades do PR 3", () => {
     expect(gerarUrlCurtaKontrol("lote", 12)).toBe("/s/lote/12");
     expect(gerarUrlCurtaKontrol("equipamento", 7)).toBe("/s/equipamento/7");
     expect(gerarUrlCurtaKontrol("equipamento_unidade", 44)).toBe("/s/equipamento_unidade/44");
+  });
+
+  it("gera URL absoluta com a origem (etiqueta QR lida pela câmera do celular)", () => {
+    expect(gerarUrlCurtaKontrol("lote", 12, "https://kontrol.test")).toBe("https://kontrol.test/s/lote/12");
+    expect(gerarUrlCurtaKontrol("lote", 12, "https://kontrol.test/qualquer/")).toBe("https://kontrol.test/s/lote/12");
+    expect(gerarUrlCurtaKontrol("lote", 12, "http://192.168.0.10:3000")).toBe("http://192.168.0.10:3000/s/lote/12");
+    expect(gerarUrlCurtaKontrol("lote", 12, "")).toBe("/s/lote/12");
+    expect(gerarUrlCurtaKontrol("lote", 12, "nao-e-url")).toBe("/s/lote/12");
+    expect(normalizarOrigem("ftp://x.test")).toBeNull();
+    expect(parseRotaCurtaKontrol(gerarUrlCurtaKontrol("lote", 12, "https://kontrol.test"))).toEqual({
+      tipo: "lote",
+      id: 12,
+    });
   });
 
   it("rejeita ids invalidos", () => {

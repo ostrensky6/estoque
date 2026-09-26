@@ -38,9 +38,9 @@ describe("LoteAcoes", () => {
 
   it("expoe estorno auditavel somente com origem avulsa comprovada", () => {
     expect(source).toContain("estornarRecebimentoLote");
-    expect(source).toMatch(/status\s*===\s*"quarentena"\s*&&\s*podeAceitar[\s\S]+estornoDiretoPermitido[\s\S]+Estornar entrada/);
+    expect(source).toMatch(/status\s*===\s*"quarentena"[\s\S]+estornoDiretoPermitido\s*&&\s*podeCorrigir[\s\S]+Estornar entrada/);
     expect(source).toMatch(/modal\s*===\s*"estornar"[\s\S]+runState\(estornarRecebimentoLote/);
-    expect(tables).toContain("estornoDiretoPermitido={row.original.estornoDiretoPermitido}");
+    expect(tables).toContain("estornoDiretoPermitido={row.estornoDiretoPermitido}");
     expect(page).toContain('from("pedidos_compra_item_recebimentos")');
     expect(page).toContain('from("pedidos_internos_item_recebimentos")');
     expect(page).toContain("estornoDiretoPermitido:");

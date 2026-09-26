@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { HelpTip } from "@/components/common/HelpTip";
 import { recalcularOrcamento } from "@/lib/actions/orcamentos";
 
 type RecalcularOrcamentoFormProps = {
@@ -77,7 +78,7 @@ export function RecalcularOrcamentoForm({
         }}
         className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-muted"
       >
-        Aplicar e recalcular
+        Recalcular preços
       </button>
 
       {aberto && (
@@ -110,9 +111,14 @@ export function RecalcularOrcamentoForm({
               <input type="hidden" name="operacao_id" value={operacaoId} />
 
               <div>
-                <label htmlFor="fonte-custo-insumos" className="block text-xs font-medium text-muted-foreground">
-                  Fonte de custo dos insumos
-                </label>
+                <div className="flex items-center gap-1">
+                  <label htmlFor="fonte-custo-insumos" className="block text-xs font-medium text-muted-foreground">
+                    Fonte de custo dos insumos
+                  </label>
+                  <HelpTip title="Fonte de custo dos insumos">
+                    <p><b>Custo padrão</b>: valor aprovado no cadastro de cada insumo. <b>Média dos lotes liberados</b>: média ponderada do que foi pago pelos lotes em estoque.</p>
+                  </HelpTip>
+                </div>
                 <select
                   id="fonte-custo-insumos"
                   name="fonte_custo_insumos"
@@ -164,7 +170,7 @@ export function RecalcularOrcamentoForm({
                   disabled={pending}
                   className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
                 >
-                  {pending ? "Recalculando…" : "Aplicar e recalcular"}
+                  {pending ? "Recalculando…" : "Recalcular"}
                 </button>
               </div>
             </form>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
+import { HelpTip } from "@/components/common/HelpTip";
 import {
   DemandaForm,
   type AnaliseCatalogoDemanda,
@@ -36,6 +37,9 @@ export default async function NovaDemandaPage() {
     (supabase as never as { from: (table: string) => { select: (columns: string) => Promise<{ data: Array<{
       codigo_analise: string;
       especificacao_insumo: string | null;
+      nome_etapa: string | null;
+      nome_atividade: string | null;
+      grupo_escolha: string | null;
       unidade: string | null;
       quantidade_por_amostra: number | null;
       modo_cobranca: string | null;
@@ -44,7 +48,7 @@ export default async function NovaDemandaPage() {
       insumos: { custo_unitario?: number | null } | null;
     }> | null }> } })
       .from("insumo_analise")
-      .select("codigo_analise, especificacao_insumo, unidade, quantidade_por_amostra, modo_cobranca, status_vinculo_insumo, insumo_id, insumos(custo_unitario)"),
+      .select("codigo_analise, nome_etapa, nome_atividade, especificacao_insumo, grupo_escolha, unidade, quantidade_por_amostra, modo_cobranca, status_vinculo_insumo, insumo_id, insumos(custo_unitario)"),
     (supabase as never as { from: (table: string) => { select: (columns: string) => Promise<{ data: Array<{ insumo_id: number; disponivel?: number | null }> | null }> } })
       .from("v_estoque_saldo")
       .select("insumo_id, disponivel"),
@@ -143,10 +147,12 @@ export default async function NovaDemandaPage() {
             <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
               Entrada comercial
             </p>
-            <h1 className="mt-1 text-xl font-semibold tracking-tight">Novo Orçamento</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Preencha o orçamento inteiro uma única vez. Estes dados seguem para laboratório, projeto e proposta final.
-            </p>
+            <div className="mt-1 flex items-center gap-1">
+              <h1 className="text-xl font-semibold tracking-tight">Novo Orçamento</h1>
+              <HelpTip title="Novo orçamento">
+                <p>Preencha os dados <b>uma única vez</b>: eles seguem para os custos do laboratório, do projeto e para a proposta final.</p>
+              </HelpTip>
+            </div>
           </div>
           <Link
             href="/orcamento/demandas"
